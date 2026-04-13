@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DMCloser — Panel Admin</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f0f0f; color: #e0e0e0; min-height: 100vh; }
+
+  /* ── Layout ── */
+  .header { background: #1a1a2e; border-bottom: 1px solid #2a2a4a; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
+  .header .logo { font-size: 1.2rem; font-weight: 700; color: #7c6af7; letter-spacing: -0.5px; }
+  .header .logo span { color: #e0e0e0; }
+  .header .badge { background: #7c6af7; color: #fff; font-size: 0.7rem; padding: 2px 8px; border-radius: 20px; margin-left: 8px; }
+  .btn-logout { background: transparent; border: 1px solid #444; color: #aaa; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
+  .btn-logout:hover { border-color: #e55; color: #e55; }
+
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+
+  /* ── Stats cards ── */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 28px; }
+  .stat-card { background: #1a1a2e; border: 1px solid #2a2a4a; border-radius: 10px; padding: 18px; text-align: center; }
+  .stat-card .num { font-size: 2rem; font-weight: 700; color: #7c6af7; }
+  .stat-card .lbl { font-size: 0.78rem; color: #888; margin-top: 4px; }
+  .stat-card.warn .num { color: #f59e0b; }
+  .stat-card.danger .num { color: #ef4444; }
+  .stat-card.green .num { color: #22c55e; }
+
+  /* ── Tabs ── */
+  .tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid #2a2a4a; }
+  .tab { padding: 10px 20px; cursor: pointer; border-radius: 8px 8px 0 0; font-size: 0.9rem; color: #888; border: 1px solid transparent; border-bottom: none; transition: all .2s; }
+  .tab.active { background: #1a1a2e; color: #7c6af7; border-color: #2a2a4a; }
+  .tab:hover:not(.active) { color: #ccc; }
+
+  /* ── Sections ── */
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* ── Tables ── */
+  .table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid #2a2a4a; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  th { background: #1a1a2e; color: #888; font-weight: 600; text-align: left; padding: 12px 14px; border-bottom: 1px solid #2a2a4a; white-space: nowrap; }
+  td { padding: 12px 14px; border-bottom: 1px solid #1e1e1e; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #161625; }
+
+  /* ── Badges ── */
+  .badge-plan { font-size: 0.72rem; padding: 2px 8px; border-radius: 20px; font-weight: 600; white-space: nowrap; }
+  .badge-admin { background: #3b2fb5; color: #a5b4fc; }
+  .badge-trial { background: #1f3a1f; color: #4ade80; }
+  .badge-monthly { background: #1e3a5f; color: #60a5fa; }
+  .badge-annual { background: #3b2503; color: #fb923c; }
+  .badge-expired { background: #3b0a0a; color: #f87171; }
+
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+  .dot-active { background: #22c55e; }
+  .dot-inactive { background: #ef4444; }
+
+  /* ── Buttons ── */
+  .btn { padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; border: none; font-weight: 500; transition: opacity .15s; }
+  .btn:hover { opacity: 0.85; }
+  .btn-primary { background: #7c6af7; color: #fff; }
+  .btn-success { background: #16a34a; color: #fff; }
+  .btn-danger  { background: #dc2626; color: #fff; }
+  .btn-warn    { background: #d97706; color: #fff; }
+  .btn-ghost   { background: transparent; border: 1px solid #444; color: #aaa; }
+  .btn-sm { padding: 4px 10px; font-size: 0.75rem; }
+  .btn-group { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  /* ── Forms ── */
+  .card { background: #1a1a2e; border: 1px solid #2a2a4a; border-radius: 10px; padding: 20px; margin-bottom: 20px; }
+  .card h3 { font-size: 0.95rem; color: #a5a5c8; margin-bottom: 16px; }
+  .form-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 140px; }
+  label { font-size: 0.78rem; color: #888; }
+  select, input { background: #0f0f1a; border: 1px solid #2a2a4a; color: #e0e0e0; padding: 8px 10px; border-radius: 6px; font-size: 0.85rem; width: 100%; }
+  select:focus, input:focus { outline: none; border-color: #7c6af7; }
+
+  /* ── Code display ── */
+  .code-text { font-family: monospace; background: #0f0f1a; padding: 4px 8px; border-radius: 4px; color: #a5b4fc; font-size: 0.85rem; }
+
+  /* ── Membership editor modal ── */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: #1a1a2e; border: 1px solid #2a2a4a; border-radius: 12px; padding: 24px; width: 420px; max-width: 95vw; }
+  .modal h3 { margin-bottom: 16px; color: #c4b5fd; }
+  .modal .form-group { margin-bottom: 12px; }
+  .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+  /* ── Login screen ── */
+  .login-wrap { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+  .login-box { background: #1a1a2e; border: 1px solid #2a2a4a; border-radius: 14px; padding: 36px; width: 360px; }
+  .login-box h2 { color: #7c6af7; margin-bottom: 6px; }
+  .login-box p { color: #888; font-size: 0.85rem; margin-bottom: 24px; }
+  .login-box .form-group { margin-bottom: 14px; }
+  .login-box .btn-primary { width: 100%; padding: 10px; font-size: 0.95rem; }
+  .err-msg { color: #f87171; font-size: 0.82rem; margin-top: 10px; text-align: center; }
+
+  /* ── Empty state ── */
+  .empty { text-align: center; padding: 40px; color: #555; }
+  .empty .icon { font-size: 2rem; margin-bottom: 10px; }
+
+  /* ── Responsive ── */
+  @media (max-width: 640px) {
+    .stats { grid-template-columns: 1fr 1fr; }
+    .form-row { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── LOGIN ── -->
+<div id="loginScreen" class="login-wrap">
+  <div class="login-box">
+    <h2>👑 DMCloser Admin</h2>
+    <p>Acceso restringido — solo administradores</p>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="loginEmail" placeholder="admin@email.com" />
+    </div>
+    <div class="form-group">
+      <label>Contraseña</label>
+      <input type="password" id="loginPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()" />
+    </div>
+    <button class="btn btn-primary" onclick="doLogin()">Ingresar al Panel</button>
+    <div id="loginErr" class="err-msg"></div>
+  </div>
+</div>
+
+<!-- ── PANEL ── -->
+<div id="adminPanel" style="display:none">
+  <div class="header">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="logo">DM<span>Closer</span></span>
+      <span class="badge">ADMIN</span>
+    </div>
+    <button class="btn-logout" onclick="logout()">Cerrar sesión</button>
+  </div>
+
+  <div class="container">
+    <!-- Stats -->
+    <div class="stats" id="statsRow">
+      <div class="stat-card green"><div class="num" id="st-total">—</div><div class="lbl">Total usuarios</div></div>
+      <div class="stat-card green"><div class="num" id="st-active">—</div><div class="lbl">Activos</div></div>
+      <div class="stat-card danger"><div class="num" id="st-expired">—</div><div class="lbl">Vencidos</div></div>
+      <div class="stat-card"><div class="num" id="st-codes">—</div><div class="lbl">Códigos creados</div></div>
+      <div class="stat-card warn"><div class="num" id="st-used">—</div><div class="lbl">Códigos usados</div></div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('users',this)">👥 Usuarios</div>
+      <div class="tab" onclick="switchTab('codes',this)">🎟️ Códigos</div>
+    </div>
+
+    <!-- ── USUARIOS ── -->
+    <div id="tab-users" class="section active">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Usuario</th>
+              <th>Email</th>
+              <th>Plan</th>
+              <th>Pago / Inicio</th>
+              <th>Vencimiento</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="usersTable">
+            <tr><td colspan="7" class="empty"><div class="icon">⏳</div>Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── CÓDIGOS ── -->
+    <div id="tab-codes" class="section">
+      <div class="card">
+        <h3>🎟️ Crear nuevo código de invitación</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Tipo de membresía</label>
+            <select id="codeType">
+              <option value="trial">🟢 Trial — 3 días gratis</option>
+              <option value="monthly">🔵 Mensual — 30 días</option>
+              <option value="annual">🟠 Anual — 365 días</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Usos máximos</label>
+            <input type="number" id="codeMaxUses" value="1" min="1" />
+          </div>
+          <div class="form-group">
+            <label>El código expira en (días)</label>
+            <input type="number" id="codeExpDays" value="30" min="1" />
+          </div>
+          <div class="form-group">
+            <label>Nota (opcional)</label>
+            <input type="text" id="codeNote" placeholder="ej: para Juan García" />
+          </div>
+          <div class="form-group" style="flex:0">
+            <label>&nbsp;</label>
+            <button class="btn btn-primary" onclick="createCode()">+ Generar código</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>Tipo</th>
+              <th>Días acceso</th>
+              <th>Usos</th>
+              <th>Expira (código)</th>
+              <th>Nota</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="codesTable">
+            <tr><td colspan="8" class="empty"><div class="icon">⏳</div>Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL editar membresía ── -->
+<div class="modal-overlay" id="membershipModal">
+  <div class="modal">
+    <h3>✏️ Editar membresía</h3>
+    <input type="hidden" id="editUserId" />
+    <div class="form-group">
+      <label>Plan</label>
+      <select id="editPlan">
+        <option value="trial">Trial (3 días)</option>
+        <option value="monthly">Mensual (30 días)</option>
+        <option value="annual">Anual (365 días)</option>
+        <option value="admin">Admin (sin límite)</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Fecha de pago / inicio</label>
+      <input type="date" id="editMemberDate" />
+    </div>
+    <div class="form-group">
+      <label>Fecha de vencimiento</label>
+      <input type="date" id="editExpiry" />
+    </div>
+    <div class="form-group">
+      <label>Estado</label>
+      <select id="editActive">
+        <option value="true">✅ Activo</option>
+        <option value="false">❌ Inactivo</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveMembership()">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let TOKEN = localStorage.getItem('dmcloser_admin_token') || '';
+
+// ── Init ───────────────────────────────────────────────────────────────────
+window.onload = () => {
+  if (TOKEN) tryShowPanel();
+};
+
+async function tryShowPanel() {
+  try {
+    const r = await api('GET', '/api/admin/stats');
+    showPanel();
+    renderStats(r);
+    loadUsers();
+    loadCodes();
+  } catch {
+    TOKEN = '';
+    localStorage.removeItem('dmcloser_admin_token');
+  }
+}
+
+function showPanel() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('adminPanel').style.display  = 'block';
+}
+
+// ── Auth ───────────────────────────────────────────────────────────────────
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass  = document.getElementById('loginPass').value;
+  document.getElementById('loginErr').textContent = '';
+  try {
+    const r = await fetch('/api/user/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: pass })
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Error');
+    if (data.user.role !== 'admin') throw new Error('No tienes permisos de administrador');
+    TOKEN = data.token;
+    localStorage.setItem('dmcloser_admin_token', TOKEN);
+    showPanel();
+    loadStats();
+    loadUsers();
+    loadCodes();
+  } catch (e) {
+    document.getElementById('loginErr').textContent = e.message;
+  }
+}
+
+function logout() {
+  TOKEN = '';
+  localStorage.removeItem('dmcloser_admin_token');
+  location.reload();
+}
+
+// ── API helper ─────────────────────────────────────────────────────────────
+async function api(method, url, body) {
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` }
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(url, opts);
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.error || 'Error');
+  return d;
+}
+
+// ── Tabs ───────────────────────────────────────────────────────────────────
+function switchTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// ── Stats ──────────────────────────────────────────────────────────────────
+async function loadStats() {
+  const r = await api('GET', '/api/admin/stats');
+  renderStats(r);
+}
+
+function renderStats(r) {
+  document.getElementById('st-total').textContent   = r.totalUsers;
+  document.getElementById('st-active').textContent  = r.activeUsers;
+  document.getElementById('st-expired').textContent = r.expired;
+  document.getElementById('st-codes').textContent   = r.totalCodes;
+  document.getElementById('st-used').textContent    = r.usedCodes;
+}
+
+// ── Users ──────────────────────────────────────────────────────────────────
+async function loadUsers() {
+  const users = await api('GET', '/api/admin/users');
+  const tbody = document.getElementById('usersTable');
+
+  if (!users.length) {
+    tbody.innerHTML = `<tr><td colspan="7" class="empty"><div class="icon">👤</div>No hay usuarios aún</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = users.map(u => {
+    const now      = new Date();
+    const expDate  = u.membershipExpiresAt ? new Date(u.membershipExpiresAt) : null;
+    const isExpired = expDate && expDate < now && u.role !== 'admin';
+    const planBadge = getPlanBadge(u.membershipPlan, isExpired);
+    const statusDot = u.isActive ? '<span class="status-dot dot-active"></span>Activo' : '<span class="status-dot dot-inactive"></span>Inactivo';
+    const memberDate = u.membershipDate ? fmtDate(u.membershipDate) : '<span style="color:#555">—</span>';
+    const expiryStr  = u.role === 'admin' ? '<span style="color:#888">Sin límite</span>'
+                     : expDate ? `<span style="color:${isExpired?'#f87171':'#e0e0e0'}">${fmtDate(u.membershipExpiresAt)}${isExpired?' ⚠️':''}</span>`
+                     : '<span style="color:#555">—</span>';
+
+    const toggleBtn = u.role !== 'admin' ? `
+      <button class="btn btn-sm ${u.isActive ? 'btn-danger' : 'btn-success'}"
+        onclick="toggleStatus('${u.id}', ${!u.isActive})">
+        ${u.isActive ? 'Desactivar' : 'Activar'}
+      </button>` : '';
+
+    const editBtn = `<button class="btn btn-sm btn-warn" onclick="openModal('${u.id}','${u.name}','${u.membershipPlan||'trial'}','${u.membershipDate||''}','${u.membershipExpiresAt||''}',${u.isActive})">Editar</button>`;
+
+    const delBtn = u.role !== 'admin' ? `<button class="btn btn-sm btn-danger" onclick="deleteUser('${u.id}','${u.name}')">Eliminar</button>` : '';
+
+    return `
+      <tr>
+        <td><strong>${escHtml(u.name)}</strong>${u.role==='admin'?' 👑':''}</td>
+        <td style="color:#888">${escHtml(u.email)}</td>
+        <td>${planBadge}</td>
+        <td>${memberDate}</td>
+        <td>${expiryStr}</td>
+        <td>${statusDot}</td>
+        <td><div class="btn-group">${editBtn}${toggleBtn}${delBtn}</div></td>
+      </tr>`;
+  }).join('');
+}
+
+function getPlanBadge(plan, isExpired) {
+  if (isExpired) return `<span class="badge-plan badge-expired">VENCIDO</span>`;
+  const map = { admin:'badge-admin', trial:'badge-trial', monthly:'badge-monthly', annual:'badge-annual' };
+  const labels = { admin:'ADMIN', trial:'TRIAL 3d', monthly:'MENSUAL', annual:'ANUAL' };
+  const cls = map[plan] || 'badge-trial';
+  return `<span class="badge-plan ${cls}">${labels[plan]||plan.toUpperCase()}</span>`;
+}
+
+async function toggleStatus(id, newVal) {
+  await api('PATCH', `/api/admin/users/${id}/status`, { isActive: newVal });
+  loadUsers(); loadStats();
+}
+
+async function deleteUser(id, name) {
+  if (!confirm(`¿Eliminar al usuario "${name}"? Esta acción no se puede deshacer.`)) return;
+  await api('DELETE', `/api/admin/users/${id}`);
+  loadUsers(); loadStats();
+}
+
+// ── Membership modal ───────────────────────────────────────────────────────
+function openModal(id, name, plan, memberDate, expiry, isActive) {
+  document.getElementById('editUserId').value      = id;
+  document.getElementById('editPlan').value        = plan || 'trial';
+  document.getElementById('editMemberDate').value  = memberDate ? memberDate.slice(0,10) : '';
+  document.getElementById('editExpiry').value      = expiry ? expiry.slice(0,10) : '';
+  document.getElementById('editActive').value      = String(isActive);
+  document.getElementById('membershipModal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('membershipModal').classList.remove('open');
+}
+
+async function saveMembership() {
+  const id      = document.getElementById('editUserId').value;
+  const plan    = document.getElementById('editPlan').value;
+  const mDate   = document.getElementById('editMemberDate').value;
+  const expiry  = document.getElementById('editExpiry').value;
+  const active  = document.getElementById('editActive').value === 'true';
+
+  await api('PATCH', `/api/admin/users/${id}/membership`, {
+    membershipPlan:      plan,
+    membershipDate:      mDate ? new Date(mDate).toISOString() : undefined,
+    membershipExpiresAt: expiry ? new Date(expiry + 'T23:59:59').toISOString() : undefined,
+    isActive:            active,
+  });
+  closeModal();
+  loadUsers(); loadStats();
+}
+
+// ── Codes ──────────────────────────────────────────────────────────────────
+async function loadCodes() {
+  const codes = await api('GET', '/api/admin/codes');
+  const tbody = document.getElementById('codesTable');
+
+  if (!codes.length) {
+    tbody.innerHTML = `<tr><td colspan="8" class="empty"><div class="icon">🎟️</div>No hay códigos. Crea el primero arriba.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = codes.map(c => {
+    const now = new Date();
+    const codeExp  = c.codeExpiresAt ? new Date(c.codeExpiresAt) : null;
+    const codeOk   = !codeExp || codeExp > now;
+    const usesLeft = c.maxUses - c.uses;
+    const typeBadge = getPlanBadge(c.type, false);
+    const statusBadge = c.isActive && codeOk
+      ? '<span style="color:#4ade80">✅ Activo</span>'
+      : '<span style="color:#f87171">❌ Inactivo</span>';
+
+    return `
+      <tr>
+        <td><span class="code-text">${c.code}</span>
+          <button class="btn btn-sm btn-ghost" style="margin-left:6px" onclick="copyCode('${c.code}')">📋</button>
+        </td>
+        <td>${typeBadge}</td>
+        <td>${c.daysAccess} días</td>
+        <td>${c.uses} / ${c.maxUses} <small style="color:${usesLeft>0?'#888':'#f87171'}">(${usesLeft} restantes)</small></td>
+        <td style="color:${codeOk?'#e0e0e0':'#f87171'}">${codeExp ? fmtDate(c.codeExpiresAt) : '—'}</td>
+        <td style="color:#888;font-size:0.8rem">${escHtml(c.note||'')}</td>
+        <td>${statusBadge}</td>
+        <td>
+          <div class="btn-group">
+            <button class="btn btn-sm ${c.isActive?'btn-warn':'btn-success'}" onclick="toggleCode('${c._id}')">
+              ${c.isActive ? 'Desactivar' : 'Activar'}
+            </button>
+            <button class="btn btn-sm btn-danger" onclick="deleteCode('${c._id}')">Eliminar</button>
+          </div>
+        </td>
+      </tr>`;
+  }).join('');
+}
+
+async function createCode() {
+  const type    = document.getElementById('codeType').value;
+  const maxUses = parseInt(document.getElementById('codeMaxUses').value) || 1;
+  const expDays = parseInt(document.getElementById('codeExpDays').value)  || 30;
+  const note    = document.getElementById('codeNote').value.trim();
+  const code    = await api('POST', '/api/admin/codes', { type, maxUses, codeExpiresInDays: expDays, note });
+  alert(`✅ Código creado: ${code.code}\n\nCompártelo con tu usuario para que se registre.`);
+  loadCodes(); loadStats();
+}
+
+async function toggleCode(id) {
+  await api('PATCH', `/api/admin/codes/${id}/toggle`);
+  loadCodes();
+}
+
+async function deleteCode(id) {
+  if (!confirm('¿Eliminar este código? Los usuarios que ya lo usaron no se verán afectados.')) return;
+  await api('DELETE', `/api/admin/codes/${id}`);
+  loadCodes(); loadStats();
+}
+
+function copyCode(code) {
+  navigator.clipboard.writeText(code).then(() => alert(`Código copiado: ${code}`));
+}
+
+// ── Utils ──────────────────────────────────────────────────────────────────
+function fmtDate(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Cerrar modal al hacer clic fuera
+document.getElementById('membershipModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+</script>
+</body>
+</html>

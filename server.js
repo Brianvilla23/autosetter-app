@@ -4,7 +4,8 @@ const cors    = require('cors');
 const helmet  = require('helmet');
 const path    = require('path');
 
-const { requireAuth } = require('./middleware/authMiddleware');
+const { requireAuth }  = require('./middleware/authMiddleware');
+const { requireAdmin } = require('./middleware/requireAdmin');
 const {
   authLimiter,
   apiLimiter,
@@ -63,6 +64,9 @@ app.use('/webhook',  webhookLimiter, require('./routes/webhook'));
 app.use('/auth',                     require('./routes/auth'));        // Instagram OAuth
 app.use('/api/user', authLimiter,    require('./routes/userAuth'));    // login / register
 
+// ── ADMIN ROUTES ──────────────────────────────────────────────────────────────
+app.use('/api/admin', apiLimiter, requireAdmin, require('./routes/admin'));
+
 // ── PROTECTED API ROUTES ──────────────────────────────────────────────────────
 app.use('/api/agents',    apiLimiter, requireAuth, require('./routes/agents'));
 app.use('/api/knowledge', apiLimiter, requireAuth, require('./routes/knowledge'));
@@ -107,8 +111,9 @@ app.get('*', (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`\n🚀 AutoSetter running → http://localhost:${PORT}`);
+  console.log(`\n🚀 DMCloser running   → http://localhost:${PORT}`);
   console.log(`📡 Webhook URL        → http://localhost:${PORT}/webhook`);
   console.log(`🔐 Auth URL           → http://localhost:${PORT}/auth/instagram`);
+  console.log(`👑 Admin Panel        → http://localhost:${PORT}/admin`);
   console.log(`🛡️  Security           → Helmet + Rate Limit + XSS Protection ON\n`);
 });

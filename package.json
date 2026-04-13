@@ -1,7 +1,7 @@
 {
-  "name": "autosetter-app",
+  "name": "dmcloser",
   "version": "1.0.0",
-  "description": "Instagram AI AutoSetter - Automated DM Sales Agent",
+  "description": "DMCloser - AI Instagram DM Sales Closer Agent",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

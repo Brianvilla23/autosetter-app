@@ -13,21 +13,29 @@ router.get('/check', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── REGISTER (setup inicial o admin creando nuevos usuarios) ──────────────────
+// ── REGISTER ──────────────────────────────────────────────────────────────────
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, name } = req.body;
+    const { email, password, name, inviteCode } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Email y contraseña requeridos' });
     if (password.length < 6)  return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
 
-    // Only allow register if no users exist yet (first-time setup)
-    // OR if request comes from an authenticated admin
     const count = await db.count(db.users, {});
-    const authHeader = req.headers['authorization'];
-    const isAuthed = authHeader && authHeader.startsWith('Bearer ');
+    const isFirstUser = count === 0;
 
-    if (count > 0 && !isAuthed) {
-      return res.status(403).json({ error: 'Registro cerrado. Solo el administrador puede crear nuevas cuentas.' });
+    // Primer usuario → se convierte en admin sin código
+    // Los demás → requieren código de invitación válido
+    let codeDoc = null;
+    if (!isFirstUser) {
+      if (!inviteCode) return res.status(400).json({ error: 'Se requiere un código de invitación para registrarse' });
+
+      codeDoc = await db.findOne(db.inviteCodes, { code: inviteCode.toUpperCase().trim() });
+      if (!codeDoc)           return res.status(400).json({ error: 'Código de invitación inválido' });
+      if (!codeDoc.isActive)  return res.status(400).json({ error: 'Este código está desactivado' });
+      if (codeDoc.uses >= codeDoc.maxUses) return res.status(400).json({ error: 'Este código ya fue utilizado el máximo de veces' });
+      if (codeDoc.codeExpiresAt && new Date(codeDoc.codeExpiresAt) < new Date()) {
+        return res.status(400).json({ error: 'Este código de invitación ha expirado' });
+      }
     }
 
     const existing = await db.findOne(db.users, { email: email.toLowerCase() });
@@ -35,26 +43,49 @@ router.post('/register', async (req, res) => {
 
     const hash = await bcrypt.hash(password, 12);
 
-    // Create linked account for this user
+    // Crear cuenta vinculada
     const account = await db.insert(db.accounts, {
-      ig_user_id: 'demo_ig_id_' + Date.now(),
-      ig_username: 'tu.cuenta.ig',
+      ig_user_id:   'demo_ig_id_' + Date.now(),
+      ig_username:  'tu.cuenta.ig',
       access_token: 'demo_token'
     });
 
-    // Create settings for the account
     await db.insert(db.settings, { account_id: account._id, openai_key: '' });
 
-    // Create user
+    // Calcular fechas de membresía
+    const now = new Date().toISOString();
+    let membershipDate      = null;
+    let membershipExpiresAt = null;
+    let membershipPlan      = isFirstUser ? 'admin' : (codeDoc?.type || 'trial');
+
+    if (!isFirstUser && codeDoc) {
+      membershipDate      = now;
+      const exp = new Date();
+      exp.setDate(exp.getDate() + codeDoc.daysAccess);
+      membershipExpiresAt = exp.toISOString();
+    }
+
     const user = await db.insert(db.users, {
-      email: email.toLowerCase(),
-      name: name || email.split('@')[0],
-      password_hash: hash,
-      account_id: account._id,
-      role: count === 0 ? 'admin' : 'user'
+      email:               email.toLowerCase(),
+      name:                name || email.split('@')[0],
+      password_hash:       hash,
+      account_id:          account._id,
+      role:                isFirstUser ? 'admin' : 'user',
+      isActive:            true,
+      membershipDate,
+      membershipExpiresAt,
+      membershipPlan,
+      inviteCode:          codeDoc?.code || null,
     });
 
-    // Seed demo agent for new account
+    // Marcar código como usado
+    if (codeDoc) {
+      await db.update(db.inviteCodes, { _id: codeDoc._id }, {
+        uses:    codeDoc.uses + 1,
+        usedBy:  [...(codeDoc.usedBy || []), user._id],
+      });
+    }
+
     await seedDemoAgent(account._id);
 
     const token = jwt.sign(
@@ -63,7 +94,18 @@ router.post('/register', async (req, res) => {
       { expiresIn: '30d' }
     );
 
-    res.json({ token, user: { id: user._id, email: user.email, name: user.name, role: user.role, accountId: account._id } });
+    res.json({
+      token,
+      user: {
+        id:                  user._id,
+        email:               user.email,
+        name:                user.name,
+        role:                user.role,
+        accountId:           account._id,
+        membershipPlan,
+        membershipExpiresAt,
+      }
+    });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -79,13 +121,39 @@ router.post('/login', async (req, res) => {
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) return res.status(401).json({ error: 'Email o contraseña incorrectos' });
 
+    // Verificar si la cuenta está activa
+    if (user.isActive === false) {
+      return res.status(403).json({ error: 'Tu cuenta está desactivada. Contacta al administrador.' });
+    }
+
+    // Verificar si la membresía expiró (solo usuarios no-admin)
+    if (user.role !== 'admin' && user.membershipExpiresAt) {
+      if (new Date(user.membershipExpiresAt) < new Date()) {
+        return res.status(403).json({
+          error: 'Tu membresía ha expirado. Contacta al administrador para renovarla.',
+          expired: true,
+        });
+      }
+    }
+
     const token = jwt.sign(
       { userId: user._id, email: user.email, name: user.name, accountId: user.account_id, role: user.role },
       SECRET,
       { expiresIn: '30d' }
     );
 
-    res.json({ token, user: { id: user._id, email: user.email, name: user.name, role: user.role, accountId: user.account_id } });
+    res.json({
+      token,
+      user: {
+        id:                  user._id,
+        email:               user.email,
+        name:                user.name,
+        role:                user.role,
+        accountId:           user.account_id,
+        membershipPlan:      user.membershipPlan      || null,
+        membershipExpiresAt: user.membershipExpiresAt || null,
+      }
+    });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -109,7 +177,7 @@ router.post('/change-password', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── Helper: seed demo agent for new account ───────────────────────────────────
+// ── Helper: seed demo agent ───────────────────────────────────────────────────
 async function seedDemoAgent(accountId) {
   const { v4: uuidv4 } = require('uuid');
   const link1 = uuidv4(), link2 = uuidv4(), link3 = uuidv4();

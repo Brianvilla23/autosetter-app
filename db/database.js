@@ -16,6 +16,7 @@ const db = {
   bypassed:      new Datastore({ filename: path.join(dir, 'bypassed.db'),      autoload: true }),
   settings:      new Datastore({ filename: path.join(dir, 'settings.db'),      autoload: true }),
   users:         new Datastore({ filename: path.join(dir, 'users.db'),         autoload: true }),
+  inviteCodes:   new Datastore({ filename: path.join(dir, 'inviteCodes.db'),   autoload: true }),
 };
 
 // Compact on load
