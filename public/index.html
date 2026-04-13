@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AutoSetter — Instagram Automation</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<!-- ── AUTH SCREEN ───────────────────────────────────────────────────────── -->
+<div id="auth-screen" class="auth-screen" style="display:none">
+  <div id="auth-box" class="auth-box"></div>
+</div>
+
+<!-- ── APP SHELL (dashboard) ─────────────────────────────────────────────── -->
+<div id="app-shell" style="display:none;width:100%;min-height:100vh">
+
+<!-- ── SIDEBAR ────────────────────────────────────────────────────────────── -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <span class="logo-icon">⚡</span>
+    <div>
+      <div class="logo-name">AutoSetter</div>
+      <div class="logo-sub">Instagram Automation</div>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <a class="nav-item active" data-section="home">
+      <span class="nav-icon">🏠</span> Home
+    </a>
+    <a class="nav-item" data-section="agents">
+      <span class="nav-icon">🤖</span> Agents
+    </a>
+    <a class="nav-item" data-section="knowledge">
+      <span class="nav-icon">🧠</span> Knowledge
+    </a>
+    <a class="nav-item" data-section="leads">
+      <span class="nav-icon">👥</span> Leads
+      <span class="nav-badge" id="leads-badge"></span>
+    </a>
+    <a class="nav-item" data-section="links">
+      <span class="nav-icon">🔗</span> Links
+    </a>
+    <a class="nav-item" data-section="settings">
+      <span class="nav-icon">⚙️</span> Settings
+    </a>
+  </nav>
+
+  <div class="sidebar-account">
+    <div class="account-dot"></div>
+    <div style="flex:1;min-width:0">
+      <div id="sidebar-user-name" style="font-weight:600;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+      <div id="sidebar-username" style="font-size:11px;color:var(--text-3)">@cargando...</div>
+    </div>
+    <button class="btn-icon" title="Cerrar sesión" onclick="logout()" style="font-size:16px;padding:4px">🚪</button>
+  </div>
+</aside>
+
+<!-- ── MAIN CONTENT ───────────────────────────────────────────────────────── -->
+<main class="main">
+
+  <!-- HOME ────────────────────────────────────────────────────────────────── -->
+  <section id="section-home" class="section active">
+    <div class="page-header">
+      <div>
+        <h1>Dashboard</h1>
+        <p>Bienvenido a tu panel de control de AutoSetter</p>
+      </div>
+    </div>
+    <div class="stats-grid" id="home-stats">
+      <div class="stat-card">
+        <div class="stat-icon">🤖</div>
+        <div class="stat-val" id="stat-agents">—</div>
+        <div class="stat-label">Agentes activos</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">👥</div>
+        <div class="stat-val" id="stat-leads">—</div>
+        <div class="stat-label">Leads totales</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">✅</div>
+        <div class="stat-val" id="stat-converted">—</div>
+        <div class="stat-label">Conversaciones exitosas</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🔗</div>
+        <div class="stat-val" id="stat-links">—</div>
+        <div class="stat-label">Links disponibles</div>
+      </div>
+    </div>
+
+    <div class="home-cards">
+      <div class="home-card">
+        <h3>🚀 Primeros pasos</h3>
+        <ol>
+          <li>Configura tu cuenta de Instagram en <strong>Settings</strong></li>
+          <li>Añade tu OpenAI API Key en <strong>Settings</strong></li>
+          <li>Personaliza el <strong>Agent Instructions</strong> en Agents</li>
+          <li>Carga tu <strong>Knowledge Base</strong> con info del negocio</li>
+          <li>Añade los <strong>Links</strong> que el agente puede compartir</li>
+          <li>Conecta el webhook de Meta y ¡listo!</li>
+        </ol>
+      </div>
+      <div class="home-card">
+        <h3>📡 Webhook URL</h3>
+        <p style="color:var(--text-2);margin-bottom:12px">Configura este URL en tu Meta App:</p>
+        <div class="code-block" id="webhook-url">http://localhost:3000/webhook</div>
+        <p style="color:var(--text-2);font-size:13px;margin-top:8px">Verify Token: <code id="verify-token">mi_token_secreto_webhook</code></p>
+        <p style="color:var(--text-2);font-size:13px">Para producción usa ngrok o despliega en un servidor.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- AGENTS ──────────────────────────────────────────────────────────────── -->
+  <section id="section-agents" class="section">
+    <div class="page-header">
+      <div>
+        <h1>🤖 Virtual Agents</h1>
+        <p>Crea y gestiona los agentes IA que responden conversaciones de Instagram</p>
+      </div>
+      <button class="btn-primary" id="btn-create-agent">+ Crear agente</button>
+    </div>
+
+    <div class="agents-layout">
+      <!-- Agent list -->
+      <div class="agent-tabs-col">
+        <div id="agent-tabs-list"></div>
+      </div>
+
+      <!-- Agent builder -->
+      <div class="agent-builder" id="agent-builder">
+        <div class="agent-builder-empty">
+          <div style="font-size:48px">🤖</div>
+          <p>Selecciona un agente para configurarlo</p>
+        </div>
+      </div>
+
+      <!-- Live tester -->
+      <div class="agent-tester" id="agent-tester" style="display:none">
+        <div class="tester-header">
+          <span id="tester-name">Agente</span>
+          <span class="tester-status">● Activo</span>
+          <button class="btn-ghost" id="btn-reset-chat">↺ Reset</button>
+        </div>
+        <div class="tester-messages" id="tester-messages">
+          <div class="tester-hint">Inicia una conversación para probar tu agente</div>
+        </div>
+        <div class="tester-input-row">
+          <input type="text" id="tester-input" placeholder="Escribe un mensaje..." />
+          <button class="btn-primary" id="btn-tester-send">→</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- KNOWLEDGE ───────────────────────────────────────────────────────────── -->
+  <section id="section-knowledge" class="section">
+    <div class="page-header">
+      <div>
+        <h1>🧠 Knowledge Base</h1>
+        <p>Centraliza el conocimiento del negocio para que todos los agentes respondan con contexto</p>
+      </div>
+      <button class="btn-primary" id="btn-add-knowledge">+ Nueva entrada</button>
+    </div>
+    <div id="knowledge-list" class="knowledge-list"></div>
+  </section>
+
+  <!-- LEADS ───────────────────────────────────────────────────────────────── -->
+  <section id="section-leads" class="section">
+    <div class="page-header">
+      <div>
+        <h1>👥 Leads</h1>
+        <p>Revisa conversaciones entrantes, califica prospectos y haz seguimiento</p>
+      </div>
+    </div>
+
+    <div class="leads-tabs">
+      <button class="leads-tab active" data-tab="inbound">Inbound Leads</button>
+      <button class="leads-tab" data-tab="bypassed">Usuarios bypasseados</button>
+    </div>
+
+    <!-- Inbound leads -->
+    <div id="leads-inbound" class="leads-panel">
+      <div class="leads-filters">
+        <input type="text" id="filter-handle" placeholder="Buscar @handle..." class="filter-input">
+        <select id="filter-status" class="filter-select">
+          <option value="all">Todos los estados</option>
+          <option value="active">Activo</option>
+          <option value="closed">Cerrado</option>
+        </select>
+        <select id="filter-automation" class="filter-select">
+          <option value="all">Toda automatización</option>
+          <option value="automated">Automatizado</option>
+          <option value="manual">Manual</option>
+        </select>
+        <select id="filter-qualification" class="filter-select">
+          <option value="all">Toda calificación</option>
+          <option value="hot">🔥 Caliente</option>
+          <option value="warm">🌡️ Tibio</option>
+          <option value="cold">❄️ Frío</option>
+        </select>
+        <button class="btn-ghost" id="btn-refresh-leads">↺ Actualizar</button>
+        <span class="refresh-indicator" id="refresh-indicator"></span>
+      </div>
+      <div id="leads-list"></div>
+    </div>
+
+    <!-- Bypassed users -->
+    <div id="leads-bypassed" class="leads-panel" style="display:none">
+      <div class="bypass-add">
+        <input type="text" id="bypass-username" placeholder="@username" class="filter-input">
+        <button class="btn-primary" id="btn-add-bypass">+ Añadir</button>
+      </div>
+      <div id="bypassed-list"></div>
+    </div>
+
+    <!-- Lead detail modal -->
+    <div id="lead-modal" class="modal-overlay" style="display:none">
+      <div class="modal-panel">
+        <div class="modal-header">
+          <div>
+            <h3 id="modal-username">@username</h3>
+            <span id="modal-agent-tag" class="tag"></span>
+          </div>
+          <button class="btn-ghost" id="btn-close-modal">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="modal-side">
+            <div id="modal-qualification-box" style="margin-bottom:14px"></div>
+            <label>Automatización</label>
+            <select id="modal-automation" class="filter-select">
+              <option value="automated">Automatizado</option>
+              <option value="manual">Manual</option>
+              <option value="paused">Pausado</option>
+            </select>
+            <label>Agente asignado</label>
+            <select id="modal-agent" class="filter-select"></select>
+            <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
+              <button class="btn-ghost btn-full" id="btn-bypass-lead">🚫 Bypassear usuario</button>
+              <button class="btn-ghost btn-full btn-success" id="btn-convert-lead">✅ Marcar como exitoso</button>
+            </div>
+          </div>
+          <div class="modal-chat">
+            <div class="chat-header">
+              Conversación
+              <span class="refresh-indicator" id="chat-refresh"></span>
+            </div>
+            <div id="modal-messages" class="chat-messages"></div>
+            <div class="chat-input-row">
+              <textarea id="modal-msg-input" placeholder="Escribe un mensaje manual..." rows="2"></textarea>
+              <button class="btn-primary" id="btn-send-manual">Enviar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LINKS ───────────────────────────────────────────────────────────────── -->
+  <section id="section-links" class="section">
+    <div class="page-header">
+      <div>
+        <h1>🔗 Resource Links</h1>
+        <p>Organiza los links que los agentes pueden compartir en las conversaciones</p>
+      </div>
+      <button class="btn-primary" id="btn-add-link">+ Nuevo link</button>
+    </div>
+    <div class="links-info">🤖 Los agentes usan estos links cuando el prospecto muestra interés o pregunta por más información.</div>
+    <div id="links-list" class="links-list"></div>
+
+    <!-- Add/edit link form -->
+    <div id="link-form" class="inline-form" style="display:none">
+      <h4 id="link-form-title">Nuevo link</h4>
+      <input type="hidden" id="link-id">
+      <div class="form-row">
+        <label>Nombre</label>
+        <input type="text" id="link-name" placeholder="ej: Agenda una sesión" class="form-input">
+      </div>
+      <div class="form-row">
+        <label>URL</label>
+        <input type="url" id="link-url" placeholder="https://..." class="form-input">
+      </div>
+      <div class="form-row">
+        <label>Descripción (opcional)</label>
+        <input type="text" id="link-desc" placeholder="Contexto para el agente" class="form-input">
+      </div>
+      <div class="form-actions">
+        <button class="btn-ghost" id="btn-cancel-link">Cancelar</button>
+        <button class="btn-primary" id="btn-save-link">Guardar link</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- SETTINGS ────────────────────────────────────────────────────────────── -->
+  <section id="section-settings" class="section">
+    <div class="page-header">
+      <div>
+        <h1>⚙️ Settings</h1>
+        <p>Configura tu cuenta de Instagram y las integraciones de IA</p>
+      </div>
+    </div>
+
+    <div class="settings-grid">
+      <div class="settings-card">
+        <h3>🤖 OpenAI</h3>
+        <p>API key para que los agentes puedan generar respuestas</p>
+        <div class="form-row">
+          <label>OpenAI API Key</label>
+          <input type="password" id="openai-key" placeholder="sk-..." class="form-input">
+        </div>
+        <button class="btn-primary" id="btn-save-openai">Guardar</button>
+      </div>
+
+      <div class="settings-card">
+        <h3>📸 Instagram Account</h3>
+        <p>Conecta tu cuenta de Instagram Business con un clic via OAuth de Meta</p>
+
+        <!-- Connected state -->
+        <div id="ig-connected" style="display:none">
+          <div class="ig-connected-box">
+            <span class="account-dot" style="background:var(--green)"></span>
+            <div>
+              <div style="font-weight:700" id="ig-connected-name">@cuenta</div>
+              <div style="font-size:12px;color:var(--text-2)">Cuenta conectada y activa</div>
+            </div>
+            <button class="btn-ghost" id="btn-disconnect-ig" style="margin-left:auto">Desconectar</button>
+          </div>
+        </div>
+
+        <!-- Not connected state -->
+        <div id="ig-not-connected">
+          <button class="btn-ig-connect" id="btn-connect-ig">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+            Conectar con Instagram
+          </button>
+          <p style="font-size:12px;color:var(--text-2);margin-top:10px">
+            Necesitas: <strong>Cuenta Instagram Business</strong> vinculada a una <strong>Página de Facebook</strong> y una <strong>Meta App</strong> configurada
+          </p>
+          <details style="margin-top:12px">
+            <summary style="cursor:pointer;font-size:12px;color:var(--orange);font-weight:600">▶ Conectar manualmente (sin Meta App)</summary>
+            <div style="margin-top:12px">
+              <div class="form-row">
+                <label>Instagram User ID</label>
+                <input type="text" id="ig-user-id" placeholder="ID numérico de tu IG Business" class="form-input">
+              </div>
+              <div class="form-row">
+                <label>Instagram Username</label>
+                <input type="text" id="ig-username" placeholder="@mi.cuenta" class="form-input">
+              </div>
+              <div class="form-row">
+                <label>Page Access Token</label>
+                <input type="password" id="ig-token" placeholder="Token de Meta Graph API" class="form-input">
+              </div>
+              <button class="btn-primary" id="btn-save-ig">Guardar manual</button>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <h3>📡 Webhook de Meta</h3>
+        <p>Configura el webhook en tu Meta App para recibir mensajes</p>
+        <div class="form-row">
+          <label>Callback URL</label>
+          <div class="code-block" id="settings-webhook-url">http://localhost:3000/webhook</div>
+        </div>
+        <div class="form-row">
+          <label>Verify Token</label>
+          <div class="code-block">mi_token_secreto_webhook</div>
+        </div>
+        <p style="color:var(--text-2);font-size:13px">Suscripciones requeridas: <code>messages</code>, <code>messaging_postbacks</code></p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ── MODALS / OVERLAYS ─────────────────────────────────────────────────── -->
+
+<!-- Knowledge modal -->
+<div id="knowledge-modal" class="modal-overlay" style="display:none">
+  <div class="modal-panel modal-sm">
+    <div class="modal-header">
+      <h3 id="km-title">Nueva entrada</h3>
+      <button class="btn-ghost" id="btn-close-km">✕</button>
+    </div>
+    <input type="hidden" id="km-id">
+    <div class="form-row">
+      <label>Título</label>
+      <input type="text" id="km-title-input" placeholder="ej: Business Information" class="form-input">
+    </div>
+    <div class="form-row">
+      <label>Contenido</label>
+      <textarea id="km-content" rows="8" class="form-input" placeholder="Escribe el conocimiento del negocio..."></textarea>
+    </div>
+    <div class="form-row">
+      <label class="checkbox-label">
+        <input type="checkbox" id="km-is-main"> Contexto principal (se adjunta a todos los agentes)
+      </label>
+    </div>
+    <div class="form-row">
+      <label>Vincular agentes</label>
+      <div id="km-agents-select" class="checkbox-group"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn-ghost" id="btn-cancel-km">Cancelar</button>
+      <button class="btn-primary" id="btn-save-km">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Agent modal -->
+<div id="agent-modal" class="modal-overlay" style="display:none">
+  <div class="modal-panel modal-sm">
+    <div class="modal-header">
+      <h3>Crear agente</h3>
+      <button class="btn-ghost" id="btn-close-agent-modal">✕</button>
+    </div>
+    <div class="form-row">
+      <label>Nombre del agente</label>
+      <input type="text" id="new-agent-name" placeholder="ej: Mariela" class="form-input">
+    </div>
+    <div class="form-row">
+      <label>Avatar (emoji)</label>
+      <input type="text" id="new-agent-avatar" placeholder="👩" class="form-input" style="width:80px">
+    </div>
+    <div class="form-actions">
+      <button class="btn-ghost" id="btn-cancel-agent-modal">Cancelar</button>
+      <button class="btn-primary" id="btn-save-new-agent">Crear</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /#app-shell -->
+
+<script src="main.js"></script>
+</body>
+</html>
