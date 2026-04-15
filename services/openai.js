@@ -10,7 +10,7 @@ async function getApiKey(apiKey, accountId) {
   return key;
 }
 
-async function generateReply({ agent, knowledge, links, conversationHistory, newMessage, accountId, apiKey }) {
+async function generateReply({ agent, knowledge, links, conversationHistory, newMessage, accountId, apiKey, extraContext = null }) {
   const key = await getApiKey(apiKey, accountId);
   if (!key) throw new Error('No OpenAI API key configured. Add it in Settings.');
 
@@ -26,7 +26,8 @@ async function generateReply({ agent, knowledge, links, conversationHistory, new
       links.map(l => `• ${l.name}: ${l.url}${l.description ? ` — ${l.description}` : ''}`).join('\n')
     : '';
 
-  const systemPrompt = agent.instructions + knowledgeText + linksText;
+  const extraContextText = extraContext ? `\n\n--- CONTEXTO ADICIONAL ---\n${extraContext}` : '';
+  const systemPrompt = agent.instructions + knowledgeText + linksText + extraContextText;
 
   const messages = [
     { role: 'system', content: systemPrompt },
