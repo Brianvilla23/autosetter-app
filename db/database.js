@@ -275,14 +275,26 @@ async function syncAccountFromEnv() {
       return;
     }
 
-    // Find the placeholder demo account and update it
-    const demoAccount = await db.findOne(db.accounts, { ig_user_id: 'demo_ig_id' });
+    // Find ANY placeholder/demo account and update the first one found
+    // Also handles: demo_ig_id_XXXX variants from duplicate seed runs
+    const allAccounts = await db.find(db.accounts, {});
+    const demoAccount = allAccounts.find(a =>
+      !a.ig_user_id || a.ig_user_id.startsWith('demo') || a.ig_user_id.startsWith('tu.')
+    );
+
     if (demoAccount) {
       await db.update(db.accounts, { _id: demoAccount._id }, {
         ig_user_id: realIgId,
         ig_username: realIgUsername,
         access_token: token
       });
+      // Remove duplicate demo accounts if any
+      const dupes = allAccounts.filter(a => a._id !== demoAccount._id &&
+        (!a.ig_user_id || a.ig_user_id.startsWith('demo')));
+      for (const dupe of dupes) {
+        await db.remove(db.accounts, { _id: dupe._id });
+        console.log(`🗑  Removed duplicate demo account: ${dupe._id}`);
+      }
       console.log(`✅ Account linked to Instagram: @${realIgUsername} (${realIgId})`);
       return;
     }
