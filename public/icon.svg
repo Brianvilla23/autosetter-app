@@ -1,0 +1,19 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'>
+  <defs>
+    <linearGradient id='g1' x1='0%' y1='0%' x2='100%' y2='100%'>
+      <stop offset='0%' style='stop-color:#1a1a2e'/>
+      <stop offset='100%' style='stop-color:#16213e'/>
+    </linearGradient>
+    <linearGradient id='g2' x1='0%' y1='0%' x2='100%' y2='100%'>
+      <stop offset='0%' style='stop-color:#e91e8c'/>
+      <stop offset='100%' style='stop-color:#ff6b35'/>
+    </linearGradient>
+  </defs>
+  <rect width='1024' height='1024' rx='180' fill='url(#g1)'/>
+  <circle cx='512' cy='460' r='200' fill='none' stroke='url(#g2)' stroke-width='48'/>
+  <path d='M 370 540 Q 440 620 512 620 Q 584 620 620 570 L 660 630 Q 600 720 512 720 Q 400 720 320 610 Z' fill='url(#g2)'/>
+  <circle cx='430' cy='440' r='32' fill='white'/>
+  <circle cx='594' cy='440' r='32' fill='white'/>
+  <text x='512' y='870' font-family='Arial Black,sans-serif' font-size='110' font-weight='900' text-anchor='middle' fill='white'>DM</text>
+  <text x='512' y='980' font-family='Arial,sans-serif' font-size='72' font-weight='700' text-anchor='middle' fill='url(#g2)'>CLOSER</text>
+</svg>
