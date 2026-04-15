@@ -5,11 +5,15 @@ const { generateReply, classifyLead } = require('../services/openai');
 const { sendMessage, getIGUserInfo } = require('../services/meta');
 const { v4: uuidv4 } = require('uuid');
 
-// Keyword que activa el bot (DMs y comentarios en posts)
-const TRIGGER_KEYWORD = 'info';
-
-function containsTrigger(text) {
-  return (text || '').toLowerCase().includes(TRIGGER_KEYWORD);
+// Verificar si el texto contiene alguno de los keywords del agente
+// trigger_keywords: string con palabras separadas por comas, ej: "info,precio,hola"
+// Si el agente no tiene keywords configuradas, responde a TODOS los mensajes
+function containsTrigger(text, agent) {
+  const raw = (agent.trigger_keywords || '').trim();
+  if (!raw) return true; // Sin keywords → responde a todo
+  const keywords = raw.split(',').map(k => k.trim().toLowerCase()).filter(Boolean);
+  const msgLower = (text || '').toLowerCase();
+  return keywords.some(kw => msgLower.includes(kw));
 }
 
 // ── VERIFY (Meta GET) ─────────────────────────────────────────────────────────
@@ -70,8 +74,8 @@ async function handleDM(pageId, event) {
   let lead = await db.findOne(db.leads, { account_id: account._id, ig_user_id: senderId });
 
   if (!lead) {
-    // ── KEYWORD GATE: Si es el primer mensaje, exigir "info" ──────────────
-    if (!containsTrigger(text)) {
+    // ── KEYWORD GATE: Si es el primer mensaje, verificar keywords del agente ──
+    if (!containsTrigger(text, agent)) {
       console.log(`🔒 DM ignorado (sin keyword) de ${senderId}: "${text}"`);
       return;
     }
@@ -103,24 +107,21 @@ async function handleComment(pageId, commentData) {
   const commenterName = commentData?.from?.username || commenterIgId;
   const mediaId       = commentData?.media?.id;
 
-  if (!commenterIgId || !containsTrigger(commentText)) {
+  // Find account + agent (una sola vez)
+  const account = await db.findOne(db.accounts, { ig_user_id: pageId });
+  if (!account) return;
+  const agents = await db.find(db.agents, { account_id: account._id, enabled: true },
+    (a, b) => a.createdAt.localeCompare(b.createdAt));
+  const agent = agents[0];
+
+  if (!commenterIgId || !agent || !containsTrigger(commentText, agent)) {
     if (commenterIgId) console.log(`💬 Comentario ignorado (sin keyword): "${commentText}"`);
     return;
   }
 
-  // Find account
-  const account = await db.findOne(db.accounts, { ig_user_id: pageId });
-  if (!account) return;
-
   // Check bypass
   const bypassed = await db.findOne(db.bypassed, { account_id: account._id, ig_user_id: commenterIgId });
   if (bypassed) return;
-
-  // Find enabled agent
-  const agents = await db.find(db.agents, { account_id: account._id, enabled: true },
-    (a, b) => a.createdAt.localeCompare(b.createdAt));
-  const agent = agents[0];
-  if (!agent) return;
 
   // Evitar duplicados: verificar si ya enviamos DM por este comentario en las últimas 2 horas
   const recentTrigger = await db.findOne(db.leads, {

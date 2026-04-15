@@ -255,6 +255,23 @@ async function selectAgent(agentId) {
           <small style="color:var(--text-3)">System prompt del agente</small>
         </div>
         <textarea class="instructions-area" id="agent-instructions">${escHtml(agentData.instructions)}</textarea>
+
+        <div style="margin-top:16px;padding:14px;background:#0f0f1a;border:1px solid #2a2a4a;border-radius:8px">
+          <label style="font-size:0.78rem;color:#a5a5c8;font-weight:600;display:block;margin-bottom:6px">
+            🔑 Palabras clave que activan el bot
+          </label>
+          <input
+            type="text"
+            id="agent-trigger-keywords"
+            value="${escHtml(agentData.trigger_keywords || '')}"
+            placeholder="info, precio, cotizar, hola  (separadas por coma)"
+            style="width:100%;background:#1a1a2e;border:1px solid #3a3a5a;color:#e0e0e0;padding:8px 10px;border-radius:6px;font-size:0.85rem"
+          />
+          <small style="color:#666;font-size:0.72rem;display:block;margin-top:6px">
+            Dejar vacío = el bot responde a <strong style="color:#a5a5c8">cualquier mensaje</strong>.
+            Con keywords = solo se activa cuando el DM o comentario contiene una de estas palabras.
+          </small>
+        </div>
       </div>
 
       <div id="stab-links" style="display:none">
@@ -300,13 +317,15 @@ async function selectAgent(agentId) {
 
   // Save instructions
   document.getElementById('btn-save-instructions').onclick = async () => {
-    const instructions = document.getElementById('agent-instructions').value;
+    const instructions      = document.getElementById('agent-instructions').value;
+    const trigger_keywords  = document.getElementById('agent-trigger-keywords').value.trim();
     await apiFetch(`/api/agents/${agentId}`, 'PUT', {
       name: currentAgent.name, avatar: currentAgent.avatar,
-      instructions, enabled: currentAgent.enabled
+      instructions, enabled: currentAgent.enabled, trigger_keywords
     });
-    showToast('✅ Instrucciones guardadas');
-    currentAgent.instructions = instructions;
+    showToast('✅ Instrucciones y keywords guardadas');
+    currentAgent.instructions     = instructions;
+    currentAgent.trigger_keywords = trigger_keywords;
   };
 
   // Save links

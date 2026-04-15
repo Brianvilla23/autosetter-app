@@ -43,8 +43,8 @@ router.post('/', async (req, res) => {
 // PUT update agent
 router.put('/:id', async (req, res) => {
   try {
-    const { name, avatar, instructions, enabled } = req.body;
-    await db.update(db.agents, { _id: req.params.id }, { name, avatar, instructions, enabled });
+    const { name, avatar, instructions, enabled, trigger_keywords } = req.body;
+    await db.update(db.agents, { _id: req.params.id }, { name, avatar, instructions, enabled, trigger_keywords });
     const agent = await db.findOne(db.agents, { _id: req.params.id });
     res.json({ ...agent, id: agent._id });
   } catch (e) { res.status(500).json({ error: e.message }); }
