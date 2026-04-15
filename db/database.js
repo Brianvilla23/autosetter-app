@@ -246,4 +246,54 @@ e) Si no responden en este paso: "Oye, ¿pudiste abrirlo? Quiero asegurarme de q
 
 migrate().catch(console.error);
 
+// ── Sync account with real Instagram credentials from env ──────────────────────
+// Fixes the "demo_ig_id" placeholder that the seed creates.
+// Runs on every startup — safe to run multiple times (idempotent).
+async function syncAccountFromEnv() {
+  const token = process.env.META_ACCESS_TOKEN;
+  if (!token || token === 'demo_token') return; // No real token → skip
+
+  try {
+    // Fetch real IG user ID from Meta Graph API
+    const axios = require('axios');
+    const res = await axios.get('https://graph.facebook.com/v19.0/me', {
+      params: { fields: 'id,username', access_token: token }
+    });
+    const realIgId       = res.data.id;
+    const realIgUsername = res.data.username || realIgId;
+
+    if (!realIgId) return;
+
+    // Check if we already have a properly linked account
+    const linked = await db.findOne(db.accounts, { ig_user_id: realIgId });
+    if (linked) {
+      // Already linked — just refresh the token in case it was renewed
+      await db.update(db.accounts, { ig_user_id: realIgId }, {
+        access_token: token, ig_username: realIgUsername
+      });
+      console.log(`🔗 Account synced: @${realIgUsername} (${realIgId})`);
+      return;
+    }
+
+    // Find the placeholder demo account and update it
+    const demoAccount = await db.findOne(db.accounts, { ig_user_id: 'demo_ig_id' });
+    if (demoAccount) {
+      await db.update(db.accounts, { _id: demoAccount._id }, {
+        ig_user_id: realIgId,
+        ig_username: realIgUsername,
+        access_token: token
+      });
+      console.log(`✅ Account linked to Instagram: @${realIgUsername} (${realIgId})`);
+      return;
+    }
+
+    // No account at all? Shouldn't happen after seed, but just in case
+    console.warn('⚠️  No account found to sync with Instagram credentials');
+  } catch (e) {
+    console.error('❌ syncAccountFromEnv error:', e.response?.data || e.message);
+  }
+}
+
+syncAccountFromEnv().catch(console.error);
+
 module.exports = db;
