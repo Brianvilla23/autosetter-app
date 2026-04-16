@@ -62,6 +62,8 @@ router.get('/callback', async (req, res) => {
     const igUsername = igRes.data.username || igId;
     const igIdFinal  = igRes.data.id ? String(igRes.data.id) : igId; // use /me id (authoritative)
 
+    console.log(`[AUTH DEBUG] token_user_id=${igId} | /me id=${igRes.data.id} | igIdFinal=${igIdFinal} | username=${igUsername}`);
+
     // Update or create account
     if (accountId && accountId !== 'undefined') {
       await db.update(db.accounts, { _id: accountId }, {
