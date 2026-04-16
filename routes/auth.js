@@ -66,8 +66,12 @@ router.get('/callback', async (req, res) => {
 
     // Update or create account
     if (accountId && accountId !== 'undefined') {
+      // When reconnecting an existing account: preserve ig_user_id (webhook-compatible ID)
+      // Only update access_token and username. The ig_user_id from OAuth is app-scoped
+      // to DMCloser-IG (1666405637830256), but webhooks arrive scoped to the Meta app
+      // (1313119897349816). These are different IDs for the same user.
       await db.update(db.accounts, { _id: accountId }, {
-        ig_user_id: igIdFinal, ig_username: igUsername, access_token: longToken
+        ig_username: igUsername, access_token: longToken
       });
     } else {
       const exists = await db.findOne(db.accounts, { ig_user_id: igIdFinal });
