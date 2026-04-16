@@ -234,10 +234,20 @@ async function selectAgent(agentId) {
     t.classList.toggle('selected', t.dataset.id === agentId);
   });
 
+  await renderAgentBuilder(agentId);
+}
+
+async function renderAgentBuilder(agentId) {
+  const agentData = currentAgent && (currentAgent._id === agentId || currentAgent.id === agentId)
+    ? currentAgent
+    : await apiFetch(`/api/agents/${agentId}`);
+  if (!agentData) return;
+  currentAgent = agentData;
+
   // Render builder
   const builder = document.getElementById('agent-builder');
   const allLinks = await apiFetch(`/api/links?accountId=${ACCOUNT_ID}`);
-  const agentLinkIds = (agentData.links || []).map(l => l.id);
+  const agentLinkIds = (agentData.links || []).map(l => l.id || l._id);
 
   builder.innerHTML = `
     <div class="builder-tabs">
@@ -323,13 +333,32 @@ async function selectAgent(agentId) {
     </div>
   `;
 
-  // Sub-tab switching
+  // Sub-tab switching — refresh links list when opening Manage links
   builder.querySelectorAll('.builder-sub-tab').forEach(st => {
-    st.addEventListener('click', () => {
+    st.addEventListener('click', async () => {
       builder.querySelectorAll('.builder-sub-tab').forEach(x => x.classList.remove('active'));
       st.classList.add('active');
       document.getElementById('stab-instructions').style.display = st.dataset.stab === 'instructions' ? '' : 'none';
       document.getElementById('stab-links').style.display = st.dataset.stab === 'links' ? '' : 'none';
+      // Re-render the links list fresh from API each time the tab opens
+      if (st.dataset.stab === 'links') {
+        const freshLinks = await apiFetch(`/api/links?accountId=${ACCOUNT_ID}`);
+        const freshAgent = await apiFetch(`/api/agents/${agentId}`);
+        const freshAgentLinkIds = (freshAgent?.links || []).map(l => l.id || l._id);
+        const checksDiv = document.getElementById('agent-links-checks');
+        checksDiv.innerHTML = (freshLinks || []).map(l => `
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;background:#0f0f1a;padding:8px 10px;border-radius:8px;border:1px solid #2a2a4a">
+            <label style="display:flex;align-items:center;gap:8px;flex:1;cursor:pointer">
+              <input type="checkbox" value="${l.id || l._id}" ${freshAgentLinkIds.includes(l.id || l._id) ? 'checked' : ''} style="width:15px;height:15px;accent-color:#7c5cbf">
+              <div>
+                <div style="font-weight:600;font-size:12px;color:#e0e0e0">🔗 ${escHtml(l.name)}</div>
+                <div style="color:var(--text-3);font-size:11px">${escHtml(l.url)}</div>
+              </div>
+            </label>
+            <button onclick="deleteLinkInBuilder('${l.id || l._id}')" title="Eliminar link" style="background:none;border:none;color:#f87171;cursor:pointer;font-size:14px;padding:2px 6px;border-radius:4px" onmouseover="this.style.background='#2a1a1a'" onmouseout="this.style.background='none'">🗑</button>
+          </div>
+        `).join('') || '<p style="color:var(--text-3);font-size:12px;padding:8px">Aún no tienes links. Crea uno con el botón de abajo.</p>';
+      }
     });
   });
 
