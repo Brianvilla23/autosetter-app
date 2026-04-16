@@ -60,20 +60,21 @@ router.get('/callback', async (req, res) => {
       params: { fields: 'id,username,name', access_token: longToken }
     });
     const igUsername = igRes.data.username || igId;
+    const igIdFinal  = igRes.data.id ? String(igRes.data.id) : igId; // use /me id (authoritative)
 
     // Update or create account
     if (accountId && accountId !== 'undefined') {
       await db.update(db.accounts, { _id: accountId }, {
-        ig_user_id: igId, ig_username: igUsername, access_token: longToken
+        ig_user_id: igIdFinal, ig_username: igUsername, access_token: longToken
       });
     } else {
-      const exists = await db.findOne(db.accounts, { ig_user_id: igId });
+      const exists = await db.findOne(db.accounts, { ig_user_id: igIdFinal });
       if (!exists) {
-        const acc = await db.insert(db.accounts, { ig_user_id: igId, ig_username: igUsername, access_token: longToken });
+        const acc = await db.insert(db.accounts, { ig_user_id: igIdFinal, ig_username: igUsername, access_token: longToken });
         await db.insert(db.settings, { account_id: acc._id, openai_key: '' });
       } else {
         // Update token for existing account
-        await db.update(db.accounts, { ig_user_id: igId }, {
+        await db.update(db.accounts, { ig_user_id: igIdFinal }, {
           ig_username: igUsername, access_token: longToken
         });
       }
