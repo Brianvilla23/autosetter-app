@@ -66,7 +66,7 @@ function renderAuthForm(mode) {
   const box = document.getElementById('auth-box');
   const isSetup = mode === 'setup';
   box.innerHTML = `
-    <div class="auth-logo">⚡ AutoSetter</div>
+    <div class="auth-logo">💬 DMCloser</div>
     <h2 class="auth-title">${isSetup ? '🎉 Bienvenido — Crea tu cuenta' : 'Iniciar sesión'}</h2>
     <p class="auth-sub">${isSetup ? 'Primera vez en el sistema. Configura tu acceso de administrador.' : 'Accede a tu panel de control'}</p>
     ${isSetup ? `<input class="auth-input" id="auth-name" type="text" placeholder="Tu nombre" autocomplete="name">` : ''}
