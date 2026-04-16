@@ -6,25 +6,25 @@ const db      = require('../db/database');
 const APP_ID     = process.env.META_APP_ID     || '';
 const APP_SECRET = process.env.META_APP_SECRET || '';
 
-// ── Step 1: Redirect user to Meta OAuth ──────────────────────────────────────
+// ── Step 1: Redirect user to Instagram Business Login OAuth ──────────────────
 router.get('/instagram', (req, res) => {
   const { accountId } = req.query;
   if (!APP_ID) return res.redirect('/?auth=error&msg=' + encodeURIComponent('Para conectar Instagram necesitas configurar META_APP_ID y META_APP_SECRET en el archivo .env. Consulta el tutorial en Settings.'));
 
   const redirectUri = `${process.env.APP_URL || `http://localhost:${process.env.PORT || 3000}`}/auth/callback`;
-  const scope = 'instagram_basic,instagram_manage_messages,pages_manage_metadata,pages_read_engagement';
+  const scope = 'instagram_business_basic,instagram_business_manage_messages,instagram_business_manage_comments';
 
-  const url = `https://www.facebook.com/v19.0/dialog/oauth?` +
+  const url = `https://www.instagram.com/oauth/authorize?` +
     `client_id=${APP_ID}` +
     `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-    `&scope=${scope}` +
-    `&state=${accountId}` +
-    `&response_type=code`;
+    `&scope=${encodeURIComponent(scope)}` +
+    `&response_type=code` +
+    `&state=${accountId || ''}`;
 
   res.redirect(url);
 });
 
-// ── Step 2: Meta redirects back with code ────────────────────────────────────
+// ── Step 2: Instagram redirects back with code ───────────────────────────────
 router.get('/callback', async (req, res) => {
   const { code, state: accountId, error } = req.query;
 
@@ -34,51 +34,48 @@ router.get('/callback', async (req, res) => {
   try {
     const redirectUri = `${process.env.APP_URL || `http://localhost:${process.env.PORT || 3000}`}/auth/callback`;
 
-    // Exchange code for short-lived token
-    const tokenRes = await axios.get('https://graph.facebook.com/v19.0/oauth/access_token', {
-      params: { client_id: APP_ID, client_secret: APP_SECRET, redirect_uri: redirectUri, code }
-    });
+    // Exchange code for short-lived token via Instagram API
+    const tokenRes = await axios.post('https://api.instagram.com/oauth/access_token', new URLSearchParams({
+      client_id:     APP_ID,
+      client_secret: APP_SECRET,
+      grant_type:    'authorization_code',
+      redirect_uri:  redirectUri,
+      code
+    }));
     const shortToken = tokenRes.data.access_token;
+    const igId       = String(tokenRes.data.user_id);
 
     // Exchange for long-lived token (60 days)
-    const longRes = await axios.get('https://graph.facebook.com/v19.0/oauth/access_token', {
-      params: { grant_type: 'fb_exchange_token', client_id: APP_ID, client_secret: APP_SECRET, fb_exchange_token: shortToken }
+    const longRes = await axios.get('https://graph.instagram.com/access_token', {
+      params: {
+        grant_type:    'ig_exchange_token',
+        client_secret: APP_SECRET,
+        access_token:  shortToken
+      }
     });
     const longToken = longRes.data.access_token;
 
-    // Get user's pages
-    const pagesRes = await axios.get('https://graph.facebook.com/v19.0/me/accounts', {
-      params: { access_token: longToken, fields: 'id,name,instagram_business_account' }
-    });
-
-    const pages = pagesRes.data.data || [];
-    const pageWithIG = pages.find(p => p.instagram_business_account);
-
-    if (!pageWithIG) {
-      return res.redirect('/?auth=error&msg=' + encodeURIComponent('No se encontró cuenta de Instagram Business vinculada a esta página de Facebook. Necesitas tener una cuenta Instagram Business conectada a una Página de Facebook.'));
-    }
-
-    const igId = pageWithIG.instagram_business_account.id;
-
     // Get IG username
-    const igRes = await axios.get(`https://graph.facebook.com/v19.0/${igId}`, {
-      params: { fields: 'id,username', access_token: pageWithIG.access_token || longToken }
+    const igRes = await axios.get('https://graph.instagram.com/me', {
+      params: { fields: 'id,username,name', access_token: longToken }
     });
-
     const igUsername = igRes.data.username || igId;
-    const pageToken  = pageWithIG.access_token || longToken;
 
     // Update or create account
     if (accountId && accountId !== 'undefined') {
       await db.update(db.accounts, { _id: accountId }, {
-        ig_user_id: igId, ig_username: igUsername, access_token: pageToken
+        ig_user_id: igId, ig_username: igUsername, access_token: longToken
       });
     } else {
-      // Create new account
       const exists = await db.findOne(db.accounts, { ig_user_id: igId });
       if (!exists) {
-        const acc = await db.insert(db.accounts, { ig_user_id: igId, ig_username: igUsername, access_token: pageToken });
+        const acc = await db.insert(db.accounts, { ig_user_id: igId, ig_username: igUsername, access_token: longToken });
         await db.insert(db.settings, { account_id: acc._id, openai_key: '' });
+      } else {
+        // Update token for existing account
+        await db.update(db.accounts, { ig_user_id: igId }, {
+          ig_username: igUsername, access_token: longToken
+        });
       }
     }
 
