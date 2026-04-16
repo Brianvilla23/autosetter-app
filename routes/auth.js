@@ -55,23 +55,32 @@ router.get('/callback', async (req, res) => {
     });
     const longToken = longRes.data.access_token;
 
-    // Get IG username
+    // Get IG username from Instagram Platform API
     const igRes = await axios.get('https://graph.instagram.com/me', {
       params: { fields: 'id,username,name', access_token: longToken }
     });
     const igUsername = igRes.data.username || igId;
-    const igIdFinal  = igRes.data.id ? String(igRes.data.id) : igId; // use /me id (authoritative)
 
-    console.log(`[AUTH DEBUG] token_user_id=${igId} | /me id=${igRes.data.id} | igIdFinal=${igIdFinal} | username=${igUsername}`);
+    // Get the webhook-compatible ID from the Facebook Graph API.
+    // graph.facebook.com/me returns the same ID that Instagram webhooks use in entry.id,
+    // whereas graph.instagram.com/me returns a different app-scoped platform ID.
+    let igIdFinal = igRes.data.id ? String(igRes.data.id) : igId;
+    try {
+      const fbRes = await axios.get('https://graph.facebook.com/v19.0/me', {
+        params: { fields: 'id,username', access_token: longToken }
+      });
+      if (fbRes.data.id) igIdFinal = String(fbRes.data.id);
+      console.log(`[AUTH] graph.facebook.com/me id=${fbRes.data.id} | graph.instagram.com/me id=${igRes.data.id} → using ${igIdFinal}`);
+    } catch (fbErr) {
+      console.log(`[AUTH] graph.facebook.com/me failed (${fbErr.message}), using instagram id=${igIdFinal}`);
+    }
 
     // Update or create account
     if (accountId && accountId !== 'undefined') {
-      // When reconnecting an existing account: preserve ig_user_id (webhook-compatible ID)
-      // Only update access_token and username. The ig_user_id from OAuth is app-scoped
-      // to DMCloser-IG (1666405637830256), but webhooks arrive scoped to the Meta app
-      // (1313119897349816). These are different IDs for the same user.
+      // igIdFinal comes from graph.facebook.com/me (webhook-compatible ID) if available,
+      // otherwise from graph.instagram.com/me. Always update ig_user_id with this value.
       await db.update(db.accounts, { _id: accountId }, {
-        ig_username: igUsername, access_token: longToken
+        ig_user_id: igIdFinal, ig_username: igUsername, access_token: longToken
       });
     } else {
       const exists = await db.findOne(db.accounts, { ig_user_id: igIdFinal });
