@@ -18,6 +18,9 @@ const {
 
 const app = express();
 
+// Trust Railway/Heroku proxy so rate-limiter reads real IPs from X-Forwarded-For
+app.set('trust proxy', 1);
+
 // ── SEGURIDAD GLOBAL ──────────────────────────────────────────────────────────
 
 // 1. Helmet — headers HTTP seguros (XSS protection, HSTS, etc.)
