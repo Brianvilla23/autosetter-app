@@ -275,25 +275,43 @@ async function selectAgent(agentId) {
       </div>
 
       <div id="stab-links" style="display:none">
-        <p style="color:var(--text-2);font-size:13px;margin-bottom:16px">Links que este agente puede compartir en conversaciones:</p>
-        <div class="links-checkboxes" id="agent-links-checks">
+        <p style="color:var(--text-2);font-size:13px;margin-bottom:12px">Marca los links que este agente puede compartir:</p>
+        <div id="agent-links-checks">
           ${(allLinks || []).map(l => `
-            <label class="link-checkbox">
-              <input type="checkbox" value="${l.id}" ${agentLinkIds.includes(l.id) ? 'checked' : ''}>
-              <div>
-                <div style="font-weight:600;font-size:12px">${escHtml(l.name)}</div>
-                <div style="color:var(--text-3);font-size:11px">${escHtml(l.url)}</div>
-              </div>
-            </label>
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;background:#0f0f1a;padding:8px 10px;border-radius:8px;border:1px solid #2a2a4a">
+              <label style="display:flex;align-items:center;gap:8px;flex:1;cursor:pointer">
+                <input type="checkbox" value="${l.id}" ${agentLinkIds.includes(l.id) ? 'checked' : ''} style="width:15px;height:15px;accent-color:#7c5cbf">
+                <div>
+                  <div style="font-weight:600;font-size:12px;color:#e0e0e0">🔗 ${escHtml(l.name)}</div>
+                  <div style="color:var(--text-3);font-size:11px">${escHtml(l.url)}</div>
+                </div>
+              </label>
+              <button onclick="deleteLinkInBuilder('${l.id}')" title="Eliminar link" style="background:none;border:none;color:#f87171;cursor:pointer;font-size:14px;padding:2px 6px;border-radius:4px" onmouseover="this.style.background='#2a1a1a'" onmouseout="this.style.background='none'">🗑</button>
+            </div>
           `).join('')}
-          ${!allLinks?.length ? '<p style="color:var(--text-3)">No hay links. Ve a Links para añadir.</p>' : ''}
+          ${!allLinks?.length ? '<p style="color:var(--text-3);font-size:12px;padding:8px">Aún no tienes links. Crea uno con el botón de abajo.</p>' : ''}
         </div>
-        <button class="btn-primary" style="margin-top:16px" id="btn-save-agent-links">Guardar links</button>
+
+        <div id="inline-link-form" style="display:none;margin-top:10px;padding:12px;background:#0f0f1a;border:1px solid #3a3a5a;border-radius:8px">
+          <div style="font-size:12px;font-weight:700;color:#a5a5c8;margin-bottom:8px">➕ Nuevo link</div>
+          <input type="text" id="il-name" placeholder="Nombre (ej: Ver ficha técnica)" style="width:100%;box-sizing:border-box;margin-bottom:6px;background:#1a1a2e;border:1px solid #3a3a5a;color:#e0e0e0;padding:7px 10px;border-radius:6px;font-size:12px">
+          <input type="url" id="il-url" placeholder="https://..." style="width:100%;box-sizing:border-box;margin-bottom:6px;background:#1a1a2e;border:1px solid #3a3a5a;color:#e0e0e0;padding:7px 10px;border-radius:6px;font-size:12px">
+          <input type="text" id="il-desc" placeholder="Descripción breve (opcional)" style="width:100%;box-sizing:border-box;margin-bottom:10px;background:#1a1a2e;border:1px solid #3a3a5a;color:#e0e0e0;padding:7px 10px;border-radius:6px;font-size:12px">
+          <div style="display:flex;gap:8px">
+            <button class="btn-primary" style="font-size:12px;padding:6px 14px" id="btn-il-save">💾 Guardar link</button>
+            <button class="btn-ghost" style="font-size:12px;padding:6px 14px" id="btn-il-cancel">Cancelar</button>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+          <button class="btn-ghost" id="btn-show-add-link" style="font-size:12px">➕ Agregar link</button>
+          <button class="btn-primary" id="btn-save-agent-links" style="font-size:12px">💾 Guardar selección</button>
+        </div>
       </div>
 
       <div class="agent-actions">
         <button class="btn-primary" id="btn-save-instructions">Guardar instrucciones</button>
-        <button class="btn-ghost btn-danger" id="btn-delete-agent">🗑 Eliminar</button>
+        <button class="btn-ghost btn-danger" id="btn-delete-agent">🗑 Eliminar agente</button>
       </div>
     </div>
     <div class="agent-toggle-row">
@@ -328,11 +346,46 @@ async function selectAgent(agentId) {
     currentAgent.trigger_keywords = trigger_keywords;
   };
 
-  // Save links
+  // Save links (assign/unassign checkboxes)
   document.getElementById('btn-save-agent-links').onclick = async () => {
-    const checks = [...document.querySelectorAll('#agent-links-checks input:checked')].map(c => c.value);
+    const checks = [...document.querySelectorAll('#agent-links-checks input[type="checkbox"]:checked')].map(c => c.value);
     await apiFetch(`/api/agents/${agentId}/links`, 'PUT', { linkIds: checks });
     showToast('✅ Links actualizados');
+  };
+
+  // Show inline add-link form
+  document.getElementById('btn-show-add-link').onclick = () => {
+    const f = document.getElementById('inline-link-form');
+    f.style.display = f.style.display === 'none' ? 'block' : 'none';
+    if (f.style.display === 'block') document.getElementById('il-name').focus();
+  };
+
+  // Cancel inline form
+  document.getElementById('btn-il-cancel').onclick = () => {
+    document.getElementById('inline-link-form').style.display = 'none';
+    document.getElementById('il-name').value = '';
+    document.getElementById('il-url').value  = '';
+    document.getElementById('il-desc').value = '';
+  };
+
+  // Save new link from inline form and auto-check it
+  document.getElementById('btn-il-save').onclick = async () => {
+    const name = document.getElementById('il-name').value.trim();
+    const url  = document.getElementById('il-url').value.trim();
+    const desc = document.getElementById('il-desc').value.trim();
+    if (!name || !url) { showToast('⚠️ Nombre y URL son requeridos'); return; }
+    const newLink = await apiFetch('/api/links', 'POST', { accountId: ACCOUNT_ID, name, url, description: desc });
+    document.getElementById('inline-link-form').style.display = 'none';
+    document.getElementById('il-name').value = '';
+    document.getElementById('il-url').value  = '';
+    document.getElementById('il-desc').value = '';
+    // Refresh builder with updated links list (auto-checks new link)
+    const updatedLinks = await apiFetch(`/api/links?accountId=${ACCOUNT_ID}`);
+    const currentChecked = [...document.querySelectorAll('#agent-links-checks input[type="checkbox"]:checked')].map(c => c.value);
+    if (newLink?._id || newLink?.id) currentChecked.push(newLink._id || newLink.id);
+    await apiFetch(`/api/agents/${agentId}/links`, 'PUT', { linkIds: currentChecked });
+    showToast('✅ Link creado y asignado al agente');
+    renderAgentBuilder(agentId);
   };
 
   // Toggle enabled
@@ -838,6 +891,14 @@ async function deleteLink(id) {
   if (!confirm('¿Eliminar este link?')) return;
   await apiFetch(`/api/links/${id}`, 'DELETE');
   loadLinks();
+}
+
+// Delete link from within the agent builder panel
+async function deleteLinkInBuilder(id) {
+  if (!confirm('¿Eliminar este link permanentemente?')) return;
+  await apiFetch(`/api/links/${id}`, 'DELETE');
+  showToast('🗑 Link eliminado');
+  if (currentAgent) renderAgentBuilder(currentAgent._id || currentAgent.id);
 }
 
 // ── SETTINGS ─────────────────────────────────────────────────────────────────
