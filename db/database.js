@@ -247,66 +247,8 @@ e) Si no responden en este paso: "Oye, ¿pudiste abrirlo? Quiero asegurarme de q
 
 migrate().catch(console.error);
 
-// ── Sync account with real Instagram credentials from env ──────────────────────
-// Fixes the "demo_ig_id" placeholder that the seed creates.
-// Runs on every startup — safe to run multiple times (idempotent).
-async function syncAccountFromEnv() {
-  const token = process.env.META_ACCESS_TOKEN;
-  if (!token || token === 'demo_token') return; // No real token → skip
-
-  try {
-    // Fetch real IG user ID from Meta Graph API
-    const axios = require('axios');
-    const res = await axios.get('https://graph.facebook.com/v19.0/me', {
-      params: { fields: 'id,username', access_token: token }
-    });
-    const realIgId       = res.data.id;
-    const realIgUsername = res.data.username || realIgId;
-
-    if (!realIgId) return;
-
-    // Check if we already have a properly linked account
-    const linked = await db.findOne(db.accounts, { ig_user_id: realIgId });
-    if (linked) {
-      // Already linked — just refresh the token in case it was renewed
-      await db.update(db.accounts, { ig_user_id: realIgId }, {
-        access_token: token, ig_username: realIgUsername
-      });
-      console.log(`🔗 Account synced: @${realIgUsername} (${realIgId})`);
-      return;
-    }
-
-    // Find ANY placeholder/demo account and update the first one found
-    // Also handles: demo_ig_id_XXXX variants from duplicate seed runs
-    const allAccounts = await db.find(db.accounts, {});
-    const demoAccount = allAccounts.find(a =>
-      !a.ig_user_id || a.ig_user_id.startsWith('demo') || a.ig_user_id.startsWith('tu.')
-    );
-
-    if (demoAccount) {
-      await db.update(db.accounts, { _id: demoAccount._id }, {
-        ig_user_id: realIgId,
-        ig_username: realIgUsername,
-        access_token: token
-      });
-      // Remove duplicate demo accounts if any
-      const dupes = allAccounts.filter(a => a._id !== demoAccount._id &&
-        (!a.ig_user_id || a.ig_user_id.startsWith('demo')));
-      for (const dupe of dupes) {
-        await db.remove(db.accounts, { _id: dupe._id });
-        console.log(`🗑  Removed duplicate demo account: ${dupe._id}`);
-      }
-      console.log(`✅ Account linked to Instagram: @${realIgUsername} (${realIgId})`);
-      return;
-    }
-
-    // No account at all? Shouldn't happen after seed, but just in case
-    console.warn('⚠️  No account found to sync with Instagram credentials');
-  } catch (e) {
-    console.error('❌ syncAccountFromEnv error:', e.response?.data || e.message);
-  }
-}
-
-syncAccountFromEnv().catch(console.error);
+// syncAccountFromEnv removed — account is properly linked via Instagram Business Login OAuth.
+// The OAuth flow in routes/auth.js stores ig_user_id, ig_platform_id and access_token in DB.
+// Using META_ACCESS_TOKEN env var with graph.facebook.com is incompatible with IGAA tokens.
 
 module.exports = db;
