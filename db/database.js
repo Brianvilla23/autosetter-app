@@ -17,6 +17,7 @@ const db = {
   settings:      new Datastore({ filename: path.join(dir, 'settings.db'),      autoload: true }),
   users:         new Datastore({ filename: path.join(dir, 'users.db'),         autoload: true }),
   inviteCodes:   new Datastore({ filename: path.join(dir, 'inviteCodes.db'),   autoload: true }),
+  pendingSends:  new Datastore({ filename: path.join(dir, 'pendingSends.db'),  autoload: true }),
 };
 
 // Compact on load

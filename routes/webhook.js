@@ -205,17 +205,25 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
   // Guardar respuesta del agente
   await db.insert(db.messages, { lead_id: lead._id, role: 'agent', content: reply });
 
-  // Delay humanizador: espera aleatoria entre delay_min y delay_max del agente (en pasos de 10s)
+  // Calcular delay humanizador (30-90s en pasos de 10s)
   const delayMin = agent.delay_min ?? 30;
   const delayMax = agent.delay_max ?? 90;
   const steps = Math.floor((delayMax - delayMin) / 10) + 1;
   const delaySeconds = delayMin + Math.floor(Math.random() * steps) * 10;
-  console.log(`⏱ Delay ${delaySeconds}s antes de responder a @${lead.ig_username}`);
-  await new Promise(resolve => setTimeout(resolve, delaySeconds * 1000));
+  const sendAt = new Date(Date.now() + delaySeconds * 1000).toISOString();
 
-  // Enviar DM via Meta — use ig_platform_id (graph.instagram.com scoped ID) for sending
+  // Guardar en queue persistente — sobrevive reinicios de Railway
   const igUserId = account.ig_platform_id || account.ig_user_id;
-  await sendMessage({ recipientId: senderId, text: reply, accessToken: account.access_token, igUserId });
+  await db.insert(db.pendingSends, {
+    recipientId:  senderId,
+    text:         reply,
+    accessToken:  account.access_token,
+    igUserId,
+    sendAt,
+    leadUsername: lead.ig_username,
+    agentName:    agent.name,
+  });
+  console.log(`⏱ [${agent.name}] Reply a @${lead.ig_username} programado en ${delaySeconds}s (${sendAt})`);
 
   console.log(`💬 [${agent.name}] → @${lead.ig_username}: ${reply.substring(0, 80)}...`);
 

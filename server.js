@@ -112,6 +112,38 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// ── PENDING SENDS WORKER ──────────────────────────────────────────────────────
+// Procesa replies pendientes cada 10s. Sobrevive reinicios de Railway.
+const { sendMessage } = require('./services/meta');
+const dbW = require('./db/database');
+
+async function processPendingSends() {
+  try {
+    const now = new Date().toISOString();
+    const pending = await dbW.find(dbW.pendingSends, {});
+    const due = pending.filter(p => p.sendAt <= now);
+    for (const item of due) {
+      try {
+        await sendMessage({
+          recipientId:  item.recipientId,
+          text:         item.text,
+          accessToken:  item.accessToken,
+          igUserId:     item.igUserId,
+        });
+        console.log(`✅ [${item.agentName}] → @${item.leadUsername}: ${item.text.substring(0, 60)}...`);
+      } catch (e) {
+        console.error(`❌ pendingSend error para @${item.leadUsername}:`, e.response?.data || e.message);
+      }
+      // Eliminar siempre (éxito o error) para no reintentar indefinidamente
+      await dbW.remove(dbW.pendingSends, { _id: item._id });
+    }
+  } catch (e) {
+    console.error('processPendingSends error:', e.message);
+  }
+}
+
+setInterval(processPendingSends, 10000); // cada 10 segundos
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`\n🚀 DMCloser running   → http://localhost:${PORT}`);
