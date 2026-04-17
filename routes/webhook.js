@@ -205,8 +205,8 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
   // Guardar respuesta del agente
   await db.insert(db.messages, { lead_id: lead._id, role: 'agent', content: reply });
 
-  // Enviar DM via Meta
-  await sendMessage({ recipientId: senderId, text: reply, accessToken: account.access_token });
+  // Enviar DM via Meta (igUserId = account's ig_user_id for Instagram Platform API)
+  await sendMessage({ recipientId: senderId, text: reply, accessToken: account.access_token, igUserId: account.ig_user_id });
 
   console.log(`💬 [${agent.name}] → @${lead.ig_username}: ${reply.substring(0, 80)}...`);
 
