@@ -57,6 +57,54 @@ router.patch('/:id', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// POST retrigger AI for last unanswered user message
+router.post('/:id/retrigger', async (req, res) => {
+  try {
+    const lead = await db.findOne(db.leads, { _id: req.params.id });
+    if (!lead) return res.status(404).json({ error: 'Not found' });
+
+    const account = await db.findOne(db.accounts, { _id: lead.account_id });
+    const agent   = await db.findOne(db.agents,   { _id: lead.agent_id });
+    if (!account || !agent) return res.status(400).json({ error: 'Account or agent not found' });
+
+    const messages = await db.find(db.messages, { lead_id: req.params.id },
+      (a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+    // Find last user message
+    const lastUser = [...messages].reverse().find(m => m.role === 'user');
+    if (!lastUser) return res.status(400).json({ error: 'No user message found' });
+
+    const { generateReply } = require('../services/openai');
+    const { sendMessage }   = require('../services/meta');
+
+    const allKnowledge = await db.find(db.knowledge, { account_id: account._id });
+    const knowledge    = allKnowledge.filter(k => k.is_main || (k.agent_ids || []).includes(agent._id));
+    const allLinks     = await db.find(db.links, { account_id: account._id });
+    const links        = (agent.link_ids || []).map(lid => allLinks.find(l => l._id === lid)).filter(Boolean);
+    const settings     = await db.findOne(db.settings, { account_id: account._id });
+    const apiKey       = process.env.OPENAI_API_KEY || settings?.openai_key;
+
+    const history = messages.filter(m => m._id !== lastUser._id);
+
+    const reply = await generateReply({
+      agent, knowledge, links,
+      conversationHistory: history,
+      newMessage: lastUser.content,
+      accountId: account._id,
+      apiKey
+    });
+
+    await db.insert(db.messages, { lead_id: lead._id, role: 'agent', content: reply });
+    await db.update(db.leads, { _id: lead._id }, { last_message_at: new Date().toISOString() });
+
+    const igUserId = account.ig_platform_id || account.ig_user_id;
+    await sendMessage({ recipientId: lead.ig_user_id, text: reply, accessToken: account.access_token, igUserId });
+
+    console.log(`🔁 Retrigger @${lead.ig_username}: ${reply.substring(0, 80)}`);
+    res.json({ ok: true, reply });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // POST manual message
 router.post('/:id/message', async (req, res) => {
   try {
