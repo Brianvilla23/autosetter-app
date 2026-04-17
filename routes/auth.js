@@ -77,12 +77,12 @@ router.get('/callback', async (req, res) => {
 
     // Update or create account
     if (accountId && accountId !== 'undefined') {
-      // When reconnecting: only update access_token and username.
-      // Do NOT overwrite ig_user_id — it must stay as the webhook-compatible ID
-      // (entry.id from Instagram webhooks, e.g. 17841403189123326 for @brayan__villa).
-      // The Instagram Platform API returns a different scoped ID which breaks webhook lookup.
+      // When reconnecting: preserve ig_user_id (webhook ID from entry.id).
+      // Store ig_platform_id (from graph.instagram.com/me) separately — used for sending messages.
+      const igPlatformId = igRes.data.id ? String(igRes.data.id) : null;
+      console.log(`[AUTH] accountId=${accountId} | ig_platform_id=${igPlatformId} | username=${igUsername}`);
       await db.update(db.accounts, { _id: accountId }, {
-        ig_username: igUsername, access_token: longToken
+        ig_username: igUsername, access_token: longToken, ig_platform_id: igPlatformId
       });
     } else {
       const exists = await db.findOne(db.accounts, { ig_user_id: igIdFinal });
