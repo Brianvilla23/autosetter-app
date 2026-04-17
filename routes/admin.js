@@ -212,4 +212,20 @@ router.get('/stats', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+/**
+ * PATCH /api/admin/accounts/:id/ig-user-id
+ * Actualiza el ig_user_id de una cuenta (webhook-compatible ID).
+ * Body: { ig_user_id: string }
+ */
+router.patch('/accounts/:id/ig-user-id', async (req, res) => {
+  try {
+    const { ig_user_id } = req.body;
+    if (!ig_user_id) return res.status(400).json({ error: 'ig_user_id requerido' });
+    const account = await db.findOne(db.accounts, { _id: req.params.id });
+    if (!account) return res.status(404).json({ error: 'Cuenta no encontrada' });
+    await db.update(db.accounts, { _id: req.params.id }, { ig_user_id });
+    res.json({ ok: true, accountId: req.params.id, ig_user_id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 module.exports = router;

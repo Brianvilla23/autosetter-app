@@ -77,10 +77,12 @@ router.get('/callback', async (req, res) => {
 
     // Update or create account
     if (accountId && accountId !== 'undefined') {
-      // igIdFinal comes from graph.facebook.com/me (webhook-compatible ID) if available,
-      // otherwise from graph.instagram.com/me. Always update ig_user_id with this value.
+      // When reconnecting: only update access_token and username.
+      // Do NOT overwrite ig_user_id — it must stay as the webhook-compatible ID
+      // (entry.id from Instagram webhooks, e.g. 17841403189123326 for @brayan__villa).
+      // The Instagram Platform API returns a different scoped ID which breaks webhook lookup.
       await db.update(db.accounts, { _id: accountId }, {
-        ig_user_id: igIdFinal, ig_username: igUsername, access_token: longToken
+        ig_username: igUsername, access_token: longToken
       });
     } else {
       const exists = await db.findOne(db.accounts, { ig_user_id: igIdFinal });
