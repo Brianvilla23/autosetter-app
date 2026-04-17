@@ -205,6 +205,14 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
   // Guardar respuesta del agente
   await db.insert(db.messages, { lead_id: lead._id, role: 'agent', content: reply });
 
+  // Delay humanizador: espera aleatoria entre delay_min y delay_max del agente (en pasos de 10s)
+  const delayMin = agent.delay_min ?? 30;
+  const delayMax = agent.delay_max ?? 90;
+  const steps = Math.floor((delayMax - delayMin) / 10) + 1;
+  const delaySeconds = delayMin + Math.floor(Math.random() * steps) * 10;
+  console.log(`⏱ Delay ${delaySeconds}s antes de responder a @${lead.ig_username}`);
+  await new Promise(resolve => setTimeout(resolve, delaySeconds * 1000));
+
   // Enviar DM via Meta — use ig_platform_id (graph.instagram.com scoped ID) for sending
   const igUserId = account.ig_platform_id || account.ig_user_id;
   await sendMessage({ recipientId: senderId, text: reply, accessToken: account.access_token, igUserId });
