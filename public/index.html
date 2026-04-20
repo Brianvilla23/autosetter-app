@@ -5,8 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DMCloser — Instagram Automation</title>
   <link rel="stylesheet" href="styles.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
@@ -21,32 +19,38 @@
 <!-- ── SIDEBAR ────────────────────────────────────────────────────────────── -->
 <aside class="sidebar">
   <div class="sidebar-logo">
-    <span class="logo-icon">⚡</span>
+    <div class="logo-icon">⚡</div>
     <div>
       <div class="logo-name">DMCloser</div>
-      <div class="logo-sub">Instagram Automation</div>
+      <div class="logo-sub">Instagram AI Bot</div>
     </div>
   </div>
 
   <nav class="sidebar-nav">
     <a class="nav-item active" data-section="home">
-      <span class="nav-icon">🏠</span> Home
+      <span class="nav-icon"><svg viewBox="0 0 20 20"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/></svg></span>
+      Home
     </a>
     <a class="nav-item" data-section="agents">
-      <span class="nav-icon">🤖</span> Agents
+      <span class="nav-icon"><svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9 3a1 1 0 012 0v5.5a.5.5 0 001 0V4a1 1 0 112 0v4.5a.5.5 0 001 0V6a1 1 0 112 0v5a7 7 0 11-14 0V9a1 1 0 012 0v2.5a.5.5 0 001 0V4a1 1 0 012 0v4.5a.5.5 0 001 0V3z" clip-rule="evenodd"/></svg></span>
+      Agents
     </a>
     <a class="nav-item" data-section="knowledge">
-      <span class="nav-icon">🧠</span> Knowledge
+      <span class="nav-icon"><svg viewBox="0 0 20 20"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z"/></svg></span>
+      Knowledge
     </a>
     <a class="nav-item" data-section="leads">
-      <span class="nav-icon">👥</span> Leads
+      <span class="nav-icon"><svg viewBox="0 0 20 20"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/></svg></span>
+      Leads
       <span class="nav-badge" id="leads-badge"></span>
     </a>
     <a class="nav-item" data-section="links">
-      <span class="nav-icon">🔗</span> Links
+      <span class="nav-icon"><svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clip-rule="evenodd"/></svg></span>
+      Links
     </a>
     <a class="nav-item" data-section="settings">
-      <span class="nav-icon">⚙️</span> Settings
+      <span class="nav-icon"><svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/></svg></span>
+      Settings
     </a>
   </nav>
 
@@ -74,23 +78,31 @@
     <div class="stats-grid" id="home-stats">
       <div class="stat-card">
         <div class="stat-icon">🤖</div>
-        <div class="stat-val" id="stat-agents">—</div>
-        <div class="stat-label">Agentes activos</div>
+        <div>
+          <div class="stat-val" id="stat-agents">—</div>
+          <div class="stat-label">Agentes activos</div>
+        </div>
       </div>
       <div class="stat-card">
         <div class="stat-icon">👥</div>
-        <div class="stat-val" id="stat-leads">—</div>
-        <div class="stat-label">Leads totales</div>
+        <div>
+          <div class="stat-val" id="stat-leads">—</div>
+          <div class="stat-label">Leads totales</div>
+        </div>
       </div>
       <div class="stat-card">
         <div class="stat-icon">✅</div>
-        <div class="stat-val" id="stat-converted">—</div>
-        <div class="stat-label">Conversaciones exitosas</div>
+        <div>
+          <div class="stat-val" id="stat-converted">—</div>
+          <div class="stat-label">Conversaciones exitosas</div>
+        </div>
       </div>
       <div class="stat-card">
         <div class="stat-icon">🔗</div>
-        <div class="stat-val" id="stat-links">—</div>
-        <div class="stat-label">Links disponibles</div>
+        <div>
+          <div class="stat-val" id="stat-links">—</div>
+          <div class="stat-label">Links disponibles</div>
+        </div>
       </div>
     </div>
 
@@ -119,7 +131,7 @@
   <section id="section-agents" class="section">
     <div class="page-header">
       <div>
-        <h1>🤖 Virtual Agents</h1>
+        <h1>Virtual Agents</h1>
         <p>Crea y gestiona los agentes IA que responden conversaciones de Instagram</p>
       </div>
       <button class="btn-primary" id="btn-create-agent">+ Crear agente</button>
@@ -161,7 +173,7 @@
   <section id="section-knowledge" class="section">
     <div class="page-header">
       <div>
-        <h1>🧠 Knowledge Base</h1>
+        <h1>Knowledge Base</h1>
         <p>Centraliza el conocimiento del negocio para que todos los agentes respondan con contexto</p>
       </div>
       <button class="btn-primary" id="btn-add-knowledge">+ Nueva entrada</button>
@@ -173,7 +185,7 @@
   <section id="section-leads" class="section">
     <div class="page-header">
       <div>
-        <h1>👥 Leads</h1>
+        <h1>Leads</h1>
         <p>Revisa conversaciones entrantes, califica prospectos y haz seguimiento</p>
       </div>
     </div>
@@ -264,7 +276,7 @@
   <section id="section-links" class="section">
     <div class="page-header">
       <div>
-        <h1>🔗 Resource Links</h1>
+        <h1>Resource Links</h1>
         <p>Organiza los links que los agentes pueden compartir en las conversaciones</p>
       </div>
       <button class="btn-primary" id="btn-add-link">+ Nuevo link</button>
@@ -299,14 +311,14 @@
   <section id="section-settings" class="section">
     <div class="page-header">
       <div>
-        <h1>⚙️ Settings</h1>
+        <h1>Settings</h1>
         <p>Configura tu cuenta de Instagram y las integraciones de IA</p>
       </div>
     </div>
 
     <div class="settings-grid">
       <div class="settings-card">
-        <h3>🤖 OpenAI</h3>
+        <h3>OpenAI</h3>
         <p>API key para que los agentes puedan generar respuestas</p>
         <div class="form-row">
           <label>OpenAI API Key</label>
@@ -316,7 +328,7 @@
       </div>
 
       <div class="settings-card">
-        <h3>📸 Instagram Account</h3>
+        <h3>Instagram Account</h3>
         <p>Conecta tu cuenta de Instagram Business con un clic via OAuth de Meta</p>
 
         <!-- Connected state -->
@@ -362,7 +374,7 @@
       </div>
 
       <div class="settings-card">
-        <h3>📡 Webhook de Meta</h3>
+        <h3>Webhook de Meta</h3>
         <p>Configura el webhook en tu Meta App para recibir mensajes</p>
         <div class="form-row">
           <label>Callback URL</label>
