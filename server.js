@@ -46,92 +46,96 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
-// ── STRIPE WEBHOOK (raw body — MUST be before express.json()) ─────────────────
-app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-  const sig = req.headers['stripe-signature'];
+// ─────────────────────────────────────────────────────────────────────────────
+// LEMON SQUEEZY WEBHOOK (raw body — MUST be before express.json())
+// ─────────────────────────────────────────────────────────────────────────────
+app.post('/api/billing/ls-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  const secret = process.env.LS_WEBHOOK_SECRET;
+  if (!secret) return res.status(400).json({ error: 'LS_WEBHOOK_SECRET no configurado' });
 
-  if (!process.env.STRIPE_SECRET_KEY) {
-    return res.status(400).json({ error: 'Stripe no configurado' });
+  // Verify HMAC-SHA256 signature
+  const crypto = require('crypto');
+  const hmac      = crypto.createHmac('sha256', secret);
+  const digest    = Buffer.from(hmac.update(req.body).digest('hex'), 'utf8');
+  const signature = Buffer.from(req.headers['x-signature'] || '', 'utf8');
+
+  if (digest.length !== signature.length || !crypto.timingSafeEqual(digest, signature)) {
+    console.error('❌ LS webhook: firma inválida');
+    return res.status(400).send('Invalid signature');
   }
 
-  const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
   let event;
-
-  try {
-    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
-  } catch (err) {
-    console.error('❌ Stripe webhook signature error:', err.message);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
-  }
+  try { event = JSON.parse(req.body.toString()); }
+  catch (e) { return res.status(400).send('Invalid JSON'); }
 
   const dbW = require('./db/database');
   const now = new Date();
+  const eventName    = event.meta?.event_name;
+  const customData   = event.meta?.custom_data || {};
+  const userId       = customData.userId;
+  const plan         = customData.plan;
+  const subId        = event.data?.id;
+  const portalUrl    = event.data?.attributes?.urls?.customer_portal;
 
   try {
-    switch (event.type) {
+    switch (eventName) {
 
-      case 'checkout.session.completed': {
-        const session = event.data.object;
-        const userId  = session.metadata?.userId;
-        const plan    = session.metadata?.plan;
+      case 'subscription_created': {
         if (userId && plan) {
-          const exp = new Date(now);
-          exp.setMonth(exp.getMonth() + 1);
+          const exp = new Date(now); exp.setMonth(exp.getMonth() + 1);
           await dbW.update(dbW.users, { _id: userId }, {
-            membershipPlan:       plan,
-            membershipExpiresAt:  exp.toISOString(),
-            stripeSubscriptionId: session.subscription,
-            subscriptionStatus:   'active',
+            membershipPlan:         plan,
+            membershipExpiresAt:    exp.toISOString(),
+            subscriptionStatus:     'active',
+            paymentProvider:        'ls',
+            lsSubscriptionId:       subId,
+            lsCustomerPortalUrl:    portalUrl || null,
           });
-          console.log(`✅ Stripe: suscripción activada — usuario ${userId} (${plan})`);
+          console.log(`✅ LS: suscripción creada — usuario ${userId} (${plan})`);
         }
         break;
       }
 
-      case 'invoice.payment_succeeded': {
-        const invoice = event.data.object;
-        // skip the initial charge (already handled by checkout.session.completed)
-        if (invoice.billing_reason === 'subscription_create') break;
-        const user = await dbW.findOne(dbW.users, { stripeCustomerId: invoice.customer });
+      case 'subscription_payment_success': {
+        // Renewal — find user by LS subscription ID
+        const lsSubId = event.data?.attributes?.subscription_id || event.data?.id;
+        const user = userId
+          ? await dbW.findOne(dbW.users, { _id: userId })
+          : await dbW.findOne(dbW.users, { lsSubscriptionId: String(lsSubId) });
         if (user) {
-          const exp = new Date(now);
-          exp.setMonth(exp.getMonth() + 1);
+          const exp = new Date(now); exp.setMonth(exp.getMonth() + 1);
           await dbW.update(dbW.users, { _id: user._id }, {
             membershipExpiresAt: exp.toISOString(),
             subscriptionStatus:  'active',
           });
-          console.log(`✅ Stripe: pago renovado — ${user.email}`);
+          console.log(`✅ LS: pago renovado — ${user.email}`);
         }
         break;
       }
 
-      case 'invoice.payment_failed': {
-        const invoice = event.data.object;
-        const user = await dbW.findOne(dbW.users, { stripeCustomerId: invoice.customer });
-        if (user) {
-          await dbW.update(dbW.users, { _id: user._id }, { subscriptionStatus: 'past_due' });
-          console.log(`⚠️ Stripe: pago fallido — ${user.email}`);
+      case 'subscription_payment_failed': {
+        if (userId) {
+          await dbW.update(dbW.users, { _id: userId }, { subscriptionStatus: 'past_due' });
+          console.log(`⚠️ LS: pago fallido — usuario ${userId}`);
         }
         break;
       }
 
-      case 'customer.subscription.deleted': {
-        const sub  = event.data.object;
-        const user = await dbW.findOne(dbW.users, { stripeCustomerId: sub.customer });
-        if (user) {
-          await dbW.update(dbW.users, { _id: user._id }, {
+      case 'subscription_cancelled':
+      case 'subscription_expired': {
+        if (userId) {
+          await dbW.update(dbW.users, { _id: userId }, {
             subscriptionStatus:  'cancelled',
             membershipPlan:      'cancelled',
             membershipExpiresAt: now.toISOString(),
           });
-          console.log(`❌ Stripe: suscripción cancelada — ${user.email}`);
+          console.log(`❌ LS: suscripción ${eventName} — usuario ${userId}`);
         }
         break;
       }
-
     }
   } catch (e) {
-    console.error('Stripe webhook handler error:', e.message);
+    console.error('LS webhook handler error:', e.message);
   }
 
   res.json({ received: true });
@@ -158,6 +162,75 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/webhook',  webhookLimiter, require('./routes/webhook'));
 app.use('/auth',                     require('./routes/auth'));        // Instagram OAuth
 app.use('/api/user', authLimiter,    require('./routes/userAuth'));    // login / register
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MERCADO PAGO WEBHOOK (standard JSON, no raw body needed)
+// ─────────────────────────────────────────────────────────────────────────────
+app.post('/api/billing/mp-webhook', async (req, res) => {
+  try {
+    const mpToken = process.env.MP_ACCESS_TOKEN;
+    if (!mpToken) return res.status(400).json({ error: 'MP_ACCESS_TOKEN no configurado' });
+
+    const eventType = req.body?.type || req.query?.type;
+    const dataId    = req.body?.data?.id || req.query?.['data.id'];
+
+    if (!dataId) { res.sendStatus(200); return; } // ack empty notifications
+
+    // Only handle subscription events
+    if (eventType !== 'subscription_preapproval' && eventType !== 'subscription_authorized_payment') {
+      res.sendStatus(200); return;
+    }
+
+    const axios = require('axios');
+    const dbW   = require('./db/database');
+    const now   = new Date();
+
+    // Fetch the subscription from MP to get authoritative status
+    const endpoint = eventType === 'subscription_authorized_payment'
+      ? `https://api.mercadopago.com/authorized_payments/${dataId}`
+      : `https://api.mercadopago.com/preapproval/${dataId}`;
+
+    const { data } = await axios.get(endpoint, {
+      headers: { 'Authorization': `Bearer ${mpToken}` },
+    });
+
+    const subscriptionId = data.preapproval_id || data.id;
+    const userId         = data.external_reference;
+    const status         = data.status; // 'authorized', 'pending', 'paused', 'cancelled'
+    const planReason     = (data.reason || '').toLowerCase();
+    const planGuess      = planReason.includes('starter') ? 'starter'
+                         : planReason.includes('agency')  ? 'agency'
+                         : planReason.includes('pro')     ? 'pro'
+                         : null;
+
+    if (!userId) { res.sendStatus(200); return; }
+
+    if (status === 'authorized' || eventType === 'subscription_authorized_payment') {
+      const exp = new Date(now); exp.setMonth(exp.getMonth() + 1);
+      const update = {
+        membershipExpiresAt: exp.toISOString(),
+        subscriptionStatus:  'active',
+        paymentProvider:     'mp',
+        mpSubscriptionId:    String(subscriptionId),
+      };
+      if (planGuess) update.membershipPlan = planGuess;
+      await dbW.update(dbW.users, { _id: userId }, update);
+      console.log(`✅ MP: suscripción activa — usuario ${userId} (${planGuess || 'n/a'})`);
+    } else if (status === 'cancelled' || status === 'paused') {
+      await dbW.update(dbW.users, { _id: userId }, {
+        subscriptionStatus:  status,
+        membershipPlan:      status === 'cancelled' ? 'cancelled' : undefined,
+        membershipExpiresAt: status === 'cancelled' ? now.toISOString() : undefined,
+      });
+      console.log(`❌ MP: suscripción ${status} — usuario ${userId}`);
+    }
+
+    res.sendStatus(200);
+  } catch (e) {
+    console.error('MP webhook error:', e.response?.data || e.message);
+    res.sendStatus(200); // always 200 so MP doesn't retry indefinitely
+  }
+});
 
 // ── BILLING ROUTES ────────────────────────────────────────────────────────────
 app.use('/api/billing', apiLimiter, require('./routes/billing'));
@@ -245,5 +318,7 @@ app.listen(PORT, () => {
   console.log(`📡 Webhook URL        → http://localhost:${PORT}/webhook`);
   console.log(`🔐 Auth URL           → http://localhost:${PORT}/auth/instagram`);
   console.log(`👑 Admin Panel        → http://localhost:${PORT}/admin`);
-  console.log(`🛡️  Security           → Helmet + Rate Limit + XSS Protection ON\n`);
+  console.log(`🛡️  Security           → Helmet + Rate Limit + XSS Protection ON`);
+  console.log(`💳 LS Webhook         → http://localhost:${PORT}/api/billing/ls-webhook`);
+  console.log(`💳 MP Webhook         → http://localhost:${PORT}/api/billing/mp-webhook\n`);
 });

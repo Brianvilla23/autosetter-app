@@ -63,8 +63,10 @@ function showDashboard() {
     window.history.replaceState({}, '', '/');
   } else if (params.get('billing') === 'success') {
     const plan = params.get('plan') || 'plan';
+    const provider = params.get('provider') || '';
     const planName = plan.charAt(0).toUpperCase() + plan.slice(1);
-    showToast(`🎉 ¡Suscripción activada! Bienvenido al plan ${planName}`);
+    const providerLabel = provider === 'ls' ? ' (Lemon Squeezy)' : provider === 'mp' ? ' (Mercado Pago)' : '';
+    showToast(`🎉 ¡Suscripción activada! Bienvenido al plan ${planName}${providerLabel}`);
     window.history.replaceState({}, '', '/');
     loadBillingStatus();
   } else if (params.get('billing') === 'cancelled') {
@@ -1183,16 +1185,29 @@ function showUpgradeModal(isExpired = false) {
   modal.style.display = 'flex';
 }
 
-async function upgradePlan(plan) {
-  const btn = document.getElementById(`btn-plan-${plan}`);
+function switchProvider(provider) {
+  // Toggle tab active state
+  document.querySelectorAll('.provider-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.provider === provider);
+  });
+  // Toggle panel visibility
+  const lsPanel = document.getElementById('provider-panel-ls');
+  const mpPanel = document.getElementById('provider-panel-mp');
+  if (lsPanel) lsPanel.style.display = provider === 'ls' ? '' : 'none';
+  if (mpPanel) mpPanel.style.display = provider === 'mp' ? '' : 'none';
+}
+
+async function upgradePlan(plan, provider = 'ls') {
+  const btn = document.getElementById(`btn-plan-${provider}-${plan}`) || document.getElementById(`btn-plan-${plan}`);
   const originalText = btn ? btn.textContent : '';
   if (btn) { btn.disabled = true; btn.textContent = 'Redirigiendo...'; }
 
-  const data = await apiFetch('/api/billing/checkout', 'POST', { plan });
+  const data = await apiFetch('/api/billing/checkout', 'POST', { plan, provider });
   if (data?.url) {
     window.location.href = data.url;
   } else {
-    showToast('❌ Error al crear sesión de pago. Verifica que Stripe esté configurado.');
+    const providerLabel = provider === 'ls' ? 'Lemon Squeezy' : 'Mercado Pago';
+    showToast(`❌ Error al crear sesión de pago. Verifica que ${providerLabel} esté configurado.`);
     if (btn) { btn.disabled = false; btn.textContent = originalText; }
   }
 }

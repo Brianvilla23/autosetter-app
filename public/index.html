@@ -470,56 +470,107 @@
       ⚠️ Tu período de prueba ha expirado. Selecciona un plan para seguir usando DMCloser.
     </div>
 
-    <div class="pricing-grid">
+    <!-- Provider tabs -->
+    <div class="provider-tabs">
+      <button class="provider-tab active" data-provider="ls" onclick="switchProvider('ls')">
+        💳 <span>USD · Internacional</span>
+      </button>
+      <button class="provider-tab" data-provider="mp" onclick="switchProvider('mp')">
+        🇨🇱 <span>CLP · Chile</span>
+      </button>
+    </div>
 
-      <!-- Starter -->
-      <div class="pricing-card">
-        <div class="pricing-name">Starter</div>
-        <div class="pricing-price">$197<span class="pricing-period">/mes</span></div>
-        <ul class="pricing-features">
-          <li>✅ 1 cuenta de Instagram</li>
-          <li>✅ Hasta 3 agentes IA</li>
-          <li>✅ 500 conversaciones/mes</li>
-          <li>✅ Knowledge Base</li>
-          <li>✅ Soporte por email</li>
-        </ul>
-        <button class="btn-primary pricing-btn" id="btn-plan-starter" onclick="upgradePlan('starter')">Elegir Starter</button>
+    <!-- LS (USD) plans -->
+    <div id="provider-panel-ls" class="provider-panel">
+      <div class="pricing-grid">
+        <div class="pricing-card">
+          <div class="pricing-name">Starter</div>
+          <div class="pricing-price">$197<span class="pricing-period">USD/mes</span></div>
+          <ul class="pricing-features">
+            <li>✅ 1 cuenta de Instagram</li>
+            <li>✅ Hasta 3 agentes IA</li>
+            <li>✅ 500 conversaciones/mes</li>
+            <li>✅ Knowledge Base</li>
+            <li>✅ Soporte por email</li>
+          </ul>
+          <button class="btn-primary pricing-btn" id="btn-plan-ls-starter" onclick="upgradePlan('starter','ls')">Elegir Starter</button>
+        </div>
+        <div class="pricing-card pricing-card-featured">
+          <div class="pricing-badge-top">⭐ Más popular</div>
+          <div class="pricing-name">Pro</div>
+          <div class="pricing-price">$297<span class="pricing-period">USD/mes</span></div>
+          <ul class="pricing-features">
+            <li>✅ 3 cuentas de Instagram</li>
+            <li>✅ Agentes IA ilimitados</li>
+            <li>✅ Conversaciones ilimitadas</li>
+            <li>✅ Knowledge Base avanzada</li>
+            <li>✅ Onboarding + soporte prioritario</li>
+          </ul>
+          <button class="btn-primary pricing-btn" id="btn-plan-ls-pro" onclick="upgradePlan('pro','ls')">Elegir Pro</button>
+        </div>
+        <div class="pricing-card">
+          <div class="pricing-name">Agency</div>
+          <div class="pricing-price">$497<span class="pricing-period">USD/mes</span></div>
+          <ul class="pricing-features">
+            <li>✅ 10 cuentas de Instagram</li>
+            <li>✅ Agentes IA ilimitados</li>
+            <li>✅ Conversaciones ilimitadas</li>
+            <li>✅ White-label disponible</li>
+            <li>✅ Soporte dedicado 24/7</li>
+          </ul>
+          <button class="btn-primary pricing-btn" id="btn-plan-ls-agency" onclick="upgradePlan('agency','ls')">Elegir Agency</button>
+        </div>
       </div>
+      <p class="provider-note">💳 Procesado por Lemon Squeezy · Acepta tarjetas internacionales · Incluye IVA donde aplique</p>
+    </div>
 
-      <!-- Pro (destacado) -->
-      <div class="pricing-card pricing-card-featured">
-        <div class="pricing-badge-top">⭐ Más popular</div>
-        <div class="pricing-name">Pro</div>
-        <div class="pricing-price">$297<span class="pricing-period">/mes</span></div>
-        <ul class="pricing-features">
-          <li>✅ 3 cuentas de Instagram</li>
-          <li>✅ Agentes IA ilimitados</li>
-          <li>✅ Conversaciones ilimitadas</li>
-          <li>✅ Knowledge Base avanzada</li>
-          <li>✅ Onboarding + soporte prioritario</li>
-        </ul>
-        <button class="btn-primary pricing-btn" id="btn-plan-pro" onclick="upgradePlan('pro')">Elegir Pro</button>
+    <!-- MP (CLP) plans -->
+    <div id="provider-panel-mp" class="provider-panel" style="display:none">
+      <div class="pricing-grid">
+        <div class="pricing-card">
+          <div class="pricing-name">Starter</div>
+          <div class="pricing-price">$180.000<span class="pricing-period">CLP/mes</span></div>
+          <ul class="pricing-features">
+            <li>✅ 1 cuenta de Instagram</li>
+            <li>✅ Hasta 3 agentes IA</li>
+            <li>✅ 500 conversaciones/mes</li>
+            <li>✅ Knowledge Base</li>
+            <li>✅ Soporte por email</li>
+          </ul>
+          <button class="btn-primary pricing-btn" id="btn-plan-mp-starter" onclick="upgradePlan('starter','mp')">Elegir Starter</button>
+        </div>
+        <div class="pricing-card pricing-card-featured">
+          <div class="pricing-badge-top">⭐ Más popular</div>
+          <div class="pricing-name">Pro</div>
+          <div class="pricing-price">$270.000<span class="pricing-period">CLP/mes</span></div>
+          <ul class="pricing-features">
+            <li>✅ 3 cuentas de Instagram</li>
+            <li>✅ Agentes IA ilimitados</li>
+            <li>✅ Conversaciones ilimitadas</li>
+            <li>✅ Knowledge Base avanzada</li>
+            <li>✅ Onboarding + soporte prioritario</li>
+          </ul>
+          <button class="btn-primary pricing-btn" id="btn-plan-mp-pro" onclick="upgradePlan('pro','mp')">Elegir Pro</button>
+        </div>
+        <div class="pricing-card">
+          <div class="pricing-name">Agency</div>
+          <div class="pricing-price">$450.000<span class="pricing-period">CLP/mes</span></div>
+          <ul class="pricing-features">
+            <li>✅ 10 cuentas de Instagram</li>
+            <li>✅ Agentes IA ilimitados</li>
+            <li>✅ Conversaciones ilimitadas</li>
+            <li>✅ White-label disponible</li>
+            <li>✅ Soporte dedicado 24/7</li>
+          </ul>
+          <button class="btn-primary pricing-btn" id="btn-plan-mp-agency" onclick="upgradePlan('agency','mp')">Elegir Agency</button>
+        </div>
       </div>
-
-      <!-- Agency -->
-      <div class="pricing-card">
-        <div class="pricing-name">Agency</div>
-        <div class="pricing-price">$497<span class="pricing-period">/mes</span></div>
-        <ul class="pricing-features">
-          <li>✅ 10 cuentas de Instagram</li>
-          <li>✅ Agentes IA ilimitados</li>
-          <li>✅ Conversaciones ilimitadas</li>
-          <li>✅ White-label disponible</li>
-          <li>✅ Soporte dedicado 24/7</li>
-        </ul>
-        <button class="btn-primary pricing-btn" id="btn-plan-agency" onclick="upgradePlan('agency')">Elegir Agency</button>
-      </div>
-
+      <p class="provider-note">🇨🇱 Procesado por Mercado Pago · Webpay · Redcompra · Tarjetas nacionales · Transferencia bancaria</p>
     </div>
 
     <div class="upgrade-footer">
       <button class="btn-ghost" onclick="manageSubscription()">🔧 Gestionar suscripción existente</button>
-      <span class="upgrade-guarantee">🔒 Pago seguro con Stripe · Cancela cuando quieras</span>
+      <span class="upgrade-guarantee">🔒 Pago seguro · Cancela cuando quieras</span>
     </div>
 
   </div>

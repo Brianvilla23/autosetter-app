@@ -210,6 +210,53 @@
     .plan-features li { display: flex; align-items: flex-start; gap: 10px; font-size: 13.5px; color: var(--text-2); }
     .plan-features li .icon { flex-shrink: 0; width: 18px; height: 18px; background: rgba(139,92,246,.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; margin-top: 2px; }
 
+    /* ── CURRENCY TOGGLE ── */
+    .currency-toggle {
+      display: inline-flex;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 5px;
+      gap: 4px;
+      margin: 0 auto 40px;
+    }
+    .currency-tab {
+      padding: 10px 22px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-2);
+      background: transparent;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all .15s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: inherit;
+    }
+    .currency-tab:hover { color: var(--text-1); }
+    .currency-tab.active {
+      background: var(--grad);
+      color: #fff;
+      box-shadow: 0 2px 10px rgba(139,92,246,.35);
+    }
+    .currency-tab small { font-weight: 500; opacity: .85; font-size: 11px; }
+    .currency-wrapper { text-align: center; }
+    .plans-grid.hidden { display: none; }
+    .provider-footer-note {
+      margin-top: 28px;
+      padding: 14px 18px;
+      background: var(--card);
+      border: 1px dashed var(--border);
+      border-radius: 10px;
+      font-size: 12.5px;
+      color: var(--text-2);
+      text-align: center;
+      line-height: 1.6;
+    }
+    .provider-footer-note strong { color: var(--text-1); }
+
     /* ── TRIAL CTA ── */
     .trial-section {
       background: linear-gradient(135deg, rgba(139,92,246,.12) 0%, rgba(236,72,153,.08) 100%);
@@ -299,14 +346,26 @@
     <p>Sin setup fees. Sin contratos de largo plazo. Cancela cuando quieras.</p>
   </div>
 
-  <div class="plans-grid">
+  <div class="currency-wrapper">
+    <div class="currency-toggle" role="tablist">
+      <button class="currency-tab active" data-currency="usd" role="tab">
+        🌎 <span>USD <small>· Internacional</small></span>
+      </button>
+      <button class="currency-tab" data-currency="clp" role="tab">
+        🇨🇱 <span>CLP <small>· Chile</small></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- USD plans (Lemon Squeezy) -->
+  <div class="plans-grid" id="plans-usd">
 
     <!-- Starter -->
     <div class="plan-card">
       <div class="plan-name">Starter</div>
       <div class="plan-price">
         <span class="amount">$197</span>
-        <span class="period">/mes</span>
+        <span class="period">USD /mes</span>
       </div>
       <div class="plan-desc">Perfecto para coaches y consultores que están empezando a escalar sus DMs.</div>
       <a href="/?register=1" class="plan-btn plan-btn-outline">Comenzar gratis →</a>
@@ -328,7 +387,7 @@
       <div class="plan-name">Pro</div>
       <div class="plan-price">
         <span class="amount">$297</span>
-        <span class="period">/mes</span>
+        <span class="period">USD /mes</span>
       </div>
       <div class="plan-desc">Para negocios en crecimiento que quieren escalar sus conversaciones sin contratar setters.</div>
       <a href="/?register=1" class="plan-btn plan-btn-grad">Comenzar gratis →</a>
@@ -350,7 +409,7 @@
       <div class="plan-name">Agency</div>
       <div class="plan-price">
         <span class="amount">$497</span>
-        <span class="period">/mes</span>
+        <span class="period">USD /mes</span>
       </div>
       <div class="plan-desc">Para agencias y negocios de alto volumen que gestionan múltiples clientes.</div>
       <a href="/?register=1" class="plan-btn plan-btn-outline">Comenzar gratis →</a>
@@ -367,6 +426,86 @@
       </ul>
     </div>
 
+  </div>
+
+  <!-- CLP plans (Mercado Pago) -->
+  <div class="plans-grid hidden" id="plans-clp">
+
+    <!-- Starter -->
+    <div class="plan-card">
+      <div class="plan-name">Starter</div>
+      <div class="plan-price">
+        <span class="amount">$180.000</span>
+        <span class="period">CLP /mes</span>
+      </div>
+      <div class="plan-desc">Perfecto para coaches y consultores que están empezando a escalar sus DMs.</div>
+      <a href="/?register=1" class="plan-btn plan-btn-outline">Comenzar gratis →</a>
+      <div class="plan-divider"></div>
+      <ul class="plan-features">
+        <li><span class="icon">✓</span> 1 cuenta de Instagram</li>
+        <li><span class="icon">✓</span> Hasta 3 agentes IA</li>
+        <li><span class="icon">✓</span> 500 conversaciones/mes</li>
+        <li><span class="icon">✓</span> Knowledge Base personalizable</li>
+        <li><span class="icon">✓</span> Leads dashboard + filtros</li>
+        <li><span class="icon">✓</span> Delay humanizado en respuestas</li>
+        <li><span class="icon">✓</span> Soporte por email</li>
+      </ul>
+    </div>
+
+    <!-- Pro -->
+    <div class="plan-card featured">
+      <div class="plan-badge">⭐ Más popular</div>
+      <div class="plan-name">Pro</div>
+      <div class="plan-price">
+        <span class="amount">$270.000</span>
+        <span class="period">CLP /mes</span>
+      </div>
+      <div class="plan-desc">Para negocios en crecimiento que quieren escalar sus conversaciones sin contratar setters.</div>
+      <a href="/?register=1" class="plan-btn plan-btn-grad">Comenzar gratis →</a>
+      <div class="plan-divider"></div>
+      <ul class="plan-features">
+        <li><span class="icon">✓</span> 3 cuentas de Instagram</li>
+        <li><span class="icon">✓</span> Agentes IA ilimitados</li>
+        <li><span class="icon">✓</span> Conversaciones ilimitadas</li>
+        <li><span class="icon">✓</span> Knowledge Base avanzada</li>
+        <li><span class="icon">✓</span> Clasificación de leads (Hot/Warm/Cold)</li>
+        <li><span class="icon">✓</span> Bypass manual por usuario</li>
+        <li><span class="icon">✓</span> Onboarding personalizado</li>
+        <li><span class="icon">✓</span> Soporte prioritario</li>
+      </ul>
+    </div>
+
+    <!-- Agency -->
+    <div class="plan-card">
+      <div class="plan-name">Agency</div>
+      <div class="plan-price">
+        <span class="amount">$450.000</span>
+        <span class="period">CLP /mes</span>
+      </div>
+      <div class="plan-desc">Para agencias y negocios de alto volumen que gestionan múltiples clientes.</div>
+      <a href="/?register=1" class="plan-btn plan-btn-outline">Comenzar gratis →</a>
+      <div class="plan-divider"></div>
+      <ul class="plan-features">
+        <li><span class="icon">✓</span> 10 cuentas de Instagram</li>
+        <li><span class="icon">✓</span> Agentes IA ilimitados</li>
+        <li><span class="icon">✓</span> Conversaciones ilimitadas</li>
+        <li><span class="icon">✓</span> White-label disponible</li>
+        <li><span class="icon">✓</span> Multi-usuario (equipo)</li>
+        <li><span class="icon">✓</span> Reportes avanzados</li>
+        <li><span class="icon">✓</span> Soporte dedicado 24/7</li>
+        <li><span class="icon">✓</span> Setup completo incluido</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <div class="provider-footer-note" id="note-usd">
+    <strong>💳 Pagos internacionales vía Lemon Squeezy:</strong>
+    Visa, Mastercard, Amex, PayPal, Apple Pay y Google Pay · Facturación en USD · Cancela cuando quieras
+  </div>
+  <div class="provider-footer-note hidden" id="note-clp">
+    <strong>🇨🇱 Pagos en Chile vía Mercado Pago:</strong>
+    Webpay, Redcompra, tarjetas de crédito/débito chilenas · Facturación en pesos chilenos · Cancela cuando quieras
   </div>
 </section>
 
@@ -408,6 +547,10 @@
     <div class="faq-q">¿En qué idiomas responde el agente? <span>+</span></div>
     <div class="faq-a">El agente responde automáticamente en el mismo idioma en que le habla el prospecto — español, inglés, o cualquier otro idioma que soporte GPT-4o.</div>
   </div>
+  <div class="faq-item">
+    <div class="faq-q">¿Qué métodos de pago aceptan? <span>+</span></div>
+    <div class="faq-a">Aceptamos dos formas de pago: (1) <strong>Lemon Squeezy</strong> para clientes internacionales — Visa, Mastercard, Amex, PayPal, Apple Pay y Google Pay, con facturación en USD; (2) <strong>Mercado Pago</strong> para clientes en Chile — Webpay, Redcompra, y tarjetas chilenas, con facturación en pesos chilenos (CLP). Usa el selector arriba para ver los precios de cada región.</div>
+  </div>
 </section>
 
 <!-- FOOTER -->
@@ -432,6 +575,33 @@
       window.location.href = '/';
     });
   });
+
+  // Currency toggle (USD ↔ CLP)
+  const plansUsd = document.getElementById('plans-usd');
+  const plansClp = document.getElementById('plans-clp');
+  const noteUsd  = document.getElementById('note-usd');
+  const noteClp  = document.getElementById('note-clp');
+
+  document.querySelectorAll('.currency-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.currency-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      const cur = tab.dataset.currency;
+      plansUsd.classList.toggle('hidden', cur !== 'usd');
+      plansClp.classList.toggle('hidden', cur !== 'clp');
+      noteUsd.classList.toggle('hidden',  cur !== 'usd');
+      noteClp.classList.toggle('hidden',  cur !== 'clp');
+    });
+  });
+
+  // Auto-select CLP if visitor is in Chile (based on browser language/timezone hint)
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    const lang = navigator.language || '';
+    if (tz.includes('Santiago') || lang.toLowerCase() === 'es-cl') {
+      document.querySelector('.currency-tab[data-currency="clp"]')?.click();
+    }
+  } catch {}
 </script>
 </body>
 </html>
