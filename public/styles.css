@@ -1117,6 +1117,166 @@ textarea.form-input { resize: vertical; line-height: 1.65; }
   max-width: 380px !important;
 }
 
+/* ══ TRIAL BANNER ═════════════════════════════════════════════════════════════ */
+.trial-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 11px 28px;
+  background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+  color: #fff;
+  font-size: 13.5px;
+  font-weight: 500;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.trial-banner-text strong { font-weight: 800; }
+.trial-upgrade-btn {
+  margin-left: auto;
+  background: rgba(255,255,255,.18);
+  color: #fff;
+  border: 1.5px solid rgba(255,255,255,.45);
+  padding: 5px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  transition: background .15s;
+  white-space: nowrap;
+}
+.trial-upgrade-btn:hover { background: rgba(255,255,255,.32); }
+.trial-close-btn {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,.7);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 2px 4px;
+  line-height: 1;
+  transition: color .15s;
+}
+.trial-close-btn:hover { color: #fff; }
+
+/* ══ UPGRADE / PRICING MODAL ══════════════════════════════════════════════════ */
+.upgrade-panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 36px;
+  max-width: 940px;
+  width: 95%;
+  max-height: 92vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 80px rgba(0,0,0,.5);
+}
+.upgrade-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 28px;
+}
+.upgrade-header h2 {
+  font-size: 1.6rem;
+  font-weight: 800;
+  margin: 0 0 6px;
+  background: var(--grad);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.upgrade-header p { color: var(--text-2); font-size: 14px; margin: 0; }
+.upgrade-close-btn { flex-shrink: 0; }
+.upgrade-expired-msg {
+  background: rgba(239,68,68,.10);
+  border: 1px solid rgba(239,68,68,.28);
+  color: #fca5a5;
+  padding: 13px 18px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 24px;
+  font-size: 13.5px;
+  font-weight: 500;
+}
+.upgrade-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 28px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.upgrade-guarantee {
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+/* Pricing grid */
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+.pricing-card {
+  background: var(--sidebar-bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 28px 24px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  transition: transform .2s, border-color .2s, box-shadow .2s;
+}
+.pricing-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow);
+}
+.pricing-card-featured {
+  border-color: var(--orange);
+  background: linear-gradient(160deg, rgba(139,92,246,.10) 0%, rgba(236,72,153,.07) 100%);
+  box-shadow: 0 4px 24px rgba(139,92,246,.18);
+}
+.pricing-badge-top {
+  position: absolute;
+  top: -13px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--grad);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px 16px;
+  border-radius: 20px;
+  white-space: nowrap;
+  letter-spacing: .03em;
+}
+.pricing-name {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text-1);
+  margin-bottom: 10px;
+  margin-top: 4px;
+}
+.pricing-price {
+  font-size: 2.4rem;
+  font-weight: 900;
+  color: var(--text-1);
+  line-height: 1;
+  margin-bottom: 22px;
+}
+.pricing-period { font-size: 1rem; font-weight: 500; color: var(--text-3); }
+.pricing-features {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 28px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.pricing-features li { font-size: 13px; color: var(--text-2); line-height: 1.4; }
+.pricing-btn { width: 100%; justify-content: center; }
+
 /* ══ RESPONSIVE ═══════════════════════════════════════════════════════════════ */
 @media (max-width: 1100px) {
   .agents-layout { grid-template-columns: 200px 1fr; }
@@ -1128,9 +1288,12 @@ textarea.form-input { resize: vertical; line-height: 1.65; }
   .modal-body    { grid-template-columns: 1fr; }
   .modal-side    { border-right: none; border-bottom: 1px solid var(--border); }
   .section       { padding: 24px 20px; }
+  .pricing-grid  { grid-template-columns: 1fr; }
+  .upgrade-panel { padding: 24px 18px; }
 }
 @media (max-width: 700px) {
   .sidebar { transform: translateX(-100%); }
   .main    { margin-left: 0; }
   .section { padding: 20px 16px; }
+  .trial-banner { padding: 10px 14px; font-size: 12.5px; }
 }

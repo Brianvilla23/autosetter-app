@@ -4,8 +4,9 @@ const cors    = require('cors');
 const helmet  = require('helmet');
 const path    = require('path');
 
-const { requireAuth }  = require('./middleware/authMiddleware');
-const { requireAdmin } = require('./middleware/requireAdmin');
+const { requireAuth }      = require('./middleware/authMiddleware');
+const { requireAdmin }     = require('./middleware/requireAdmin');
+const checkSubscription    = require('./middleware/checkSubscription');
 const {
   authLimiter,
   apiLimiter,
@@ -45,6 +46,97 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
+// ── STRIPE WEBHOOK (raw body — MUST be before express.json()) ─────────────────
+app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+
+  if (!process.env.STRIPE_SECRET_KEY) {
+    return res.status(400).json({ error: 'Stripe no configurado' });
+  }
+
+  const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+  let event;
+
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+  } catch (err) {
+    console.error('❌ Stripe webhook signature error:', err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  const dbW = require('./db/database');
+  const now = new Date();
+
+  try {
+    switch (event.type) {
+
+      case 'checkout.session.completed': {
+        const session = event.data.object;
+        const userId  = session.metadata?.userId;
+        const plan    = session.metadata?.plan;
+        if (userId && plan) {
+          const exp = new Date(now);
+          exp.setMonth(exp.getMonth() + 1);
+          await dbW.update(dbW.users, { _id: userId }, {
+            membershipPlan:       plan,
+            membershipExpiresAt:  exp.toISOString(),
+            stripeSubscriptionId: session.subscription,
+            subscriptionStatus:   'active',
+          });
+          console.log(`✅ Stripe: suscripción activada — usuario ${userId} (${plan})`);
+        }
+        break;
+      }
+
+      case 'invoice.payment_succeeded': {
+        const invoice = event.data.object;
+        // skip the initial charge (already handled by checkout.session.completed)
+        if (invoice.billing_reason === 'subscription_create') break;
+        const user = await dbW.findOne(dbW.users, { stripeCustomerId: invoice.customer });
+        if (user) {
+          const exp = new Date(now);
+          exp.setMonth(exp.getMonth() + 1);
+          await dbW.update(dbW.users, { _id: user._id }, {
+            membershipExpiresAt: exp.toISOString(),
+            subscriptionStatus:  'active',
+          });
+          console.log(`✅ Stripe: pago renovado — ${user.email}`);
+        }
+        break;
+      }
+
+      case 'invoice.payment_failed': {
+        const invoice = event.data.object;
+        const user = await dbW.findOne(dbW.users, { stripeCustomerId: invoice.customer });
+        if (user) {
+          await dbW.update(dbW.users, { _id: user._id }, { subscriptionStatus: 'past_due' });
+          console.log(`⚠️ Stripe: pago fallido — ${user.email}`);
+        }
+        break;
+      }
+
+      case 'customer.subscription.deleted': {
+        const sub  = event.data.object;
+        const user = await dbW.findOne(dbW.users, { stripeCustomerId: sub.customer });
+        if (user) {
+          await dbW.update(dbW.users, { _id: user._id }, {
+            subscriptionStatus:  'cancelled',
+            membershipPlan:      'cancelled',
+            membershipExpiresAt: now.toISOString(),
+          });
+          console.log(`❌ Stripe: suscripción cancelada — ${user.email}`);
+        }
+        break;
+      }
+
+    }
+  } catch (e) {
+    console.error('Stripe webhook handler error:', e.message);
+  }
+
+  res.json({ received: true });
+});
+
 // 3. Limitar tamaño de payload (previene ataques de payload gigante)
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: false, limit: '1mb' }));
@@ -67,14 +159,17 @@ app.use('/webhook',  webhookLimiter, require('./routes/webhook'));
 app.use('/auth',                     require('./routes/auth'));        // Instagram OAuth
 app.use('/api/user', authLimiter,    require('./routes/userAuth'));    // login / register
 
+// ── BILLING ROUTES ────────────────────────────────────────────────────────────
+app.use('/api/billing', apiLimiter, require('./routes/billing'));
+
 // ── ADMIN ROUTES ──────────────────────────────────────────────────────────────
 app.use('/api/admin', apiLimiter, requireAdmin, require('./routes/admin'));
 
 // ── PROTECTED API ROUTES ──────────────────────────────────────────────────────
-app.use('/api/agents',    apiLimiter, requireAuth, require('./routes/agents'));
-app.use('/api/knowledge', apiLimiter, requireAuth, require('./routes/knowledge'));
-app.use('/api/leads',     apiLimiter, requireAuth, require('./routes/leads'));
-app.use('/api/links',     apiLimiter, requireAuth, require('./routes/links'));
+app.use('/api/agents',    apiLimiter, requireAuth, checkSubscription, require('./routes/agents'));
+app.use('/api/knowledge', apiLimiter, requireAuth, checkSubscription, require('./routes/knowledge'));
+app.use('/api/leads',     apiLimiter, requireAuth, checkSubscription, require('./routes/leads'));
+app.use('/api/links',     apiLimiter, requireAuth, checkSubscription, require('./routes/links'));
 app.use('/api/settings',  apiLimiter, requireAuth, require('./routes/settings'));
 
 // Helper: account info from JWT

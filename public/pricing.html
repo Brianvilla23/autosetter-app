@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DMCloser — Planes y Precios</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --orange: #8b5cf6;
+      --grad: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+      --bg: #0a0a12;
+      --surface: #111120;
+      --card: #16162a;
+      --border: rgba(255,255,255,.08);
+      --text-1: #f0f0ff;
+      --text-2: #a0a0c0;
+      --text-3: #606080;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text-1);
+      min-height: 100vh;
+    }
+
+    /* ── NAV ── */
+    nav {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 22px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-logo {
+      font-size: 1.25rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .nav-logo-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--grad);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+    .nav-actions { display: flex; gap: 12px; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; padding: 10px 22px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all .15s; border: none; text-decoration: none; }
+    .btn-outline { background: transparent; border: 1.5px solid var(--border); color: var(--text-2); }
+    .btn-outline:hover { border-color: var(--orange); color: var(--orange); }
+    .btn-grad { background: var(--grad); color: #fff; box-shadow: 0 4px 16px rgba(139,92,246,.35); }
+    .btn-grad:hover { opacity: .9; transform: translateY(-1px); }
+
+    /* ── HERO ── */
+    .hero {
+      text-align: center;
+      padding: 90px 28px 60px;
+      max-width: 780px;
+      margin: 0 auto;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(139,92,246,.12);
+      border: 1px solid rgba(139,92,246,.3);
+      color: var(--orange);
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 28px;
+    }
+    .hero h1 {
+      font-size: clamp(2.2rem, 5vw, 3.4rem);
+      font-weight: 900;
+      line-height: 1.12;
+      margin-bottom: 20px;
+    }
+    .hero h1 span {
+      background: var(--grad);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p {
+      font-size: 1.1rem;
+      color: var(--text-2);
+      line-height: 1.65;
+      margin-bottom: 36px;
+    }
+    .hero-cta { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+    .hero-sub { font-size: 12.5px; color: var(--text-3); margin-top: 14px; }
+
+    /* ── STATS ── */
+    .stats-bar {
+      max-width: 860px;
+      margin: 0 auto 80px;
+      padding: 0 28px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    .stat-item {
+      background: var(--surface);
+      padding: 28px 20px;
+      text-align: center;
+    }
+    .stat-num { font-size: 2rem; font-weight: 900; background: var(--grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .stat-lbl { font-size: 13px; color: var(--text-3); margin-top: 4px; }
+
+    /* ── PRICING ── */
+    .pricing-section {
+      max-width: 1060px;
+      margin: 0 auto;
+      padding: 0 28px 100px;
+    }
+    .section-title {
+      text-align: center;
+      margin-bottom: 50px;
+    }
+    .section-title h2 {
+      font-size: 2rem;
+      font-weight: 800;
+      margin-bottom: 10px;
+    }
+    .section-title p { color: var(--text-2); font-size: 15px; }
+
+    .plans-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      align-items: start;
+    }
+    .plan-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 34px 28px;
+      position: relative;
+      transition: transform .2s, box-shadow .2s;
+    }
+    .plan-card:hover { transform: translateY(-4px); box-shadow: 0 16px 50px rgba(0,0,0,.4); }
+    .plan-card.featured {
+      border-color: rgba(139,92,246,.5);
+      background: linear-gradient(160deg, rgba(139,92,246,.10) 0%, rgba(236,72,153,.07) 100%);
+      box-shadow: 0 8px 40px rgba(139,92,246,.2);
+      transform: translateY(-8px);
+    }
+    .plan-card.featured:hover { transform: translateY(-12px); }
+    .plan-badge {
+      position: absolute;
+      top: -14px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--grad);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 5px 18px;
+      border-radius: 20px;
+      white-space: nowrap;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    .plan-name { font-size: 1rem; font-weight: 800; color: var(--text-2); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 14px; margin-top: 8px; }
+    .plan-price { margin-bottom: 8px; }
+    .plan-price .amount { font-size: 3rem; font-weight: 900; color: var(--text-1); line-height: 1; }
+    .plan-price .period { font-size: 1rem; color: var(--text-3); font-weight: 500; }
+    .plan-desc { color: var(--text-3); font-size: 13px; margin-bottom: 28px; line-height: 1.5; }
+    .plan-btn {
+      width: 100%;
+      padding: 13px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      border: none;
+      transition: all .15s;
+      text-align: center;
+      display: block;
+      text-decoration: none;
+      margin-bottom: 28px;
+    }
+    .plan-btn-outline {
+      background: transparent;
+      border: 1.5px solid var(--border);
+      color: var(--text-1);
+    }
+    .plan-btn-outline:hover { border-color: var(--orange); color: var(--orange); }
+    .plan-btn-grad { background: var(--grad); color: #fff; box-shadow: 0 4px 16px rgba(139,92,246,.3); }
+    .plan-btn-grad:hover { opacity: .92; transform: translateY(-1px); }
+
+    .plan-divider { height: 1px; background: var(--border); margin-bottom: 24px; }
+    .plan-features { list-style: none; display: flex; flex-direction: column; gap: 11px; }
+    .plan-features li { display: flex; align-items: flex-start; gap: 10px; font-size: 13.5px; color: var(--text-2); }
+    .plan-features li .icon { flex-shrink: 0; width: 18px; height: 18px; background: rgba(139,92,246,.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; margin-top: 2px; }
+
+    /* ── TRIAL CTA ── */
+    .trial-section {
+      background: linear-gradient(135deg, rgba(139,92,246,.12) 0%, rgba(236,72,153,.08) 100%);
+      border: 1px solid rgba(139,92,246,.2);
+      border-radius: 20px;
+      max-width: 680px;
+      margin: 0 auto 100px;
+      padding: 50px 40px;
+      text-align: center;
+    }
+    .trial-section h2 { font-size: 1.8rem; font-weight: 800; margin-bottom: 12px; }
+    .trial-section p { color: var(--text-2); font-size: 15px; margin-bottom: 30px; line-height: 1.6; }
+
+    /* ── FAQ ── */
+    .faq-section { max-width: 720px; margin: 0 auto 100px; padding: 0 28px; }
+    .faq-item { border-bottom: 1px solid var(--border); padding: 22px 0; }
+    .faq-q { font-weight: 700; font-size: 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .faq-q span { color: var(--orange); font-size: 18px; transition: transform .2s; }
+    .faq-a { color: var(--text-2); font-size: 14px; line-height: 1.7; margin-top: 12px; display: none; }
+    .faq-item.open .faq-q span { transform: rotate(45deg); }
+    .faq-item.open .faq-a { display: block; }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 28px;
+      text-align: center;
+      color: var(--text-3);
+      font-size: 13px;
+    }
+    footer a { color: var(--orange); text-decoration: none; }
+
+    @media (max-width: 900px) {
+      .plans-grid { grid-template-columns: 1fr; }
+      .plan-card.featured { transform: none; }
+      .stats-bar { grid-template-columns: 1fr; }
+      .hero { padding: 60px 20px 40px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">
+    <div class="nav-logo-icon">⚡</div>
+    DMCloser
+  </div>
+  <div class="nav-actions">
+    <a href="/" class="btn btn-outline">Iniciar sesión</a>
+    <a href="/?register=1" class="btn btn-grad" id="nav-trial-btn">Prueba gratis</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">🤖 Powered by GPT-4o · Resultados en 24h</div>
+  <h1>Tu setter IA para<br><span>Instagram que cierra citas</span><br>mientras duermes</h1>
+  <p>DMCloser automatiza tus DMs con un agente de inteligencia artificial que califica prospectos, maneja objeciones y agenda sesiones — exactamente como lo haría tu mejor setter humano.</p>
+  <div class="hero-cta">
+    <a href="/?register=1" class="btn btn-grad" id="hero-trial-btn" style="font-size:16px;padding:14px 32px">Empezar prueba gratis →</a>
+    <a href="#precios" class="btn btn-outline" style="font-size:15px;padding:14px 24px">Ver planes</a>
+  </div>
+  <p class="hero-sub">✅ 3 días gratis · Sin tarjeta de crédito · Cancela cuando quieras</p>
+</section>
+
+<!-- STATS -->
+<div class="stats-bar">
+  <div class="stat-item">
+    <div class="stat-num">24/7</div>
+    <div class="stat-lbl">Disponibilidad del bot</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num">3x</div>
+    <div class="stat-lbl">Más citas por semana</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num">100%</div>
+    <div class="stat-lbl">Conversaciones respondidas</div>
+  </div>
+</div>
+
+<!-- PRICING -->
+<section class="pricing-section" id="precios">
+  <div class="section-title">
+    <h2>Precios simples y transparentes</h2>
+    <p>Sin setup fees. Sin contratos de largo plazo. Cancela cuando quieras.</p>
+  </div>
+
+  <div class="plans-grid">
+
+    <!-- Starter -->
+    <div class="plan-card">
+      <div class="plan-name">Starter</div>
+      <div class="plan-price">
+        <span class="amount">$197</span>
+        <span class="period">/mes</span>
+      </div>
+      <div class="plan-desc">Perfecto para coaches y consultores que están empezando a escalar sus DMs.</div>
+      <a href="/?register=1" class="plan-btn plan-btn-outline">Comenzar gratis →</a>
+      <div class="plan-divider"></div>
+      <ul class="plan-features">
+        <li><span class="icon">✓</span> 1 cuenta de Instagram</li>
+        <li><span class="icon">✓</span> Hasta 3 agentes IA</li>
+        <li><span class="icon">✓</span> 500 conversaciones/mes</li>
+        <li><span class="icon">✓</span> Knowledge Base personalizable</li>
+        <li><span class="icon">✓</span> Leads dashboard + filtros</li>
+        <li><span class="icon">✓</span> Delay humanizado en respuestas</li>
+        <li><span class="icon">✓</span> Soporte por email</li>
+      </ul>
+    </div>
+
+    <!-- Pro -->
+    <div class="plan-card featured">
+      <div class="plan-badge">⭐ Más popular</div>
+      <div class="plan-name">Pro</div>
+      <div class="plan-price">
+        <span class="amount">$297</span>
+        <span class="period">/mes</span>
+      </div>
+      <div class="plan-desc">Para negocios en crecimiento que quieren escalar sus conversaciones sin contratar setters.</div>
+      <a href="/?register=1" class="plan-btn plan-btn-grad">Comenzar gratis →</a>
+      <div class="plan-divider"></div>
+      <ul class="plan-features">
+        <li><span class="icon">✓</span> 3 cuentas de Instagram</li>
+        <li><span class="icon">✓</span> Agentes IA ilimitados</li>
+        <li><span class="icon">✓</span> Conversaciones ilimitadas</li>
+        <li><span class="icon">✓</span> Knowledge Base avanzada</li>
+        <li><span class="icon">✓</span> Clasificación de leads (Hot/Warm/Cold)</li>
+        <li><span class="icon">✓</span> Bypass manual por usuario</li>
+        <li><span class="icon">✓</span> Onboarding personalizado</li>
+        <li><span class="icon">✓</span> Soporte prioritario</li>
+      </ul>
+    </div>
+
+    <!-- Agency -->
+    <div class="plan-card">
+      <div class="plan-name">Agency</div>
+      <div class="plan-price">
+        <span class="amount">$497</span>
+        <span class="period">/mes</span>
+      </div>
+      <div class="plan-desc">Para agencias y negocios de alto volumen que gestionan múltiples clientes.</div>
+      <a href="/?register=1" class="plan-btn plan-btn-outline">Comenzar gratis →</a>
+      <div class="plan-divider"></div>
+      <ul class="plan-features">
+        <li><span class="icon">✓</span> 10 cuentas de Instagram</li>
+        <li><span class="icon">✓</span> Agentes IA ilimitados</li>
+        <li><span class="icon">✓</span> Conversaciones ilimitadas</li>
+        <li><span class="icon">✓</span> White-label disponible</li>
+        <li><span class="icon">✓</span> Multi-usuario (equipo)</li>
+        <li><span class="icon">✓</span> Reportes avanzados</li>
+        <li><span class="icon">✓</span> Soporte dedicado 24/7</li>
+        <li><span class="icon">✓</span> Setup completo incluido</li>
+      </ul>
+    </div>
+
+  </div>
+</section>
+
+<!-- TRIAL CTA -->
+<div style="padding:0 28px">
+  <div class="trial-section">
+    <h2>Empieza gratis hoy mismo</h2>
+    <p>3 días de prueba gratuita. Sin tarjeta de crédito. Ve cómo DMCloser transforma tus DMs de Instagram en citas agendadas — en menos de 24 horas.</p>
+    <a href="/?register=1" class="btn btn-grad" style="font-size:16px;padding:14px 36px;display:inline-flex">
+      Crear cuenta gratis →
+    </a>
+    <p style="font-size:12px;color:var(--text-3);margin-top:14px">✅ Setup en 10 minutos · Soporte en español</p>
+  </div>
+</div>
+
+<!-- FAQ -->
+<section class="faq-section">
+  <div class="section-title" style="margin-bottom:36px">
+    <h2>Preguntas frecuentes</h2>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-q">¿Necesito saber programar para usar DMCloser? <span>+</span></div>
+    <div class="faq-a">No. DMCloser tiene una interfaz simple para configurar tu agente IA en minutos. Solo necesitas tu cuenta de Instagram Business y una API key de OpenAI.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">¿El bot suena robótico? ¿Instagram puede detectarlo? <span>+</span></div>
+    <div class="faq-a">El agente está diseñado para sonar como un setter humano real. Incluye delays aleatorios en las respuestas (30-90 segundos) para simular escritura natural, y las instrucciones guían al agente a responder de forma empática y cercana.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">¿Qué pasa cuando termina la prueba de 3 días? <span>+</span></div>
+    <div class="faq-a">Al finalizar los 3 días, se te pedirá que elijas un plan. Si no lo haces, el acceso queda pausado hasta que actualices tu suscripción. Tus datos y configuraciones se mantienen intactos.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">¿Puedo cancelar en cualquier momento? <span>+</span></div>
+    <div class="faq-a">Sí. Cancelas cuando quieras desde el panel de Gestionar Suscripción. No hay contratos de permanencia ni penalizaciones.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">¿En qué idiomas responde el agente? <span>+</span></div>
+    <div class="faq-a">El agente responde automáticamente en el mismo idioma en que le habla el prospecto — español, inglés, o cualquier otro idioma que soporte GPT-4o.</div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <p>© 2025 DMCloser · <a href="/">Iniciar sesión</a> · <a href="/?register=1">Crear cuenta</a></p>
+</footer>
+
+<script>
+  // FAQ accordion
+  document.querySelectorAll('.faq-q').forEach(q => {
+    q.addEventListener('click', () => {
+      q.closest('.faq-item').classList.toggle('open');
+    });
+  });
+
+  // Register button — redirect to dashboard and trigger register form
+  document.querySelectorAll('a[href="/?register=1"]').forEach(a => {
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      // Store intent and go to dashboard; main.js will handle it
+      sessionStorage.setItem('auth_mode', 'register');
+      window.location.href = '/';
+    });
+  });
+</script>
+</body>
+</html>

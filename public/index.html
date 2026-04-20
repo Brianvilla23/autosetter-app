@@ -67,6 +67,13 @@
 <!-- ── MAIN CONTENT ───────────────────────────────────────────────────────── -->
 <main class="main">
 
+<!-- ── TRIAL BANNER ─────────────────────────────────────────────────────── -->
+<div id="trial-banner" class="trial-banner" style="display:none">
+  <span class="trial-banner-text">🚀 Prueba gratuita · <strong><span id="trial-days-left">3 días</span> restantes</strong></span>
+  <button class="trial-upgrade-btn" onclick="showUpgradeModal()">Actualizar plan →</button>
+  <button class="trial-close-btn" onclick="this.closest('.trial-banner').style.display='none'" title="Cerrar">✕</button>
+</div>
+
   <!-- HOME ────────────────────────────────────────────────────────────────── -->
   <section id="section-home" class="section active">
     <div class="page-header">
@@ -444,6 +451,77 @@
       <button class="btn-ghost" id="btn-cancel-agent-modal">Cancelar</button>
       <button class="btn-primary" id="btn-save-new-agent">Crear</button>
     </div>
+  </div>
+</div>
+
+<!-- ── UPGRADE MODAL ─────────────────────────────────────────────────────── -->
+<div id="upgrade-modal" class="modal-overlay" style="display:none">
+  <div class="upgrade-panel">
+
+    <div class="upgrade-header">
+      <div>
+        <h2>Elige tu plan</h2>
+        <p>Automatiza tus DMs de Instagram con inteligencia artificial</p>
+      </div>
+      <button class="btn-ghost upgrade-close-btn" id="btn-close-upgrade">✕</button>
+    </div>
+
+    <div id="upgrade-expired-msg" class="upgrade-expired-msg" style="display:none">
+      ⚠️ Tu período de prueba ha expirado. Selecciona un plan para seguir usando DMCloser.
+    </div>
+
+    <div class="pricing-grid">
+
+      <!-- Starter -->
+      <div class="pricing-card">
+        <div class="pricing-name">Starter</div>
+        <div class="pricing-price">$197<span class="pricing-period">/mes</span></div>
+        <ul class="pricing-features">
+          <li>✅ 1 cuenta de Instagram</li>
+          <li>✅ Hasta 3 agentes IA</li>
+          <li>✅ 500 conversaciones/mes</li>
+          <li>✅ Knowledge Base</li>
+          <li>✅ Soporte por email</li>
+        </ul>
+        <button class="btn-primary pricing-btn" id="btn-plan-starter" onclick="upgradePlan('starter')">Elegir Starter</button>
+      </div>
+
+      <!-- Pro (destacado) -->
+      <div class="pricing-card pricing-card-featured">
+        <div class="pricing-badge-top">⭐ Más popular</div>
+        <div class="pricing-name">Pro</div>
+        <div class="pricing-price">$297<span class="pricing-period">/mes</span></div>
+        <ul class="pricing-features">
+          <li>✅ 3 cuentas de Instagram</li>
+          <li>✅ Agentes IA ilimitados</li>
+          <li>✅ Conversaciones ilimitadas</li>
+          <li>✅ Knowledge Base avanzada</li>
+          <li>✅ Onboarding + soporte prioritario</li>
+        </ul>
+        <button class="btn-primary pricing-btn" id="btn-plan-pro" onclick="upgradePlan('pro')">Elegir Pro</button>
+      </div>
+
+      <!-- Agency -->
+      <div class="pricing-card">
+        <div class="pricing-name">Agency</div>
+        <div class="pricing-price">$497<span class="pricing-period">/mes</span></div>
+        <ul class="pricing-features">
+          <li>✅ 10 cuentas de Instagram</li>
+          <li>✅ Agentes IA ilimitados</li>
+          <li>✅ Conversaciones ilimitadas</li>
+          <li>✅ White-label disponible</li>
+          <li>✅ Soporte dedicado 24/7</li>
+        </ul>
+        <button class="btn-primary pricing-btn" id="btn-plan-agency" onclick="upgradePlan('agency')">Elegir Agency</button>
+      </div>
+
+    </div>
+
+    <div class="upgrade-footer">
+      <button class="btn-ghost" onclick="manageSubscription()">🔧 Gestionar suscripción existente</button>
+      <span class="upgrade-guarantee">🔒 Pago seguro con Stripe · Cancela cuando quieras</span>
+    </div>
+
   </div>
 </div>
 

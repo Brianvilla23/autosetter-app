@@ -18,7 +18,7 @@ async function init() {
   const check = await fetch('/api/user/check').then(r => r.json()).catch(() => ({ hasUsers: false }));
 
   if (!check.hasUsers) {
-    // First-time: show setup screen
+    // First-time: show setup screen (creates admin)
     showAuthScreen('setup');
     return;
   }
@@ -32,7 +32,10 @@ async function init() {
     ACCOUNT_ID = CURRENT_USER?.accountId || '';
     showDashboard();
   } else {
-    showAuthScreen('login');
+    // Check if coming from pricing page wanting to register
+    const authMode = sessionStorage.getItem('auth_mode');
+    sessionStorage.removeItem('auth_mode');
+    showAuthScreen(authMode === 'register' ? 'register' : 'login');
   }
 }
 
@@ -44,7 +47,12 @@ function showDashboard() {
   if (nameEl && CURRENT_USER) nameEl.textContent = CURRENT_USER.name;
   initNav();
   loadSection('home');
-  // Check URL params (OAuth returns)
+
+  // Close upgrade modal button
+  const closeBtn = document.getElementById('btn-close-upgrade');
+  if (closeBtn) closeBtn.onclick = () => document.getElementById('upgrade-modal').style.display = 'none';
+
+  // Check URL params (OAuth + billing returns)
   const params = new URLSearchParams(window.location.search);
   if (params.get('auth') === 'success') {
     showToast('✅ Instagram conectado: ' + params.get('ig'));
@@ -53,7 +61,19 @@ function showDashboard() {
   } else if (params.get('auth') === 'error') {
     showToast('❌ ' + decodeURIComponent(params.get('msg') || 'Error desconocido'));
     window.history.replaceState({}, '', '/');
+  } else if (params.get('billing') === 'success') {
+    const plan = params.get('plan') || 'plan';
+    const planName = plan.charAt(0).toUpperCase() + plan.slice(1);
+    showToast(`🎉 ¡Suscripción activada! Bienvenido al plan ${planName}`);
+    window.history.replaceState({}, '', '/');
+    loadBillingStatus();
+  } else if (params.get('billing') === 'cancelled') {
+    showToast('Pago cancelado. Tu prueba gratuita sigue activa.');
+    window.history.replaceState({}, '', '/');
   }
+
+  // Always check billing status on load
+  loadBillingStatus();
 }
 
 function showAuthScreen(mode) {
@@ -64,24 +84,58 @@ function showAuthScreen(mode) {
 
 function renderAuthForm(mode) {
   const box = document.getElementById('auth-box');
-  const isSetup = mode === 'setup';
-  box.innerHTML = `
-    <div class="auth-logo">💬 DMCloser</div>
-    <h2 class="auth-title">${isSetup ? '🎉 Bienvenido — Crea tu cuenta' : 'Iniciar sesión'}</h2>
-    <p class="auth-sub">${isSetup ? 'Primera vez en el sistema. Configura tu acceso de administrador.' : 'Accede a tu panel de control'}</p>
-    ${isSetup ? `<input class="auth-input" id="auth-name" type="text" placeholder="Tu nombre" autocomplete="name">` : ''}
-    <input class="auth-input" id="auth-email" type="email" placeholder="Email" autocomplete="email">
-    <input class="auth-input" id="auth-password" type="password" placeholder="Contraseña (mín. 6 caracteres)" autocomplete="${isSetup ? 'new-password' : 'current-password'}">
-    ${isSetup ? `<input class="auth-input" id="auth-password2" type="password" placeholder="Confirmar contraseña" autocomplete="new-password">` : ''}
-    <div id="auth-error" class="auth-error" style="display:none"></div>
-    <button class="btn-primary auth-btn" id="auth-submit">${isSetup ? 'Crear cuenta y entrar' : 'Entrar'}</button>
-    ${!isSetup ? `<p class="auth-footer">¿Primer acceso? Contacta al administrador.</p>` : ''}
-  `;
 
-  document.getElementById('auth-submit').onclick = () => submitAuth(mode);
-  document.getElementById('auth-password').addEventListener('keydown', e => { if (e.key === 'Enter') submitAuth(mode); });
-  if (isSetup) document.getElementById('auth-name')?.focus();
-  else document.getElementById('auth-email')?.focus();
+  if (mode === 'login') {
+    box.innerHTML = `
+      <div class="auth-logo">⚡ DMCloser</div>
+      <h2 class="auth-title">Iniciar sesión</h2>
+      <p class="auth-sub">Accede a tu panel de control</p>
+      <input class="auth-input" id="auth-email" type="email" placeholder="Email" autocomplete="email">
+      <input class="auth-input" id="auth-password" type="password" placeholder="Contraseña" autocomplete="current-password">
+      <div id="auth-error" class="auth-error" style="display:none"></div>
+      <button class="btn-primary auth-btn" id="auth-submit">Entrar</button>
+      <p class="auth-footer">¿Nuevo aquí? <a href="#" id="auth-to-register" style="color:var(--orange);font-weight:600">Crear cuenta gratis →</a></p>
+    `;
+    document.getElementById('auth-submit').onclick = () => submitAuth('login');
+    document.getElementById('auth-password').addEventListener('keydown', e => { if (e.key === 'Enter') submitAuth('login'); });
+    document.getElementById('auth-to-register').onclick = (e) => { e.preventDefault(); showAuthScreen('register'); };
+    document.getElementById('auth-email')?.focus();
+
+  } else if (mode === 'register') {
+    box.innerHTML = `
+      <div class="auth-logo">⚡ DMCloser</div>
+      <h2 class="auth-title">Crear cuenta gratis</h2>
+      <p class="auth-sub">3 días de prueba gratuita. Sin tarjeta de crédito.</p>
+      <input class="auth-input" id="auth-name" type="text" placeholder="Tu nombre" autocomplete="name">
+      <input class="auth-input" id="auth-email" type="email" placeholder="Email" autocomplete="email">
+      <input class="auth-input" id="auth-password" type="password" placeholder="Contraseña (mín. 6 caracteres)" autocomplete="new-password">
+      <input class="auth-input" id="auth-password2" type="password" placeholder="Confirmar contraseña" autocomplete="new-password">
+      <div id="auth-error" class="auth-error" style="display:none"></div>
+      <button class="btn-primary auth-btn" id="auth-submit">Crear cuenta y comenzar →</button>
+      <p class="auth-footer">¿Ya tienes cuenta? <a href="#" id="auth-to-login" style="color:var(--orange);font-weight:600">Iniciar sesión</a></p>
+    `;
+    document.getElementById('auth-submit').onclick = () => submitAuth('register');
+    document.getElementById('auth-password').addEventListener('keydown', e => { if (e.key === 'Enter') submitAuth('register'); });
+    document.getElementById('auth-to-login').onclick = (e) => { e.preventDefault(); showAuthScreen('login'); };
+    document.getElementById('auth-name')?.focus();
+
+  } else {
+    // mode === 'setup' (first admin user)
+    box.innerHTML = `
+      <div class="auth-logo">⚡ DMCloser</div>
+      <h2 class="auth-title">🎉 Bienvenido</h2>
+      <p class="auth-sub">Primera vez en el sistema. Crea tu cuenta de administrador.</p>
+      <input class="auth-input" id="auth-name" type="text" placeholder="Tu nombre" autocomplete="name">
+      <input class="auth-input" id="auth-email" type="email" placeholder="Email" autocomplete="email">
+      <input class="auth-input" id="auth-password" type="password" placeholder="Contraseña (mín. 6 caracteres)" autocomplete="new-password">
+      <input class="auth-input" id="auth-password2" type="password" placeholder="Confirmar contraseña" autocomplete="new-password">
+      <div id="auth-error" class="auth-error" style="display:none"></div>
+      <button class="btn-primary auth-btn" id="auth-submit">Crear cuenta y entrar</button>
+    `;
+    document.getElementById('auth-submit').onclick = () => submitAuth('setup');
+    document.getElementById('auth-password').addEventListener('keydown', e => { if (e.key === 'Enter') submitAuth('setup'); });
+    document.getElementById('auth-name')?.focus();
+  }
 }
 
 async function submitAuth(mode) {
@@ -96,16 +150,18 @@ async function submitAuth(mode) {
   btn.disabled = true;
   btn.textContent = mode === 'setup' ? 'Creando cuenta...' : 'Entrando...';
 
-  if (mode === 'setup' && password !== pass2) {
+  const isRegisterMode = mode === 'setup' || mode === 'register';
+
+  if (isRegisterMode && password !== pass2) {
     errEl.textContent = 'Las contraseñas no coinciden';
     errEl.style.display = 'block';
     btn.disabled = false;
-    btn.textContent = 'Crear cuenta y entrar';
+    btn.textContent = mode === 'setup' ? 'Crear cuenta y entrar' : 'Crear cuenta y comenzar →';
     return;
   }
 
-  const endpoint = mode === 'setup' ? '/api/user/register' : '/api/user/login';
-  const body = mode === 'setup' ? { email, password, name } : { email, password };
+  const endpoint = isRegisterMode ? '/api/user/register' : '/api/user/login';
+  const body = isRegisterMode ? { email, password, name } : { email, password };
 
   try {
     const res = await fetch(endpoint, {
@@ -118,7 +174,7 @@ async function submitAuth(mode) {
       errEl.textContent = data.error || 'Error desconocido';
       errEl.style.display = 'block';
       btn.disabled = false;
-      btn.textContent = mode === 'setup' ? 'Crear cuenta y entrar' : 'Entrar';
+      btn.textContent = mode === 'setup' ? 'Crear cuenta y entrar' : mode === 'register' ? 'Crear cuenta y comenzar →' : 'Entrar';
       return;
     }
     // Success
@@ -133,7 +189,7 @@ async function submitAuth(mode) {
     errEl.textContent = 'Error de conexión';
     errEl.style.display = 'block';
     btn.disabled = false;
-    btn.textContent = mode === 'setup' ? 'Crear cuenta y entrar' : 'Entrar';
+    btn.textContent = mode === 'setup' ? 'Crear cuenta y entrar' : mode === 'register' ? 'Crear cuenta y comenzar →' : 'Entrar';
   }
 }
 
@@ -1034,6 +1090,11 @@ async function apiFetch(path, method = 'GET', body) {
       logout();
       return null;
     }
+    if (res.status === 402) {
+      // Suscripción expirada → mostrar modal de upgrade
+      showUpgradeModal(true);
+      return null;
+    }
     if (!res.ok) return null;
     return await res.json();
   } catch { return null; }
@@ -1081,6 +1142,68 @@ function showToast(msg) {
   toast.style.opacity = '1';
   clearTimeout(toastTimeout);
   toastTimeout = setTimeout(() => toast.style.opacity = '0', 3000);
+}
+
+// ── BILLING ───────────────────────────────────────────────────────────────────
+let billingStatus = null;
+
+async function loadBillingStatus() {
+  const data = await apiFetch('/api/billing/status');
+  if (!data) return;
+  billingStatus = data;
+
+  if (data.isAdmin) return; // Admins never see billing UI
+
+  if (data.isExpired) {
+    showUpgradeModal(true);
+    return;
+  }
+
+  // Show trial banner if in trial and 3 days or fewer remain
+  const banner = document.getElementById('trial-banner');
+  const daysEl = document.getElementById('trial-days-left');
+  if (banner && daysEl && data.plan === 'trial' && data.daysLeft <= 3) {
+    daysEl.textContent = data.daysLeft === 1 ? '1 día' : `${data.daysLeft} días`;
+    banner.style.display = 'flex';
+  }
+
+  // Update sidebar — show plan badge
+  const planBadge = document.getElementById('sidebar-plan-badge');
+  if (planBadge) {
+    planBadge.textContent = data.plan === 'trial' ? `Prueba · ${data.daysLeft}d` : data.plan;
+    planBadge.style.display = '';
+  }
+}
+
+function showUpgradeModal(isExpired = false) {
+  const modal  = document.getElementById('upgrade-modal');
+  const expMsg = document.getElementById('upgrade-expired-msg');
+  if (!modal) return;
+  if (expMsg) expMsg.style.display = isExpired ? 'block' : 'none';
+  modal.style.display = 'flex';
+}
+
+async function upgradePlan(plan) {
+  const btn = document.getElementById(`btn-plan-${plan}`);
+  const originalText = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Redirigiendo...'; }
+
+  const data = await apiFetch('/api/billing/checkout', 'POST', { plan });
+  if (data?.url) {
+    window.location.href = data.url;
+  } else {
+    showToast('❌ Error al crear sesión de pago. Verifica que Stripe esté configurado.');
+    if (btn) { btn.disabled = false; btn.textContent = originalText; }
+  }
+}
+
+async function manageSubscription() {
+  const data = await apiFetch('/api/billing/portal');
+  if (data?.url) {
+    window.location.href = data.url;
+  } else {
+    showToast('❌ No hay suscripción activa para gestionar.');
+  }
 }
 
 // ── START ─────────────────────────────────────────────────────────────────────

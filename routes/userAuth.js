@@ -23,12 +23,11 @@ router.post('/register', async (req, res) => {
     const count = await db.count(db.users, {});
     const isFirstUser = count === 0;
 
-    // Primer usuario → se convierte en admin sin código
-    // Los demás → requieren código de invitación válido
+    // Primer usuario → admin sin código ni expiración
+    // Demás usuarios → prueba gratuita de 3 días (o acceso extendido con código de invitación)
     let codeDoc = null;
-    if (!isFirstUser) {
-      if (!inviteCode) return res.status(400).json({ error: 'Se requiere un código de invitación para registrarse' });
-
+    if (!isFirstUser && inviteCode) {
+      // Código de invitación es OPCIONAL — si se provee, se valida y extiende acceso
       codeDoc = await db.findOne(db.inviteCodes, { code: inviteCode.toUpperCase().trim() });
       if (!codeDoc)           return res.status(400).json({ error: 'Código de invitación inválido' });
       if (!codeDoc.isActive)  return res.status(400).json({ error: 'Este código está desactivado' });
@@ -56,13 +55,23 @@ router.post('/register', async (req, res) => {
     const now = new Date().toISOString();
     let membershipDate      = null;
     let membershipExpiresAt = null;
-    let membershipPlan      = isFirstUser ? 'admin' : (codeDoc?.type || 'trial');
+    let membershipPlan      = isFirstUser ? 'admin' : 'trial';
 
-    if (!isFirstUser && codeDoc) {
-      membershipDate      = now;
-      const exp = new Date();
-      exp.setDate(exp.getDate() + codeDoc.daysAccess);
-      membershipExpiresAt = exp.toISOString();
+    if (!isFirstUser) {
+      membershipDate = now;
+      if (codeDoc) {
+        // Código de invitación → acceso extendido según el código
+        membershipPlan = codeDoc.type || 'trial';
+        const exp = new Date();
+        exp.setDate(exp.getDate() + codeDoc.daysAccess);
+        membershipExpiresAt = exp.toISOString();
+      } else {
+        // Auto-registro → 3 días de prueba gratuita
+        membershipPlan = 'trial';
+        const exp = new Date();
+        exp.setDate(exp.getDate() + 3);
+        membershipExpiresAt = exp.toISOString();
+      }
     }
 
     const user = await db.insert(db.users, {
