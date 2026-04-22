@@ -3,6 +3,7 @@ const router  = express.Router();
 const db      = require('../db/database');
 const { generateReply, classifyLead } = require('../services/openai');
 const { sendMessage, getIGUserInfo } = require('../services/meta');
+const { checkDMAllowance, incrementDMCount } = require('../services/limits');
 const { v4: uuidv4 } = require('uuid');
 
 // Verificar si el texto contiene alguno de los keywords del agente
@@ -172,9 +173,22 @@ async function handleComment(pageId, commentData) {
 async function runConversation({ account, agent, lead, senderId, text, isCommentTrigger = false }) {
   if (lead.automation !== 'automated' || lead.is_bypassed) return;
 
-  // Guardar mensaje entrante
+  // Guardar mensaje entrante (no cuenta al límite: son los DMs recibidos)
   await db.insert(db.messages, { lead_id: lead._id, role: 'user', content: text });
   await db.update(db.leads, { _id: lead._id }, { last_message_at: new Date().toISOString() });
+
+  // ── CHECK LÍMITE DE PLAN ─────────────────────────────────────────────────
+  // El bot solo responde si el dueño de la cuenta no superó su límite mensual.
+  const allowance = await checkDMAllowance(account._id);
+  if (!allowance.allowed) {
+    console.warn(`🚫 [${agent.name}] Límite mensual alcanzado para @${lead.ig_username}: ${allowance.reason}`);
+    // Marcamos el lead para que el humano sepa que quedó sin respuesta automática
+    await db.update(db.leads, { _id: lead._id }, {
+      limit_reached: true,
+      limit_reason:  allowance.reason,
+    }).catch(() => null);
+    return;
+  }
 
   // Cancelar follow-ups pendientes — el lead acaba de responder (best-effort)
   try {
@@ -225,6 +239,7 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
     text:         reply,
     accessToken:  account.access_token,
     igUserId,
+    accountId:    account._id,     // Para incrementar contador de DMs al enviar
     sendAt,
     leadUsername: lead.ig_username,
     agentName:    agent.name,

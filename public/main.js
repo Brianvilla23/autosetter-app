@@ -245,6 +245,72 @@ async function loadHome() {
   document.getElementById('sidebar-username').textContent = '@' + (data.account?.ig_username || 'cuenta');
   document.getElementById('webhook-url').textContent = `${location.origin}/webhook`;
   document.getElementById('settings-webhook-url').textContent = `${location.origin}/webhook`;
+
+  // Carga la card de uso/límites
+  loadUsage();
+}
+
+// ── USAGE (uso vs límites del plan) ─────────────────────────────────────────
+async function loadUsage() {
+  const data = await apiFetch('/api/usage');
+  if (!data || !data.plan) return;
+
+  const card = document.getElementById('usage-card');
+  if (card) card.style.display = '';
+
+  const { plan, usage, percent, overLimit } = data;
+
+  document.getElementById('usage-plan-name').textContent = plan.name;
+  const monthLbl = new Date(usage.month + '-01T00:00:00').toLocaleDateString('es', { month: 'long', year: 'numeric' });
+  document.getElementById('usage-month').textContent = `Período: ${monthLbl} (se resetea el día 1 de cada mes)`;
+
+  const fmt = (v, max) => max === null || !isFinite(max) ? `${v} / ∞` : `${v} / ${max}`;
+
+  // DMs
+  const maxDMs = isFinite(plan.maxDMs) ? plan.maxDMs : null;
+  document.getElementById('usage-dms-text').textContent = fmt(usage.dms, maxDMs);
+  document.getElementById('usage-dms-fill').style.width = `${percent.dms}%`;
+  document.getElementById('usage-dms-fill').style.background = percent.dms >= 90 ? '#ef4444' : percent.dms >= 75 ? '#f59e0b' : 'var(--orange)';
+
+  // Agentes
+  const maxA = isFinite(plan.maxAgents) ? plan.maxAgents : null;
+  document.getElementById('usage-agents-text').textContent = fmt(usage.agents, maxA);
+  document.getElementById('usage-agents-fill').style.width = `${percent.agents}%`;
+  document.getElementById('usage-row-agents').style.display = maxA === null ? 'none' : '';
+
+  // Cuentas
+  const maxAc = isFinite(plan.maxAccounts) ? plan.maxAccounts : null;
+  document.getElementById('usage-accounts-text').textContent = fmt(usage.accounts, maxAc);
+  document.getElementById('usage-accounts-fill').style.width = `${percent.accounts}%`;
+  document.getElementById('usage-row-accounts').style.display = maxAc === null ? 'none' : '';
+
+  // Magnets
+  const maxM = isFinite(plan.maxMagnets) ? plan.maxMagnets : null;
+  document.getElementById('usage-magnets-text').textContent = fmt(usage.magnets, maxM);
+  document.getElementById('usage-magnets-fill').style.width = `${percent.magnets}%`;
+  document.getElementById('usage-row-magnets').style.display = maxM === null ? 'none' : '';
+
+  // Warning si algún recurso está al 80%+
+  const warnings = [];
+  if (percent.dms >= 80)      warnings.push(`DMs al ${percent.dms}%`);
+  if (percent.agents >= 100)  warnings.push('agentes al máximo');
+  if (percent.magnets >= 100) warnings.push('magnet links al máximo');
+  const warnEl = document.getElementById('usage-warning');
+  const warnTxt = document.getElementById('usage-warning-text');
+  if (warnings.length) {
+    warnEl.style.display = '';
+    warnTxt.textContent = warnings.join(', ') + '. Considera upgradear.';
+  } else {
+    warnEl.style.display = 'none';
+  }
+
+  // Botón upgrade si cualquier recurso está en rojo o plan es trial/starter
+  const needsUpgrade = Object.values(overLimit).some(Boolean) || ['trial', 'starter'].includes(plan.id);
+  const upBtn = document.getElementById('btn-usage-upgrade');
+  if (upBtn) {
+    upBtn.style.display = needsUpgrade ? '' : 'none';
+    upBtn.onclick = () => showUpgradeModal(false);
+  }
 }
 
 // ── AGENTS ───────────────────────────────────────────────────────────────────
@@ -1175,6 +1241,16 @@ async function apiFetch(path, method = 'GET', body) {
     if (res.status === 402) {
       // Suscripción expirada → mostrar modal de upgrade
       showUpgradeModal(true);
+      return null;
+    }
+    if (res.status === 403) {
+      // Límite de plan alcanzado → leer body y mostrar modal de upgrade
+      const err = await res.json().catch(() => ({}));
+      if (err.upgrade) {
+        showToast('⚠️ ' + (err.error || 'Límite del plan alcanzado'));
+        showUpgradeModal(false);
+        return null;
+      }
       return null;
     }
     if (!res.ok) return null;

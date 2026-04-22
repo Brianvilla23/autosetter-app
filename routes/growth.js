@@ -6,6 +6,7 @@
 const express = require('express');
 const router  = express.Router();
 const db      = require('../db/database');
+const { enforceMaxMagnets } = require('../middleware/checkPlanLimits');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MAGNET LINKS — URLs ig.me con tracking
@@ -50,7 +51,7 @@ router.get('/magnet-links', async (req, res) => {
  * Crea un magnet link. Body: { accountId, label, source, preset_text }
  * El slug se genera automáticamente (hash corto).
  */
-router.post('/magnet-links', async (req, res) => {
+router.post('/magnet-links', enforceMaxMagnets, async (req, res) => {
   try {
     const { accountId, label, source = 'bio', preset_text } = req.body;
     if (!accountId || !label) return res.status(400).json({ error: 'accountId y label requeridos' });

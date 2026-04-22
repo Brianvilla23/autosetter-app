@@ -2,6 +2,7 @@ const express = require('express');
 const router  = express.Router();
 const db      = require('../db/database');
 const { v4: uuidv4 } = require('uuid');
+const { enforceMaxAgents, enforceFollowupFeature } = require('../middleware/checkPlanLimits');
 
 // GET all agents for account
 router.get('/', async (req, res) => {
@@ -32,7 +33,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST create agent
-router.post('/', async (req, res) => {
+router.post('/', enforceMaxAgents, async (req, res) => {
   try {
     const { accountId, name, avatar = '🤖', instructions = '' } = req.body;
     const agent = await db.insert(db.agents, { account_id: accountId, name, avatar, instructions, enabled: true, link_ids: [] });
@@ -41,7 +42,7 @@ router.post('/', async (req, res) => {
 });
 
 // PUT update agent
-router.put('/:id', async (req, res) => {
+router.put('/:id', enforceFollowupFeature, async (req, res) => {
   try {
     const {
       name, avatar, instructions, enabled, trigger_keywords, delay_min, delay_max,
@@ -60,7 +61,14 @@ router.put('/:id', async (req, res) => {
 });
 
 // PATCH agent followup settings (atajo solo para configuración follow-up)
-router.patch('/:id/followup', async (req, res) => {
+router.patch('/:id/followup', async (req, res, next) => {
+  // Si están tratando de activar, validar plan
+  if (req.body?.enabled === true) {
+    req.body.followup_enabled = true;
+    return enforceFollowupFeature(req, res, next);
+  }
+  next();
+}, async (req, res) => {
   try {
     const { enabled, delay_hours } = req.body;
     const upd = {};

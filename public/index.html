@@ -117,6 +117,67 @@
       </div>
     </div>
 
+    <!-- Uso del mes vs límites del plan -->
+    <div class="usage-card" id="usage-card" style="display:none;background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+        <div>
+          <h3 style="margin:0;font-size:16px">📊 Uso del mes — Plan <span id="usage-plan-name" style="color:var(--orange)">—</span></h3>
+          <p style="margin:4px 0 0;color:var(--text-2);font-size:13px" id="usage-month">—</p>
+        </div>
+        <button class="btn-primary" id="btn-usage-upgrade" style="display:none">⬆️ Upgradear plan</button>
+      </div>
+
+      <div class="usage-bars" style="display:grid;gap:14px">
+        <!-- DMs -->
+        <div class="usage-row" id="usage-row-dms">
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px">
+            <span><strong>💬 DMs enviados</strong></span>
+            <span id="usage-dms-text">—</span>
+          </div>
+          <div class="usage-bar-bg" style="background:var(--border);height:8px;border-radius:4px;overflow:hidden">
+            <div id="usage-dms-fill" class="usage-bar-fill" style="height:100%;width:0%;background:var(--orange);transition:width .3s"></div>
+          </div>
+        </div>
+
+        <!-- Agentes -->
+        <div class="usage-row" id="usage-row-agents">
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px">
+            <span><strong>🤖 Agentes</strong></span>
+            <span id="usage-agents-text">—</span>
+          </div>
+          <div class="usage-bar-bg" style="background:var(--border);height:8px;border-radius:4px;overflow:hidden">
+            <div id="usage-agents-fill" class="usage-bar-fill" style="height:100%;width:0%;background:var(--orange);transition:width .3s"></div>
+          </div>
+        </div>
+
+        <!-- Cuentas IG -->
+        <div class="usage-row" id="usage-row-accounts">
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px">
+            <span><strong>📸 Cuentas IG conectadas</strong></span>
+            <span id="usage-accounts-text">—</span>
+          </div>
+          <div class="usage-bar-bg" style="background:var(--border);height:8px;border-radius:4px;overflow:hidden">
+            <div id="usage-accounts-fill" class="usage-bar-fill" style="height:100%;width:0%;background:var(--orange);transition:width .3s"></div>
+          </div>
+        </div>
+
+        <!-- Magnets (solo se muestra si el plan tiene límite finito) -->
+        <div class="usage-row" id="usage-row-magnets">
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px">
+            <span><strong>🧲 Magnet links</strong></span>
+            <span id="usage-magnets-text">—</span>
+          </div>
+          <div class="usage-bar-bg" style="background:var(--border);height:8px;border-radius:4px;overflow:hidden">
+            <div id="usage-magnets-fill" class="usage-bar-fill" style="height:100%;width:0%;background:var(--orange);transition:width .3s"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="usage-warning" style="display:none;margin-top:14px;padding:10px 14px;background:#fef2f2;border-left:3px solid #ef4444;border-radius:6px;font-size:13px;color:#991b1b">
+        <strong>⚠️ Te estás quedando sin límite.</strong> <span id="usage-warning-text"></span>
+      </div>
+    </div>
+
     <div class="home-cards">
       <div class="home-card">
         <h3>🚀 Primeros pasos</h3>

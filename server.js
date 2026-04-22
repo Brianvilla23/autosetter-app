@@ -263,6 +263,7 @@ app.use('/api/links',     apiLimiter, requireAuth, checkSubscription, require('.
 app.use('/api/settings',  apiLimiter, requireAuth, require('./routes/settings'));
 app.use('/api/growth',    apiLimiter, requireAuth, checkSubscription, require('./routes/growth'));
 app.use('/api/notifications', apiLimiter, requireAuth, require('./routes/notifications'));
+app.use('/api/usage',         apiLimiter, requireAuth, require('./routes/usage'));
 
 // Helper: account info from JWT
 app.get('/api/account/me', requireAuth, async (req, res) => {
@@ -333,6 +334,7 @@ app.get('*', (req, res) => {
 // ── PENDING SENDS WORKER ──────────────────────────────────────────────────────
 // Procesa replies pendientes cada 10s. Sobrevive reinicios de Railway.
 const { sendMessage } = require('./services/meta');
+const { incrementDMCount } = require('./services/limits');
 const dbW = require('./db/database');
 
 async function processPendingSends() {
@@ -341,6 +343,7 @@ async function processPendingSends() {
     const pending = await dbW.find(dbW.pendingSends, {});
     const due = pending.filter(p => p.sendAt <= now);
     for (const item of due) {
+      let sentOk = false;
       try {
         await sendMessage({
           recipientId:  item.recipientId,
@@ -348,9 +351,14 @@ async function processPendingSends() {
           accessToken:  item.accessToken,
           igUserId:     item.igUserId,
         });
+        sentOk = true;
         console.log(`✅ [${item.agentName}] → @${item.leadUsername}: ${item.text.substring(0, 60)}...`);
       } catch (e) {
         console.error(`❌ pendingSend error para @${item.leadUsername}:`, e.response?.data || e.message);
+      }
+      // Contabilizar solo envíos exitosos contra el límite del plan
+      if (sentOk && item.accountId) {
+        await incrementDMCount(item.accountId, 1).catch(() => null);
       }
       // Eliminar siempre (éxito o error) para no reintentar indefinidamente
       await dbW.remove(dbW.pendingSends, { _id: item._id });
