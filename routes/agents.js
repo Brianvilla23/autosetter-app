@@ -43,10 +43,37 @@ router.post('/', async (req, res) => {
 // PUT update agent
 router.put('/:id', async (req, res) => {
   try {
-    const { name, avatar, instructions, enabled, trigger_keywords, delay_min, delay_max } = req.body;
-    await db.update(db.agents, { _id: req.params.id }, { name, avatar, instructions, enabled, trigger_keywords, delay_min, delay_max });
+    const {
+      name, avatar, instructions, enabled, trigger_keywords, delay_min, delay_max,
+      followup_enabled, followup_delay_hours,
+    } = req.body;
+    const upd = { name, avatar, instructions, enabled, trigger_keywords, delay_min, delay_max };
+    if (typeof followup_enabled === 'boolean') upd.followup_enabled = followup_enabled;
+    if (followup_delay_hours !== undefined) {
+      const h = Math.max(1, Math.min(23, Number(followup_delay_hours) || 3));
+      upd.followup_delay_hours = h;
+    }
+    await db.update(db.agents, { _id: req.params.id }, upd);
     const agent = await db.findOne(db.agents, { _id: req.params.id });
     res.json({ ...agent, id: agent._id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// PATCH agent followup settings (atajo solo para configuración follow-up)
+router.patch('/:id/followup', async (req, res) => {
+  try {
+    const { enabled, delay_hours } = req.body;
+    const upd = {};
+    if (typeof enabled === 'boolean') upd.followup_enabled = enabled;
+    if (delay_hours !== undefined) {
+      upd.followup_delay_hours = Math.max(1, Math.min(23, Number(delay_hours) || 3));
+    }
+    await db.update(db.agents, { _id: req.params.id }, upd);
+    const agent = await db.findOne(db.agents, { _id: req.params.id });
+    res.json({
+      followup_enabled:     agent.followup_enabled || false,
+      followup_delay_hours: agent.followup_delay_hours || 3,
+    });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

@@ -20,6 +20,9 @@ const db = {
   pendingSends:  new Datastore({ filename: path.join(dir, 'pendingSends.db'),  autoload: true }),
   aiUsage:       new Datastore({ filename: path.join(dir, 'aiUsage.db'),       autoload: true }),
   auditLog:      new Datastore({ filename: path.join(dir, 'auditLog.db'),      autoload: true }),
+  followups:     new Datastore({ filename: path.join(dir, 'followups.db'),     autoload: true }),
+  magnetLinks:   new Datastore({ filename: path.join(dir, 'magnetLinks.db'),   autoload: true }),
+  linkClicks:    new Datastore({ filename: path.join(dir, 'linkClicks.db'),    autoload: true }),
 };
 
 // Compact on load

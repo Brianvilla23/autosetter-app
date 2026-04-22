@@ -176,6 +176,12 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
   await db.insert(db.messages, { lead_id: lead._id, role: 'user', content: text });
   await db.update(db.leads, { _id: lead._id }, { last_message_at: new Date().toISOString() });
 
+  // Cancelar follow-ups pendientes — el lead acaba de responder (best-effort)
+  try {
+    const { cancelPendingForLead } = require('../services/followup');
+    await cancelPendingForLead(lead._id, 'lead respondió');
+  } catch (e) { /* silencioso */ }
+
   // Construir contexto
   const history    = await db.find(db.messages, { lead_id: lead._id },
     (a, b) => new Date(a.createdAt) - new Date(b.createdAt));

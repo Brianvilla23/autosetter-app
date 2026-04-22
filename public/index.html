@@ -48,6 +48,10 @@
       <span class="nav-icon"><svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clip-rule="evenodd"/></svg></span>
       Links
     </a>
+    <a class="nav-item" data-section="growth">
+      <span class="nav-icon"><svg viewBox="0 0 20 20"><path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z"/><path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z"/></svg></span>
+      Growth
+    </a>
     <a class="nav-item" data-section="settings">
       <span class="nav-icon"><svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/></svg></span>
       Settings
@@ -311,6 +315,75 @@
         <button class="btn-ghost" id="btn-cancel-link">Cancelar</button>
         <button class="btn-primary" id="btn-save-link">Guardar link</button>
       </div>
+    </div>
+  </section>
+
+  <!-- GROWTH ──────────────────────────────────────────────────────────────── -->
+  <section id="section-growth" class="section">
+    <div class="page-header">
+      <div>
+        <h1>Growth</h1>
+        <p>Follow-up automático, links de captación y export de leads</p>
+      </div>
+    </div>
+
+    <!-- FOLLOW-UP STATS -->
+    <div class="stats-grid" style="margin-bottom:20px">
+      <div class="stat-card">
+        <div class="stat-icon">🔔</div>
+        <div>
+          <div class="stat-val" id="fu-sent">—</div>
+          <div class="stat-label">Follow-ups enviados</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">⏳</div>
+        <div>
+          <div class="stat-val" id="fu-pending">—</div>
+          <div class="stat-label">Pendientes</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🚫</div>
+        <div>
+          <div class="stat-val" id="fu-cancelled">—</div>
+          <div class="stat-label">Cancelados</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🔗</div>
+        <div>
+          <div class="stat-val" id="ml-clicks">—</div>
+          <div class="stat-label">Clicks en magnet links</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FOLLOW-UP CONFIG -->
+    <div class="settings-card" style="margin-bottom:20px">
+      <h3>🔔 Follow-up automático</h3>
+      <p>Si un lead no responde en X horas (dentro de ventana 24h de Instagram), el bot le manda un mensaje de seguimiento contextual. Máximo 2 intentos por lead. 100% compliant con la política de Meta.</p>
+      <div id="followup-agents-list" style="margin-top:14px"></div>
+    </div>
+
+    <!-- EXPORT CSV -->
+    <div class="settings-card" style="margin-bottom:20px">
+      <h3>📥 Exportar leads</h3>
+      <p>Descarga todos tus leads en CSV (compatible con Excel, Notion, Airtable)</p>
+      <button class="btn-primary" id="btn-export-csv">Descargar CSV</button>
+    </div>
+
+    <!-- MAGNET LINKS -->
+    <div class="settings-card" style="margin-bottom:20px">
+      <h3>🎯 Lead magnet links</h3>
+      <p>Crea links con tracking que abren DM directo a tu cuenta con un mensaje pre-escrito. Úsalos en tu bio, ads, posts o stories.</p>
+      <div style="display:grid;grid-template-columns:2fr 1fr 2fr auto;gap:10px;margin-top:14px">
+        <input type="text" id="ml-label" placeholder="Etiqueta (ej: Link bio)" class="form-input">
+        <input type="text" id="ml-source" placeholder="Fuente (bio, ads, story)" class="form-input">
+        <input type="text" id="ml-preset" placeholder="Mensaje pre-escrito (opcional)" class="form-input" maxlength="280">
+        <button class="btn-primary" id="btn-create-magnet">+ Crear</button>
+      </div>
+      <div id="magnet-links-list" style="margin-top:16px"></div>
     </div>
   </section>
 

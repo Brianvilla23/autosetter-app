@@ -227,6 +227,7 @@ function loadSection(name) {
     case 'knowledge': loadKnowledge(); break;
     case 'leads':     loadLeads(); break;
     case 'links':     loadLinks(); break;
+    case 'growth':    loadGrowth(); break;
     case 'settings':  loadSettings(); break;
   }
 }
@@ -1220,6 +1221,174 @@ async function manageSubscription() {
     showToast('❌ No hay suscripción activa para gestionar.');
   }
 }
+
+// ── GROWTH ───────────────────────────────────────────────────────────────────
+async function loadGrowth() {
+  if (!ACCOUNT_ID) return;
+
+  // Stats
+  try {
+    const stats = await apiFetch(`/api/growth/followup-stats?accountId=${ACCOUNT_ID}`);
+    if (stats) {
+      document.getElementById('fu-sent').textContent      = stats.sent || 0;
+      document.getElementById('fu-pending').textContent   = stats.pending || 0;
+      document.getElementById('fu-cancelled').textContent = stats.cancelled || 0;
+    }
+  } catch {}
+
+  // Magnet links
+  await loadMagnetLinks();
+
+  // Follow-up config por agente
+  await loadFollowupAgents();
+
+  // Wire buttons (solo una vez)
+  const exportBtn = document.getElementById('btn-export-csv');
+  if (exportBtn && !exportBtn.dataset.wired) {
+    exportBtn.dataset.wired = '1';
+    exportBtn.addEventListener('click', exportLeadsCSV);
+  }
+  const magnetBtn = document.getElementById('btn-create-magnet');
+  if (magnetBtn && !magnetBtn.dataset.wired) {
+    magnetBtn.dataset.wired = '1';
+    magnetBtn.addEventListener('click', createMagnetLink);
+  }
+}
+
+async function loadFollowupAgents() {
+  const container = document.getElementById('followup-agents-list');
+  if (!container) return;
+  const agents = await apiFetch(`/api/agents?accountId=${ACCOUNT_ID}`);
+  if (!agents || !agents.length) {
+    container.innerHTML = '<div style="color:var(--text-3);font-size:13px;padding:8px 0">No hay agentes creados todavía</div>';
+    return;
+  }
+  container.innerHTML = agents.map(a => {
+    const enabled = a.followup_enabled === true;
+    const hours   = a.followup_delay_hours || 3;
+    return `
+      <div class="fu-agent-row" data-agent-id="${a._id}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:var(--bg-2)">
+        <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
+          <span style="font-size:20px">${a.avatar || '🤖'}</span>
+          <div style="min-width:0">
+            <div style="font-weight:600;font-size:14px">${escHtmlSafe(a.name)}</div>
+            <div style="font-size:12px;color:var(--text-3)">
+              ${enabled ? `Enviará follow-up si no responden en <strong>${hours}h</strong>` : 'Follow-up desactivado'}
+            </div>
+          </div>
+        </div>
+        <input type="number" min="1" max="23" value="${hours}" class="form-input fu-delay" style="width:70px;text-align:center" data-agent-id="${a._id}" ${enabled ? '' : 'disabled'}>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none">
+          <input type="checkbox" class="fu-toggle" data-agent-id="${a._id}" ${enabled ? 'checked' : ''}>
+          <span style="font-size:12px;color:var(--text-2)">${enabled ? 'ON' : 'OFF'}</span>
+        </label>
+      </div>`;
+  }).join('');
+
+  // Wire toggles
+  container.querySelectorAll('.fu-toggle').forEach(cb => {
+    cb.addEventListener('change', async (e) => {
+      const id = e.target.dataset.agentId;
+      const row = e.target.closest('.fu-agent-row');
+      const delayInput = row.querySelector('.fu-delay');
+      const hours = parseInt(delayInput.value) || 3;
+      await apiFetch(`/api/agents/${id}/followup`, 'PATCH', {
+        enabled: e.target.checked, delay_hours: hours,
+      });
+      showToast(e.target.checked ? '✅ Follow-up activado' : '🔕 Follow-up desactivado');
+      loadFollowupAgents();
+    });
+  });
+  container.querySelectorAll('.fu-delay').forEach(inp => {
+    inp.addEventListener('change', async (e) => {
+      const id = e.target.dataset.agentId;
+      const hours = Math.max(1, Math.min(23, parseInt(e.target.value) || 3));
+      e.target.value = hours;
+      await apiFetch(`/api/agents/${id}/followup`, 'PATCH', { delay_hours: hours });
+      showToast(`⏱ Delay actualizado a ${hours}h`);
+    });
+  });
+}
+
+async function loadMagnetLinks() {
+  const container = document.getElementById('magnet-links-list');
+  if (!container) return;
+  const links = await apiFetch(`/api/growth/magnet-links?accountId=${ACCOUNT_ID}`);
+  const totalClicks = (links || []).reduce((s, l) => s + (l.clicks || 0), 0);
+  const mlClicksEl = document.getElementById('ml-clicks');
+  if (mlClicksEl) mlClicksEl.textContent = totalClicks;
+
+  if (!links || !links.length) {
+    container.innerHTML = '<div style="color:var(--text-3);font-size:13px;padding:8px 0">Aún no has creado ningún magnet link</div>';
+    return;
+  }
+  container.innerHTML = links.map(l => `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--bg-2)">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:13px">${escHtmlSafe(l.label)} <span style="font-weight:400;font-size:11px;color:var(--text-3);margin-left:6px">[${escHtmlSafe(l.source)}]</span></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+          <code style="font-size:11px;color:var(--accent);background:var(--bg-1);padding:2px 6px;border-radius:4px;word-break:break-all">${escHtmlSafe(l.redirect_url)}</code>
+          <button class="btn-ghost" style="padding:2px 8px;font-size:11px" onclick="navigator.clipboard.writeText('${l.redirect_url}').then(()=>showToast('📋 Copiado'))">📋</button>
+        </div>
+        ${l.preset_text ? `<div style="font-size:11px;color:var(--text-3);margin-top:4px;font-style:italic">"${escHtmlSafe(l.preset_text)}"</div>` : ''}
+      </div>
+      <div style="text-align:right;font-size:12px;color:var(--text-2)">
+        <div style="font-weight:700;font-size:18px;color:var(--accent)">${l.clicks}</div>
+        <div style="font-size:10px;color:var(--text-3)">clicks</div>
+      </div>
+      <button class="btn-ghost" style="padding:4px 8px;font-size:12px" onclick="deleteMagnetLink('${l.id}')">🗑</button>
+    </div>`).join('');
+}
+
+async function createMagnetLink() {
+  const label  = document.getElementById('ml-label').value.trim();
+  const source = document.getElementById('ml-source').value.trim() || 'bio';
+  const preset = document.getElementById('ml-preset').value.trim();
+  if (!label) { showToast('❌ Ingresa una etiqueta'); return; }
+  const res = await apiFetch('/api/growth/magnet-links', 'POST', {
+    accountId: ACCOUNT_ID, label, source, preset_text: preset || null,
+  });
+  if (res?.id) {
+    document.getElementById('ml-label').value  = '';
+    document.getElementById('ml-source').value = '';
+    document.getElementById('ml-preset').value = '';
+    showToast('✅ Magnet link creado');
+    loadMagnetLinks();
+  }
+}
+
+async function deleteMagnetLink(id) {
+  if (!confirm('¿Eliminar este magnet link? Los clicks acumulados se perderán.')) return;
+  await apiFetch(`/api/growth/magnet-links/${id}`, 'DELETE');
+  loadMagnetLinks();
+}
+
+function exportLeadsCSV() {
+  // Usamos un link con Authorization injectado via fetch + blob (ya que CSV download)
+  fetch(`/api/growth/export-leads?accountId=${ACCOUNT_ID}`, {
+    headers: { 'Authorization': `Bearer ${AUTH_TOKEN}` },
+  })
+  .then(r => { if (!r.ok) throw new Error('Error exportando'); return r.blob(); })
+  .then(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `dmcloser-leads-${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showToast('📥 CSV descargado');
+  })
+  .catch(e => showToast('❌ ' + e.message));
+}
+
+function escHtmlSafe(str) {
+  return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Exponer delete para onclick inline
+window.deleteMagnetLink = deleteMagnetLink;
 
 // ── START ─────────────────────────────────────────────────────────────────────
 init();

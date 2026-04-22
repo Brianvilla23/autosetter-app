@@ -261,6 +261,7 @@ app.use('/api/knowledge', apiLimiter, requireAuth, checkSubscription, require('.
 app.use('/api/leads',     apiLimiter, requireAuth, checkSubscription, require('./routes/leads'));
 app.use('/api/links',     apiLimiter, requireAuth, checkSubscription, require('./routes/links'));
 app.use('/api/settings',  apiLimiter, requireAuth, require('./routes/settings'));
+app.use('/api/growth',    apiLimiter, requireAuth, checkSubscription, require('./routes/growth'));
 
 // Helper: account info from JWT
 app.get('/api/account/me', requireAuth, async (req, res) => {
@@ -280,6 +281,37 @@ app.get('/api/account/first', requireAuth, async (req, res) => {
     if (!account) return res.status(404).json({ error: 'No account' });
     res.json({ id: account._id, ig_username: account.ig_username });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── MAGNET LINK REDIRECT (público, con tracking) ──────────────────────────────
+// /go/:slug → registra click y redirige a ig.me/m/USERNAME?text=PRESET
+app.get('/go/:slug', async (req, res) => {
+  try {
+    const dbW = require('./db/database');
+    const slug = String(req.params.slug).replace(/[^a-z0-9_-]/gi, '').slice(0, 24);
+    if (!slug) return res.redirect(302, '/');
+
+    const link = await dbW.findOne(dbW.magnetLinks, { slug });
+    if (!link) return res.redirect(302, '/');
+
+    // Registrar click (best-effort, sin bloquear redirect)
+    dbW.insert(dbW.linkClicks, {
+      slug,
+      account_id: link.account_id,
+      source:     link.source,
+      referer:    (req.headers['referer'] || '').slice(0, 200),
+      userAgent:  (req.headers['user-agent'] || '').slice(0, 200),
+      ip:         (req.headers['x-forwarded-for'] || req.ip || '').toString().split(',')[0].trim(),
+    }).catch(() => {});
+
+    const username = encodeURIComponent(link.ig_username.replace(/^@/, ''));
+    let target = `https://ig.me/m/${username}`;
+    if (link.preset_text) target += `?text=${encodeURIComponent(link.preset_text)}`;
+    return res.redirect(302, target);
+  } catch (e) {
+    console.error('magnet redirect error:', e.message);
+    return res.redirect(302, '/');
+  }
 });
 
 // ── ERROR HANDLER GLOBAL ──────────────────────────────────────────────────────
@@ -328,6 +360,20 @@ async function processPendingSends() {
 }
 
 setInterval(processPendingSends, 10000); // cada 10 segundos
+
+// ── FOLLOW-UP WORKERS ─────────────────────────────────────────────────────────
+// Dos loops separados: agendar nuevos follow-ups y enviar los que están agendados.
+const { scheduleFollowUps, processFollowUps } = require('./services/followup');
+
+// Agenda cada 2 minutos
+setInterval(() => {
+  scheduleFollowUps().catch(e => console.error('scheduleFollowUps:', e.message));
+}, 120000);
+
+// Envía cada 30 segundos los que están listos
+setInterval(() => {
+  processFollowUps().catch(e => console.error('processFollowUps:', e.message));
+}, 30000);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
