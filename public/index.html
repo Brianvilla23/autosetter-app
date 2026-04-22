@@ -466,6 +466,89 @@
         </div>
         <p style="color:var(--text-2);font-size:13px">Suscripciones requeridas: <code>messages</code>, <code>messaging_postbacks</code></p>
       </div>
+
+      <div class="settings-card" style="grid-column:1/-1">
+        <h3>🔔 Notificaciones de Leads HOT</h3>
+        <p>Recibe un aviso al instante cuando un lead se ponga 🔥 caliente — para que saltes a cerrar antes de que se enfríe. Throttle: máx 1 aviso por lead cada 30 min.</p>
+
+        <!-- EMAIL -->
+        <div style="border:1px solid var(--border);border-radius:10px;padding:16px;margin-top:14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+            <div>
+              <div style="font-weight:600;font-size:15px">📧 Email</div>
+              <div style="font-size:12px;color:var(--text-2)">Notificación por email vía Resend</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="notif-email-enabled">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="form-row" style="margin-top:12px">
+            <label>Email a notificar (vacío = tu email de login)</label>
+            <input type="email" id="notif-email-address" placeholder="tu-closer@ejemplo.com" class="form-input">
+          </div>
+          <button class="btn-ghost" id="btn-test-email" style="margin-top:6px">Enviar prueba</button>
+          <span id="notif-email-result" style="margin-left:10px;font-size:12px"></span>
+        </div>
+
+        <!-- WHATSAPP -->
+        <div style="border:1px solid var(--border);border-radius:10px;padding:16px;margin-top:14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+            <div>
+              <div style="font-weight:600;font-size:15px">💬 WhatsApp (CallMeBot)</div>
+              <div style="font-size:12px;color:var(--text-2)">Setup gratis en 2 minutos</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="notif-wa-enabled">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <details style="margin-top:10px">
+            <summary style="cursor:pointer;font-size:13px;color:var(--orange);font-weight:600">▶ Cómo configurar CallMeBot</summary>
+            <ol style="font-size:13px;color:var(--text-2);line-height:1.7;margin-top:8px;padding-left:18px">
+              <li>Agrega <strong>+34 644 60 39 49</strong> a tus contactos</li>
+              <li>Envíale este mensaje exacto por WhatsApp: <code>I allow callmebot to send me messages</code></li>
+              <li>Recibirás un mensaje con tu <strong>apikey</strong> numérica (tipo <code>123456</code>)</li>
+              <li>Pega aquí tu número en formato internacional SIN el "+" (ej: <code>56912345678</code>) y el apikey</li>
+            </ol>
+          </details>
+          <div class="form-row" style="margin-top:12px">
+            <label>Tu número WhatsApp (formato E.164 sin +)</label>
+            <input type="text" id="notif-wa-number" placeholder="56912345678" class="form-input">
+          </div>
+          <div class="form-row">
+            <label>API Key de CallMeBot</label>
+            <input type="text" id="notif-wa-apikey" placeholder="123456" class="form-input">
+          </div>
+          <button class="btn-ghost" id="btn-test-wa">Enviar prueba</button>
+          <span id="notif-wa-result" style="margin-left:10px;font-size:12px"></span>
+        </div>
+
+        <!-- WEBHOOK -->
+        <div style="border:1px solid var(--border);border-radius:10px;padding:16px;margin-top:14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+            <div>
+              <div style="font-weight:600;font-size:15px">🔗 Webhook (Zapier / Make / n8n / Discord / Slack)</div>
+              <div style="font-size:12px;color:var(--text-2)">POST JSON cuando un lead se pone HOT</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="notif-wh-enabled">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="form-row" style="margin-top:12px">
+            <label>URL del webhook</label>
+            <input type="url" id="notif-wh-url" placeholder="https://hooks.zapier.com/..." class="form-input">
+          </div>
+          <button class="btn-ghost" id="btn-test-wh">Enviar prueba</button>
+          <span id="notif-wh-result" style="margin-left:10px;font-size:12px"></span>
+        </div>
+
+        <div style="margin-top:18px">
+          <button class="btn-primary" id="btn-save-notifications">Guardar configuración</button>
+          <span id="notif-save-result" style="margin-left:10px;font-size:12px"></span>
+        </div>
+      </div>
     </div>
   </section>
 

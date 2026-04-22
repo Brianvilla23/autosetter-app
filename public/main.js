@@ -1074,6 +1074,85 @@ async function loadSettings() {
     showToast('✅ Cuenta actualizada manualmente');
   });
 
+  // ── Notificaciones ────────────────────────────────────────────────────────
+  await loadNotifications();
+}
+
+// ── NOTIFICACIONES DE LEADS HOT ──────────────────────────────────────────────
+async function loadNotifications() {
+  const data = await apiFetch('/api/notifications');
+  if (!data) return;
+  const c = data.config || {};
+
+  const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ?? ''; };
+  const setChk = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
+
+  setChk('notif-email-enabled',   c.email_enabled);
+  setVal('notif-email-address',   c.email_address);
+  setChk('notif-wa-enabled',      c.whatsapp_enabled);
+  setVal('notif-wa-number',       c.whatsapp_number);
+  setVal('notif-wa-apikey',       c.whatsapp_apikey);
+  setChk('notif-wh-enabled',      c.webhook_enabled);
+  setVal('notif-wh-url',          c.webhook_url);
+
+  // Evitar duplicar listeners en re-render
+  const save = document.getElementById('btn-save-notifications');
+  if (save && !save.dataset.wired) {
+    save.dataset.wired = '1';
+    save.onclick = async () => {
+      const body = {
+        email_enabled:    document.getElementById('notif-email-enabled').checked,
+        email_address:    document.getElementById('notif-email-address').value.trim(),
+        whatsapp_enabled: document.getElementById('notif-wa-enabled').checked,
+        whatsapp_number:  document.getElementById('notif-wa-number').value.trim(),
+        whatsapp_apikey:  document.getElementById('notif-wa-apikey').value.trim(),
+        webhook_enabled:  document.getElementById('notif-wh-enabled').checked,
+        webhook_url:      document.getElementById('notif-wh-url').value.trim(),
+      };
+      const r = await apiFetch('/api/notifications', 'PUT', body);
+      const out = document.getElementById('notif-save-result');
+      if (r?.ok) {
+        out.style.color = 'var(--green)';
+        out.textContent = '✅ Guardado';
+        showToast('✅ Notificaciones guardadas');
+      } else {
+        out.style.color = 'var(--red, #ef4444)';
+        out.textContent = '❌ Error';
+      }
+      setTimeout(() => { out.textContent = ''; }, 3500);
+    };
+  }
+
+  wireTestButton('btn-test-email', 'email',    'notif-email-result');
+  wireTestButton('btn-test-wa',    'whatsapp', 'notif-wa-result');
+  wireTestButton('btn-test-wh',    'webhook',  'notif-wh-result');
+}
+
+function wireTestButton(btnId, channel, resultId) {
+  const btn = document.getElementById(btnId);
+  if (!btn || btn.dataset.wired) return;
+  btn.dataset.wired = '1';
+  btn.onclick = async () => {
+    const out = document.getElementById(resultId);
+    btn.disabled = true;
+    out.textContent = '⏳ Enviando...';
+    out.style.color = 'var(--text-2)';
+
+    // Guardar primero por si el user no clickeó Guardar
+    const saveBtn = document.getElementById('btn-save-notifications');
+    if (saveBtn?.onclick) await saveBtn.onclick();
+
+    const r = await apiFetch('/api/notifications/test', 'POST', { channel });
+    if (r?.ok) {
+      out.style.color = 'var(--green)';
+      out.textContent = '✅ Enviado';
+    } else {
+      out.style.color = 'var(--red, #ef4444)';
+      out.textContent = '❌ ' + (r?.reason || r?.error || 'error');
+    }
+    btn.disabled = false;
+    setTimeout(() => { out.textContent = ''; }, 6000);
+  };
 }
 
 // ── UTILS ─────────────────────────────────────────────────────────────────────

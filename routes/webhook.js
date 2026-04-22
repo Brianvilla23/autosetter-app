@@ -236,14 +236,29 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
   // ── Clasificar lead (async, sin bloquear) ──────────────────────────────────
   const fullHistory = await db.find(db.messages, { lead_id: lead._id },
     (a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-  classifyLead({ conversationHistory: fullHistory, accountId: account._id, apiKey }).then(result => {
-    if (result?.qualification) {
-      db.update(db.leads, { _id: lead._id }, {
-        qualification: result.qualification,
-        qualification_reason: result.reason,
-        qualification_updated_at: new Date().toISOString()
-      }).catch(e => console.error('classifyLead update error:', e));
-      console.log(`🎯 [@${lead.ig_username}] → ${result.qualification.toUpperCase()}: ${result.reason}`);
+  const prevQualification = lead.qualification || null;
+  classifyLead({ conversationHistory: fullHistory, accountId: account._id, apiKey }).then(async result => {
+    if (!result?.qualification) return;
+
+    await db.update(db.leads, { _id: lead._id }, {
+      qualification: result.qualification,
+      qualification_reason: result.reason,
+      qualification_updated_at: new Date().toISOString()
+    }).catch(e => console.error('classifyLead update error:', e));
+    console.log(`🎯 [@${lead.ig_username}] → ${result.qualification.toUpperCase()}: ${result.reason}`);
+
+    // ── Disparar notificación si transicionó a HOT ───────────────────────────
+    if (result.qualification === 'hot' && prevQualification !== 'hot') {
+      try {
+        const { notifyHotLead } = require('../services/notifications');
+        const owner = await db.findOne(db.users, { accountId: account._id });
+        if (owner) {
+          const r = await notifyHotLead({ userId: owner._id, leadId: lead._id });
+          const channels = (r.sent || []).filter(s => s.ok).map(s => s.channel).join(', ');
+          if (channels) console.log(`🔔 Notificación HOT enviada a owner (${channels}) para @${lead.ig_username}`);
+          else if (r.throttled) console.log(`🔕 Notificación HOT throttled para @${lead.ig_username}`);
+        }
+      } catch (e) { console.error('notifyHotLead error:', e.message); }
     }
   }).catch(e => console.error('classifyLead error:', e));
 }

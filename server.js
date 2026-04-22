@@ -262,6 +262,7 @@ app.use('/api/leads',     apiLimiter, requireAuth, checkSubscription, require('.
 app.use('/api/links',     apiLimiter, requireAuth, checkSubscription, require('./routes/links'));
 app.use('/api/settings',  apiLimiter, requireAuth, require('./routes/settings'));
 app.use('/api/growth',    apiLimiter, requireAuth, checkSubscription, require('./routes/growth'));
+app.use('/api/notifications', apiLimiter, requireAuth, require('./routes/notifications'));
 
 // Helper: account info from JWT
 app.get('/api/account/me', requireAuth, async (req, res) => {
