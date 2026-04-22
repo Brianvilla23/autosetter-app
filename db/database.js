@@ -18,6 +18,8 @@ const db = {
   users:         new Datastore({ filename: path.join(dir, 'users.db'),         autoload: true }),
   inviteCodes:   new Datastore({ filename: path.join(dir, 'inviteCodes.db'),   autoload: true }),
   pendingSends:  new Datastore({ filename: path.join(dir, 'pendingSends.db'),  autoload: true }),
+  aiUsage:       new Datastore({ filename: path.join(dir, 'aiUsage.db'),       autoload: true }),
+  auditLog:      new Datastore({ filename: path.join(dir, 'auditLog.db'),      autoload: true }),
 };
 
 // Compact on load

@@ -5,6 +5,24 @@ const jwt      = require('jsonwebtoken');
 const db       = require('../db/database');
 const { SECRET } = require('../middleware/authMiddleware');
 
+// ── Password policy ───────────────────────────────────────────────────────────
+// Mínimo 8 chars. Debe tener al menos: 1 letra y 1 número.
+// (Lo mantenemos razonable — no queremos frustrar a usuarios LATAM en móvil)
+function validatePassword(pw) {
+  if (!pw || pw.length < 8) return 'La contraseña debe tener al menos 8 caracteres';
+  if (!/[A-Za-zÀ-ÿ]/.test(pw)) return 'La contraseña debe incluir al menos una letra';
+  if (!/[0-9]/.test(pw))       return 'La contraseña debe incluir al menos un número';
+  // Rechazar claves triviales comunes
+  const weak = ['12345678', 'password', 'qwerty12', 'abc12345', '11111111'];
+  if (weak.includes(pw.toLowerCase())) return 'Esa contraseña es demasiado común';
+  return null;
+}
+
+function validateEmail(email) {
+  if (!email || typeof email !== 'string') return false;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && email.length <= 254;
+}
+
 // ── CHECK: ¿Hay usuarios registrados? ─────────────────────────────────────────
 router.get('/check', async (req, res) => {
   try {
@@ -18,7 +36,9 @@ router.post('/register', async (req, res) => {
   try {
     const { email, password, name, inviteCode } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Email y contraseña requeridos' });
-    if (password.length < 6)  return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+    if (!validateEmail(email)) return res.status(400).json({ error: 'Email inválido' });
+    const pwErr = validatePassword(password);
+    if (pwErr) return res.status(400).json({ error: pwErr });
 
     const count = await db.count(db.users, {});
     const isFirstUser = count === 0;
@@ -125,10 +145,13 @@ router.post('/login', async (req, res) => {
     if (!email || !password) return res.status(400).json({ error: 'Email y contraseña requeridos' });
 
     const user = await db.findOne(db.users, { email: email.toLowerCase() });
-    if (!user) return res.status(401).json({ error: 'Email o contraseña incorrectos' });
 
-    const valid = await bcrypt.compare(password, user.password_hash);
-    if (!valid) return res.status(401).json({ error: 'Email o contraseña incorrectos' });
+    // Timing-attack mitigation: siempre ejecutamos bcrypt.compare aunque no exista el usuario,
+    // para que el tiempo de respuesta sea similar y no se pueda enumerar emails registrados.
+    const dummyHash = '$2a$12$CwTycUXWue0Thq9StjUM0uJ8J7hNGz3n5cCV6XGAABFoFrPkX7VFC'; // hash de 'dummy'
+    const hashToCheck = user?.password_hash || dummyHash;
+    const valid = await bcrypt.compare(password, hashToCheck);
+    if (!user || !valid) return res.status(401).json({ error: 'Email o contraseña incorrectos' });
 
     // Verificar si la cuenta está activa
     if (user.isActive === false) {
@@ -171,7 +194,8 @@ router.post('/change-password', async (req, res) => {
   try {
     const { email, currentPassword, newPassword } = req.body;
     if (!email || !currentPassword || !newPassword) return res.status(400).json({ error: 'Faltan campos' });
-    if (newPassword.length < 6) return res.status(400).json({ error: 'La contraseña nueva debe tener al menos 6 caracteres' });
+    const pwErr = validatePassword(newPassword);
+    if (pwErr) return res.status(400).json({ error: pwErr });
 
     const user = await db.findOne(db.users, { email: email.toLowerCase() });
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });

@@ -101,9 +101,38 @@
   .empty { text-align: center; padding: 40px; color: #555; }
   .empty .icon { font-size: 2rem; margin-bottom: 10px; }
 
+  /* ── Metrics cards ── */
+  .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .metric-card { background: #1a1a2e; border: 1px solid #2a2a4a; border-radius: 10px; padding: 18px; }
+  .metric-card .mc-label { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+  .metric-card .mc-value { font-size: 1.8rem; font-weight: 700; color: #c4b5fd; }
+  .metric-card .mc-sub { font-size: 0.78rem; color: #666; margin-top: 4px; }
+  .metric-card.hot .mc-value   { color: #ef4444; }
+  .metric-card.warm .mc-value  { color: #f59e0b; }
+  .metric-card.cold .mc-value  { color: #60a5fa; }
+  .metric-card.good .mc-value  { color: #22c55e; }
+
+  /* ── Bar chart mini ── */
+  .chart-bars { display: flex; align-items: flex-end; gap: 6px; height: 120px; margin-top: 10px; padding: 8px 0; }
+  .chart-bar { flex: 1; background: linear-gradient(to top, #7c6af7, #a78bfa); border-radius: 4px 4px 0 0; position: relative; min-height: 4px; transition: opacity .15s; }
+  .chart-bar:hover { opacity: 0.8; }
+  .chart-bar .val { position: absolute; top: -18px; left: 50%; transform: translateX(-50%); font-size: 0.72rem; color: #aaa; }
+  .chart-bar .lbl { position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%); font-size: 0.68rem; color: #666; }
+  .chart-wrap { margin-bottom: 34px; padding-bottom: 24px; }
+
+  /* ── Health checks ── */
+  .health-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .health-card { background: #1a1a2e; border: 1px solid #2a2a4a; border-left: 3px solid #22c55e; border-radius: 8px; padding: 14px 16px; }
+  .health-card.warn  { border-left-color: #f59e0b; }
+  .health-card.error { border-left-color: #ef4444; }
+  .health-card .hc-name   { font-size: 0.78rem; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+  .health-card .hc-status { font-size: 0.95rem; color: #e0e0e0; margin-top: 4px; }
+  .health-card .hc-icon   { float: right; font-size: 1.1rem; }
+
   /* ── Responsive ── */
   @media (max-width: 640px) {
     .stats { grid-template-columns: 1fr 1fr; }
+    .metric-grid { grid-template-columns: 1fr 1fr; }
     .form-row { flex-direction: column; }
   }
 </style>
@@ -152,6 +181,8 @@
     <div class="tabs">
       <div class="tab active" onclick="switchTab('users',this)">👥 Usuarios</div>
       <div class="tab" onclick="switchTab('codes',this)">🎟️ Códigos</div>
+      <div class="tab" onclick="switchTab('metrics',this)">📊 Métricas</div>
+      <div class="tab" onclick="switchTab('system',this)">⚙️ Sistema</div>
     </div>
 
     <!-- ── USUARIOS ── -->
@@ -227,6 +258,86 @@
           </tbody>
         </table>
       </div>
+    </div>
+
+    <!-- ── MÉTRICAS ── -->
+    <div id="tab-metrics" class="section">
+      <div class="metric-grid" id="metricsCards">
+        <div class="metric-card"><div class="mc-label">Cargando…</div><div class="mc-value">—</div></div>
+      </div>
+
+      <div class="card chart-wrap">
+        <h3>📈 Mensajes por día (últimos 7)</h3>
+        <div class="chart-bars" id="messagesChart"></div>
+      </div>
+
+      <div class="card">
+        <h3>🏆 Top 5 usuarios por leads</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Usuario</th><th>Plan</th><th>Leads</th><th></th></tr>
+            </thead>
+            <tbody id="topUsersTable">
+              <tr><td colspan="4" class="empty">⏳ Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SISTEMA ── -->
+    <div id="tab-system" class="section">
+      <div class="card">
+        <h3>⚙️ Estado del sistema</h3>
+        <div class="health-grid" id="healthGrid">
+          <div class="health-card"><div class="hc-name">Cargando…</div></div>
+        </div>
+        <div style="display:flex;gap:16px;font-size:0.82rem;color:#888;margin-top:8px">
+          <div>Uptime: <span id="sys-uptime">—</span></div>
+          <div>Version: <span id="sys-version">—</span></div>
+          <div>Env: <span id="sys-env">—</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>🧠 Últimas llamadas IA</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Fecha</th><th>Modelo</th><th>Reasoning</th><th>Score</th><th>Razones</th><th>Tokens</th></tr>
+            </thead>
+            <tbody id="aiUsageTable">
+              <tr><td colspan="6" class="empty">⏳ Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>📜 Log de auditoría</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Fecha</th><th>Admin</th><th>Acción</th><th>Target</th><th>Detalle</th></tr>
+            </thead>
+            <tbody id="auditLogTable">
+              <tr><td colspan="5" class="empty">Sin registros aún</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL detalle de usuario ── -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal" style="width: 560px; max-height: 85vh; overflow-y: auto;">
+    <h3 id="detailModalTitle">👤 Detalle del usuario</h3>
+    <div id="detailModalBody">⏳ Cargando…</div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeDetailModal()">Cerrar</button>
     </div>
   </div>
 </div>
@@ -344,6 +455,10 @@ function switchTab(name, el) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   el.classList.add('active');
   document.getElementById('tab-' + name).classList.add('active');
+
+  // Carga bajo demanda
+  if (name === 'metrics') loadMetrics();
+  if (name === 'system')  loadSystem();
 }
 
 // ── Stats ──────────────────────────────────────────────────────────────────
@@ -393,7 +508,7 @@ async function loadUsers() {
 
     return `
       <tr>
-        <td><strong>${escHtml(u.name)}</strong>${u.role==='admin'?' 👑':''}</td>
+        <td><a href="#" onclick="openUserDetail('${u.id}');return false" style="color:#c4b5fd;text-decoration:none"><strong>${escHtml(u.name)}</strong></a>${u.role==='admin'?' 👑':''}</td>
         <td style="color:#888">${escHtml(u.email)}</td>
         <td>${planBadge}</td>
         <td>${memberDate}</td>
@@ -536,6 +651,212 @@ function escHtml(str) {
 document.getElementById('membershipModal').addEventListener('click', function(e) {
   if (e.target === this) closeModal();
 });
+
+// ── Metrics ────────────────────────────────────────────────────────────────
+async function loadMetrics() {
+  try {
+    const m = await api('GET', '/api/admin/metrics');
+    renderMetricCards(m);
+    renderMessagesChart(m.messagesByDay);
+    renderTopUsers(m.topUsers);
+  } catch (e) {
+    document.getElementById('metricsCards').innerHTML =
+      `<div class="metric-card"><div class="mc-label">Error</div><div class="mc-value" style="color:#ef4444">${escHtml(e.message)}</div></div>`;
+  }
+}
+
+function renderMetricCards(m) {
+  const ai = m.aiStats || {};
+  const lq = m.leadsByQualification || {};
+  const ls = m.leadsStatus || {};
+  const cards = [
+    { label: 'MRR estimado', value: '$' + (m.mrr || 0), sub: 'USD / mes', cls: 'good' },
+    { label: 'Usuarios nuevos (7d)', value: m.newUsersLast7 || 0, sub: 'últimos 7 días' },
+    { label: 'Leads totales', value: ls.total || 0, sub: `${ls.converted||0} convertidos · ${ls.active||0} activos` },
+    { label: 'Leads 🔥 HOT',  value: lq.hot || 0,  sub: 'alta probabilidad', cls: 'hot' },
+    { label: 'Leads 🟡 WARM', value: lq.warm || 0, sub: 'tibios', cls: 'warm' },
+    { label: 'Leads ❄️ COLD', value: lq.cold || 0, sub: 'fríos', cls: 'cold' },
+    { label: 'Llamadas IA (30d)', value: ai.totalCalls || 0, sub: `${ai.reasoningCalls||0} reasoning · ${ai.fastCalls||0} rápidas` },
+    { label: 'Costo IA estimado', value: '$' + (ai.estimatedCostUSD || 0).toFixed(2), sub: `${(ai.totalTokens||0).toLocaleString()} tokens`, cls: 'warm' },
+  ];
+  document.getElementById('metricsCards').innerHTML = cards.map(c => `
+    <div class="metric-card ${c.cls||''}">
+      <div class="mc-label">${c.label}</div>
+      <div class="mc-value">${c.value}</div>
+      <div class="mc-sub">${c.sub||''}</div>
+    </div>`).join('');
+}
+
+function renderMessagesChart(byDay) {
+  const entries = Object.entries(byDay || {});
+  if (!entries.length) {
+    document.getElementById('messagesChart').innerHTML = '<div class="empty" style="flex:1">Sin datos aún</div>';
+    return;
+  }
+  const max = Math.max(1, ...entries.map(([, v]) => v));
+  document.getElementById('messagesChart').innerHTML = entries.map(([date, count]) => {
+    const pct = (count / max) * 100;
+    const day = date.slice(5); // MM-DD
+    return `<div class="chart-bar" style="height:${pct}%" title="${date}: ${count} mensajes">
+      <span class="val">${count}</span>
+      <span class="lbl">${day}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderTopUsers(users) {
+  const tbody = document.getElementById('topUsersTable');
+  if (!users || !users.length) {
+    tbody.innerHTML = `<tr><td colspan="4" class="empty">Aún no hay leads</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = users.map(u => `
+    <tr>
+      <td><strong>${escHtml(u.name)}</strong><br><small style="color:#666">${escHtml(u.email)}</small></td>
+      <td>${getPlanBadge(u.plan, false)}</td>
+      <td style="font-weight:700;color:#c4b5fd">${u.leadsCount}</td>
+      <td><button class="btn btn-sm btn-ghost" onclick="openUserDetail('${u.id}')">Ver</button></td>
+    </tr>`).join('');
+}
+
+// ── System (health + logs) ─────────────────────────────────────────────────
+async function loadSystem() {
+  await Promise.all([loadHealth(), loadAIUsage(), loadAuditLog()]);
+}
+
+async function loadHealth() {
+  try {
+    const h = await api('GET', '/api/admin/health');
+    const grid = document.getElementById('healthGrid');
+    const iconOf = (s) => s === 'ok' ? '✅' : s === 'warn' ? '⚠️' : '❌';
+    grid.innerHTML = Object.entries(h.checks || {}).map(([name, c]) => `
+      <div class="health-card ${c.status === 'warn' ? 'warn' : c.status === 'error' ? 'error' : ''}">
+        <span class="hc-icon">${iconOf(c.status)}</span>
+        <div class="hc-name">${escHtml(name)}</div>
+        <div class="hc-status">${escHtml(c.message || c.status)}</div>
+      </div>`).join('');
+    document.getElementById('sys-uptime').textContent  = h.uptime?.human || '—';
+    document.getElementById('sys-version').textContent = h.version || '—';
+    document.getElementById('sys-env').textContent     = h.env || '—';
+  } catch (e) {
+    document.getElementById('healthGrid').innerHTML =
+      `<div class="health-card error"><div class="hc-name">Error</div><div class="hc-status">${escHtml(e.message)}</div></div>`;
+  }
+}
+
+async function loadAIUsage() {
+  try {
+    const rows = await api('GET', '/api/admin/ai-usage?limit=50');
+    const tbody = document.getElementById('aiUsageTable');
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="6" class="empty">Aún no hay llamadas registradas</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = rows.map(r => `
+      <tr>
+        <td style="color:#888;font-size:0.78rem">${fmtDateTime(r.createdAt)}</td>
+        <td><span class="code-text">${escHtml(r.model||'')}</span></td>
+        <td>${r.reasoning ? '🧠 SÍ' : '⚡ no'}</td>
+        <td>${r.complexityScore ?? '—'}</td>
+        <td style="color:#888;font-size:0.78rem">${escHtml((r.complexityReasons||[]).join(', '))}</td>
+        <td>${r.totalTokens||0} <small style="color:#666">(${r.reasoningTokens||0} r)</small></td>
+      </tr>`).join('');
+  } catch (e) {
+    document.getElementById('aiUsageTable').innerHTML =
+      `<tr><td colspan="6" class="empty" style="color:#ef4444">${escHtml(e.message)}</td></tr>`;
+  }
+}
+
+async function loadAuditLog() {
+  try {
+    const rows = await api('GET', '/api/admin/audit-log?limit=100');
+    const tbody = document.getElementById('auditLogTable');
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="5" class="empty">Sin registros aún</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = rows.map(r => `
+      <tr>
+        <td style="color:#888;font-size:0.78rem">${fmtDateTime(r.createdAt)}</td>
+        <td>${escHtml(r.adminEmail || r.adminId || '—')}</td>
+        <td><span class="code-text">${escHtml(r.action||'')}</span></td>
+        <td style="color:#888;font-size:0.82rem">${escHtml(r.target||'')}</td>
+        <td style="color:#888;font-size:0.78rem">${escHtml(typeof r.detail === 'object' ? JSON.stringify(r.detail) : (r.detail || ''))}</td>
+      </tr>`).join('');
+  } catch (e) {
+    document.getElementById('auditLogTable').innerHTML =
+      `<tr><td colspan="5" class="empty" style="color:#ef4444">${escHtml(e.message)}</td></tr>`;
+  }
+}
+
+// ── User detail drill-down ─────────────────────────────────────────────────
+async function openUserDetail(id) {
+  document.getElementById('detailModal').classList.add('open');
+  document.getElementById('detailModalBody').innerHTML = '⏳ Cargando…';
+  try {
+    const d = await api('GET', `/api/admin/users/${id}/detail`);
+    document.getElementById('detailModalTitle').textContent = `👤 ${d.user.name}`;
+    const u = d.user, a = d.account, l = d.leads;
+    const agentsHtml = (d.agents || []).map(ag =>
+      `<li>${escHtml(ag.name)} ${ag.enabled ? '🟢' : '⚪'}</li>`
+    ).join('') || '<li style="color:#666">Sin agentes</li>';
+    const recentHtml = (l.recent || []).map(r => `
+      <tr>
+        <td>${escHtml(r.ig_username || r.id.slice(0,8))}</td>
+        <td>${r.qualification ? getPlanBadge(r.qualification === 'hot' ? 'trial' : r.qualification === 'warm' ? 'monthly' : 'annual', false).replace(/>[A-Z0-9 ]+</, '>'+r.qualification.toUpperCase()+'<') : '—'}</td>
+        <td>${r.is_converted ? '✅' : r.is_bypassed ? '🚫' : '…'}</td>
+      </tr>`).join('') || '<tr><td colspan="3" class="empty">Sin leads</td></tr>';
+
+    document.getElementById('detailModalBody').innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+        <div><small style="color:#888">Email</small><div>${escHtml(u.email)}</div></div>
+        <div><small style="color:#888">Plan</small><div>${getPlanBadge(u.plan, false)} ${u.subscriptionStatus||''}</div></div>
+        <div><small style="color:#888">Estado</small><div>${u.isActive ? '✅ Activo' : '❌ Inactivo'}</div></div>
+        <div><small style="color:#888">Vence</small><div>${u.expiresAt ? fmtDate(u.expiresAt) : '—'}</div></div>
+        <div><small style="color:#888">Provider</small><div>${u.paymentProvider || '—'}</div></div>
+        <div><small style="color:#888">Creado</small><div>${fmtDate(u.createdAt)}</div></div>
+      </div>
+
+      <h4 style="color:#a5a5c8;font-size:0.85rem;margin:14px 0 8px">📸 Cuenta Instagram</h4>
+      ${a ? `<div style="font-size:0.85rem;color:#aaa">
+        @${escHtml(a.ig_username||'—')} · <span class="code-text">${escHtml(a.ig_user_id||'—')}</span>
+      </div>` : '<div style="color:#666">Sin cuenta conectada</div>'}
+
+      <h4 style="color:#a5a5c8;font-size:0.85rem;margin:14px 0 8px">🤖 Agentes</h4>
+      <ul style="font-size:0.85rem;color:#ccc;padding-left:20px">${agentsHtml}</ul>
+
+      <h4 style="color:#a5a5c8;font-size:0.85rem;margin:14px 0 8px">📊 Leads (${l.total})</h4>
+      <div style="display:flex;gap:10px;font-size:0.78rem;color:#888;margin-bottom:8px">
+        <span>🔥 Hot: <strong style="color:#ef4444">${l.hot}</strong></span>
+        <span>🟡 Warm: <strong style="color:#f59e0b">${l.warm}</strong></span>
+        <span>❄️ Cold: <strong style="color:#60a5fa">${l.cold}</strong></span>
+        <span>✅ Convertidos: <strong style="color:#22c55e">${l.converted}</strong></span>
+      </div>
+      <div class="table-wrap">
+        <table><thead><tr><th>Lead</th><th>Calificación</th><th>Estado</th></tr></thead>
+        <tbody>${recentHtml}</tbody></table>
+      </div>
+
+      <div style="margin-top:14px;font-size:0.78rem;color:#666">Mensajes totales (muestra): ${d.messageCount}</div>
+    `;
+  } catch (e) {
+    document.getElementById('detailModalBody').innerHTML =
+      `<div style="color:#ef4444">Error: ${escHtml(e.message)}</div>`;
+  }
+}
+
+function closeDetailModal() {
+  document.getElementById('detailModal').classList.remove('open');
+}
+
+document.getElementById('detailModal').addEventListener('click', function(e) {
+  if (e.target === this) closeDetailModal();
+});
+
+function fmtDateTime(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleString('es-ES', { month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
 </script>
 </body>
 </html>

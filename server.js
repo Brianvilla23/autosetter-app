@@ -25,9 +25,26 @@ app.set('trust proxy', 1);
 // ── SEGURIDAD GLOBAL ──────────────────────────────────────────────────────────
 
 // 1. Helmet — headers HTTP seguros (XSS protection, HSTS, etc.)
+// CSP mínima: inline permitido (la UI usa inline handlers), pero restringimos connect/frame.
 app.use(helmet({
-  contentSecurityPolicy: false, // Lo desactivamos para no romper la UI inline
+  contentSecurityPolicy: {
+    useDefaults: true,
+    directives: {
+      defaultSrc:  ["'self'"],
+      scriptSrc:   ["'self'", "'unsafe-inline'"],      // UI inline handlers
+      styleSrc:    ["'self'", "'unsafe-inline'"],
+      imgSrc:      ["'self'", 'data:', 'https:'],
+      connectSrc:  ["'self'", 'https://api.openai.com', 'https://graph.facebook.com', 'https://graph.instagram.com'],
+      fontSrc:     ["'self'", 'data:'],
+      frameAncestors: ["'none'"],                       // clickjacking
+      objectSrc:   ["'none'"],
+      baseUri:     ["'self'"],
+      formAction:  ["'self'"],
+    },
+  },
   crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: 'same-site' },
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
 }));
 
 // 2. CORS — solo orígenes conocidos en producción

@@ -10,6 +10,91 @@ async function getApiKey(apiKey, accountId) {
   return key;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPLEXITY DETECTION — decide si vale la pena gastar en reasoning
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Señales de que el mensaje necesita reasoning de verdad:
+ * - Objeciones clásicas (precio, tiempo, desconfianza)
+ * - Negociación activa
+ * - Preguntas técnicas o condicionales
+ * - Historia larga (conversación ya se complicó)
+ * - Mensajes largos del prospecto (está elaborando un razonamiento)
+ */
+const OBJECTION_PATTERNS = [
+  /\b(caro|carísim|precio|cost|cobra|cuanto|cuánto|tarif|pagar|vale la pena)\b/i,
+  /\b(no tengo (dinero|plata|pesos)|no puedo pagar|sin presupuesto|no me alcanza)\b/i,
+  /\b(déjame pensarlo|dejame pensar|lo pienso|lo consulto|ver si)\b/i,
+  /\b(no estoy seguro|no sé si|tengo dudas|me da miedo|desconf)\b/i,
+  /\b(ya (probé|intenté|hice|compré).*(no funcion|no sirv|perd))\b/i,
+  /\b(garant(í|i)a|reembolso|devol|cancelar)\b/i,
+  /\b(estafa|fraude|scam|fake|verdadero|real|legítimo)\b/i,
+  /\b(competencia|mejor que|comparado con|vs|versus)\b/i,
+];
+
+const TECHNICAL_QUESTION_PATTERNS = [
+  /\b(cómo funciona|cómo hace|cómo lograr|cómo garantiz|de qué forma|qué pasa si)\b/i,
+  /\b(por qué|para qué|con qué|con quién|dónde|cuándo exactam)\b/i,
+  /\b(diferencia entre|diferencia con|en qué se diferenc)\b/i,
+  /\b(proceso|metodolog|sistema|plan de trabajo|paso a paso)\b/i,
+];
+
+const NEGOTIATION_PATTERNS = [
+  /\b(descuento|rebaja|más barato|mas barato|oferta|promoción|promocion)\b/i,
+  /\b(cuotas|mensualidad|financ|en partes|a plazos)\b/i,
+  /\b(primero probar|muestra|demo|prueba gratis|trial)\b/i,
+];
+
+function detectComplexity({ newMessage, conversationHistory }) {
+  const text = (newMessage || '').toLowerCase();
+  let score = 0;
+  const reasons = [];
+
+  // Señal 1: objeciones
+  if (OBJECTION_PATTERNS.some(p => p.test(text))) {
+    score += 3;
+    reasons.push('objeción');
+  }
+
+  // Señal 2: preguntas técnicas/condicionales
+  if (TECHNICAL_QUESTION_PATTERNS.some(p => p.test(text))) {
+    score += 2;
+    reasons.push('pregunta técnica');
+  }
+
+  // Señal 3: negociación
+  if (NEGOTIATION_PATTERNS.some(p => p.test(text))) {
+    score += 3;
+    reasons.push('negociación');
+  }
+
+  // Señal 4: mensaje largo — el prospecto está elaborando
+  if (text.length > 250) {
+    score += 2;
+    reasons.push('mensaje extenso');
+  }
+
+  // Señal 5: conversación avanzada — más en juego
+  if (conversationHistory.length >= 6) {
+    score += 1;
+    reasons.push('conversación avanzada');
+  }
+
+  // Señal 6: historia muy larga + mensaje con pregunta — probablemente cierre o bloqueo
+  if (conversationHistory.length >= 10 && text.includes('?')) {
+    score += 2;
+    reasons.push('cierre crítico');
+  }
+
+  // Threshold: score >= 3 → usa reasoning
+  return { useReasoning: score >= 3, score, reasons };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GENERATE REPLY — ahora con selección de modelo híbrida
+// ─────────────────────────────────────────────────────────────────────────────
+
 async function generateReply({ agent, knowledge, links, conversationHistory, newMessage, accountId, apiKey, extraContext = null }) {
   const key = await getApiKey(apiKey, accountId);
   if (!key) throw new Error('No OpenAI API key configured. Add it in Settings.');
@@ -61,6 +146,20 @@ Si está listo para avanzar → llévalo al siguiente paso sin rodeos.`}
 
   const systemPrompt = agent.instructions + knowledgeText + linksText + extraContextText + humanizationPrompt;
 
+  // ── Detectar complejidad y elegir modelo ───────────────────────────────────
+  const complexity = detectComplexity({ newMessage, conversationHistory });
+  // Permitir override vía env var (para A/B testing y ahorro en trial)
+  const fastModel      = process.env.OPENAI_FAST_MODEL      || 'gpt-4o-mini';
+  const reasoningModel = process.env.OPENAI_REASONING_MODEL || 'o4-mini';
+  const useReasoningGlobal = process.env.OPENAI_USE_REASONING !== 'false'; // default on
+
+  const shouldUseReasoning = complexity.useReasoning && useReasoningGlobal;
+  const selectedModel = shouldUseReasoning ? reasoningModel : fastModel;
+
+  if (shouldUseReasoning) {
+    console.log(`🧠 Reasoning ON (${selectedModel}) — score=${complexity.score} reasons=[${complexity.reasons.join(', ')}]`);
+  }
+
   const messages = [
     { role: 'system', content: systemPrompt },
     ...conversationHistory.map(m => ({
@@ -70,14 +169,59 @@ Si está listo para avanzar → llévalo al siguiente paso sin rodeos.`}
     { role: 'user', content: newMessage }
   ];
 
-  const response = await client.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages,
-    max_tokens: 300,
-    temperature: 0.85
-  });
+  // Reasoning models (o1/o3/o4) NO aceptan 'temperature' ni 'max_tokens' tradicional
+  // Usan 'max_completion_tokens' y reasoning_effort. También no aceptan system role clásico.
+  const isReasoningModel = /^o[134]/.test(selectedModel);
 
-  return response.choices[0].message.content;
+  let response;
+  if (isReasoningModel) {
+    // Para reasoning models: consolidar system en primer 'developer'/'user' message
+    const reasoningMessages = [
+      { role: 'developer', content: systemPrompt },
+      ...conversationHistory.map(m => ({
+        role: m.role === 'agent' ? 'assistant' : 'user',
+        content: m.content
+      })),
+      { role: 'user', content: newMessage }
+    ];
+    response = await client.chat.completions.create({
+      model: selectedModel,
+      messages: reasoningMessages,
+      max_completion_tokens: 800, // reasoning tokens + output
+      reasoning_effort: 'low',    // bajo para respuestas rápidas y baratas (chat IG debe ser veloz)
+    });
+  } else {
+    response = await client.chat.completions.create({
+      model: selectedModel,
+      messages,
+      max_tokens: 300,
+      temperature: 0.85,
+    });
+  }
+
+  const reply = response.choices[0].message.content;
+
+  // Log de uso para panel admin
+  try {
+    const usage = response.usage || {};
+    await db.insert(db.aiUsage, {
+      accountId:           accountId || null,
+      agentId:             agent._id || agent.id || null,
+      model:               selectedModel,
+      reasoning:           shouldUseReasoning,
+      complexityScore:     complexity.score,
+      complexityReasons:   complexity.reasons,
+      promptTokens:        usage.prompt_tokens || 0,
+      completionTokens:    usage.completion_tokens || 0,
+      reasoningTokens:     usage.completion_tokens_details?.reasoning_tokens || 0,
+      totalTokens:         usage.total_tokens || 0,
+    });
+  } catch (e) {
+    // no bloquear por fallo de logging
+    if (process.env.NODE_ENV !== 'production') console.warn('aiUsage log skip:', e.message);
+  }
+
+  return reply;
 }
 
 // ── LEAD CLASSIFICATION ──────────────────────────────────────────────────────
@@ -128,4 +272,4 @@ Responde ÚNICAMENTE con JSON válido, sin markdown ni texto extra:
   }
 }
 
-module.exports = { generateReply, classifyLead };
+module.exports = { generateReply, classifyLead, detectComplexity };
