@@ -114,6 +114,11 @@ function renderAuthForm(mode) {
       <input class="auth-input" id="auth-password2" type="password" placeholder="Confirmar contraseña" autocomplete="new-password">
       <div id="auth-error" class="auth-error" style="display:none"></div>
       <button class="btn-primary auth-btn" id="auth-submit">Crear cuenta y comenzar →</button>
+      <p class="auth-legal" style="font-size:12px;color:var(--text-3,#888);text-align:center;margin-top:12px;line-height:1.5">
+        Al crear la cuenta aceptás nuestros
+        <a href="/terms.html" target="_blank" style="color:var(--orange)">Términos</a>
+        y la <a href="/privacy.html" target="_blank" style="color:var(--orange)">Política de Privacidad</a>.
+      </p>
       <p class="auth-footer">¿Ya tienes cuenta? <a href="#" id="auth-to-login" style="color:var(--orange);font-weight:600">Iniciar sesión</a></p>
     `;
     document.getElementById('auth-submit').onclick = () => submitAuth('register');

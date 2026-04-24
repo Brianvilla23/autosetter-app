@@ -4,63 +4,200 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Política de Privacidad — DMCloser</title>
+  <meta name="description" content="Cómo DMCloser recopila, usa y protege tus datos y los de tus prospectos de Instagram.">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 800px; margin: 0 auto; padding: 40px 20px; color: #333; line-height: 1.7; }
-    h1 { color: #1a1a2e; border-bottom: 2px solid #e91e8c; padding-bottom: 10px; }
-    h2 { color: #1a1a2e; margin-top: 32px; }
-    a { color: #e91e8c; }
-    .updated { color: #888; font-size: 0.9em; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --orange: #8b5cf6;
+      --grad: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+      --bg: #0a0a12;
+      --surface: #111120;
+      --card: #16162a;
+      --border: rgba(255,255,255,.08);
+      --text-1: #f0f0ff;
+      --text-2: #a0a0c0;
+      --text-3: #606080;
+    }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--text-1); min-height: 100vh; line-height: 1.7; }
+    nav { max-width: 1180px; margin: 0 auto; padding: 22px 28px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
+    .nav-logo { font-size: 1.25rem; font-weight: 800; display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text-1); }
+    .nav-logo-icon { width: 32px; height: 32px; background: var(--grad); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+    .nav-links a { text-decoration: none; color: var(--text-2); font-size: 14px; font-weight: 500; margin-left: 24px; transition: color .15s; }
+    .nav-links a:hover { color: var(--text-1); }
+    main { max-width: 820px; margin: 0 auto; padding: 50px 28px 80px; }
+    h1 { font-size: 2.4rem; font-weight: 800; letter-spacing: -.02em; margin-bottom: 10px; }
+    h1 span { background: var(--grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    h2 { font-size: 1.3rem; font-weight: 700; margin-top: 40px; margin-bottom: 12px; color: var(--text-1); }
+    h3 { font-size: 1rem; font-weight: 600; margin-top: 20px; margin-bottom: 8px; color: var(--text-1); }
+    p, li { color: var(--text-2); font-size: 15.5px; }
+    ul, ol { padding-left: 22px; margin: 10px 0; }
+    li { margin-bottom: 6px; }
+    a { color: var(--orange); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .updated { color: var(--text-3); font-size: 14px; margin-bottom: 30px; }
+    .box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; margin: 20px 0; }
+    .box strong { color: var(--text-1); }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14.5px; }
+    th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--text-2); }
+    th { color: var(--text-1); font-weight: 600; background: rgba(255,255,255,.02); }
+    footer { border-top: 1px solid var(--border); max-width: 1180px; margin: 40px auto 0; padding: 24px 28px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--text-3); }
+    footer a { color: var(--text-2); margin-left: 18px; }
   </style>
 </head>
 <body>
-  <h1>Política de Privacidad</h1>
-  <p class="updated">Última actualización: 15 de abril de 2025</p>
 
-  <p>DMCloser ("nosotros", "nuestro") opera como un agente de ventas automatizado para Instagram. Esta política describe cómo recopilamos, usamos y protegemos su información.</p>
+<nav>
+  <a href="/" class="nav-logo">
+    <span class="nav-logo-icon">💬</span>
+    DMCloser
+  </a>
+  <div class="nav-links">
+    <a href="/pricing.html">Precios</a>
+    <a href="/terms.html">Términos</a>
+    <a href="/app">Iniciar sesión</a>
+  </div>
+</nav>
 
-  <h2>1. Información que recopilamos</h2>
-  <p>Cuando conecta su cuenta de Instagram Business a DMCloser, recopilamos:</p>
+<main>
+  <h1>Política de <span>Privacidad</span></h1>
+  <p class="updated">Última actualización: 24 de abril de 2026</p>
+
+  <p>DMCloser ("nosotros", "el Servicio") es una herramienta SaaS que automatiza la atención de mensajes directos en Instagram. Esta política describe qué información recopilamos, cómo la usamos y tus derechos sobre ella.</p>
+
+  <div class="box">
+    <strong>En una línea:</strong> solo guardamos lo necesario para que el bot funcione. No vendemos datos. Podés pedir la eliminación total en cualquier momento escribiendo a <a href="mailto:soporte@dmcloser.app">soporte@dmcloser.app</a>.
+  </div>
+
+  <h2>1. Quién es el responsable</h2>
+  <p>El responsable del tratamiento de datos es DMCloser, con sede operativa en La Serena, Chile. Para cualquier consulta sobre privacidad escribinos a <a href="mailto:soporte@dmcloser.app">soporte@dmcloser.app</a>.</p>
+
+  <h2>2. Qué información recopilamos</h2>
+
+  <h3>2.1. Datos de tu cuenta DMCloser</h3>
   <ul>
-    <li>Mensajes directos de Instagram recibidos en su cuenta</li>
-    <li>Identificador de usuario de Instagram (ID público)</li>
-    <li>Tokens de acceso de la API de Instagram (almacenados de forma segura)</li>
-    <li>Nombre de usuario de Instagram</li>
+    <li>Nombre y dirección de correo electrónico (para login)</li>
+    <li>Contraseña (almacenada con hash bcrypt, nunca en texto plano)</li>
+    <li>Plan contratado y estado de suscripción</li>
   </ul>
 
-  <h2>2. Cómo usamos la información</h2>
-  <p>La información recopilada se usa exclusivamente para:</p>
+  <h3>2.2. Datos de tu cuenta de Instagram (cuando la conectás)</h3>
   <ul>
-    <li>Generar respuestas automáticas a mensajes directos usando inteligencia artificial</li>
-    <li>Clasificar prospectos (leads) según su nivel de interés</li>
-    <li>Mostrar el historial de conversaciones en el panel de DMCloser</li>
+    <li>ID público de Instagram y nombre de usuario</li>
+    <li>Token de acceso a la API de Meta (cifrado en reposo)</li>
+    <li>Mensajes directos enviados y recibidos en la cuenta conectada</li>
+    <li>ID y username público de los prospectos que te escriben</li>
   </ul>
-  <p>No vendemos, alquilamos ni compartimos su información con terceros.</p>
 
-  <h2>3. Almacenamiento y seguridad</h2>
-  <p>Los datos se almacenan en servidores seguros (Railway.com, EE. UU.). Aplicamos medidas de seguridad estándar de la industria incluyendo cifrado JWT, HTTPS y rate limiting. Los tokens de acceso de Instagram se almacenan cifrados.</p>
-
-  <h2>4. Retención de datos</h2>
-  <p>Los datos se conservan mientras su cuenta esté activa. Puede solicitar la eliminación de sus datos en cualquier momento contactándonos.</p>
-
-  <h2>5. Permisos de Instagram / Meta</h2>
-  <p>DMCloser solicita los siguientes permisos de la API de Instagram:</p>
+  <h3>2.3. Datos de configuración del bot</h3>
   <ul>
-    <li><strong>instagram_business_basic</strong> — Para acceder a información básica de su perfil de negocio</li>
-    <li><strong>instagram_business_manage_messages</strong> — Para leer y responder mensajes directos</li>
-    <li><strong>instagram_manage_comments</strong> — Para gestionar comentarios</li>
+    <li>Instrucciones, base de conocimiento y links que vos cargás</li>
+    <li>Historial de conversaciones generadas por el bot</li>
+    <li>Clasificaciones HOT/WARM/COLD de prospectos</li>
   </ul>
-  <p>Estos permisos se usan exclusivamente para las funcionalidades descritas en esta política.</p>
 
-  <h2>6. Sus derechos</h2>
-  <p>Tiene derecho a acceder, corregir o eliminar sus datos personales. Para ejercer estos derechos, contáctenos en: <a href="mailto:brayan.villalobos.c@gmail.com">brayan.villalobos.c@gmail.com</a></p>
+  <h3>2.4. Datos de facturación</h3>
+  <ul>
+    <li>ID de suscripción de Lemon Squeezy o Mercado Pago</li>
+    <li>Historial de pagos, estado y monto</li>
+    <li><strong>No almacenamos</strong> números de tarjeta ni CVV. Esos datos quedan en los procesadores de pago certificados PCI-DSS.</li>
+  </ul>
 
-  <h2>7. Cambios a esta política</h2>
-  <p>Notificaremos cualquier cambio significativo publicando la nueva versión en esta página con la fecha de actualización.</p>
+  <h3>2.5. Datos técnicos</h3>
+  <ul>
+    <li>Logs de auditoría (acciones administrativas, timestamps, IP parcial)</li>
+    <li>Métricas anónimas de uso del servicio</li>
+  </ul>
 
-  <h2>8. Contacto</h2>
-  <p>Para preguntas sobre esta política de privacidad:<br>
-  <strong>DMCloser</strong><br>
-  Email: <a href="mailto:brayan.villalobos.c@gmail.com">brayan.villalobos.c@gmail.com</a><br>
-  La Serena, Chile</p>
+  <h2>3. Para qué usamos tus datos</h2>
+  <ul>
+    <li>Generar respuestas automáticas a tus DMs con IA</li>
+    <li>Clasificar el interés de tus prospectos y alertarte de los HOT</li>
+    <li>Procesar pagos y gestionar tu suscripción</li>
+    <li>Enviarte emails transaccionales (bienvenida, trial ending, fallos de pago, cambios de plan)</li>
+    <li>Responder tus consultas de soporte</li>
+    <li>Detectar abusos, spam y cumplir con los términos de Meta</li>
+  </ul>
+  <p><strong>No usamos tus datos para:</strong> venta a terceros, entrenar modelos de IA públicos, marketing de terceros ni publicidad.</p>
+
+  <h2>4. Con quién compartimos información (procesadores)</h2>
+  <p>Para operar el servicio, compartimos datos específicos con los siguientes proveedores, cada uno sujeto a sus propias políticas de privacidad:</p>
+  <table>
+    <thead>
+      <tr><th>Proveedor</th><th>Qué recibe</th><th>Para qué</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Meta / Instagram</td><td>Mensajes que enviás vos</td><td>Entregar los DMs por su API</td></tr>
+      <tr><td>OpenAI</td><td>Conversaciones e instrucciones del bot</td><td>Generar respuestas con IA</td></tr>
+      <tr><td>Lemon Squeezy</td><td>Email, nombre, país, datos de pago</td><td>Procesar cobros (clientes internacionales)</td></tr>
+      <tr><td>Mercado Pago</td><td>Email, datos de pago</td><td>Procesar cobros (clientes LATAM)</td></tr>
+      <tr><td>Railway</td><td>Toda la base de datos cifrada</td><td>Infraestructura (servidor y almacenamiento)</td></tr>
+      <tr><td>Resend / SMTP</td><td>Email y nombre</td><td>Envío de emails transaccionales</td></tr>
+    </tbody>
+  </table>
+  <p>OpenAI se compromete contractualmente a <strong>no usar los datos de la API para entrenar sus modelos</strong> (política zero data retention extendida para uso comercial).</p>
+
+  <h2>5. Dónde y por cuánto tiempo guardamos tus datos</h2>
+  <p>Los datos se alojan en servidores de Railway (Estados Unidos). Aplicamos cifrado en tránsito (HTTPS/TLS) y en reposo para credenciales sensibles.</p>
+  <p>Períodos de retención:</p>
+  <ul>
+    <li><strong>Mientras tu cuenta esté activa:</strong> todos los datos descritos arriba</li>
+    <li><strong>Tras cancelación:</strong> 30 días de gracia para que puedas reactivar</li>
+    <li><strong>Tras eliminación:</strong> backups residuales se purgan en máximo 90 días</li>
+    <li><strong>Obligaciones legales (facturación):</strong> registros contables durante 6 años conforme a la ley chilena</li>
+  </ul>
+
+  <h2>6. Permisos de Instagram que solicitamos</h2>
+  <ul>
+    <li><strong>instagram_business_basic</strong> — acceder a tu perfil de negocio</li>
+    <li><strong>instagram_business_manage_messages</strong> — leer y responder DMs</li>
+    <li><strong>instagram_business_content_publish</strong> — opcional, para comentar historias</li>
+    <li><strong>instagram_business_manage_comments</strong> — gestionar comentarios en publicaciones</li>
+  </ul>
+  <p>Podés revocar estos permisos en cualquier momento desde <a href="https://www.instagram.com/accounts/manage_access/" target="_blank" rel="noopener">Instagram → Configuración → Apps conectadas</a>.</p>
+
+  <h2>7. Tus derechos</h2>
+  <p>Podés ejercer en cualquier momento los siguientes derechos escribiendo a <a href="mailto:soporte@dmcloser.app">soporte@dmcloser.app</a>:</p>
+  <ul>
+    <li><strong>Acceso:</strong> obtener una copia de los datos que tenemos sobre vos</li>
+    <li><strong>Rectificación:</strong> corregir información inexacta</li>
+    <li><strong>Eliminación:</strong> borrar tu cuenta y datos asociados</li>
+    <li><strong>Portabilidad:</strong> recibir tus datos en formato estructurado (JSON)</li>
+    <li><strong>Oposición:</strong> pedir que detengamos cierto tratamiento</li>
+  </ul>
+  <p>Respondemos solicitudes dentro de los 15 días hábiles.</p>
+
+  <h2>8. Privacidad de tus prospectos</h2>
+  <p>Como cliente de DMCloser, actuás como <strong>responsable</strong> del tratamiento de los datos de las personas que te escriben; nosotros actuamos como <strong>encargado</strong>. Sos responsable de cumplir con la normativa que aplique a tu relación con tus prospectos (incluido responder sus pedidos de eliminación). Si un prospecto tuyo nos contacta directamente, te derivaremos a vos.</p>
+
+  <h2>9. Menores de edad</h2>
+  <p>DMCloser no está dirigido a menores de 18 años. Si detectamos una cuenta creada por un menor, la eliminaremos.</p>
+
+  <h2>10. Cookies</h2>
+  <p>Usamos <strong>localStorage</strong> para guardar tu token de sesión (JWT) y recordarte logueado. No usamos cookies de rastreo ni de terceros con fines publicitarios.</p>
+
+  <h2>11. Cambios a esta política</h2>
+  <p>Si actualizamos esta política de forma sustancial, te notificaremos por email al menos 15 días antes de que los cambios entren en vigor.</p>
+
+  <h2>12. Contacto</h2>
+  <p>
+    <strong>DMCloser</strong><br>
+    La Serena, Chile<br>
+    Email: <a href="mailto:soporte@dmcloser.app">soporte@dmcloser.app</a>
+  </p>
+</main>
+
+<footer>
+  <div>© 2026 DMCloser</div>
+  <div>
+    <a href="/pricing.html">Precios</a>
+    <a href="/terms.html">Términos</a>
+    <a href="/privacy.html">Privacidad</a>
+    <a href="mailto:soporte@dmcloser.app">Soporte</a>
+  </div>
+</footer>
+
 </body>
 </html>
