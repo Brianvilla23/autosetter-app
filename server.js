@@ -350,6 +350,7 @@ async function processPendingSends() {
           text:         item.text,
           accessToken:  item.accessToken,
           igUserId:     item.igUserId,
+          accountId:    item.accountId,
         });
         sentOk = true;
         console.log(`✅ [${item.agentName}] → @${item.leadUsername}: ${item.text.substring(0, 60)}...`);
@@ -369,6 +370,21 @@ async function processPendingSends() {
 }
 
 setInterval(processPendingSends, 10000); // cada 10 segundos
+
+// ── META TOKEN REFRESH WORKER ────────────────────────────────────────────────
+// Renueva tokens de Instagram antes de que caduquen (60 días).
+// Corre al arranque + cada 6 horas. Los clientes nunca tienen que re-loguearse.
+const { refreshAllExpiring } = require('./services/metaRefresh');
+
+// Primera pasada 30s después del arranque (dar tiempo a estabilizarse)
+setTimeout(() => {
+  refreshAllExpiring().catch(e => console.error('metaRefresh initial sweep:', e.message));
+}, 30_000);
+
+// Barrido periódico cada 6 horas
+setInterval(() => {
+  refreshAllExpiring().catch(e => console.error('metaRefresh periodic sweep:', e.message));
+}, 6 * 60 * 60 * 1000);
 
 // ── FOLLOW-UP WORKERS ─────────────────────────────────────────────────────────
 // Dos loops separados: agendar nuevos follow-ups y enviar los que están agendados.

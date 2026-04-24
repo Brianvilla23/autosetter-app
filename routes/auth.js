@@ -75,24 +75,43 @@ router.get('/callback', async (req, res) => {
       console.log(`[AUTH] graph.facebook.com/me failed (${fbErr.message}), using instagram id=${igIdFinal}`);
     }
 
+    // Long-lived IG tokens expire 60 days after issue. Compute expiry so the
+    // refresh worker knows when to rotate. `longRes.data.expires_in` viene en
+    // segundos — si Meta lo devuelve, lo usamos; sino default 60d.
+    const expiresInSec = longRes.data.expires_in || 60 * 24 * 3600;
+    const tokenExpiresAt = new Date(Date.now() + expiresInSec * 1000).toISOString();
+
     // Update or create account
     if (accountId && accountId !== 'undefined') {
       // When reconnecting: preserve ig_user_id (webhook ID from entry.id).
       // Store ig_platform_id (from graph.instagram.com/me) separately — used for sending messages.
       const igPlatformId = igRes.data.id ? String(igRes.data.id) : null;
-      console.log(`[AUTH] accountId=${accountId} | ig_platform_id=${igPlatformId} | username=${igUsername}`);
+      console.log(`[AUTH] accountId=${accountId} | ig_platform_id=${igPlatformId} | username=${igUsername} | token_expires=${tokenExpiresAt}`);
       await db.update(db.accounts, { _id: accountId }, {
-        ig_username: igUsername, access_token: longToken, ig_platform_id: igPlatformId
+        ig_username:      igUsername,
+        access_token:     longToken,
+        ig_platform_id:   igPlatformId,
+        token_expires_at: tokenExpiresAt,
+        token_refreshed_at: new Date().toISOString(),
       });
     } else {
       const exists = await db.findOne(db.accounts, { ig_user_id: igIdFinal });
       if (!exists) {
-        const acc = await db.insert(db.accounts, { ig_user_id: igIdFinal, ig_username: igUsername, access_token: longToken });
+        const acc = await db.insert(db.accounts, {
+          ig_user_id:       igIdFinal,
+          ig_username:      igUsername,
+          access_token:     longToken,
+          token_expires_at: tokenExpiresAt,
+          token_refreshed_at: new Date().toISOString(),
+        });
         await db.insert(db.settings, { account_id: acc._id, openai_key: '' });
       } else {
         // Update token for existing account
         await db.update(db.accounts, { ig_user_id: igIdFinal }, {
-          ig_username: igUsername, access_token: longToken
+          ig_username:      igUsername,
+          access_token:     longToken,
+          token_expires_at: tokenExpiresAt,
+          token_refreshed_at: new Date().toISOString(),
         });
       }
     }

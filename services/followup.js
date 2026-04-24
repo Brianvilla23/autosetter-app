@@ -206,6 +206,7 @@ async function processFollowUps() {
         text:        reply,
         accessToken: account.access_token,
         igUserId,
+        accountId:   account._id,
       });
 
       await db.update(db.followups, { _id: fu._id }, { sent_at: new Date().toISOString() });

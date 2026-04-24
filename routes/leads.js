@@ -98,7 +98,7 @@ router.post('/:id/retrigger', async (req, res) => {
     await db.update(db.leads, { _id: lead._id }, { last_message_at: new Date().toISOString() });
 
     const igUserId = account.ig_platform_id || account.ig_user_id;
-    await sendMessage({ recipientId: lead.ig_user_id, text: reply, accessToken: account.access_token, igUserId });
+    await sendMessage({ recipientId: lead.ig_user_id, text: reply, accessToken: account.access_token, igUserId, accountId: account._id });
 
     console.log(`🔁 Retrigger @${lead.ig_username}: ${reply.substring(0, 80)}`);
     res.json({ ok: true, reply });
@@ -116,7 +116,7 @@ router.post('/:id/message', async (req, res) => {
     const account = await db.findOne(db.accounts, { _id: accountId });
     if (account?.access_token && account.access_token !== 'demo_token') {
       const { sendMessage } = require('../services/meta');
-      await sendMessage({ recipientId: lead.ig_user_id, text, accessToken: account.access_token });
+      await sendMessage({ recipientId: lead.ig_user_id, text, accessToken: account.access_token, accountId: account._id });
     }
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }

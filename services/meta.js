@@ -1,27 +1,60 @@
 const axios = require('axios');
+const db    = require('../db/database');
 
 // Instagram Business Login tokens work with graph.instagram.com (not graph.facebook.com)
 const IG_BASE = 'https://graph.instagram.com/v21.0';
 const FB_BASE = 'https://graph.facebook.com/v21.0';
 
 /**
+ * Detecta si un error de la API de Meta es por token inválido/caducado.
+ * code 190 = OAuthException (token expired, invalid, or revoked)
+ */
+function isTokenError(err) {
+  const e = err?.response?.data?.error;
+  return e?.code === 190 || e?.type === 'OAuthException';
+}
+
+/**
  * Send a text message via Instagram DM
  * Uses Instagram Platform API (required for Instagram Business Login tokens)
  * Endpoint: POST /{ig-user-id}/messages on graph.instagram.com
+ *
+ * Si el token está caducado, intenta refresh automático y reintenta una vez.
+ * Para eso necesita accountId (opcional) — si no se pasa, falla al primer intento.
  */
-async function sendMessage({ recipientId, text, accessToken, igUserId }) {
+async function sendMessage({ recipientId, text, accessToken, igUserId, accountId }) {
   const url = igUserId
     ? `${IG_BASE}/${igUserId}/messages`
     : `${FB_BASE}/me/messages`;
 
-  try {
-    const res = await axios.post(
+  async function attempt(token) {
+    return axios.post(
       url,
       { recipient: { id: recipientId }, message: { text } },
-      { params: { access_token: accessToken } }
+      { params: { access_token: token } }
     );
+  }
+
+  try {
+    const res = await attempt(accessToken);
     return res.data;
   } catch (err) {
+    // Si es error de token y tenemos accountId, probar refresh + retry
+    if (isTokenError(err) && accountId) {
+      try {
+        const { tryRefreshOnOAuthError } = require('./metaRefresh');
+        const account = await db.findOne(db.accounts, { _id: accountId });
+        if (account) {
+          const newToken = await tryRefreshOnOAuthError(account);
+          if (newToken) {
+            const retryRes = await attempt(newToken);
+            return retryRes.data;
+          }
+        }
+      } catch (refreshErr) {
+        console.error('Refresh-retry failed:', refreshErr.message);
+      }
+    }
     console.error('Meta API error:', err.response?.data || err.message);
     throw err;
   }
@@ -63,4 +96,4 @@ async function getIGUserInfo(igUserId, accessToken) {
   return { username: igUserId, name: igUserId };
 }
 
-module.exports = { sendMessage, getIGUserInfo };
+module.exports = { sendMessage, getIGUserInfo, isTokenError };

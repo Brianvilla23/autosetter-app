@@ -584,4 +584,67 @@ router.get('/audit-log', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+/**
+ * GET /api/admin/meta-tokens
+ * Estado de todos los Meta/Instagram tokens: expira, último refresh, último error.
+ * Útil para monitorear salud de integraciones.
+ */
+router.get('/meta-tokens', async (req, res) => {
+  try {
+    const accounts = await db.find(db.accounts, {});
+    const now = Date.now();
+    const report = accounts.map(a => {
+      const expiresAt = a.token_expires_at ? new Date(a.token_expires_at) : null;
+      const daysLeft  = expiresAt ? Math.ceil((expiresAt.getTime() - now) / 86_400_000) : null;
+      return {
+        accountId:       a._id,
+        ig_username:     a.ig_username || null,
+        has_token:       !!a.access_token,
+        expires_at:      a.token_expires_at || null,
+        days_left:       daysLeft,
+        refreshed_at:    a.token_refreshed_at || null,
+        last_error:      a.token_last_error || null,
+        last_error_at:   a.token_last_error_at || null,
+        status:          !a.access_token ? 'no_token'
+                         : daysLeft === null ? 'unknown'
+                         : daysLeft <= 0 ? 'expired'
+                         : daysLeft <= 7 ? 'expiring_soon'
+                         : 'healthy',
+      };
+    });
+    res.json(report);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
+ * POST /api/admin/meta-tokens/:accountId/refresh
+ * Fuerza un refresh inmediato del token de una cuenta.
+ */
+router.post('/meta-tokens/:accountId/refresh', async (req, res) => {
+  try {
+    const account = await db.findOne(db.accounts, { _id: req.params.accountId });
+    if (!account) return res.status(404).json({ error: 'Account not found' });
+
+    const { refreshAccountToken } = require('../services/metaRefresh');
+    const result = await refreshAccountToken(account);
+    await audit(req, 'meta_token_refresh', account._id, JSON.stringify({ ok: result.ok, error: result.error }));
+
+    if (!result.ok) return res.status(400).json(result);
+    res.json({ ok: true, expiresAt: result.expiresAt });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
+ * POST /api/admin/meta-tokens/refresh-all
+ * Dispara el sweep completo de refresh.
+ */
+router.post('/meta-tokens/refresh-all', async (req, res) => {
+  try {
+    const { refreshAllExpiring } = require('../services/metaRefresh');
+    const result = await refreshAllExpiring();
+    await audit(req, 'meta_token_sweep', null, JSON.stringify(result));
+    res.json(result);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 module.exports = router;
