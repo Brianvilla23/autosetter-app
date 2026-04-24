@@ -532,6 +532,45 @@
         <h3>🔔 Notificaciones de Leads HOT</h3>
         <p>Recibe un aviso al instante cuando un lead se ponga 🔥 caliente — para que saltes a cerrar antes de que se enfríe. Throttle: máx 1 aviso por lead cada 30 min.</p>
 
+        <!-- TELEGRAM (recomendado) -->
+        <div style="border:1px solid var(--border);border-radius:10px;padding:16px;margin-top:14px;position:relative">
+          <span style="position:absolute;top:-10px;left:14px;background:linear-gradient(90deg,#0088cc,#229ED9);color:#fff;padding:2px 10px;border-radius:10px;font-size:11px;font-weight:700;letter-spacing:0.3px">⭐ RECOMENDADO · GRATIS</span>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:4px">
+            <div>
+              <div style="font-weight:600;font-size:15px">✈️ Telegram</div>
+              <div style="font-size:12px;color:var(--text-2)">Avisos instantáneos al celular. Setup 2 min con @BotFather.</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="notif-tg-enabled">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <details style="margin-top:10px" open>
+            <summary style="cursor:pointer;font-size:13px;color:var(--orange);font-weight:600">▶ Cómo configurar Telegram</summary>
+            <ol style="font-size:13px;color:var(--text-2);line-height:1.7;margin-top:8px;padding-left:18px">
+              <li>Abre Telegram y busca <a href="https://t.me/BotFather" target="_blank" style="color:#229ED9">@BotFather</a></li>
+              <li>Envía <code>/newbot</code> → elige un nombre y un username (debe terminar en "bot", ej: <code>dmcloser_alert_bot</code>)</li>
+              <li>Copia el <strong>token</strong> (tipo <code>1234567890:AAHqXxx...</code>) y pégalo abajo</li>
+              <li>Abre el bot recién creado y envíale <code>/start</code></li>
+              <li>Clickea <strong>"Detectar chat"</strong> — listo</li>
+            </ol>
+          </details>
+          <div class="form-row" style="margin-top:12px">
+            <label>Bot Token</label>
+            <input type="text" id="notif-tg-token" placeholder="1234567890:AAHqXxx..." class="form-input" autocomplete="off">
+          </div>
+          <div class="form-row">
+            <label>Chat ID <span style="color:var(--text-2);font-weight:400">(auto-detectado)</span></label>
+            <input type="text" id="notif-tg-chatid" placeholder="Click 'Detectar chat' después de enviar /start" class="form-input" autocomplete="off">
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <button class="btn-ghost" id="btn-tg-detect">🔍 Detectar chat</button>
+            <a id="btn-tg-openbot" class="btn-ghost" href="#" target="_blank" style="display:none">📲 Abrir bot</a>
+            <button class="btn-ghost" id="btn-test-tg">Enviar prueba</button>
+            <span id="notif-tg-result" style="margin-left:4px;font-size:12px"></span>
+          </div>
+        </div>
+
         <!-- EMAIL -->
         <div style="border:1px solid var(--border);border-radius:10px;padding:16px;margin-top:14px">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">

@@ -1153,6 +1153,9 @@ async function loadNotifications() {
   const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ?? ''; };
   const setChk = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
 
+  setChk('notif-tg-enabled',      c.telegram_enabled);
+  setVal('notif-tg-token',        c.telegram_bot_token);
+  setVal('notif-tg-chatid',       c.telegram_chat_id);
   setChk('notif-email-enabled',   c.email_enabled);
   setVal('notif-email-address',   c.email_address);
   setChk('notif-wa-enabled',      c.whatsapp_enabled);
@@ -1161,12 +1164,18 @@ async function loadNotifications() {
   setChk('notif-wh-enabled',      c.webhook_enabled);
   setVal('notif-wh-url',          c.webhook_url);
 
+  // Si hay token + username guardado, mostrar botón "Abrir bot"
+  updateTelegramOpenBotLink(c.telegram_bot_username);
+
   // Evitar duplicar listeners en re-render
   const save = document.getElementById('btn-save-notifications');
   if (save && !save.dataset.wired) {
     save.dataset.wired = '1';
     save.onclick = async () => {
       const body = {
+        telegram_enabled:    document.getElementById('notif-tg-enabled').checked,
+        telegram_bot_token:  document.getElementById('notif-tg-token').value.trim(),
+        telegram_chat_id:    document.getElementById('notif-tg-chatid').value.trim(),
         email_enabled:    document.getElementById('notif-email-enabled').checked,
         email_address:    document.getElementById('notif-email-address').value.trim(),
         whatsapp_enabled: document.getElementById('notif-wa-enabled').checked,
@@ -1189,9 +1198,75 @@ async function loadNotifications() {
     };
   }
 
+  wireTestButton('btn-test-tg',    'telegram', 'notif-tg-result');
   wireTestButton('btn-test-email', 'email',    'notif-email-result');
   wireTestButton('btn-test-wa',    'whatsapp', 'notif-wa-result');
   wireTestButton('btn-test-wh',    'webhook',  'notif-wh-result');
+
+  // Botón "Detectar chat" — llama getUpdates y auto-llena chat_id
+  const detectBtn = document.getElementById('btn-tg-detect');
+  if (detectBtn && !detectBtn.dataset.wired) {
+    detectBtn.dataset.wired = '1';
+    detectBtn.onclick = async () => {
+      const tokenEl = document.getElementById('notif-tg-token');
+      const chatEl  = document.getElementById('notif-tg-chatid');
+      const out     = document.getElementById('notif-tg-result');
+      const token = tokenEl.value.trim();
+      if (!token) {
+        out.style.color = 'var(--red, #ef4444)';
+        out.textContent = '❌ Pegá el bot token primero';
+        return;
+      }
+      detectBtn.disabled = true;
+      out.style.color = 'var(--text-2)';
+      out.textContent = '⏳ Buscando...';
+
+      // 1) getMe para validar token + obtener username
+      const info = await apiFetch('/api/notifications/telegram/bot-info', 'POST', { bot_token: token });
+      if (!info?.ok) {
+        out.style.color = 'var(--red, #ef4444)';
+        out.textContent = '❌ Token inválido: ' + (info?.reason || 'error');
+        detectBtn.disabled = false;
+        return;
+      }
+      updateTelegramOpenBotLink(info.username);
+
+      // 2) getUpdates para extraer chat_id
+      const r = await apiFetch('/api/notifications/telegram/detect-chat', 'POST', { bot_token: token });
+      if (r?.ok) {
+        chatEl.value = r.chat_id;
+        out.style.color = 'var(--green)';
+        out.textContent = `✅ Chat detectado (${r.name})`;
+        // Persistir inmediatamente
+        const saveBtn = document.getElementById('btn-save-notifications');
+        if (saveBtn?.onclick) {
+          // Marcar telegram como habilitado
+          document.getElementById('notif-tg-enabled').checked = true;
+          await saveBtn.onclick();
+        }
+      } else {
+        out.style.color = 'var(--red, #ef4444)';
+        const hint = r?.reason === 'no_messages'
+          ? 'Abrí el bot y enviale /start, después reintentá'
+          : (r?.reason || 'error');
+        out.textContent = '❌ ' + hint;
+      }
+      detectBtn.disabled = false;
+      setTimeout(() => { out.textContent = ''; }, 8000);
+    };
+  }
+}
+
+function updateTelegramOpenBotLink(username) {
+  const link = document.getElementById('btn-tg-openbot');
+  if (!link) return;
+  if (username) {
+    link.href = `https://t.me/${username}`;
+    link.style.display = '';
+    link.textContent = `📲 Abrir @${username}`;
+  } else {
+    link.style.display = 'none';
+  }
 }
 
 function wireTestButton(btnId, channel, resultId) {

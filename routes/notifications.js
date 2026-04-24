@@ -11,18 +11,22 @@
 const express = require('express');
 const router  = express.Router();
 const db      = require('../db/database');
-const { sendTestNotification } = require('../services/notifications');
+const { sendTestNotification, detectTelegramChatId } = require('../services/notifications');
 
 // Schema por defecto
 function defaultConfig() {
   return {
-    email_enabled:     true,
-    email_address:     '',
-    whatsapp_enabled:  false,
-    whatsapp_number:   '',   // E.164 sin "+" (ej: 56912345678)
-    whatsapp_apikey:   '',
-    webhook_enabled:   false,
-    webhook_url:       '',
+    telegram_enabled:    false,
+    telegram_bot_token:  '',
+    telegram_chat_id:    '',
+    telegram_bot_username: '',  // Solo para UX (no crítico)
+    email_enabled:       true,
+    email_address:       '',
+    whatsapp_enabled:    false,
+    whatsapp_number:     '',   // E.164 sin "+" (ej: 56912345678)
+    whatsapp_apikey:     '',
+    webhook_enabled:     false,
+    webhook_url:         '',
   };
 }
 
@@ -45,6 +49,7 @@ router.put('/', async (req, res) => {
   try {
     const body = req.body || {};
     const allowed = [
+      'telegram_enabled', 'telegram_bot_token', 'telegram_chat_id', 'telegram_bot_username',
       'email_enabled', 'email_address',
       'whatsapp_enabled', 'whatsapp_number', 'whatsapp_apikey',
       'webhook_enabled', 'webhook_url',
@@ -84,13 +89,47 @@ router.put('/', async (req, res) => {
 router.post('/test', async (req, res) => {
   try {
     const { channel } = req.body || {};
-    if (!['email', 'whatsapp', 'webhook'].includes(channel)) {
+    if (!['telegram', 'email', 'whatsapp', 'webhook'].includes(channel)) {
       return res.status(400).json({ error: 'channel inválido' });
     }
     const result = await sendTestNotification({ userId: req.user.userId, channel });
     res.json(result);
   } catch (e) {
     console.error('POST /notifications/test error:', e);
+    res.status(500).json({ error: 'server error' });
+  }
+});
+
+// ─── POST /api/notifications/telegram/detect-chat ────────────────────────────
+// Body: { bot_token }. Llama getUpdates y extrae el chat_id del último /start.
+router.post('/telegram/detect-chat', async (req, res) => {
+  try {
+    const { bot_token } = req.body || {};
+    if (!bot_token) return res.status(400).json({ error: 'bot_token requerido' });
+    const result = await detectTelegramChatId(bot_token);
+    res.json(result);
+  } catch (e) {
+    console.error('POST /notifications/telegram/detect-chat error:', e);
+    res.status(500).json({ error: 'server error' });
+  }
+});
+
+// ─── POST /api/notifications/telegram/bot-info ───────────────────────────────
+// Valida el token y devuelve el username del bot (para generar el link t.me)
+router.post('/telegram/bot-info', async (req, res) => {
+  try {
+    const { bot_token } = req.body || {};
+    if (!bot_token) return res.status(400).json({ error: 'bot_token requerido' });
+    const axios = require('axios');
+    try {
+      const r = await axios.get(`https://api.telegram.org/bot${bot_token}/getMe`, { timeout: 6000 });
+      if (!r.data?.ok) return res.json({ ok: false, reason: r.data?.description });
+      const u = r.data.result;
+      res.json({ ok: true, username: u.username, first_name: u.first_name, id: u.id });
+    } catch (e) {
+      res.json({ ok: false, reason: e.response?.data?.description || e.message });
+    }
+  } catch (e) {
     res.status(500).json({ error: 'server error' });
   }
 });

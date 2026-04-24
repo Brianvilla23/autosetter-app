@@ -6,6 +6,7 @@
  * en vivo antes de que el lead se enfríe.
  *
  * Canales:
+ *  • Telegram   → Bot API oficial (gratis, setup 2 min con @BotFather) ← RECOMENDADO
  *  • Email      → Resend (https://resend.com, 3000/mes free, API simple)
  *  • WhatsApp   → CallMeBot (free, el user se auto-registra en minutos)
  *  • Webhook    → POST JSON a URL del user (Zapier/Make/n8n/Discord/Slack)
@@ -48,6 +49,63 @@ async function sendEmail({ to, subject, html, from }) {
   } catch (e) {
     const msg = e.response?.data?.message || e.message;
     console.error('Resend email error:', msg);
+    return { ok: false, reason: msg };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TELEGRAM (Bot API oficial, gratis)
+// Setup del user (una vez):
+//   1. Abrir Telegram → buscar @BotFather → /newbot → seguir instrucciones
+//   2. Copiar el token (ej: 1234567890:AAHqXxx...) → pegar en DMCloser
+//   3. Abrir el bot creado y enviarle /start
+//   4. En DMCloser clickear "Detectar chat" → queda listo
+// ─────────────────────────────────────────────────────────────────────────────
+async function sendTelegram({ botToken, chatId, text }) {
+  if (!botToken || !chatId) return { ok: false, reason: 'missing_config' };
+  try {
+    const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+    const res = await axios.post(url, {
+      chat_id: chatId,
+      text,
+      parse_mode: 'HTML',
+      disable_web_page_preview: true,
+    }, { timeout: 8000 });
+    return { ok: !!res.data?.ok, id: res.data?.result?.message_id };
+  } catch (e) {
+    const msg = e.response?.data?.description || e.message;
+    console.error('Telegram error:', msg);
+    return { ok: false, reason: msg };
+  }
+}
+
+/**
+ * Llama getUpdates de un bot recién creado y extrae el chat_id del último
+ * mensaje recibido (normalmente /start enviado por el usuario).
+ * Se usa desde la UI para auto-detectar el chat_id sin que el usuario
+ * tenga que buscarlo manualmente.
+ */
+async function detectTelegramChatId(botToken) {
+  if (!botToken) return { ok: false, reason: 'no_token' };
+  try {
+    const url = `https://api.telegram.org/bot${botToken}/getUpdates`;
+    const res = await axios.get(url, { timeout: 8000 });
+    if (!res.data?.ok) return { ok: false, reason: res.data?.description || 'invalid_token' };
+    const updates = res.data.result || [];
+    if (!updates.length) {
+      return { ok: false, reason: 'no_messages', hint: 'Envía /start al bot primero' };
+    }
+    // Tomar el chat.id del update más reciente con mensaje
+    const last = updates
+      .slice()
+      .reverse()
+      .find(u => u.message?.chat?.id || u.edited_message?.chat?.id);
+    const chatId = last?.message?.chat?.id || last?.edited_message?.chat?.id;
+    const name = last?.message?.chat?.first_name || last?.message?.chat?.username || 'usuario';
+    if (!chatId) return { ok: false, reason: 'no_chat_id' };
+    return { ok: true, chat_id: String(chatId), name };
+  } catch (e) {
+    const msg = e.response?.data?.description || e.message;
     return { ok: false, reason: msg };
   }
 }
@@ -131,6 +189,31 @@ async function notifyHotLead({ userId, leadId }) {
   const appLink = `${APP_URL()}/?section=leads&lead=${lead._id}`;
 
   const sent = [];
+
+  // ── TELEGRAM ──
+  if (n.telegram_enabled && n.telegram_bot_token && n.telegram_chat_id) {
+    const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const text = [
+      `🔥 <b>LEAD HOT DETECTADO</b>`,
+      ``,
+      `<b>Prospecto:</b> @${esc(igUsername)}`,
+      `<b>Razón:</b> ${esc(lead.qualification_reason || 'alta probabilidad de cierre')}`,
+      ``,
+      `<b>Últimos mensajes:</b>`,
+      `<code>${esc(conversationPreview)}</code>`,
+      ``,
+      `📲 <a href="${dmLink}">Abrir DM en Instagram</a>`,
+      `📊 <a href="${appLink}">Ver en DMCloser</a>`,
+      ``,
+      `<i>Toma el control antes que se enfríe.</i>`,
+    ].join('\n');
+    const r = await sendTelegram({
+      botToken: n.telegram_bot_token,
+      chatId:   n.telegram_chat_id,
+      text,
+    });
+    sent.push({ channel: 'telegram', ...r });
+  }
 
   // ── EMAIL ──
   if (n.email_enabled && (n.email_address || user.email)) {
@@ -234,6 +317,25 @@ async function sendTestNotification({ userId, channel }) {
 
   const fakePreview = '@juan_perez: Quiero más info del programa\nBOT: ¡Hola Juan! Cuéntame, ¿qué te trae hoy?\n@juan_perez: Tengo un negocio de coaching y quiero automatizar mis DMs';
 
+  if (channel === 'telegram') {
+    if (!n.telegram_enabled || !n.telegram_bot_token || !n.telegram_chat_id) {
+      return { ok: false, reason: 'Telegram desactivado o sin config' };
+    }
+    const text = [
+      `✅ <b>Test DMCloser</b>`,
+      ``,
+      `Tu Telegram está configurado correctamente.`,
+      `Cuando un lead se ponga 🔥 HOT, recibirás una alerta como esta con los detalles y links directos al DM.`,
+      ``,
+      `<code>${fakePreview}</code>`,
+    ].join('\n');
+    return await sendTelegram({
+      botToken: n.telegram_bot_token,
+      chatId:   n.telegram_chat_id,
+      text,
+    });
+  }
+
   if (channel === 'email') {
     if (!n.email_enabled) return { ok: false, reason: 'email desactivado' };
     const to = n.email_address || user.email;
@@ -282,6 +384,8 @@ module.exports = {
   sendEmail,
   sendWhatsApp,
   sendWebhook,
+  sendTelegram,
+  detectTelegramChatId,
   notifyHotLead,
   sendTestNotification,
 };
