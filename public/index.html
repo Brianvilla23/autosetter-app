@@ -1158,6 +1158,58 @@ setTimeout(() => clearInterval(onbCheckInterval), 15000);
 
 // Reabrir wizard manualmente: window.openOnboarding() desde la consola o botón en Settings
 window.openOnboarding = () => { ONB_STATE.step = 1; ONB_FIRED = false; onbInit(); };
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BILLING: resultado post-pago + resume pending checkout
+// ═══════════════════════════════════════════════════════════════════════════
+(function handleBillingFlow() {
+  const url = new URL(window.location.href);
+  const billing = url.searchParams.get('billing');
+  const plan    = url.searchParams.get('plan');
+
+  // ── Caso 1: usuario vuelve del checkout (LS/MP redirige con ?billing=success)
+  if (billing === 'success') {
+    // Limpiar la URL para que refresh no muestre el toast de nuevo
+    url.searchParams.delete('billing');
+    url.searchParams.delete('plan');
+    url.searchParams.delete('provider');
+    history.replaceState({}, '', url.toString());
+
+    // Toast de éxito (esperamos a que el DOM esté listo)
+    setTimeout(() => {
+      const toast = document.createElement('div');
+      toast.style.cssText = 'position:fixed;top:20px;right:20px;z-index:10000;background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff;padding:16px 22px;border-radius:12px;box-shadow:0 8px 24px rgba(34,197,94,0.4);font-family:-apple-system,sans-serif;font-weight:600;font-size:0.95rem;max-width:360px';
+      toast.innerHTML = `🎉 ¡Pago recibido!<br><small style="font-weight:400;opacity:0.9">Tu plan <strong>${(plan||'').toUpperCase()}</strong> se activará en segundos. Si no ves el cambio, recargá en 1 minuto.</small>`;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.style.opacity = '0', 8000);
+      setTimeout(() => toast.remove(), 9000);
+    }, 500);
+  }
+
+  // ── Caso 2: usuario venía desde pricing.html, se registró/logueó, retomar checkout
+  setTimeout(async () => {
+    const token = localStorage.getItem('autosetter_token');
+    const pending = sessionStorage.getItem('pending_checkout');
+    if (!token || !pending) return;
+    sessionStorage.removeItem('pending_checkout'); // consumir una sola vez
+    try {
+      const { plan, provider } = JSON.parse(pending);
+      if (!plan || !provider) return;
+      // Mostrar aviso antes de redirigir
+      if (!confirm(`Listo, ahora te llevo al checkout del plan ${plan.toUpperCase()}. ¿Continuar?`)) return;
+      const r = await fetch('/api/billing/checkout', {
+        method:  'POST',
+        headers: { 'Content-Type':'application/json', 'Authorization':'Bearer ' + token },
+        body:    JSON.stringify({ plan, provider })
+      });
+      const data = await r.json();
+      if (!r.ok || !data.url) throw new Error(data.error || `HTTP ${r.status}`);
+      window.location.href = data.url;
+    } catch (e) {
+      console.warn('[billing] resume fail:', e.message);
+    }
+  }, 2500);
+})();
 </script>
 </body>
 </html>

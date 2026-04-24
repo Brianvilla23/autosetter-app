@@ -368,7 +368,7 @@
         <span class="period">USD /mes</span>
       </div>
       <div class="plan-desc">Perfecto para coaches y consultores que están empezando a escalar sus DMs.</div>
-      <a href="/?register=1" class="plan-btn plan-btn-outline">Comenzar gratis →</a>
+      <a href="#" class="plan-btn plan-btn-outline" data-plan="starter" data-provider="ls">Suscribirme →</a>
       <div class="plan-divider"></div>
       <ul class="plan-features">
         <li><span class="icon">✓</span> 1 cuenta de Instagram</li>
@@ -390,7 +390,7 @@
         <span class="period">USD /mes</span>
       </div>
       <div class="plan-desc">Para negocios en crecimiento que quieren escalar sus conversaciones sin contratar setters.</div>
-      <a href="/?register=1" class="plan-btn plan-btn-grad">Comenzar gratis →</a>
+      <a href="#" class="plan-btn plan-btn-grad" data-plan="pro" data-provider="ls">Suscribirme →</a>
       <div class="plan-divider"></div>
       <ul class="plan-features">
         <li><span class="icon">✓</span> 3 cuentas de Instagram</li>
@@ -412,7 +412,7 @@
         <span class="period">USD /mes</span>
       </div>
       <div class="plan-desc">Para agencias y negocios de alto volumen que gestionan múltiples clientes.</div>
-      <a href="/?register=1" class="plan-btn plan-btn-outline">Comenzar gratis →</a>
+      <a href="#" class="plan-btn plan-btn-outline" data-plan="agency" data-provider="ls">Suscribirme →</a>
       <div class="plan-divider"></div>
       <ul class="plan-features">
         <li><span class="icon">✓</span> 10 cuentas de Instagram</li>
@@ -439,7 +439,7 @@
         <span class="period">CLP /mes</span>
       </div>
       <div class="plan-desc">Perfecto para coaches y consultores que están empezando a escalar sus DMs.</div>
-      <a href="/?register=1" class="plan-btn plan-btn-outline">Comenzar gratis →</a>
+      <a href="#" class="plan-btn plan-btn-outline" data-plan="starter" data-provider="mp">Suscribirme →</a>
       <div class="plan-divider"></div>
       <ul class="plan-features">
         <li><span class="icon">✓</span> 1 cuenta de Instagram</li>
@@ -461,7 +461,7 @@
         <span class="period">CLP /mes</span>
       </div>
       <div class="plan-desc">Para negocios en crecimiento que quieren escalar sus conversaciones sin contratar setters.</div>
-      <a href="/?register=1" class="plan-btn plan-btn-grad">Comenzar gratis →</a>
+      <a href="#" class="plan-btn plan-btn-grad" data-plan="pro" data-provider="mp">Suscribirme →</a>
       <div class="plan-divider"></div>
       <ul class="plan-features">
         <li><span class="icon">✓</span> 3 cuentas de Instagram</li>
@@ -483,7 +483,7 @@
         <span class="period">CLP /mes</span>
       </div>
       <div class="plan-desc">Para agencias y negocios de alto volumen que gestionan múltiples clientes.</div>
-      <a href="/?register=1" class="plan-btn plan-btn-outline">Comenzar gratis →</a>
+      <a href="#" class="plan-btn plan-btn-outline" data-plan="agency" data-provider="mp">Suscribirme →</a>
       <div class="plan-divider"></div>
       <ul class="plan-features">
         <li><span class="icon">✓</span> 10 cuentas de Instagram</li>
@@ -566,13 +566,52 @@
     });
   });
 
-  // Register button — redirect to dashboard and trigger register form
+  // Register button (hero/nav/trial CTA) — redirect to dashboard + register mode
   document.querySelectorAll('a[href="/?register=1"]').forEach(a => {
     a.addEventListener('click', (e) => {
       e.preventDefault();
-      // Store intent and go to dashboard; main.js will handle it
       sessionStorage.setItem('auth_mode', 'register');
       window.location.href = '/';
+    });
+  });
+
+  // ── Plan buttons → Checkout flow ─────────────────────────────────────────
+  async function pickPlan(plan, provider, btn) {
+    const token = localStorage.getItem('autosetter_token');
+
+    // No logueado: guardar intent y mandar a register. main.js puede recuperar
+    // sessionStorage.pending_checkout y retomar después del login.
+    if (!token) {
+      sessionStorage.setItem('pending_checkout', JSON.stringify({ plan, provider }));
+      sessionStorage.setItem('auth_mode', 'register');
+      window.location.href = '/';
+      return;
+    }
+
+    // Logueado: llamar /api/billing/checkout y redirigir al link de pago
+    const origLabel = btn.textContent;
+    btn.textContent = '⏳ Creando checkout...';
+    btn.style.pointerEvents = 'none';
+    try {
+      const r = await fetch('/api/billing/checkout', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body:    JSON.stringify({ plan, provider })
+      });
+      const data = await r.json();
+      if (!r.ok || !data.url) throw new Error(data.error || `HTTP ${r.status}`);
+      window.location.href = data.url;
+    } catch (e) {
+      alert('No pudimos abrir el checkout: ' + e.message + '\n\nProbá de nuevo o contactá soporte.');
+      btn.textContent = origLabel;
+      btn.style.pointerEvents = '';
+    }
+  }
+
+  document.querySelectorAll('.plan-btn[data-plan]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      pickPlan(btn.dataset.plan, btn.dataset.provider, btn);
     });
   });
 
