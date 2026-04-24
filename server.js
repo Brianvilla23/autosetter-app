@@ -194,6 +194,62 @@ app.get('/app', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// ── HEALTH ENDPOINTS ──────────────────────────────────────────────────────────
+// /health        → liveness (proceso vivo). Railway lo usa como healthcheck.
+// /health/ready  → readiness (DB + config). 503 si algo crítico falta.
+// Públicos, sin auth, para uptime monitors y load balancers.
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    uptime: Math.round(process.uptime()),
+    timestamp: new Date().toISOString(),
+    version: process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7) || 'dev',
+  });
+});
+
+app.get('/health/ready', async (req, res) => {
+  const checks = {};
+  let allOk = true;
+
+  // 1. DB reachable — un find rápido sobre una colección liviana
+  try {
+    const dbHealth = require('./db/database');
+    await dbHealth.find(dbHealth.users, {});
+    checks.db = 'ok';
+  } catch (e) {
+    checks.db = 'fail: ' + e.message;
+    allOk = false;
+  }
+
+  // 2. Config crítica presente (no exponemos valores, solo booleans)
+  checks.config = {
+    openai_key:     !!process.env.OPENAI_API_KEY,
+    meta_app_id:    !!process.env.META_APP_ID,
+    jwt_secret:     !!process.env.JWT_SECRET,
+    ls_api_key:     !!process.env.LS_API_KEY,      // opcional
+    mp_token:       !!process.env.MP_ACCESS_TOKEN, // opcional
+  };
+  if (!checks.config.openai_key || !checks.config.meta_app_id || !checks.config.jwt_secret) {
+    allOk = false;
+  }
+
+  // 3. Cantidad de cuentas activas (señal de vida del producto)
+  try {
+    const dbM = require('./db/database');
+    const accounts = await dbM.find(dbM.accounts, {});
+    checks.accounts_count = accounts.length;
+  } catch {
+    checks.accounts_count = null;
+  }
+
+  res.status(allOk ? 200 : 503).json({
+    status: allOk ? 'ready' : 'degraded',
+    checks,
+    uptime: Math.round(process.uptime()),
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // ── PUBLIC ROUTES ─────────────────────────────────────────────────────────────
 app.use('/webhook',  webhookLimiter, require('./routes/webhook'));
 app.use('/auth',                     require('./routes/auth'));        // Instagram OAuth
