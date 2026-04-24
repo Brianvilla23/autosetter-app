@@ -834,6 +834,330 @@
 
 </div><!-- /#app-shell -->
 
+<!-- ════════════════════════════════════════════════════════════════════════
+     WIZARD DE ONBOARDING (4 pasos) — se muestra al primer login
+     ════════════════════════════════════════════════════════════════════════ -->
+<style>
+  #onb-overlay { position:fixed; inset:0; background:rgba(10,10,20,0.85); backdrop-filter:blur(6px); z-index:9999; display:none; align-items:center; justify-content:center; padding:20px; }
+  #onb-overlay.show { display:flex; }
+  .onb-card { background:#1a1a2e; border:1px solid #2a2a4a; border-radius:16px; width:100%; max-width:560px; max-height:92vh; overflow-y:auto; color:#e0e0e0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; box-shadow:0 20px 60px rgba(0,0,0,0.5); }
+  .onb-header { padding:20px 28px 14px; border-bottom:1px solid #2a2a4a; }
+  .onb-progress { display:flex; gap:6px; margin-bottom:14px; }
+  .onb-dot { flex:1; height:6px; border-radius:4px; background:#2a2a4a; transition:background .25s; }
+  .onb-dot.active { background:#7c6af7; }
+  .onb-dot.done { background:#22c55e; }
+  .onb-step-label { font-size:0.74rem; color:#888; text-transform:uppercase; letter-spacing:0.8px; }
+  .onb-title { font-size:1.3rem; font-weight:700; margin-top:4px; color:#fff; }
+  .onb-body { padding:22px 28px; font-size:0.92rem; line-height:1.55; }
+  .onb-body p { margin-bottom:12px; color:#c5c5d8; }
+  .onb-body h4 { color:#a5b4fc; margin:14px 0 8px; font-size:0.95rem; }
+  .onb-body ul { padding-left:22px; margin:8px 0 14px; }
+  .onb-body li { margin-bottom:6px; color:#c5c5d8; }
+  .onb-footer { padding:16px 28px 22px; border-top:1px solid #2a2a4a; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
+  .onb-btn { padding:10px 18px; border-radius:8px; font-size:0.9rem; font-weight:600; cursor:pointer; border:none; transition:opacity .15s, transform .1s; }
+  .onb-btn:hover { opacity:0.88; }
+  .onb-btn:active { transform:scale(0.98); }
+  .onb-btn-primary { background:linear-gradient(135deg,#7c6af7,#9b87ff); color:#fff; }
+  .onb-btn-ghost { background:transparent; color:#888; border:1px solid #333; }
+  .onb-btn-ghost:hover { color:#fff; border-color:#555; }
+  .onb-btn-success { background:linear-gradient(135deg,#16a34a,#22c55e); color:#fff; }
+  .onb-btn-skip { background:none; color:#666; border:none; text-decoration:underline; font-size:0.82rem; cursor:pointer; padding:4px 8px; }
+  .onb-btn-skip:hover { color:#aaa; }
+  .onb-feature { display:flex; gap:12px; padding:12px; background:#0f0f1a; border:1px solid #2a2a4a; border-radius:8px; margin-bottom:10px; }
+  .onb-feature .ico { font-size:1.6rem; flex-shrink:0; }
+  .onb-feature .txt strong { display:block; color:#fff; font-size:0.92rem; margin-bottom:2px; }
+  .onb-feature .txt small { color:#888; font-size:0.82rem; }
+  .onb-status-card { padding:14px; background:#0f0f1a; border:1px solid #2a2a4a; border-radius:10px; display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+  .onb-status-card.done { border-color:#22c55e33; background:linear-gradient(135deg,#0a1f12,#0f0f1a); }
+  .onb-status-card .ico { font-size:1.8rem; }
+  .onb-status-card .txt { flex:1; }
+  .onb-status-card .txt strong { display:block; color:#fff; font-size:0.95rem; }
+  .onb-status-card .txt small { color:#888; font-size:0.82rem; display:block; margin-top:2px; }
+  .onb-highlight { background:linear-gradient(135deg,#1e1a3b,#0f0f1a); border:1px solid #4c3fc5; border-radius:10px; padding:14px 16px; margin:14px 0; }
+  .onb-highlight strong { color:#c4b5fd; }
+</style>
+
+<div id="onb-overlay">
+  <div class="onb-card">
+    <div class="onb-header">
+      <div class="onb-progress">
+        <div class="onb-dot" data-dot="1"></div>
+        <div class="onb-dot" data-dot="2"></div>
+        <div class="onb-dot" data-dot="3"></div>
+        <div class="onb-dot" data-dot="4"></div>
+      </div>
+      <div class="onb-step-label" id="onb-step-label">Paso 1 de 4</div>
+      <div class="onb-title" id="onb-title">Cargando…</div>
+    </div>
+    <div class="onb-body" id="onb-body">⏳</div>
+    <div class="onb-footer">
+      <button class="onb-btn-skip" id="onb-skip" onclick="onbSkipAll()">Saltar por ahora</button>
+      <div style="display:flex;gap:8px">
+        <button class="onb-btn onb-btn-ghost" id="onb-back" onclick="onbPrev()" style="display:none">← Atrás</button>
+        <button class="onb-btn onb-btn-primary" id="onb-next" onclick="onbNext()">Comenzar →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="main.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// Onboarding Wizard — lógica (auto-contenida, no depende de main.js)
+// ═══════════════════════════════════════════════════════════════════════════
+let ONB_STATE = { step: 1, progress: null, userName: '', accountId: '' };
+
+// Helper fetch auto-contenido (lee token directo de localStorage)
+async function onbFetch(path, method = 'GET', body) {
+  const token = localStorage.getItem('autosetter_token');
+  if (!token) return null;
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(path, opts);
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}));
+    throw new Error(err.error || `HTTP ${r.status}`);
+  }
+  return r.json();
+}
+
+async function onbInit() {
+  // Solo si hay token
+  if (!localStorage.getItem('autosetter_token')) return;
+  try {
+    const me = await onbFetch('/api/user/me', 'GET');
+    if (!me || !me.id) return;
+    ONB_STATE.accountId = me.accountId || '';
+    ONB_STATE.userName = (me.name || '').split(' ')[0] || 'ahí';
+    ONB_STATE.progress = me.progress || {};
+    if (me.onboarding?.completed) return; // ya terminó
+    if (me.role === 'admin') return;      // admin no necesita wizard
+    // Determinar paso inicial según progreso
+    if (!me.onboarding?.step || me.onboarding.step < 1) ONB_STATE.step = 1;
+    else ONB_STATE.step = Math.min(me.onboarding.step, 4);
+    onbShow();
+    onbRender();
+  } catch (e) {
+    console.warn('[onb] skip init:', e.message);
+  }
+}
+
+function onbShow()  { document.getElementById('onb-overlay').classList.add('show'); }
+function onbHide()  { document.getElementById('onb-overlay').classList.remove('show'); }
+
+function onbRender() {
+  const s = ONB_STATE.step;
+  // Dots
+  document.querySelectorAll('.onb-dot').forEach(d => {
+    const n = parseInt(d.dataset.dot);
+    d.classList.toggle('active', n === s);
+    d.classList.toggle('done', n < s);
+  });
+  document.getElementById('onb-step-label').textContent = `Paso ${s} de 4`;
+  document.getElementById('onb-back').style.display = s > 1 ? 'inline-block' : 'none';
+
+  const titles = {
+    1: `¡Bienvenido, ${ONB_STATE.userName}! 👋`,
+    2: 'Conectá tu cuenta de Instagram',
+    3: 'Personalizá tu primer agente',
+    4: 'Activá alertas de leads HOT 🔥',
+  };
+  document.getElementById('onb-title').textContent = titles[s];
+
+  const bodyEl = document.getElementById('onb-body');
+  const nextBtn = document.getElementById('onb-next');
+  const p = ONB_STATE.progress || {};
+
+  if (s === 1) {
+    bodyEl.innerHTML = `
+      <p>DMCloser va a calificar tus DMs de Instagram 24/7 y avisarte cuando un lead esté listo para agendar o comprar.</p>
+      <p>En los próximos 3 pasos vamos a dejar todo listo:</p>
+      <div class="onb-feature"><span class="ico">📸</span><div class="txt"><strong>Conectar Instagram</strong><small>Para que el bot pueda leer y responder DMs en tu nombre</small></div></div>
+      <div class="onb-feature"><span class="ico">🤖</span><div class="txt"><strong>Configurar tu agente</strong><small>Le das tu oferta y personalidad, el bot lo usa en cada conversación</small></div></div>
+      <div class="onb-feature"><span class="ico">🔥</span><div class="txt"><strong>Alertas de leads HOT</strong><small>Recibís un Telegram solo cuando un lead pide agenda o precio</small></div></div>
+      <p style="color:#888;font-size:0.82rem;margin-top:14px">⏱ Toma unos 3–4 minutos. Podés saltar cualquier paso y volver después desde Configuración.</p>
+    `;
+    nextBtn.textContent = 'Comenzar →';
+    nextBtn.className = 'onb-btn onb-btn-primary';
+  }
+
+  if (s === 2) {
+    const done = p.hasIG;
+    bodyEl.innerHTML = `
+      <p>Conectá la cuenta profesional de Instagram desde la que querés responder DMs.</p>
+      ${done ? `
+        <div class="onb-status-card done">
+          <span class="ico">✅</span>
+          <div class="txt"><strong>Instagram conectado</strong><small>@${escHtmlSafe(p.igUsername||'')}</small></div>
+        </div>
+        <p style="color:#22c55e">Listo, tu cuenta ya está vinculada. Podés seguir al próximo paso.</p>
+      ` : `
+        <div class="onb-status-card">
+          <span class="ico">⚪</span>
+          <div class="txt"><strong>Instagram no conectado</strong><small>Todavía no vinculaste ninguna cuenta</small></div>
+        </div>
+        <div class="onb-highlight">
+          <strong>⚠️ Requisitos:</strong>
+          <ul style="margin-top:8px">
+            <li>Tu cuenta de Instagram debe ser <strong>profesional</strong> (Business o Creator)</li>
+            <li>Debe estar vinculada a una <strong>página de Facebook</strong></li>
+            <li>Vas a darle permisos de lectura y envío de DMs</li>
+          </ul>
+        </div>
+        <button class="onb-btn onb-btn-primary" onclick="onbConnectIG()" style="width:100%;margin-top:8px">
+          📸 Conectar Instagram ahora
+        </button>
+      `}
+    `;
+    nextBtn.textContent = done ? 'Siguiente →' : 'Ya lo hice, siguiente →';
+    nextBtn.className = done ? 'onb-btn onb-btn-success' : 'onb-btn onb-btn-primary';
+  }
+
+  if (s === 3) {
+    const hasAgent = p.hasAgent;
+    bodyEl.innerHTML = `
+      <p>Ya creamos un agente demo por vos. Ahora hay que personalizarlo con <strong>tu oferta real</strong> para que venda como vos.</p>
+      <div class="onb-status-card ${hasAgent?'done':''}">
+        <span class="ico">${hasAgent?'✅':'🤖'}</span>
+        <div class="txt"><strong>Agente "Mi Agente" creado</strong><small>${hasAgent?'Ya tenés un agente listo':'Se creó automáticamente al registrarte'}</small></div>
+      </div>
+      <h4>¿Qué editar?</h4>
+      <ul>
+        <li><strong>Instrucciones:</strong> tu nombre, tu rol, el flujo de ventas</li>
+        <li><strong>Información del negocio:</strong> servicio, precio, nicho, resultados</li>
+        <li><strong>Links:</strong> tu Calendly, testimonios, VSL</li>
+      </ul>
+      <div class="onb-highlight">
+        💡 <strong>Tip:</strong> cuanto más específico seas con la oferta y el tono, mejor cierra el bot. Tardás 5 min ahora y ahorrás horas después.
+      </div>
+      <button class="onb-btn onb-btn-ghost" onclick="onbGoToAgents()" style="width:100%;margin-top:6px">
+        🤖 Ir a configurar mi agente
+      </button>
+    `;
+    nextBtn.textContent = 'Siguiente →';
+    nextBtn.className = 'onb-btn onb-btn-primary';
+  }
+
+  if (s === 4) {
+    const done = p.hasTelegram;
+    bodyEl.innerHTML = `
+      <p>Cuando el bot detecte que un lead quiere <strong>agendar una llamada</strong> o <strong>comprar</strong>, te avisa por Telegram para que tomes el control.</p>
+      <div class="onb-status-card ${done?'done':''}">
+        <span class="ico">${done?'✅':'🔔'}</span>
+        <div class="txt">
+          <strong>${done?'Telegram configurado':'Telegram pendiente'}</strong>
+          <small>${done?'Ya vas a recibir alertas de leads HOT':'Configurá tu bot para no perder ningún lead caliente'}</small>
+        </div>
+      </div>
+      ${done ? '' : `
+        <h4>Cómo configurar (2 min):</h4>
+        <ul>
+          <li>Abrí Telegram y buscá <strong>@BotFather</strong></li>
+          <li>Enviá <code style="background:#0f0f1a;padding:2px 6px;border-radius:4px">/newbot</code> y seguí los pasos</li>
+          <li>Copiá el token que te dé y pegalo en Configuración → Notificaciones</li>
+          <li>Iniciá conversación con tu bot y apretá "Detectar chat"</li>
+        </ul>
+        <button class="onb-btn onb-btn-ghost" onclick="onbGoToNotifications()" style="width:100%;margin-top:6px">
+          🔔 Configurar Telegram ahora
+        </button>
+      `}
+      <div class="onb-highlight" style="margin-top:14px">
+        🎯 <strong>¡Ya casi!</strong> Al terminar este paso tu DMCloser queda operativo y empieza a calificar leads automáticamente.
+      </div>
+    `;
+    nextBtn.textContent = done ? 'Finalizar 🎉' : 'Terminé, finalizar 🎉';
+    nextBtn.className = 'onb-btn onb-btn-success';
+  }
+}
+
+async function onbSaveStep(step) {
+  try {
+    await onbFetch('/api/user/me/onboarding', 'PATCH', { step });
+  } catch (e) { console.warn('[onb] save step fail:', e.message); }
+}
+
+async function onbNext() {
+  if (ONB_STATE.step < 4) {
+    ONB_STATE.step++;
+    await onbSaveStep(ONB_STATE.step);
+    // Refrescar progreso (puede haber conectado IG durante el paso)
+    try {
+      const me = await onbFetch('/api/user/me', 'GET');
+      ONB_STATE.progress = me.progress || {};
+    } catch {}
+    onbRender();
+  } else {
+    // Finalizar
+    try {
+      await onbFetch('/api/user/me/onboarding', 'PATCH', { completed: true });
+    } catch {}
+    onbHide();
+  }
+}
+
+function onbPrev() {
+  if (ONB_STATE.step > 1) {
+    ONB_STATE.step--;
+    onbSaveStep(ONB_STATE.step);
+    onbRender();
+  }
+}
+
+async function onbSkipAll() {
+  if (!confirm('¿Saltar la configuración inicial? Podés volver desde Configuración cuando quieras.')) return;
+  try {
+    await onbFetch('/api/user/me/onboarding', 'PATCH', { skip: true });
+  } catch {}
+  onbHide();
+}
+
+// ── Acciones de pasos ──────────────────────────────────────────────────────
+function onbConnectIG() {
+  const accountId = ONB_STATE.accountId || '';
+  if (!accountId) { alert('Tu cuenta aún no está lista. Refrescá la página.'); return; }
+  window.location.href = `/auth/instagram?accountId=${accountId}`;
+}
+function onbGoToAgents() {
+  onbHide();
+  // Seguimos marcando como paso 3 hasta que vuelvan
+  const navBtn = document.querySelector('[data-nav="agents"], a[href*="agents"], .nav-agents');
+  if (navBtn) navBtn.click();
+  else location.hash = '#agents';
+}
+function onbGoToNotifications() {
+  onbHide();
+  const navBtn = document.querySelector('[data-nav="settings"], a[href*="settings"], .nav-settings');
+  if (navBtn) navBtn.click();
+  else location.hash = '#settings';
+  // Scroll al bloque de notificaciones
+  setTimeout(() => {
+    const notifEl = document.getElementById('notif-tg-token') || document.querySelector('[id^="notif-tg"]');
+    if (notifEl) notifEl.scrollIntoView({ behavior:'smooth', block:'center' });
+  }, 400);
+}
+
+function escHtmlSafe(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Auto-init: polling ligero durante los primeros 10s esperando a que exista token.
+// Esto cubre tanto "ya estaba logueado al cargar" como "se acaba de loguear/registrar".
+let ONB_FIRED = false;
+const onbCheckInterval = setInterval(() => {
+  if (ONB_FIRED) { clearInterval(onbCheckInterval); return; }
+  if (localStorage.getItem('autosetter_token')) {
+    ONB_FIRED = true;
+    clearInterval(onbCheckInterval);
+    onbInit();
+  }
+}, 1000);
+setTimeout(() => clearInterval(onbCheckInterval), 15000);
+
+// Reabrir wizard manualmente: window.openOnboarding() desde la consola o botón en Settings
+window.openOnboarding = () => { ONB_STATE.step = 1; ONB_FIRED = false; onbInit(); };
+</script>
 </body>
 </html>

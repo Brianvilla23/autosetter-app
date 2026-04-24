@@ -3,7 +3,7 @@ const router   = express.Router();
 const bcrypt   = require('bcryptjs');
 const jwt      = require('jsonwebtoken');
 const db       = require('../db/database');
-const { SECRET } = require('../middleware/authMiddleware');
+const { SECRET, requireAuth } = require('../middleware/authMiddleware');
 
 // ── Password policy ───────────────────────────────────────────────────────────
 // Mínimo 8 chars. Debe tener al menos: 1 letra y 1 número.
@@ -235,5 +235,61 @@ async function seedDemoAgent(accountId) {
     await db.insert(db.links, { _id: id, account_id: accountId, name, url, description: desc });
   }
 }
+
+// ── GET /api/user/me ─────────────────────────────────────────────────────────
+// Devuelve el usuario actual + estado de onboarding + estado IG/agente/telegram
+// para que el wizard sepa qué pasos ya están completos.
+router.get('/me', requireAuth, async (req, res) => {
+  try {
+    const user = await db.findOne(db.users, { _id: req.user.userId });
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    const account = user.account_id ? await db.findOne(db.accounts, { _id: user.account_id }) : null;
+    const agents  = user.account_id ? await db.find(db.agents, { account_id: user.account_id }) : [];
+    const n       = user.notifications || {};
+
+    res.json({
+      id:                  user._id,
+      email:               user.email,
+      name:                user.name,
+      role:                user.role,
+      accountId:           user.account_id,
+      membershipPlan:      user.membershipPlan      || null,
+      membershipExpiresAt: user.membershipExpiresAt || null,
+      onboarding: {
+        completed:  !!user.onboardingCompleted,
+        step:       user.onboardingStep || 0,
+        skippedAt:  user.onboardingSkippedAt || null,
+      },
+      progress: {
+        hasIG:        !!(account && (account.ig_username || account.ig_user_id)),
+        igUsername:   account?.ig_username || null,
+        hasAgent:     agents.length > 0 && agents.some(a => a.enabled),
+        agentsCount:  agents.length,
+        hasTelegram:  !!(n.telegram_enabled && n.telegram_bot_token && n.telegram_chat_id),
+        hasOpenAIKey: !!user.hasOpenAIKey, // flag opcional — settings lo setea si hay key
+      },
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── PATCH /api/user/me/onboarding ────────────────────────────────────────────
+// Actualiza el progreso del wizard.
+// Body: { step?: number, completed?: boolean, skip?: boolean }
+router.patch('/me/onboarding', requireAuth, async (req, res) => {
+  try {
+    const { step, completed, skip } = req.body || {};
+    const upd = {};
+    if (typeof step === 'number')         upd.onboardingStep = Math.max(0, Math.min(10, step));
+    if (completed === true)               upd.onboardingCompleted = true;
+    if (skip === true) {
+      upd.onboardingCompleted = true;
+      upd.onboardingSkippedAt = new Date().toISOString();
+    }
+    if (Object.keys(upd).length === 0) return res.status(400).json({ error: 'Nada que actualizar' });
+    await db.update(db.users, { _id: req.user.userId }, upd);
+    res.json({ ok: true, ...upd });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 
 module.exports = router;
