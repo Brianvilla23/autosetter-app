@@ -59,30 +59,85 @@ function daysForPlan(type) {
 
 /**
  * GET /api/admin/users
- * Lista todos los usuarios con datos de membresía.
+ * Lista todos los usuarios con datos de membresía + IG conectada + actividad.
+ * Query opcional: ?onlyConnected=1 para filtrar solo con IG conectada.
  */
 router.get('/users', async (req, res) => {
   try {
-    const users = await db.find(db.users, {});
-    const safe  = users.map(u => ({
-      id:                   u._id,
-      email:                u.email,
-      name:                 u.name,
-      role:                 u.role,
-      isActive:             u.isActive !== false, // default true si no existe
-      membershipDate:       u.membershipDate       || null,
-      membershipExpiresAt:  u.membershipExpiresAt  || null,
-      membershipPlan:       u.membershipPlan        || 'admin',
-      inviteCode:           u.inviteCode            || null,
-      createdAt:            u.createdAt,
-    }));
-    // Ordenar: admin primero, luego por fecha desc
-    safe.sort((a, b) => {
+    const onlyConnected = req.query.onlyConnected === '1' || req.query.onlyConnected === 'true';
+    const [users, accounts, leads] = await Promise.all([
+      db.find(db.users, {}),
+      db.find(db.accounts, {}),
+      db.find(db.leads, {}),
+    ]);
+
+    // Index acounts por _id (accountId del user apunta a accounts._id)
+    const accountById = new Map();
+    for (const a of accounts) accountById.set(a._id, a);
+
+    // Leads agrupados por account_id
+    const leadsByAcc = new Map();
+    const lastActByAcc = new Map();
+    for (const l of leads) {
+      if (!l.account_id) continue;
+      leadsByAcc.set(l.account_id, (leadsByAcc.get(l.account_id) || 0) + 1);
+      const last = l.last_message_at || l.updated_at || l.created_at;
+      if (last) {
+        const prev = lastActByAcc.get(l.account_id);
+        if (!prev || last > prev) lastActByAcc.set(l.account_id, last);
+      }
+    }
+
+    const safe  = users.map(u => {
+      const acc = u.accountId ? accountById.get(u.accountId) : null;
+      const igConnected = !!(acc && (acc.ig_username || acc.ig_user_id));
+      return {
+        id:                   u._id,
+        email:                u.email,
+        name:                 u.name,
+        role:                 u.role,
+        isActive:             u.isActive !== false,
+        membershipDate:       u.membershipDate       || null,
+        membershipExpiresAt:  u.membershipExpiresAt  || null,
+        membershipPlan:       u.membershipPlan        || 'admin',
+        inviteCode:           u.inviteCode            || null,
+        createdAt:            u.createdAt,
+        // Nuevos campos para seguimiento
+        ig_connected:         igConnected,
+        ig_username:          acc?.ig_username || null,
+        ig_user_id:           acc?.ig_user_id  || null,
+        accountId:            u.accountId      || null,
+        leadsCount:           acc ? (leadsByAcc.get(acc._id) || 0) : 0,
+        lastActivityAt:       acc ? (lastActByAcc.get(acc._id) || null) : null,
+        adminNotes:           u.adminNotes     || '',
+      };
+    });
+
+    const filtered = onlyConnected ? safe.filter(u => u.ig_connected) : safe;
+
+    filtered.sort((a, b) => {
       if (a.role === 'admin') return -1;
       if (b.role === 'admin') return  1;
       return new Date(b.createdAt) - new Date(a.createdAt);
     });
-    res.json(safe);
+    res.json(filtered);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
+ * PATCH /api/admin/users/:id/notes
+ * Guarda notas internas del admin sobre un cliente (para seguimiento / CRM).
+ * Body: { notes: string }
+ */
+router.patch('/users/:id/notes', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const notes = String(req.body?.notes || '').slice(0, 5000);
+    const user = await db.findOne(db.users, { _id: id });
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+    await db.update(db.users, { _id: id }, { adminNotes: notes });
+    await audit(req, 'user.notes_update', id, { email: user.email, length: notes.length });
+    res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -412,6 +467,7 @@ router.get('/users/:id/detail', async (req, res) => {
         paymentProvider:      user.paymentProvider || null,
         subscriptionStatus:   user.subscriptionStatus || null,
         createdAt:            user.createdAt,
+        adminNotes:           user.adminNotes || '',
       },
       account: account ? {
         id:           account._id,

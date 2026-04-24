@@ -187,21 +187,47 @@
 
     <!-- ── USUARIOS ── -->
     <div id="tab-users" class="section active">
+      <!-- Filtros + búsqueda -->
+      <div class="card" style="padding:14px;margin-bottom:14px">
+        <div class="form-row" style="align-items:flex-end;gap:14px">
+          <div class="form-group" style="flex:2;min-width:220px">
+            <label>🔍 Buscar (nombre, email, @IG)</label>
+            <input type="text" id="usersSearch" placeholder="Escribe para filtrar..." oninput="renderUsers()" />
+          </div>
+          <div class="form-group" style="flex:1;min-width:200px">
+            <label>Filtrar por</label>
+            <select id="usersFilter" onchange="renderUsers()">
+              <option value="all">Todos los usuarios</option>
+              <option value="connected">🟢 Con IG conectada</option>
+              <option value="disconnected">⚪ Sin IG conectada</option>
+              <option value="active">✅ Solo activos</option>
+              <option value="expired">⚠️ Membresía vencida</option>
+            </select>
+          </div>
+          <div class="form-group" style="flex:0">
+            <label>&nbsp;</label>
+            <button class="btn btn-ghost btn-sm" onclick="loadUsers()">🔄 Refrescar</button>
+          </div>
+        </div>
+        <div id="usersCounter" style="margin-top:10px;font-size:0.8rem;color:#888"></div>
+      </div>
+
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Usuario</th>
-              <th>Email</th>
+              <th>Cliente</th>
+              <th>Instagram</th>
               <th>Plan</th>
-              <th>Pago / Inicio</th>
+              <th>Leads</th>
+              <th>Última actividad</th>
               <th>Vencimiento</th>
               <th>Estado</th>
               <th>Acciones</th>
             </tr>
           </thead>
           <tbody id="usersTable">
-            <tr><td colspan="7" class="empty"><div class="icon">⏳</div>Cargando...</td></tr>
+            <tr><td colspan="8" class="empty"><div class="icon">⏳</div>Cargando...</td></tr>
           </tbody>
         </table>
       </div>
@@ -476,25 +502,66 @@ function renderStats(r) {
 }
 
 // ── Users ──────────────────────────────────────────────────────────────────
+let USERS_CACHE = []; // cache crudo del último fetch
+
 async function loadUsers() {
-  const users = await api('GET', '/api/admin/users');
+  USERS_CACHE = await api('GET', '/api/admin/users');
+  renderUsers();
+}
+
+function renderUsers() {
   const tbody = document.getElementById('usersTable');
+  const counter = document.getElementById('usersCounter');
+  const q = (document.getElementById('usersSearch')?.value || '').toLowerCase().trim();
+  const filter = document.getElementById('usersFilter')?.value || 'all';
+  const now = new Date();
+
+  let users = USERS_CACHE.slice();
+
+  // Filtros
+  if (filter === 'connected')    users = users.filter(u => u.ig_connected);
+  if (filter === 'disconnected') users = users.filter(u => !u.ig_connected && u.role !== 'admin');
+  if (filter === 'active')       users = users.filter(u => u.isActive);
+  if (filter === 'expired')      users = users.filter(u => u.membershipExpiresAt && new Date(u.membershipExpiresAt) < now && u.role !== 'admin');
+
+  // Búsqueda
+  if (q) users = users.filter(u =>
+    (u.name||'').toLowerCase().includes(q) ||
+    (u.email||'').toLowerCase().includes(q) ||
+    (u.ig_username||'').toLowerCase().includes(q)
+  );
+
+  // Contador
+  const connectedCount = USERS_CACHE.filter(u => u.ig_connected).length;
+  counter.innerHTML = `Mostrando <strong>${users.length}</strong> de ${USERS_CACHE.length} · <span style="color:#22c55e">${connectedCount} con IG conectada</span>`;
 
   if (!users.length) {
-    tbody.innerHTML = `<tr><td colspan="7" class="empty"><div class="icon">👤</div>No hay usuarios aún</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="empty"><div class="icon">👤</div>No hay usuarios que coincidan con el filtro</td></tr>`;
     return;
   }
 
   tbody.innerHTML = users.map(u => {
-    const now      = new Date();
     const expDate  = u.membershipExpiresAt ? new Date(u.membershipExpiresAt) : null;
     const isExpired = expDate && expDate < now && u.role !== 'admin';
     const planBadge = getPlanBadge(u.membershipPlan, isExpired);
     const statusDot = u.isActive ? '<span class="status-dot dot-active"></span>Activo' : '<span class="status-dot dot-inactive"></span>Inactivo';
-    const memberDate = u.membershipDate ? fmtDate(u.membershipDate) : '<span style="color:#555">—</span>';
     const expiryStr  = u.role === 'admin' ? '<span style="color:#888">Sin límite</span>'
                      : expDate ? `<span style="color:${isExpired?'#f87171':'#e0e0e0'}">${fmtDate(u.membershipExpiresAt)}${isExpired?' ⚠️':''}</span>`
                      : '<span style="color:#555">—</span>';
+
+    const igCell = u.ig_connected
+      ? `<a href="https://instagram.com/${escHtml(u.ig_username||'')}" target="_blank" style="color:#c4b5fd;text-decoration:none">
+           <span style="color:#22c55e">●</span> @${escHtml(u.ig_username||'—')}
+         </a>`
+      : `<span style="color:#666">⚪ No conectado</span>`;
+
+    const lastActCell = u.lastActivityAt
+      ? `<span style="font-size:0.8rem;color:${relTimeColor(u.lastActivityAt)}">${relTime(u.lastActivityAt)}</span>`
+      : '<span style="color:#555">—</span>';
+
+    const leadsCell = u.leadsCount > 0
+      ? `<strong style="color:#c4b5fd">${u.leadsCount}</strong>`
+      : '<span style="color:#555">0</span>';
 
     const toggleBtn = u.role !== 'admin' ? `
       <button class="btn btn-sm ${u.isActive ? 'btn-danger' : 'btn-success'}"
@@ -502,21 +569,51 @@ async function loadUsers() {
         ${u.isActive ? 'Desactivar' : 'Activar'}
       </button>` : '';
 
-    const editBtn = `<button class="btn btn-sm btn-warn" onclick="openModal('${u.id}','${u.name}','${u.membershipPlan||'trial'}','${u.membershipDate||''}','${u.membershipExpiresAt||''}',${u.isActive})">Editar</button>`;
+    const editBtn = `<button class="btn btn-sm btn-warn" onclick="openModal('${u.id}','${escAttr(u.name)}','${u.membershipPlan||'trial'}','${u.membershipDate||''}','${u.membershipExpiresAt||''}',${u.isActive})">Editar</button>`;
 
-    const delBtn = u.role !== 'admin' ? `<button class="btn btn-sm btn-danger" onclick="deleteUser('${u.id}','${u.name}')">Eliminar</button>` : '';
+    const delBtn = u.role !== 'admin' ? `<button class="btn btn-sm btn-danger" onclick="deleteUser('${u.id}','${escAttr(u.name)}')">Eliminar</button>` : '';
 
     return `
       <tr>
-        <td><a href="#" onclick="openUserDetail('${u.id}');return false" style="color:#c4b5fd;text-decoration:none"><strong>${escHtml(u.name)}</strong></a>${u.role==='admin'?' 👑':''}</td>
-        <td style="color:#888">${escHtml(u.email)}</td>
+        <td>
+          <a href="#" onclick="openUserDetail('${u.id}');return false" style="color:#c4b5fd;text-decoration:none">
+            <strong>${escHtml(u.name)}</strong>
+          </a>${u.role==='admin'?' 👑':''}
+          <br><small style="color:#666">${escHtml(u.email)}</small>
+        </td>
+        <td>${igCell}</td>
         <td>${planBadge}</td>
-        <td>${memberDate}</td>
+        <td>${leadsCell}</td>
+        <td>${lastActCell}</td>
         <td>${expiryStr}</td>
         <td>${statusDot}</td>
         <td><div class="btn-group">${editBtn}${toggleBtn}${delBtn}</div></td>
       </tr>`;
   }).join('');
+}
+
+// Tiempo relativo ("hace 3h", "hace 2d")
+function relTime(iso) {
+  if (!iso) return '—';
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diffMs / 60000);
+  if (m < 1)    return 'ahora';
+  if (m < 60)   return `hace ${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24)   return `hace ${h}h`;
+  const d = Math.floor(h / 24);
+  if (d < 30)   return `hace ${d}d`;
+  return fmtDate(iso);
+}
+function relTimeColor(iso) {
+  if (!iso) return '#555';
+  const diffH = (Date.now() - new Date(iso).getTime()) / 3600000;
+  if (diffH < 24)  return '#22c55e'; // verde: activo hoy
+  if (diffH < 168) return '#f59e0b'; // ámbar: esta semana
+  return '#888'; // gris: inactivo
+}
+function escAttr(s) {
+  return String(s||'').replace(/'/g, '&#39;').replace(/"/g, '&quot;');
 }
 
 function getPlanBadge(plan, isExpired) {
@@ -790,58 +887,111 @@ async function loadAuditLog() {
 }
 
 // ── User detail drill-down ─────────────────────────────────────────────────
+let CURRENT_DETAIL_USER_ID = null;
+
 async function openUserDetail(id) {
+  CURRENT_DETAIL_USER_ID = id;
   document.getElementById('detailModal').classList.add('open');
   document.getElementById('detailModalBody').innerHTML = '⏳ Cargando…';
   try {
     const d = await api('GET', `/api/admin/users/${id}/detail`);
     document.getElementById('detailModalTitle').textContent = `👤 ${d.user.name}`;
     const u = d.user, a = d.account, l = d.leads;
+
     const agentsHtml = (d.agents || []).map(ag =>
-      `<li>${escHtml(ag.name)} ${ag.enabled ? '🟢' : '⚪'}</li>`
-    ).join('') || '<li style="color:#666">Sin agentes</li>';
+      `<li>${escHtml(ag.name)} ${ag.enabled ? '🟢 Activo' : '⚪ Pausado'}</li>`
+    ).join('') || '<li style="color:#666">Sin agentes configurados</li>';
+
+    const qualBadge = (q) => {
+      const map = { hot: ['#3b0a0a','#f87171','🔥 HOT'], warm: ['#3b2503','#fb923c','🟡 WARM'], cold: ['#0a1a3b','#60a5fa','❄️ COLD'] };
+      const [bg, color, label] = map[q] || ['#222','#888','—'];
+      return q ? `<span style="background:${bg};color:${color};padding:2px 8px;border-radius:20px;font-size:0.72rem;font-weight:600">${label}</span>` : '—';
+    };
     const recentHtml = (l.recent || []).map(r => `
       <tr>
-        <td>${escHtml(r.ig_username || r.id.slice(0,8))}</td>
-        <td>${r.qualification ? getPlanBadge(r.qualification === 'hot' ? 'trial' : r.qualification === 'warm' ? 'monthly' : 'annual', false).replace(/>[A-Z0-9 ]+</, '>'+r.qualification.toUpperCase()+'<') : '—'}</td>
-        <td>${r.is_converted ? '✅' : r.is_bypassed ? '🚫' : '…'}</td>
-      </tr>`).join('') || '<tr><td colspan="3" class="empty">Sin leads</td></tr>';
+        <td>${r.ig_username ? `<a href="https://instagram.com/${escHtml(r.ig_username)}" target="_blank" style="color:#c4b5fd;text-decoration:none">@${escHtml(r.ig_username)}</a>` : `<span style="color:#666">${r.id.slice(0,8)}</span>`}</td>
+        <td>${qualBadge(r.qualification)}</td>
+        <td>${r.is_converted ? '✅ Convertido' : r.is_bypassed ? '🚫 Bypassed' : '…en proceso'}</td>
+        <td style="font-size:0.78rem;color:#888">${r.last_message_at ? relTime(r.last_message_at) : '—'}</td>
+      </tr>`).join('') || '<tr><td colspan="4" class="empty">Sin leads aún</td></tr>';
+
+    const igSection = a ? `
+      <div style="display:flex;align-items:center;gap:10px;background:#0f0f1a;padding:10px 12px;border-radius:8px;border:1px solid #2a2a4a">
+        <span style="font-size:1.4rem">📸</span>
+        <div style="flex:1">
+          <div><a href="https://instagram.com/${escHtml(a.ig_username||'')}" target="_blank" style="color:#c4b5fd;font-weight:600;text-decoration:none">@${escHtml(a.ig_username||'—')}</a></div>
+          <small style="color:#666">ID: ${escHtml(a.ig_user_id||'—')}</small>
+        </div>
+        <span style="color:#22c55e;font-size:0.8rem">🟢 Conectada</span>
+      </div>` : '<div style="color:#666;font-style:italic">⚪ Cliente aún no conectó Instagram</div>';
+
+    const currentNotes = u.adminNotes || '';
 
     document.getElementById('detailModalBody').innerHTML = `
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+      <!-- Resumen -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;font-size:0.85rem">
         <div><small style="color:#888">Email</small><div>${escHtml(u.email)}</div></div>
         <div><small style="color:#888">Plan</small><div>${getPlanBadge(u.plan, false)} ${u.subscriptionStatus||''}</div></div>
         <div><small style="color:#888">Estado</small><div>${u.isActive ? '✅ Activo' : '❌ Inactivo'}</div></div>
         <div><small style="color:#888">Vence</small><div>${u.expiresAt ? fmtDate(u.expiresAt) : '—'}</div></div>
-        <div><small style="color:#888">Provider</small><div>${u.paymentProvider || '—'}</div></div>
-        <div><small style="color:#888">Creado</small><div>${fmtDate(u.createdAt)}</div></div>
+        <div><small style="color:#888">Pago vía</small><div>${u.paymentProvider || '—'}</div></div>
+        <div><small style="color:#888">Registrado</small><div>${fmtDate(u.createdAt)}</div></div>
       </div>
 
+      <!-- Instagram -->
       <h4 style="color:#a5a5c8;font-size:0.85rem;margin:14px 0 8px">📸 Cuenta Instagram</h4>
-      ${a ? `<div style="font-size:0.85rem;color:#aaa">
-        @${escHtml(a.ig_username||'—')} · <span class="code-text">${escHtml(a.ig_user_id||'—')}</span>
-      </div>` : '<div style="color:#666">Sin cuenta conectada</div>'}
+      ${igSection}
 
+      <!-- Agentes -->
       <h4 style="color:#a5a5c8;font-size:0.85rem;margin:14px 0 8px">🤖 Agentes</h4>
-      <ul style="font-size:0.85rem;color:#ccc;padding-left:20px">${agentsHtml}</ul>
+      <ul style="font-size:0.85rem;color:#ccc;padding-left:20px;margin:0">${agentsHtml}</ul>
 
-      <h4 style="color:#a5a5c8;font-size:0.85rem;margin:14px 0 8px">📊 Leads (${l.total})</h4>
-      <div style="display:flex;gap:10px;font-size:0.78rem;color:#888;margin-bottom:8px">
+      <!-- Leads -->
+      <h4 style="color:#a5a5c8;font-size:0.85rem;margin:16px 0 8px">📊 Leads (${l.total})</h4>
+      <div style="display:flex;gap:12px;font-size:0.78rem;color:#888;margin-bottom:10px;flex-wrap:wrap">
         <span>🔥 Hot: <strong style="color:#ef4444">${l.hot}</strong></span>
         <span>🟡 Warm: <strong style="color:#f59e0b">${l.warm}</strong></span>
         <span>❄️ Cold: <strong style="color:#60a5fa">${l.cold}</strong></span>
         <span>✅ Convertidos: <strong style="color:#22c55e">${l.converted}</strong></span>
+        <span>🚫 Bypassed: <strong style="color:#888">${l.bypassed}</strong></span>
       </div>
       <div class="table-wrap">
-        <table><thead><tr><th>Lead</th><th>Calificación</th><th>Estado</th></tr></thead>
+        <table><thead><tr><th>Lead</th><th>Calificación</th><th>Estado</th><th>Último msj</th></tr></thead>
         <tbody>${recentHtml}</tbody></table>
       </div>
+      <div style="margin-top:8px;font-size:0.78rem;color:#666">Mensajes totales (muestra): ${d.messageCount}</div>
 
-      <div style="margin-top:14px;font-size:0.78rem;color:#666">Mensajes totales (muestra): ${d.messageCount}</div>
+      <!-- NOTAS INTERNAS DEL ADMIN -->
+      <h4 style="color:#a5a5c8;font-size:0.85rem;margin:18px 0 8px">📝 Notas internas <small style="color:#666;font-weight:400">(sólo vos ves esto)</small></h4>
+      <textarea id="userNotes" rows="4" placeholder="Ej: llamar el martes, quiere upgrade a anual, pidió descuento..."
+        style="width:100%;background:#0f0f1a;border:1px solid #2a2a4a;color:#e0e0e0;padding:10px;border-radius:6px;font-size:0.88rem;font-family:inherit;resize:vertical">${escHtml(currentNotes)}</textarea>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+        <span id="notesStatus" style="font-size:0.78rem;color:#666"></span>
+        <button class="btn btn-sm btn-primary" onclick="saveUserNotes('${u.id}')">💾 Guardar notas</button>
+      </div>
     `;
   } catch (e) {
     document.getElementById('detailModalBody').innerHTML =
       `<div style="color:#ef4444">Error: ${escHtml(e.message)}</div>`;
+  }
+}
+
+async function saveUserNotes(userId) {
+  const notes = document.getElementById('userNotes').value;
+  const status = document.getElementById('notesStatus');
+  status.textContent = '⏳ Guardando...';
+  status.style.color = '#888';
+  try {
+    await api('PATCH', `/api/admin/users/${userId}/notes`, { notes });
+    status.textContent = '✅ Notas guardadas';
+    status.style.color = '#22c55e';
+    // Actualizar cache local para que se refleje sin refetch completo
+    const idx = USERS_CACHE.findIndex(u => u.id === userId);
+    if (idx >= 0) USERS_CACHE[idx].adminNotes = notes;
+    setTimeout(() => { status.textContent = ''; }, 3000);
+  } catch (e) {
+    status.textContent = '❌ ' + e.message;
+    status.style.color = '#f87171';
   }
 }
 
