@@ -244,10 +244,25 @@ async function classifyLead({ conversationHistory, accountId, apiKey }) {
 CONVERSACIÓN:
 ${conversationText}
 
-CRITERIOS DE CLASIFICACIÓN:
-- HOT (CALIENTE): Tiene problema claro, describió su situación, mostró interés en la solución, preguntó cómo agendar o quiere avanzar. Alto potencial de cierre.
-- WARM (TIBIO): Describió su problema pero aún no mostró interés claro en una solución o necesita más nurturing.
-- COLD (FRÍO): Solo saludó sin compartir problema real, mostró desinterés, resistencia clara, o no responde las preguntas de calificación.
+CRITERIOS DE CLASIFICACIÓN (SÉ ESTRICTO — HOT solo cuando hay intent REAL de agenda/compra):
+
+- HOT (CALIENTE) → REQUIERE ACCIÓN HUMANA INMEDIATA. Solo marcá HOT si hay evidencia CLARA Y EXPLÍCITA de al menos UNA de estas señales:
+  • Pidió agendar llamada / reunión / Zoom / demo (ej: "¿cómo agendamos?", "mándame tu calendario", "cuándo podemos hablar")
+  • Dio disponibilidad concreta para reunión (ej: "mañana a las 4", "el martes puedo")
+  • Pidió precio para tomar decisión ahora (ej: "¿cuánto cuesta? lo quiero", "dime el precio y cerramos")
+  • Intent directo de compra (ej: "lo quiero", "cómo pago", "mándame el link de pago", "acepto", "hagámoslo")
+  • Preguntó métodos de pago concretos (transferencia, tarjeta, cuotas)
+  • Pidió propuesta formal / contrato / factura
+
+- WARM (TIBIO) → El bot debe seguir nurturing, NO llamar al humano todavía. Ejemplos:
+  • "Me interesa", "suena bien", "cuéntame más" (interés sin compromiso)
+  • Confirmó que tiene el problema pero no pidió agenda ni precio
+  • Hizo preguntas de descubrimiento sobre cómo funciona
+  • Describió su situación pero está en modo exploración
+
+- COLD (FRÍO): Solo saludó sin compartir problema, desinterés, resistencia clara, respuestas monosílabas evasivas, o lead claramente fuera del ICP.
+
+REGLA DE ORO: ante la duda entre HOT y WARM, elegí WARM. HOT dispara notificación al dueño — solo úsalo cuando el lead está a 1 paso de convertirse.
 
 Responde ÚNICAMENTE con JSON válido, sin markdown ni texto extra:
 {"qualification":"hot","reason":"razón breve en español"}`;
