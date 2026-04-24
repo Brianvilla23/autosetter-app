@@ -353,6 +353,23 @@
           </table>
         </div>
       </div>
+
+      <div class="card">
+        <h3>📧 Emails transaccionales</h3>
+        <div id="emailStats" style="display:flex;gap:18px;font-size:0.88rem;color:#888;margin-bottom:12px;flex-wrap:wrap">
+          <span>Cargando…</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Fecha</th><th>Destinatario</th><th>Asunto</th><th>Tipo</th><th>Modo</th><th>Estado</th></tr>
+            </thead>
+            <tbody id="emailLogTable">
+              <tr><td colspan="6" class="empty">Sin emails enviados aún</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -766,9 +783,13 @@ function renderMetricCards(m) {
   const ai = m.aiStats || {};
   const lq = m.leadsByQualification || {};
   const ls = m.leadsStatus || {};
+  const churnCls = (m.churnRate || 0) >= 10 ? 'hot' : (m.churnRate || 0) >= 5 ? 'warm' : 'good';
   const cards = [
-    { label: 'MRR estimado', value: '$' + (m.mrr || 0), sub: 'USD / mes', cls: 'good' },
-    { label: 'Usuarios nuevos (7d)', value: m.newUsersLast7 || 0, sub: 'últimos 7 días' },
+    { label: 'MRR estimado', value: '$' + (m.mrr || 0), sub: `USD / mes · ${m.activeSubscribers||0} suscripciones`, cls: 'good' },
+    { label: 'Churn (30d)', value: (m.churnRate || 0) + '%', sub: `${m.cancelledLast30||0} cancelaciones`, cls: churnCls },
+    { label: 'Nuevas subs (30d)', value: m.newSubscribers30d || 0, sub: 'clientes nuevos que pagaron' },
+    { label: 'En trial ahora', value: m.trialUsers || 0, sub: 'prospectos a convertir' },
+    { label: 'Usuarios nuevos (7d)', value: m.newUsersLast7 || 0, sub: 'registros' },
     { label: 'Leads totales', value: ls.total || 0, sub: `${ls.converted||0} convertidos · ${ls.active||0} activos` },
     { label: 'Leads 🔥 HOT',  value: lq.hot || 0,  sub: 'alta probabilidad', cls: 'hot' },
     { label: 'Leads 🟡 WARM', value: lq.warm || 0, sub: 'tibios', cls: 'warm' },
@@ -818,7 +839,49 @@ function renderTopUsers(users) {
 
 // ── System (health + logs) ─────────────────────────────────────────────────
 async function loadSystem() {
-  await Promise.all([loadHealth(), loadAIUsage(), loadAuditLog()]);
+  await Promise.all([loadHealth(), loadAIUsage(), loadAuditLog(), loadEmailLog()]);
+}
+
+async function loadEmailLog() {
+  try {
+    const r = await api('GET', '/api/admin/emails?limit=100');
+    const stats = r.stats || {};
+    document.getElementById('emailStats').innerHTML = `
+      <span>Total: <strong style="color:#e0e0e0">${stats.total||0}</strong></span>
+      <span>✅ OK: <strong style="color:#22c55e">${stats.ok||0}</strong></span>
+      <span>❌ Fallidos: <strong style="color:#ef4444">${stats.failed||0}</strong></span>
+      <span>📨 Enviados (Resend): <strong style="color:#60a5fa">${stats.sent||0}</strong></span>
+      <span>📝 Sólo log (sin API key): <strong style="color:#f59e0b">${stats.logOnly||0}</strong></span>
+    `;
+    const rows = r.emails || [];
+    const tbody = document.getElementById('emailLogTable');
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="6" class="empty">Sin emails enviados aún</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = rows.map(e => {
+      const modeBadge = e.mode === 'resend'
+        ? '<span class="badge-plan badge-monthly">resend</span>'
+        : e.mode === 'log'
+          ? '<span class="badge-plan badge-trial">log-only</span>'
+          : `<span class="badge-plan badge-expired">${escHtml(e.mode||'?')}</span>`;
+      const statusBadge = e.ok
+        ? '<span style="color:#22c55e">✅ OK</span>'
+        : `<span style="color:#ef4444" title="${escHtml(e.error||'')}">❌ ${escHtml(e.error ? e.error.slice(0,40) : 'fail')}</span>`;
+      return `
+        <tr>
+          <td style="color:#888;font-size:0.78rem">${fmtDateTime(e.createdAt)}</td>
+          <td style="font-size:0.82rem">${escHtml(e.to||'—')}</td>
+          <td style="font-size:0.82rem;color:#ccc">${escHtml(e.subject||'—')}</td>
+          <td><span class="code-text">${escHtml(e.tag||'—')}</span></td>
+          <td>${modeBadge}</td>
+          <td>${statusBadge}</td>
+        </tr>`;
+    }).join('');
+  } catch (e) {
+    document.getElementById('emailLogTable').innerHTML =
+      `<tr><td colspan="6" class="empty" style="color:#ef4444">${escHtml(e.message)}</td></tr>`;
+  }
 }
 
 async function loadHealth() {
@@ -938,6 +1001,17 @@ async function openUserDetail(id) {
         <div><small style="color:#888">Registrado</small><div>${fmtDate(u.createdAt)}</div></div>
       </div>
 
+      <!-- Quick actions -->
+      ${u.role !== 'admin' ? `
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:#0f0f1a;padding:10px 12px;border-radius:8px;border:1px solid #2a2a4a;margin-bottom:4px">
+        <span style="font-size:0.82rem;color:#a5a5c8">⏱️ Extender acceso:</span>
+        <button class="btn btn-sm btn-ghost" onclick="extendTrial('${u.id}', 3)">+3 días</button>
+        <button class="btn btn-sm btn-ghost" onclick="extendTrial('${u.id}', 7)">+7 días</button>
+        <button class="btn btn-sm btn-ghost" onclick="extendTrial('${u.id}', 14)">+14 días</button>
+        <button class="btn btn-sm btn-ghost" onclick="extendTrial('${u.id}', 30)">+30 días</button>
+        <span id="extendStatus-${u.id}" style="font-size:0.78rem;color:#666;margin-left:auto"></span>
+      </div>` : ''}
+
       <!-- Instagram -->
       <h4 style="color:#a5a5c8;font-size:0.85rem;margin:14px 0 8px">📸 Cuenta Instagram</h4>
       ${igSection}
@@ -992,6 +1066,27 @@ async function saveUserNotes(userId) {
   } catch (e) {
     status.textContent = '❌ ' + e.message;
     status.style.color = '#f87171';
+  }
+}
+
+async function extendTrial(userId, days) {
+  const statusEl = document.getElementById(`extendStatus-${userId}`);
+  if (statusEl) { statusEl.textContent = '⏳ Extendiendo...'; statusEl.style.color = '#888'; }
+  if (!confirm(`¿Extender acceso de este usuario por ${days} día(s)?`)) {
+    if (statusEl) statusEl.textContent = '';
+    return;
+  }
+  try {
+    const r = await api('POST', `/api/admin/users/${userId}/extend-trial`, { days });
+    if (statusEl) {
+      const nice = new Date(r.newExpiresAt).toLocaleDateString('es-ES', { day:'2-digit', month:'short', year:'numeric' });
+      statusEl.textContent = `✅ +${r.days}d · vence ${nice}`;
+      statusEl.style.color = '#22c55e';
+    }
+    // Refrescar el modal y la tabla de usuarios en ~600ms para ver el cambio
+    setTimeout(() => { openUserDetail(userId); loadUsers(); }, 700);
+  } catch (e) {
+    if (statusEl) { statusEl.textContent = '❌ ' + e.message; statusEl.style.color = '#f87171'; }
   }
 }
 

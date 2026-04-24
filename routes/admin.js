@@ -369,12 +369,37 @@ router.get('/metrics', async (req, res) => {
     // Revenue estimado (MRR) por plan USD
     const PLAN_USD = { starter: 197, pro: 297, agency: 497, monthly: 0, annual: 0 };
     let mrr = 0;
+    let activeSubscribers = 0;
     allUsers.forEach(u => {
       if (u.role === 'admin') return;
       if (u.subscriptionStatus !== 'active') return;
       const p = u.membershipPlan;
       mrr += PLAN_USD[p] || 0;
+      activeSubscribers++;
     });
+
+    // Churn rate (últimos 30 días)
+    //   cancelados_en_los_30d / (activos_hoy + cancelados_en_los_30d)
+    // Aproximación razonable para SaaS chico sin snapshot diario.
+    const cancelledLast30 = allUsers.filter(u =>
+      u.role !== 'admin' &&
+      u.subscriptionStatus === 'cancelled' &&
+      (u.membershipExpiresAt || '') >= since30
+    ).length;
+    const churnBase = activeSubscribers + cancelledLast30;
+    const churnRate = churnBase > 0 ? +(cancelledLast30 / churnBase * 100).toFixed(1) : 0;
+
+    // Nuevas suscripciones en los últimos 30d (para growth tracking)
+    const newSubscribers30d = allUsers.filter(u =>
+      u.role !== 'admin' &&
+      u.subscriptionStatus === 'active' &&
+      (u.membershipDate || u.createdAt || '') >= since30
+    ).length;
+
+    // Usuarios en trial ahora
+    const trialUsers = allUsers.filter(u =>
+      u.role !== 'admin' && u.membershipPlan === 'trial'
+    ).length;
 
     // Uso de IA últimos 30 días
     const recentUsage = allUsage.filter(u => (u.createdAt || '') >= since30);
@@ -427,6 +452,11 @@ router.get('/metrics', async (req, res) => {
       leadsByQualification,
       leadsStatus,
       mrr,
+      activeSubscribers,
+      cancelledLast30,
+      churnRate,
+      newSubscribers30d,
+      trialUsers,
       aiStats,
       topUsers,
       newUsersLast7,
@@ -581,6 +611,65 @@ router.get('/audit-log', async (req, res) => {
     const all = await db.find(db.auditLog, {});
     const sorted = all.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')).slice(0, limit);
     res.json(sorted);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
+ * POST /api/admin/users/:id/extend-trial
+ * Extiende el trial de un usuario por N días (default 7).
+ * Funciona tanto para usuarios en trial como para extender membresía expirada.
+ * Body: { days?: number }  — por defecto 7
+ */
+router.post('/users/:id/extend-trial', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const days = Math.min(Math.max(parseInt(req.body.days) || 7, 1), 365);
+
+    const user = await db.findOne(db.users, { _id: id });
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+    if (user.role === 'admin') return res.status(400).json({ error: 'No tiene sentido extender trial de admin' });
+
+    // Si la membresía ya venció → extender desde HOY. Si todavía está viva → sumar.
+    const now     = Date.now();
+    const current = user.membershipExpiresAt ? new Date(user.membershipExpiresAt).getTime() : 0;
+    const base    = current > now ? current : now;
+    const newExp  = new Date(base + days * 24 * 3_600_000).toISOString();
+
+    const upd = {
+      membershipExpiresAt: newExp,
+      isActive: true,
+      // Si estaba cancelado/expirado, lo volvemos a trial para que vuelva a tener acceso
+      ...(user.subscriptionStatus !== 'active' ? { membershipPlan: 'trial', subscriptionStatus: 'trial' } : {}),
+      // Resetear flags de emails de trial para que pueda recibir el reminder si vuelve a estar cerca del vencimiento
+      trialEndingEmailSent: null,
+      trialEndedEmailSent:  null,
+    };
+    await db.update(db.users, { _id: id }, upd);
+    await audit(req, 'user.extend_trial', id, { email: user.email, days, newExpiresAt: newExp });
+
+    res.json({ ok: true, newExpiresAt: newExp, days });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
+ * GET /api/admin/emails
+ * Últimos emails transaccionales enviados (o intentados). Útil para diagnosticar
+ * "por qué no le llegó el welcome a fulano?" sin entrar a Resend.
+ */
+router.get('/emails', async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 100, 500);
+    const all = await db.find(db.emailLog, {});
+    const sorted = all.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')).slice(0, limit);
+    // stats quick
+    const stats = {
+      total:    all.length,
+      ok:       all.filter(e => e.ok).length,
+      failed:   all.filter(e => !e.ok).length,
+      logOnly:  all.filter(e => e.mode === 'log').length,
+      sent:     all.filter(e => e.mode === 'resend' && e.ok).length,
+    };
+    res.json({ emails: sorted, stats });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
