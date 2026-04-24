@@ -23,6 +23,7 @@ const db = {
   followups:     new Datastore({ filename: path.join(dir, 'followups.db'),     autoload: true }),
   magnetLinks:   new Datastore({ filename: path.join(dir, 'magnetLinks.db'),   autoload: true }),
   linkClicks:    new Datastore({ filename: path.join(dir, 'linkClicks.db'),    autoload: true }),
+  emailLog:      new Datastore({ filename: path.join(dir, 'emailLog.db'),      autoload: true }),
 };
 
 // Compact on load

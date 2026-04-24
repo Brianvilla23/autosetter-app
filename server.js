@@ -109,6 +109,17 @@ app.post('/api/billing/ls-webhook', express.raw({ type: 'application/json' }), a
             lsCustomerPortalUrl:    portalUrl || null,
           });
           console.log(`✅ LS: suscripción creada — usuario ${userId} (${plan})`);
+
+          // Email de bienvenida al plan
+          try {
+            const user = await dbW.findOne(dbW.users, { _id: userId });
+            if (user?.email) {
+              const { sendEmail } = require('./services/email');
+              const { subscriptionActivatedEmail } = require('./services/emailTemplates');
+              const tpl = subscriptionActivatedEmail({ name: user.name, email: user.email, plan });
+              sendEmail({ to: user.email, subject: tpl.subject, html: tpl.html, userId, tag: 'subscription_activated' }).catch(() => null);
+            }
+          } catch (e) { console.warn('subscription email skip:', e.message); }
         }
         break;
       }
@@ -134,6 +145,17 @@ app.post('/api/billing/ls-webhook', express.raw({ type: 'application/json' }), a
         if (userId) {
           await dbW.update(dbW.users, { _id: userId }, { subscriptionStatus: 'past_due' });
           console.log(`⚠️ LS: pago fallido — usuario ${userId}`);
+
+          // Email de recuperación
+          try {
+            const user = await dbW.findOne(dbW.users, { _id: userId });
+            if (user?.email) {
+              const { sendEmail } = require('./services/email');
+              const { paymentFailedEmail } = require('./services/emailTemplates');
+              const tpl = paymentFailedEmail({ name: user.name, email: user.email });
+              sendEmail({ to: user.email, subject: tpl.subject, html: tpl.html, userId, tag: 'payment_failed' }).catch(() => null);
+            }
+          } catch (e) { console.warn('payment failed email skip:', e.message); }
         }
         break;
       }
@@ -298,6 +320,10 @@ app.post('/api/billing/mp-webhook', async (req, res) => {
     if (!userId) { res.sendStatus(200); return; }
 
     if (status === 'authorized' || eventType === 'subscription_authorized_payment') {
+      // Detectar si es la PRIMERA activación (para mandar welcome email una sola vez)
+      const userBefore = await dbW.findOne(dbW.users, { _id: userId });
+      const isFirstActivation = userBefore && userBefore.subscriptionStatus !== 'active';
+
       const exp = new Date(now); exp.setMonth(exp.getMonth() + 1);
       const update = {
         membershipExpiresAt: exp.toISOString(),
@@ -308,6 +334,16 @@ app.post('/api/billing/mp-webhook', async (req, res) => {
       if (planGuess) update.membershipPlan = planGuess;
       await dbW.update(dbW.users, { _id: userId }, update);
       console.log(`✅ MP: suscripción activa — usuario ${userId} (${planGuess || 'n/a'})`);
+
+      // Welcome-to-plan email solo en la primera activación
+      if (isFirstActivation && userBefore.email) {
+        try {
+          const { sendEmail } = require('./services/email');
+          const { subscriptionActivatedEmail } = require('./services/emailTemplates');
+          const tpl = subscriptionActivatedEmail({ name: userBefore.name, email: userBefore.email, plan: planGuess || userBefore.membershipPlan });
+          sendEmail({ to: userBefore.email, subject: tpl.subject, html: tpl.html, userId, tag: 'subscription_activated_mp' }).catch(() => null);
+        } catch (e) { console.warn('MP activation email skip:', e.message); }
+      }
     } else if (status === 'cancelled' || status === 'paused') {
       await dbW.update(dbW.users, { _id: userId }, {
         subscriptionStatus:  status,
@@ -474,6 +510,48 @@ setInterval(() => {
 setInterval(() => {
   processFollowUps().catch(e => console.error('processFollowUps:', e.message));
 }, 30000);
+
+// ── TRIAL LIFECYCLE EMAILS WORKER ─────────────────────────────────────────────
+// Cada 6h recorre users con plan=trial y manda:
+//  - trialEndingEmail cuando falta 2 días (o menos) para que venza
+//  - trialEndedEmail el día que ya venció
+// Guarda flags en el user (trialEndingEmailSent / trialEndedEmailSent) para no spammear.
+async function sweepTrialEmails() {
+  try {
+    const dbTE = require('./db/database');
+    const { sendEmail } = require('./services/email');
+    const { trialEndingEmail, trialEndedEmail } = require('./services/emailTemplates');
+    const users = await dbTE.find(dbTE.users, { membershipPlan: 'trial' });
+    const now = Date.now();
+
+    for (const u of users) {
+      if (!u.email || !u.membershipExpiresAt) continue;
+      const expMs    = new Date(u.membershipExpiresAt).getTime();
+      const hoursLeft = (expMs - now) / 3_600_000;
+
+      // Trial ending (48h a 0h antes del vencimiento) — mandar una sola vez
+      if (hoursLeft > 0 && hoursLeft <= 48 && !u.trialEndingEmailSent) {
+        const daysLeft = Math.max(1, Math.round(hoursLeft / 24));
+        const tpl = trialEndingEmail({ name: u.name, email: u.email, daysLeft });
+        const r = await sendEmail({ to: u.email, subject: tpl.subject, html: tpl.html, userId: u._id, tag: 'trial_ending' });
+        if (r.ok) await dbTE.update(dbTE.users, { _id: u._id }, { trialEndingEmailSent: new Date().toISOString() });
+      }
+
+      // Trial ended (0 a -48h después del vencimiento) — mandar una sola vez
+      if (hoursLeft <= 0 && hoursLeft > -48 && !u.trialEndedEmailSent) {
+        const tpl = trialEndedEmail({ name: u.name, email: u.email });
+        const r = await sendEmail({ to: u.email, subject: tpl.subject, html: tpl.html, userId: u._id, tag: 'trial_ended' });
+        if (r.ok) await dbTE.update(dbTE.users, { _id: u._id }, { trialEndedEmailSent: new Date().toISOString() });
+      }
+    }
+  } catch (e) {
+    console.error('sweepTrialEmails error:', e.message);
+  }
+}
+
+// Primer barrido a los 60s, luego cada 6h
+setTimeout(() => sweepTrialEmails(), 60_000);
+setInterval(sweepTrialEmails, 6 * 60 * 60 * 1000);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

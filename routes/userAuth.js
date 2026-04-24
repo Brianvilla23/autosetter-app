@@ -117,6 +117,17 @@ router.post('/register', async (req, res) => {
 
     await seedDemoAgent(account._id);
 
+    // Welcome email (async, no bloquea la respuesta al usuario)
+    try {
+      const { sendEmail } = require('../services/email');
+      const { welcomeEmail } = require('../services/emailTemplates');
+      const tpl = welcomeEmail({ name: user.name, email: user.email });
+      sendEmail({ to: user.email, subject: tpl.subject, html: tpl.html, userId: user._id, tag: 'welcome' })
+        .catch(e => console.warn('welcome email skip:', e.message));
+    } catch (e) {
+      console.warn('welcome email setup error:', e.message);
+    }
+
     const token = jwt.sign(
       { userId: user._id, email: user.email, name: user.name, accountId: account._id, role: user.role },
       SECRET,
