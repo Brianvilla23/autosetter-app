@@ -172,8 +172,27 @@ app.use(preventParamPollution);
 // 6. Sanitizar body contra XSS
 app.use(sanitizeBody);
 
-// 7. Static files
-app.use(express.static(path.join(__dirname, 'public')));
+// 7. Static files — SIN auto-index para que no sirva index.html en "/"
+// (queremos landing pública en "/" y dashboard en "/app")
+app.use(express.static(path.join(__dirname, 'public'), { index: false }));
+
+// ── LANDING PÚBLICA ───────────────────────────────────────────────────────────
+// "/" → home.html (marketing). Si el user ya está logueado, home.html lo
+// redirige con JS a "/app" leyendo localStorage.autosetter_token.
+// Excepción: si vuelve de OAuth/checkout (auth= o billing= en query),
+// lo mandamos DIRECTO al /app conservando los params para que el SPA los procese.
+app.get('/', (req, res) => {
+  if (req.query.auth || req.query.billing) {
+    const qs = new URLSearchParams(req.query).toString();
+    return res.redirect('/app?' + qs);
+  }
+  res.sendFile(path.join(__dirname, 'public', 'home.html'));
+});
+
+// "/app" → dashboard SPA (index.html)
+app.get('/app', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 // ── PUBLIC ROUTES ─────────────────────────────────────────────────────────────
 app.use('/webhook',  webhookLimiter, require('./routes/webhook'));

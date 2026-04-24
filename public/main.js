@@ -56,22 +56,22 @@ function showDashboard() {
   const params = new URLSearchParams(window.location.search);
   if (params.get('auth') === 'success') {
     showToast('✅ Instagram conectado: ' + params.get('ig'));
-    window.history.replaceState({}, '', '/');
+    window.history.replaceState({}, '', '/app');
     loadSection('settings');
   } else if (params.get('auth') === 'error') {
     showToast('❌ ' + decodeURIComponent(params.get('msg') || 'Error desconocido'));
-    window.history.replaceState({}, '', '/');
+    window.history.replaceState({}, '', '/app');
   } else if (params.get('billing') === 'success') {
     const plan = params.get('plan') || 'plan';
     const provider = params.get('provider') || '';
     const planName = plan.charAt(0).toUpperCase() + plan.slice(1);
     const providerLabel = provider === 'ls' ? ' (Lemon Squeezy)' : provider === 'mp' ? ' (Mercado Pago)' : '';
     showToast(`🎉 ¡Suscripción activada! Bienvenido al plan ${planName}${providerLabel}`);
-    window.history.replaceState({}, '', '/');
+    window.history.replaceState({}, '', '/app');
     loadBillingStatus();
   } else if (params.get('billing') === 'cancelled') {
     showToast('Pago cancelado. Tu prueba gratuita sigue activa.');
-    window.history.replaceState({}, '', '/');
+    window.history.replaceState({}, '', '/app');
   }
 
   // Always check billing status on load
