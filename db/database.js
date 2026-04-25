@@ -24,6 +24,8 @@ const db = {
   magnetLinks:   new Datastore({ filename: path.join(dir, 'magnetLinks.db'),   autoload: true }),
   linkClicks:    new Datastore({ filename: path.join(dir, 'linkClicks.db'),    autoload: true }),
   emailLog:      new Datastore({ filename: path.join(dir, 'emailLog.db'),      autoload: true }),
+  leadMagnets:   new Datastore({ filename: path.join(dir, 'leadMagnets.db'),   autoload: true }),
+  magnetDeliveries: new Datastore({ filename: path.join(dir, 'magnetDeliveries.db'), autoload: true }),
 };
 
 // Compact on load

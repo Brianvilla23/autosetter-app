@@ -373,6 +373,7 @@ app.use('/api/leads',     apiLimiter, requireAuth, checkSubscription, require('.
 app.use('/api/links',     apiLimiter, requireAuth, checkSubscription, require('./routes/links'));
 app.use('/api/settings',  apiLimiter, requireAuth, require('./routes/settings'));
 app.use('/api/growth',    apiLimiter, requireAuth, checkSubscription, require('./routes/growth'));
+app.use('/api/lead-magnets', apiLimiter, requireAuth, checkSubscription, require('./routes/leadMagnets'));
 app.use('/api/notifications', apiLimiter, requireAuth, require('./routes/notifications'));
 app.use('/api/usage',         apiLimiter, requireAuth, require('./routes/usage'));
 

@@ -111,6 +111,33 @@ async function generateReply({ agent, knowledge, links, conversationHistory, new
       links.map(l => `• ${l.name}: ${l.url}${l.description ? ` — ${l.description}` : ''}`).join('\n')
     : '';
 
+  // Lead magnets — ganchos de captura cuando el lead no está listo para comprar.
+  // Los cargamos acá adentro para no tener que tocar los 4 callers (webhook, agents, leads, followup).
+  let leadMagnets = [];
+  try {
+    const db = require('../db/database');
+    leadMagnets = await db.find(db.leadMagnets, { account_id: accountId, enabled: true });
+  } catch (e) { /* módulo nuevo — si falla, seguimos sin magnets */ }
+
+  const triggerLabel = {
+    pricing_objection: 'cuando el lead dice que es caro o no tiene plata',
+    not_ready:         'cuando el lead dice que lo va a pensar o no está listo',
+    cold_lead:         'cuando el lead es frío o no califica para comprar ahora',
+    diagnostic:        'cuando el lead quiere evaluar si el servicio le sirve',
+    info_request:      'cuando el lead pide más info o detalles',
+    generic:           'como recurso genérico de valor',
+  };
+
+  const magnetsText = leadMagnets.length
+    ? '\n\n--- LEAD MAGNETS DISPONIBLES (ofrecelos a cambio del email cuando el lead NO esté listo para comprar) ---\n' +
+      leadMagnets.map(m => {
+        const trig = triggerLabel[m.trigger_intent] || 'situación apropiada';
+        const pitch = m.pitch ? ` Frase sugerida: "${m.pitch}"` : '';
+        return `• [${m.title}] ${m.description || ''} — ofrecelo ${trig}.${pitch}`;
+      }).join('\n') +
+      '\n\nREGLA DE USO: cuando decidas ofrecer un magnet, NO pegues el link aún. Primero pedí el email/teléfono con una frase natural: "te la mando al mail, ¿a cuál te la paso?". Una vez que te dé el dato, responde confirmando: "listo, te la mandé al [email]". El sistema se encarga de entregarlo.'
+    : '';
+
   const extraContextText = extraContext ? `\n\n--- CONTEXTO ADICIONAL ---\n${extraContext}` : '';
 
   // Detect if this is the very first message from this lead
@@ -202,7 +229,7 @@ Ejemplo: "mirá, te mando la guía que uso con los que están arrancando — ¿a
 × Nunca repitas lo que el lead acaba de decir como loro ("entiendo que necesitás X")
 × Nunca des 3 opciones cuando podés dar 1 recomendación fuerte`;
 
-  const systemPrompt = agent.instructions + knowledgeText + linksText + extraContextText + humanizationPrompt;
+  const systemPrompt = agent.instructions + knowledgeText + linksText + magnetsText + extraContextText + humanizationPrompt;
 
   // ── Detectar complejidad y elegir modelo ───────────────────────────────────
   const complexity = detectComplexity({ newMessage, conversationHistory });
