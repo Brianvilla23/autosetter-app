@@ -41,6 +41,11 @@
       <span class="nav-icon"><svg viewBox="0 0 20 20"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z"/></svg></span>
       Knowledge
     </a>
+    <a class="nav-item" data-section="inbox">
+      <span class="nav-icon">💬</span>
+      Inbox
+      <span class="nav-badge" id="inbox-badge" style="display:none;background:var(--orange);color:#fff;border-radius:10px;padding:2px 7px;font-size:11px;font-weight:700;margin-left:auto"></span>
+    </a>
     <a class="nav-item" data-section="leads">
       <span class="nav-icon"><svg viewBox="0 0 20 20"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/></svg></span>
       Leads
@@ -274,6 +279,45 @@
       <button class="btn-primary" id="btn-add-knowledge">+ Nueva entrada</button>
     </div>
     <div id="knowledge-list" class="knowledge-list"></div>
+  </section>
+
+  <!-- INBOX (mensajería unificada) ─────────────────────────────────────────── -->
+  <section id="section-inbox" class="section">
+    <div class="page-header">
+      <div>
+        <h1>💬 Inbox</h1>
+        <p>Todas las conversaciones del bot. Tomá el control cuando necesites cerrar vos.</p>
+      </div>
+      <button class="btn-ghost" onclick="loadInbox()" title="Refrescar" style="padding:8px 14px">↻</button>
+    </div>
+
+    <!-- Filtros + buscador -->
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
+      <button class="inbox-filter active" data-filter="all">Todas <span class="cnt"></span></button>
+      <button class="inbox-filter" data-filter="unread">Sin leer <span class="cnt"></span></button>
+      <button class="inbox-filter" data-filter="hot">🔥 HOT <span class="cnt"></span></button>
+      <button class="inbox-filter" data-filter="warm">🟡 WARM <span class="cnt"></span></button>
+      <button class="inbox-filter" data-filter="cold">❄️ COLD <span class="cnt"></span></button>
+      <button class="inbox-filter" data-filter="bypassed">🚫 Pausadas <span class="cnt"></span></button>
+      <input type="text" id="inbox-search" placeholder="Buscar @usuario..." style="margin-left:auto;padding:7px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;width:200px">
+    </div>
+
+    <!-- Layout 2-col: lista | thread -->
+    <div id="inbox-layout" style="display:grid;grid-template-columns:340px 1fr;gap:0;background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden;height:calc(100vh - 280px);min-height:500px">
+      <!-- Lista de conversaciones -->
+      <div id="inbox-list" style="border-right:1px solid var(--border);overflow-y:auto;background:#fafafa">
+        <div style="padding:30px 20px;text-align:center;color:var(--text-3);font-size:13px">⏳ Cargando…</div>
+      </div>
+
+      <!-- Detalle / thread -->
+      <div id="inbox-thread" style="display:flex;flex-direction:column;overflow:hidden">
+        <div style="margin:auto;text-align:center;color:var(--text-3);padding:40px">
+          <div style="font-size:42px;margin-bottom:12px">💬</div>
+          <div style="font-size:15px;color:var(--text-2)">Seleccioná una conversación</div>
+          <div style="font-size:13px;margin-top:6px">Vas a poder leer el thread completo y responder vos directamente.</div>
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- LEADS ───────────────────────────────────────────────────────────────── -->

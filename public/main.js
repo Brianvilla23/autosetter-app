@@ -230,6 +230,7 @@ function loadSection(name) {
     case 'home':      loadHome(); break;
     case 'agents':    loadAgents(); break;
     case 'knowledge': loadKnowledge(); break;
+    case 'inbox':     loadInbox(); break;
     case 'leads':     loadLeads(); break;
     case 'links':     loadLinks(); break;
     case 'magnets':   loadMagnets(); break;
@@ -1849,6 +1850,296 @@ window.editMagnet = editMagnet;
 window.saveMagnet = saveMagnet;
 window.toggleMagnet = toggleMagnet;
 window.deleteMagnet = deleteMagnet;
+
+// ── INBOX UNIFICADO ────────────────────────────────────────────────────────
+let INBOX_FILTER = 'all';
+let INBOX_SELECTED_ID = null;
+let INBOX_REFRESH_TIMER = null;
+let INBOX_SEARCH = '';
+
+async function loadInbox() {
+  if (!ACCOUNT_ID) return;
+
+  // Bind filtros + buscador la primera vez
+  if (!window.__inboxBound) {
+    window.__inboxBound = true;
+    document.querySelectorAll('.inbox-filter').forEach(btn => {
+      btn.addEventListener('click', () => {
+        INBOX_FILTER = btn.dataset.filter;
+        document.querySelectorAll('.inbox-filter').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        renderInboxList();
+      });
+    });
+    const searchInput = document.getElementById('inbox-search');
+    if (searchInput) {
+      let t;
+      searchInput.addEventListener('input', () => {
+        clearTimeout(t);
+        t = setTimeout(() => {
+          INBOX_SEARCH = searchInput.value.trim();
+          renderInboxList();
+        }, 250);
+      });
+    }
+  }
+
+  await Promise.all([renderInboxList(), updateInboxBadge()]);
+
+  // Auto-refresh cada 20s mientras estás en el inbox
+  if (INBOX_REFRESH_TIMER) clearInterval(INBOX_REFRESH_TIMER);
+  INBOX_REFRESH_TIMER = setInterval(() => {
+    const visible = document.getElementById('section-inbox')?.classList.contains('active');
+    if (!visible) { clearInterval(INBOX_REFRESH_TIMER); INBOX_REFRESH_TIMER = null; return; }
+    renderInboxList();
+    updateInboxBadge();
+    if (INBOX_SELECTED_ID) renderInboxThread(INBOX_SELECTED_ID, true);
+  }, 20000);
+}
+
+async function renderInboxList() {
+  const params = new URLSearchParams({ accountId: ACCOUNT_ID, filter: INBOX_FILTER });
+  if (INBOX_SEARCH) params.set('search', INBOX_SEARCH);
+  try {
+    const r = await apiFetch(`/api/inbox?${params}`);
+    if (!r) return;
+    updateFilterCounts();
+
+    const list = document.getElementById('inbox-list');
+    if (!r.items.length) {
+      list.innerHTML = `
+        <div style="padding:50px 20px;text-align:center;color:var(--text-3)">
+          <div style="font-size:32px;margin-bottom:8px">📭</div>
+          <div style="font-size:13px">Sin conversaciones${INBOX_FILTER !== 'all' ? ' con este filtro' : ' aún'}</div>
+        </div>`;
+      return;
+    }
+
+    list.innerHTML = r.items.map(item => {
+      const initial = (item.ig_username || '?').slice(0, 2).toUpperCase();
+      const when = item.last_message?.when ? relTime(item.last_message.when) : '';
+      const preview = item.last_message
+        ? `${item.last_message.role !== 'user' ? '↪ ' : ''}${escHtmlSafe(item.last_message.preview)}`
+        : '(sin mensajes)';
+      const badges = [];
+      if (item.qualification === 'hot')  badges.push('<span class="badge-q hot">🔥 HOT</span>');
+      if (item.qualification === 'warm') badges.push('<span class="badge-q warm">🟡 WARM</span>');
+      if (item.qualification === 'cold') badges.push('<span class="badge-q cold">❄️ COLD</span>');
+      if (item.is_bypassed)              badges.push('<span class="badge-q bypassed">🚫 Pausada</span>');
+      if (item.is_converted)             badges.push('<span class="badge-q converted">✓ Convertido</span>');
+
+      return `
+        <div class="inbox-item ${item.unread ? 'unread' : ''} ${INBOX_SELECTED_ID === item.id ? 'selected' : ''}" onclick="selectInboxItem('${item.id}')">
+          <div class="avatar">${escHtmlSafe(initial)}</div>
+          <div class="meta">
+            <div class="top-row">
+              <span class="ig-name">@${escHtmlSafe(item.ig_username || '—')}</span>
+              <span class="when">${when}</span>
+            </div>
+            <div class="preview">${preview}</div>
+            ${badges.length ? `<div class="badges">${badges.join('')}</div>` : ''}
+          </div>
+          ${item.unread ? '<div class="unread-dot"></div>' : ''}
+        </div>`;
+    }).join('');
+  } catch (e) {
+    document.getElementById('inbox-list').innerHTML = `<div style="padding:20px;text-align:center;color:#ef4444">${escHtmlSafe(e.message)}</div>`;
+  }
+}
+
+async function updateFilterCounts() {
+  try {
+    const c = await apiFetch(`/api/inbox/counters?accountId=${ACCOUNT_ID}`);
+    if (!c) return;
+    const setCnt = (filter, val) => {
+      const btn = document.querySelector(`.inbox-filter[data-filter="${filter}"] .cnt`);
+      if (btn) btn.textContent = val > 0 ? val : '';
+    };
+    setCnt('all', c.all);
+    setCnt('unread', c.unread);
+    setCnt('hot', c.hot);
+    setCnt('warm', c.warm);
+    setCnt('cold', c.cold);
+    setCnt('bypassed', c.bypassed);
+  } catch (e) { /* silent */ }
+}
+
+async function updateInboxBadge() {
+  try {
+    const c = await apiFetch(`/api/inbox/counters?accountId=${ACCOUNT_ID}`);
+    const badge = document.getElementById('inbox-badge');
+    if (!badge || !c) return;
+    if (c.unread > 0) {
+      badge.style.display = '';
+      badge.textContent = c.unread > 99 ? '99+' : c.unread;
+    } else {
+      badge.style.display = 'none';
+    }
+  } catch (e) { /* silent */ }
+}
+
+async function selectInboxItem(leadId) {
+  INBOX_SELECTED_ID = leadId;
+  // Update selected en la lista
+  document.querySelectorAll('.inbox-item').forEach(el => el.classList.remove('selected'));
+  const items = document.querySelectorAll('.inbox-item');
+  items.forEach(el => {
+    if (el.getAttribute('onclick')?.includes(leadId)) el.classList.add('selected');
+  });
+  await renderInboxThread(leadId);
+  // Marcar leído
+  apiFetch(`/api/inbox/${leadId}/read`, { method: 'POST' }).catch(() => null);
+  setTimeout(() => { renderInboxList(); updateInboxBadge(); }, 400);
+}
+
+async function renderInboxThread(leadId, isRefresh = false) {
+  const container = document.getElementById('inbox-thread');
+  if (!container) return;
+
+  if (!isRefresh) {
+    container.innerHTML = '<div style="margin:auto;color:var(--text-3);padding:30px">⏳ Cargando…</div>';
+  }
+
+  try {
+    const lead = await apiFetch(`/api/leads/${leadId}`);
+    if (!lead) return;
+
+    const initial = (lead.ig_username || '?').slice(0, 2).toUpperCase();
+    const dmUrl = `https://www.instagram.com/direct/t/${lead.ig_user_id}/`;
+
+    const messages = (lead.messages || []).map(m => {
+      const cls = m.role === 'user' ? 'user' : (m.role === 'manual' ? 'manual' : 'agent');
+      const tag = m.role === 'user' ? `<span class="role-tag">@${escHtmlSafe(lead.ig_username)}</span>` : '';
+      const tagAuthor = m.role === 'manual' ? '✋ Vos' : (m.role === 'agent' ? '🤖 Bot' : '');
+      const when = m.createdAt ? new Date(m.createdAt).toLocaleString('es-ES', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }) : '';
+      return `
+        <div class="bubble ${cls}">
+          ${tag}
+          ${escHtmlSafe(m.content || '')}
+          <span class="when">${tagAuthor ? tagAuthor + ' · ' : ''}${when}</span>
+        </div>`;
+    }).join('');
+
+    const qualBadge = lead.qualification === 'hot' ? '<span class="badge-q hot">🔥 HOT</span>'
+      : lead.qualification === 'warm' ? '<span class="badge-q warm">🟡 WARM</span>'
+      : lead.qualification === 'cold' ? '<span class="badge-q cold">❄️ COLD</span>' : '';
+
+    container.innerHTML = `
+      <div class="thread-header">
+        <div class="avatar">${escHtmlSafe(initial)}</div>
+        <div class="info">
+          <h3>@${escHtmlSafe(lead.ig_username || '—')} ${qualBadge}</h3>
+          <p>${lead.qualification_reason ? escHtmlSafe(lead.qualification_reason) : 'sin calificar aún'}</p>
+        </div>
+        <div class="actions">
+          <a href="${dmUrl}" target="_blank" class="btn-ghost" style="padding:7px 12px;font-size:12.5px;text-decoration:none;display:inline-flex;align-items:center;gap:5px">📲 Abrir IG</a>
+          ${lead.is_bypassed
+            ? '<button class="btn-primary" onclick="returnToBot()" style="padding:7px 12px;font-size:12.5px">🤖 Devolver al bot</button>'
+            : '<button class="btn-ghost" onclick="takeControl()" style="padding:7px 12px;font-size:12.5px">✋ Tomar control</button>'}
+        </div>
+      </div>
+      <div class="thread-body" id="thread-body">
+        ${messages || '<div style="margin:auto;color:var(--text-3);padding:30px;text-align:center">Sin mensajes aún</div>'}
+      </div>
+      <div class="thread-input">
+        <div class="row">
+          <textarea id="thread-input-text" placeholder="Escribí tu respuesta..." rows="1" onkeydown="handleThreadKey(event)"></textarea>
+          <button class="btn-primary" onclick="sendInboxMessage()" style="padding:10px 18px;font-size:13px">Enviar</button>
+        </div>
+        <div class="hint">${lead.is_bypassed ? '🚫 El bot está pausado en esta conversación. Lo que escribas se manda como vos.' : '⚠️ Si respondés vos, el bot se va a pausar automáticamente para esta conversación.'} <kbd style="font-size:10px;background:#f3f4f6;padding:2px 5px;border-radius:3px">Enter</kbd> envía · <kbd style="font-size:10px;background:#f3f4f6;padding:2px 5px;border-radius:3px">Shift+Enter</kbd> nueva línea</div>
+      </div>
+    `;
+
+    // Scroll al final
+    const body = document.getElementById('thread-body');
+    if (body) body.scrollTop = body.scrollHeight;
+
+  } catch (e) {
+    container.innerHTML = `<div style="margin:auto;color:#ef4444;padding:30px">${escHtmlSafe(e.message)}</div>`;
+  }
+}
+
+function handleThreadKey(ev) {
+  if (ev.key === 'Enter' && !ev.shiftKey) {
+    ev.preventDefault();
+    sendInboxMessage();
+  }
+}
+
+async function sendInboxMessage() {
+  if (!INBOX_SELECTED_ID) return;
+  const input = document.getElementById('thread-input-text');
+  if (!input) return;
+  const text = input.value.trim();
+  if (!text) return;
+
+  input.disabled = true;
+  try {
+    await apiFetch(`/api/leads/${INBOX_SELECTED_ID}/message`, {
+      method: 'POST',
+      body: JSON.stringify({ text, accountId: ACCOUNT_ID, takeControl: true }),
+    });
+    input.value = '';
+    await renderInboxThread(INBOX_SELECTED_ID, true);
+    renderInboxList();
+  } catch (e) {
+    showToast('❌ ' + e.message);
+  } finally {
+    input.disabled = false;
+    input.focus();
+  }
+}
+
+async function takeControl() {
+  if (!INBOX_SELECTED_ID) return;
+  try {
+    await apiFetch(`/api/leads/${INBOX_SELECTED_ID}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ is_bypassed: true, automation: 'paused' }),
+    });
+    showToast('✋ Tomaste el control. El bot dejó de responder esta conversación.');
+    renderInboxThread(INBOX_SELECTED_ID, true);
+    renderInboxList();
+  } catch (e) { showToast('❌ ' + e.message); }
+}
+
+async function returnToBot() {
+  if (!INBOX_SELECTED_ID) return;
+  if (!confirm('¿Devolver esta conversación al bot? Va a seguir respondiendo automáticamente.')) return;
+  try {
+    await apiFetch(`/api/leads/${INBOX_SELECTED_ID}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ is_bypassed: false, automation: 'automated' }),
+    });
+    showToast('🤖 Devuelto al bot.');
+    renderInboxThread(INBOX_SELECTED_ID, true);
+    renderInboxList();
+  } catch (e) { showToast('❌ ' + e.message); }
+}
+
+function relTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const diff = Date.now() - d.getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1)    return 'ahora';
+  if (mins < 60)   return mins + 'm';
+  const h = Math.floor(mins / 60);
+  if (h < 24)      return h + 'h';
+  const days = Math.floor(h / 24);
+  if (days < 7)    return days + 'd';
+  return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+}
+
+window.selectInboxItem = selectInboxItem;
+window.handleThreadKey = handleThreadKey;
+window.sendInboxMessage = sendInboxMessage;
+window.takeControl = takeControl;
+window.returnToBot = returnToBot;
+window.loadInbox = loadInbox;
+
+// Refrescar el badge del nav cada 30s mientras la app esté abierta
+setInterval(() => { if (ACCOUNT_ID) updateInboxBadge(); }, 30000);
 
 // ── START ─────────────────────────────────────────────────────────────────────
 init();

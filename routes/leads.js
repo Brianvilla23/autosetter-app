@@ -106,19 +106,47 @@ router.post('/:id/retrigger', async (req, res) => {
 });
 
 // POST manual message
+// Body: { text, accountId, takeControl? } — takeControl=true marca al lead como bypassed
+//                                            (el bot deja de responder esa conversación)
 router.post('/:id/message', async (req, res) => {
   try {
-    const { text, accountId } = req.body;
+    const { text, accountId, takeControl } = req.body;
+    if (!text || !String(text).trim()) return res.status(400).json({ error: 'text requerido' });
+
     const lead = await db.findOne(db.leads, { _id: req.params.id });
     if (!lead) return res.status(404).json({ error: 'Not found' });
-    await db.insert(db.messages, { lead_id: req.params.id, role: 'manual', content: text });
+
+    const cleanText = String(text).slice(0, 1000);
+    const message = await db.insert(db.messages, {
+      lead_id: req.params.id,
+      account_id: lead.account_id,
+      role: 'manual',
+      content: cleanText,
+    });
+
+    // Update last_message_at + opcionalmente take-control + read_at (si lo respondés ya lo leíste)
+    const upd = { last_message_at: new Date().toISOString(), read_at: new Date().toISOString() };
+    if (takeControl) {
+      upd.is_bypassed = true;
+      upd.automation  = 'paused';
+    }
+    await db.update(db.leads, { _id: req.params.id }, upd);
+
     // Send via Meta if real token
     const account = await db.findOne(db.accounts, { _id: accountId });
+    let metaSent = false;
     if (account?.access_token && account.access_token !== 'demo_token') {
-      const { sendMessage } = require('../services/meta');
-      await sendMessage({ recipientId: lead.ig_user_id, text, accessToken: account.access_token, accountId: account._id });
+      try {
+        const { sendMessage } = require('../services/meta');
+        const igUserId = account.ig_platform_id || account.ig_user_id;
+        await sendMessage({ recipientId: lead.ig_user_id, text: cleanText, accessToken: account.access_token, igUserId, accountId: account._id });
+        metaSent = true;
+      } catch (e) {
+        console.warn(`manual send → @${lead.ig_username} failed:`, e.response?.data || e.message);
+      }
     }
-    res.json({ ok: true });
+
+    res.json({ ok: true, message: { ...message, id: message._id }, metaSent });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
