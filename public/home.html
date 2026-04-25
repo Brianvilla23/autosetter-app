@@ -641,6 +641,23 @@
     q.addEventListener('click', () => q.closest('.faq-item').classList.toggle('open'));
   });
 
+  // Capturar referral code de la URL si está presente, persistirlo y trackear click
+  (() => {
+    const refCode = new URLSearchParams(location.search).get('ref');
+    if (refCode) {
+      try {
+        sessionStorage.setItem('ref_code', refCode);
+        localStorage.setItem('ref_code', refCode); // sobrevive cierres de pestaña
+      } catch {}
+      // Trackear click (best-effort, no bloqueante)
+      fetch('/api/referrals/track-click', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: refCode }),
+      }).catch(() => {});
+    }
+  })();
+
   // Register/trial CTAs — guardar auth_mode=register y redirigir al app
   document.querySelectorAll('a[href="/app?register=1"]').forEach(a => {
     a.addEventListener('click', (e) => {

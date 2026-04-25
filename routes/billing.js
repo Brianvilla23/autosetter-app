@@ -56,6 +56,9 @@ const PLAN_NAMES = { starter: 'Starter', pro: 'Pro', agency: 'Agency' };
 // Shared logic: activate subscription in DB
 // ─────────────────────────────────────────────────────────────────────────────
 async function activateSubscription(userId, plan, provider, extra = {}) {
+  const user = await db.findOne(db.users, { _id: userId });
+  const wasNotActiveBefore = !user || user.subscriptionStatus !== 'active';
+
   const exp = new Date();
   exp.setMonth(exp.getMonth() + 1);
   await db.update(db.users, { _id: userId }, {
@@ -66,6 +69,56 @@ async function activateSubscription(userId, plan, provider, extra = {}) {
     ...extra,
   });
   console.log(`✅ ${provider.toUpperCase()}: suscripción activada — usuario ${userId} (${plan})`);
+
+  // ── REFERRAL REWARD ────────────────────────────────────────────────────
+  // Si este user fue referido por otro Y es la primera vez que activa
+  // suscripción, recompensar al referidor con 30 días extra.
+  // Anti-abuso: la recompensa solo se da UNA VEZ por referido.
+  if (wasNotActiveBefore && user && user.referredBy) {
+    try {
+      const existingReward = await db.findOne(db.referrals, {
+        referrer_id:      user.referredBy,
+        referred_user_id: userId,
+        kind:             'paid',
+      });
+      if (!existingReward) {
+        const referrer = await db.findOne(db.users, { _id: user.referredBy });
+        if (referrer) {
+          const creditDays = 30;
+          // Extender membershipExpiresAt: si está vigente, sumar; si está vencido, desde hoy
+          const now = Date.now();
+          const current = referrer.membershipExpiresAt ? new Date(referrer.membershipExpiresAt).getTime() : 0;
+          const base = current > now ? current : now;
+          const newExp = new Date(base + creditDays * 24 * 3_600_000).toISOString();
+          await db.update(db.users, { _id: referrer._id }, { membershipExpiresAt: newExp });
+
+          // Marcar la conversión como 'paid' en la tabla referrals
+          await db.insert(db.referrals, {
+            referrer_id:      referrer._id,
+            referred_user_id: userId,
+            kind:             'paid',
+            credit_days:      creditDays,
+            credit_applied_at: new Date().toISOString(),
+            referredPlan:     plan,
+          });
+
+          // Notificación email al referidor (best-effort)
+          try {
+            const { sendEmail } = require('../services/email');
+            sendEmail({
+              to: referrer.email,
+              subject: `🎉 +${creditDays} días gratis: tu referido se suscribió`,
+              html: `<div style="font-family:system-ui,-apple-system,sans-serif;max-width:560px;margin:auto;padding:24px"><div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:32px"><h1 style="color:#16a34a;font-size:22px;margin:0 0 12px">🎉 +${creditDays} días gratis</h1><p style="color:#475569;line-height:1.6">Buenas noticias: alguien que invitaste se suscribió a DMCloser. Como agradecimiento, te agregamos <strong>${creditDays} días extra</strong> a tu plan.</p><p style="color:#475569;line-height:1.6">Tu suscripción ahora vence el <strong>${new Date(newExp).toLocaleDateString('es-ES', { day:'2-digit', month:'long', year:'numeric' })}</strong>.</p><p style="color:#475569;line-height:1.6">Seguí compartiendo tu link — cuantos más se suscriban, más meses gratis.</p><a href="${process.env.APP_URL || 'https://dmcloser.app'}/app" style="display:inline-block;background:#f97316;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;margin-top:14px">Ver mi panel →</a></div></div>`,
+              userId: referrer._id,
+              tag: 'referral_reward',
+            }).catch(() => null);
+          } catch (e) { /* silent */ }
+
+          console.log(`🎁 Referral reward: ${referrer.email} +${creditDays}d (referido: ${user.email})`);
+        }
+      }
+    } catch (e) { console.warn('referral reward error:', e.message); }
+  }
 }
 
 async function renewSubscription(userId, provider) {

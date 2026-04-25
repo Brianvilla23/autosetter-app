@@ -34,7 +34,7 @@ router.get('/check', async (req, res) => {
 // ── REGISTER ──────────────────────────────────────────────────────────────────
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, name, inviteCode } = req.body;
+    const { email, password, name, inviteCode, referralCode } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Email y contraseña requeridos' });
     if (!validateEmail(email)) return res.status(400).json({ error: 'Email inválido' });
     const pwErr = validatePassword(password);
@@ -94,6 +94,16 @@ router.post('/register', async (req, res) => {
       }
     }
 
+    // Validar código de referido si vino (busca user con ese referralCode)
+    let referrer = null;
+    if (referralCode && !isFirstUser) {
+      const code = String(referralCode).trim().toUpperCase();
+      referrer = await db.findOne(db.users, { referralCode: code });
+      if (referrer && referrer.email === email.toLowerCase()) {
+        referrer = null; // anti-self-referral
+      }
+    }
+
     const user = await db.insert(db.users, {
       email:               email.toLowerCase(),
       name:                name || email.split('@')[0],
@@ -105,7 +115,19 @@ router.post('/register', async (req, res) => {
       membershipExpiresAt,
       membershipPlan,
       inviteCode:          codeDoc?.code || null,
+      referredBy:          referrer ? referrer._id : null,
     });
+
+    // Registrar la conversión click → registered en la tabla referrals
+    if (referrer) {
+      await db.insert(db.referrals, {
+        referrer_id:      referrer._id,
+        referred_user_id: user._id,
+        kind:             'registered',
+        credit_days:      0, // se aplica recién cuando paga
+      }).catch(e => console.warn('referral insert error:', e.message));
+      console.log(`🎁 Nuevo registro vía referido @${referrer.email} → ${user.email}`);
+    }
 
     // Marcar código como usado
     if (codeDoc) {

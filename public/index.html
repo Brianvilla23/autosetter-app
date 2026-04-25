@@ -67,6 +67,10 @@
       <span class="nav-icon">💳</span>
       Facturación
     </a>
+    <a class="nav-item" data-section="referrals">
+      <span class="nav-icon">🎁</span>
+      Referidos
+    </a>
     <a class="nav-item" data-section="settings">
       <span class="nav-icon"><svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/></svg></span>
       Settings
@@ -592,6 +596,57 @@
         <button class="btn-primary" id="btn-create-magnet">+ Crear</button>
       </div>
       <div id="magnet-links-list" style="margin-top:16px"></div>
+    </div>
+  </section>
+
+  <!-- REFERRALS / PROGRAMA DE REFERIDOS ──────────────────────────────────── -->
+  <section id="section-referrals" class="section">
+    <div class="page-header">
+      <div>
+        <h1>🎁 Programá tu próximo mes gratis</h1>
+        <p>Por cada amigo que se suscriba con tu link, te regalamos <strong>30 días extra</strong>. Sin tope.</p>
+      </div>
+    </div>
+
+    <!-- Tarjeta destacada con el link -->
+    <div style="background:linear-gradient(135deg,#7c6af7,#ec4899);border-radius:14px;padding:30px;margin-bottom:18px;color:#fff;box-shadow:0 12px 40px rgba(124,106,247,.25)">
+      <div style="font-size:13px;opacity:.85;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Tu link de invitación</div>
+      <div id="ref-link-box" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:rgba(255,255,255,.15);backdrop-filter:blur(8px);padding:14px 18px;border-radius:10px;border:1px solid rgba(255,255,255,.25)">
+        <code id="ref-link-text" style="flex:1;min-width:240px;font-size:14px;color:#fff;font-family:monospace;word-break:break-all">cargando…</code>
+        <button onclick="copyReferralLink()" style="background:#fff;color:#7c6af7;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:600;font-size:13px">📋 Copiar</button>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+        <a id="ref-share-wa" target="_blank" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;padding:8px 14px;border-radius:8px;font-size:13px;text-decoration:none">📱 WhatsApp</a>
+        <a id="ref-share-tw" target="_blank" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;padding:8px 14px;border-radius:8px;font-size:13px;text-decoration:none">🐦 Twitter/X</a>
+        <a id="ref-share-tg" target="_blank" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;padding:8px 14px;border-radius:8px;font-size:13px;text-decoration:none">✉️ Telegram</a>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid" id="referrals-stats" style="margin-bottom:18px">
+      <div class="stat-card"><div class="stat-icon">👁️</div><div><div class="stat-val" id="ref-clicks">—</div><div class="stat-label">Clicks en tu link</div></div></div>
+      <div class="stat-card"><div class="stat-icon">📝</div><div><div class="stat-val" id="ref-registered">—</div><div class="stat-label">Se registraron</div></div></div>
+      <div class="stat-card"><div class="stat-icon">💰</div><div><div class="stat-val" id="ref-paid">—</div><div class="stat-label">Pagaron suscripción</div></div></div>
+      <div class="stat-card"><div class="stat-icon">🎉</div><div><div class="stat-val" id="ref-credit-days" style="color:#16a34a">—</div><div class="stat-label">Días extra ganados</div></div></div>
+    </div>
+
+    <!-- Lista -->
+    <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:22px">
+      <h3 style="margin:0 0 14px;font-size:15px">Tus invitados</h3>
+      <div id="ref-list-table">
+        <div style="text-align:center;padding:30px;color:var(--text-3)">⏳ Cargando…</div>
+      </div>
+    </div>
+
+    <!-- Cómo funciona -->
+    <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:22px;margin-top:18px">
+      <h3 style="margin:0 0 12px;font-size:14.5px;color:#9a3412">📖 Cómo funciona</h3>
+      <ol style="margin:0;padding-left:20px;color:var(--text-2);font-size:13.5px;line-height:1.8">
+        <li>Compartís tu link único con coaches, agencias, e-commerce, infoproductos… cualquiera que use Instagram para vender.</li>
+        <li>Cuando se registran con tu link, los vemos en tu lista como "registrados".</li>
+        <li>Apenas pagan su primer mes (cualquier plan), te agregamos <strong>30 días gratis</strong> a tu suscripción.</li>
+        <li>Sin tope: 5 referidos = 5 meses gratis. 12 = todo el año.</li>
+      </ol>
     </div>
   </section>
 

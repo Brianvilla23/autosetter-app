@@ -14,6 +14,21 @@ let chatRefreshInterval = null;
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
 async function init() {
+  // Capturar ?ref=CODIGO si vino directo a /app sin pasar por la landing
+  try {
+    const refFromUrl = new URLSearchParams(location.search).get('ref');
+    if (refFromUrl) {
+      sessionStorage.setItem('ref_code', refFromUrl);
+      localStorage.setItem('ref_code', refFromUrl);
+      // Trackear click best-effort
+      fetch('/api/referrals/track-click', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: refFromUrl }),
+      }).catch(() => {});
+    }
+  } catch {}
+
   // Check if first-time setup needed
   const check = await fetch('/api/user/check').then(r => r.json()).catch(() => ({ hasUsers: false }));
 
@@ -168,7 +183,16 @@ async function submitAuth(mode) {
   }
 
   const endpoint = isRegisterMode ? '/api/user/register' : '/api/user/login';
-  const body = isRegisterMode ? { email, password, name } : { email, password };
+  // Si el user vino con ?ref=CODIGO en la landing, lo enviamos al registro
+  let referralCode = null;
+  if (isRegisterMode) {
+    try {
+      referralCode = sessionStorage.getItem('ref_code') || localStorage.getItem('ref_code');
+    } catch {}
+  }
+  const body = isRegisterMode
+    ? { email, password, name, ...(referralCode ? { referralCode } : {}) }
+    : { email, password };
 
   try {
     const res = await fetch(endpoint, {
@@ -191,6 +215,10 @@ async function submitAuth(mode) {
     localStorage.setItem('autosetter_token',  data.token);
     localStorage.setItem('autosetter_user',   JSON.stringify(data.user));
     localStorage.removeItem('autosetter_account_id'); // legacy
+    // Si el registro consumió un referral code, lo limpiamos para no reusarlo
+    if (isRegisterMode) {
+      try { sessionStorage.removeItem('ref_code'); localStorage.removeItem('ref_code'); } catch {}
+    }
     showDashboard();
   } catch (e) {
     errEl.textContent = 'Error de conexión';
@@ -233,6 +261,7 @@ function loadSection(name) {
     case 'inbox':     loadInbox(); break;
     case 'leads':     loadLeads(); break;
     case 'billing':   loadBillingPage(); break;
+    case 'referrals': loadReferralsPage(); break;
     case 'links':     loadLinks(); break;
     case 'magnets':   loadMagnets(); break;
     case 'growth':    loadGrowth(); break;
@@ -2264,6 +2293,99 @@ async function openBillingPortal() {
 
 window.loadBillingPage = loadBillingPage;
 window.openBillingPortal = openBillingPortal;
+
+// ── REFERIDOS ──────────────────────────────────────────────────────────────
+let REFERRAL_DATA = null;
+
+async function loadReferralsPage() {
+  try {
+    const me = await apiFetch('/api/referrals/me');
+    if (!me) return;
+    REFERRAL_DATA = me;
+
+    document.getElementById('ref-link-text').textContent = me.inviteUrl;
+    document.getElementById('ref-clicks').textContent       = me.stats.clicks || 0;
+    document.getElementById('ref-registered').textContent   = me.stats.registered || 0;
+    document.getElementById('ref-paid').textContent         = me.stats.paid || 0;
+    document.getElementById('ref-credit-days').textContent  = (me.stats.creditDays || 0) + 'd';
+
+    const shareText = encodeURIComponent(
+      `Estoy usando DMCloser para que la IA me responda los DMs de Instagram y filtre los leads. Te dejo mi link con descuento: ${me.inviteUrl}`
+    );
+    const shareUrl = encodeURIComponent(me.inviteUrl);
+    document.getElementById('ref-share-wa').href = `https://wa.me/?text=${shareText}`;
+    document.getElementById('ref-share-tw').href = `https://twitter.com/intent/tweet?text=${shareText}`;
+    document.getElementById('ref-share-tg').href = `https://t.me/share/url?url=${shareUrl}&text=${shareText}`;
+
+    // Lista
+    const list = await apiFetch('/api/referrals/list');
+    const tbody = document.getElementById('ref-list-table');
+    if (!list || !list.length) {
+      tbody.innerHTML = `
+        <div style="text-align:center;padding:30px;color:var(--text-3)">
+          <div style="font-size:32px;margin-bottom:8px">🌱</div>
+          <div style="font-size:13.5px">Aún no invitaste a nadie. Empezá compartiendo tu link arriba.</div>
+        </div>`;
+      return;
+    }
+
+    const stateBadge = (kind) => {
+      if (kind === 'paid')       return '<span style="background:#dcfce7;color:#16a34a;padding:3px 10px;border-radius:14px;font-size:11.5px;font-weight:600">💰 Pagó</span>';
+      if (kind === 'registered') return '<span style="background:#fef3c7;color:#d97706;padding:3px 10px;border-radius:14px;font-size:11.5px;font-weight:600">📝 Registrado</span>';
+      return '<span style="background:#f3f4f6;color:#6b7280;padding:3px 10px;border-radius:14px;font-size:11.5px;font-weight:600">' + escHtmlSafe(kind) + '</span>';
+    };
+
+    tbody.innerHTML = `
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="text-align:left;font-size:12px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em">
+            <th style="padding:8px 10px;border-bottom:1px solid var(--border)">Quien</th>
+            <th style="padding:8px 10px;border-bottom:1px solid var(--border)">Estado</th>
+            <th style="padding:8px 10px;border-bottom:1px solid var(--border)">Plan</th>
+            <th style="padding:8px 10px;border-bottom:1px solid var(--border)">Crédito</th>
+            <th style="padding:8px 10px;border-bottom:1px solid var(--border)">Cuándo</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${list.filter(r => r.kind !== 'click').map(r => `
+            <tr>
+              <td style="padding:10px;border-bottom:1px solid var(--border);font-size:13.5px">${escHtmlSafe(r.referred?.name || '—')}<div style="font-size:11px;color:var(--text-3)">${escHtmlSafe(r.referred?.email || '')}</div></td>
+              <td style="padding:10px;border-bottom:1px solid var(--border)">${stateBadge(r.kind)}</td>
+              <td style="padding:10px;border-bottom:1px solid var(--border);font-size:13px">${escHtmlSafe(r.referred?.plan || '—')}</td>
+              <td style="padding:10px;border-bottom:1px solid var(--border);font-size:13px;color:${r.creditDays>0?'#16a34a':'var(--text-3)'};font-weight:${r.creditDays>0?'600':'400'}">${r.creditDays > 0 ? '+' + r.creditDays + ' días' : '—'}</td>
+              <td style="padding:10px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text-3)">${relTime(r.createdAt)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  } catch (e) {
+    document.getElementById('ref-list-table').innerHTML = `<div style="color:#ef4444;padding:20px;text-align:center">${escHtmlSafe(e.message)}</div>`;
+  }
+}
+
+function copyReferralLink() {
+  if (!REFERRAL_DATA) return;
+  navigator.clipboard.writeText(REFERRAL_DATA.inviteUrl).then(() => {
+    showToast('✅ Link copiado al portapapeles');
+  }).catch(() => {
+    // Fallback: select text
+    const text = document.getElementById('ref-link-text');
+    if (text) {
+      const r = document.createRange();
+      r.selectNodeContents(text);
+      const s = window.getSelection();
+      s.removeAllRanges();
+      s.addRange(r);
+      document.execCommand('copy');
+      s.removeAllRanges();
+      showToast('✅ Link copiado');
+    }
+  });
+}
+
+window.loadReferralsPage = loadReferralsPage;
+window.copyReferralLink = copyReferralLink;
 
 // ── START ─────────────────────────────────────────────────────────────────────
 init();
