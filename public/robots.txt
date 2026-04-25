@@ -1,0 +1,20 @@
+# robots.txt — DMCloser
+
+User-agent: *
+Allow: /
+Allow: /pricing
+Allow: /pricing.html
+Allow: /terms.html
+Allow: /privacy.html
+
+# El dashboard, admin y API son privados y no deben indexarse
+Disallow: /app
+Disallow: /app/
+Disallow: /admin
+Disallow: /admin.html
+Disallow: /api/
+Disallow: /webhook
+Disallow: /auth/
+Disallow: /go/
+
+Sitemap: https://dmcloser.app/sitemap.xml
