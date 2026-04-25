@@ -864,21 +864,25 @@
             </label>
           </div>
           <details style="margin-top:10px">
-            <summary style="cursor:pointer;font-size:13px;color:var(--orange);font-weight:600">▶ Cómo configurar CallMeBot</summary>
+            <summary style="cursor:pointer;font-size:13px;color:var(--orange);font-weight:600">▶ Cómo configurar CallMeBot (3 minutos)</summary>
             <ol style="font-size:13px;color:var(--text-2);line-height:1.7;margin-top:8px;padding-left:18px">
-              <li>Agrega <strong>+34 644 60 39 49</strong> a tus contactos</li>
-              <li>Envíale este mensaje exacto por WhatsApp: <code>I allow callmebot to send me messages</code></li>
-              <li>Recibirás un mensaje con tu <strong>apikey</strong> numérica (tipo <code>123456</code>)</li>
-              <li>Pega aquí tu número en formato internacional SIN el "+" (ej: <code>56912345678</code>) y el apikey</li>
+              <li>Abrí WhatsApp en tu celular y agregá <strong>+34 644 60 39 49</strong> a tus contactos.</li>
+              <li>Mandale este mensaje exacto: <code style="background:#f3f4f6;padding:1px 5px;border-radius:3px">I allow callmebot to send me messages</code></li>
+              <li>El bot te responde con un mensaje tipo <em>"API Activated for your phone number. Your APIKey is <strong>1234567</strong>"</em>. Esa <strong>APIKey de 7 dígitos</strong> es la que va en el campo de abajo (no el placeholder).</li>
+              <li>En el campo "número" ponés tu número con código de país, sin el "+" y sin espacios. Ejemplo Chile: <code>56995684130</code>. Ejemplo Argentina: <code>5491134567890</code>.</li>
+              <li>Tocás <strong>Enviar prueba</strong>. Si todo está OK te llega un WhatsApp en segundos.</li>
             </ol>
+            <p style="font-size:12px;color:var(--text-3);margin-top:8px">
+              <a href="https://www.callmebot.com/blog/free-api-whatsapp-messages/" target="_blank" rel="noopener" style="color:var(--orange);text-decoration:none">📖 Documentación oficial de CallMeBot →</a>
+            </p>
           </details>
           <div class="form-row" style="margin-top:12px">
             <label>Tu número WhatsApp (formato E.164 sin +)</label>
-            <input type="text" id="notif-wa-number" placeholder="56912345678" class="form-input">
+            <input type="text" id="notif-wa-number" placeholder="ej: 56995684130" class="form-input">
           </div>
           <div class="form-row">
-            <label>API Key de CallMeBot</label>
-            <input type="text" id="notif-wa-apikey" placeholder="123456" class="form-input">
+            <label>API Key de CallMeBot (la que te llegó por WhatsApp)</label>
+            <input type="text" id="notif-wa-apikey" placeholder="ej: 7842913" class="form-input">
           </div>
           <button class="btn-ghost" id="btn-test-wa">Enviar prueba</button>
           <span id="notif-wa-result" style="margin-left:10px;font-size:12px"></span>

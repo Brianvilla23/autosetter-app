@@ -1053,4 +1053,49 @@ router.post('/seed-sales-preset', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+/**
+ * POST /api/admin/reset-and-apply-preset
+ * Body: { accountId, confirm: 'YES' }
+ *
+ * Variante DESTRUCTIVA del seed-sales-preset: borra TODOS los agents,
+ * knowledge, links y leadMagnets de la cuenta y luego aplica el preset
+ * DMCloser limpio. Útil para cuentas que tenían datos de proyectos
+ * viejos (ej: la cuenta de motoniveladora) y querés dejarla 100% como
+ * la cuenta de venta de DMCloser sin duplicados.
+ *
+ * NO toca leads ni mensajes (eso es historia de conversaciones reales).
+ *
+ * Requiere confirm=YES en el body para evitar accidentes.
+ */
+router.post('/reset-and-apply-preset', async (req, res) => {
+  try {
+    const { accountId, confirm } = req.body;
+    if (!accountId)        return res.status(400).json({ error: 'accountId requerido' });
+    if (confirm !== 'YES') return res.status(400).json({ error: 'Tenés que pasar confirm:"YES" en el body. Esto borra agents, knowledge, links y magnets de la cuenta.' });
+
+    const account = await db.findOne(db.accounts, { _id: accountId });
+    if (!account) return res.status(404).json({ error: 'Cuenta no encontrada' });
+
+    // Contar antes para reportar
+    const before = {
+      agents:    await db.count(db.agents,    { account_id: accountId }),
+      knowledge: await db.count(db.knowledge, { account_id: accountId }),
+      links:     await db.count(db.links,     { account_id: accountId }),
+      magnets:   await db.count(db.leadMagnets,{ account_id: accountId }),
+    };
+
+    // Wipe (mantiene leads + messages + cuenta IG + settings)
+    await db.remove(db.agents,      { account_id: accountId });
+    await db.remove(db.knowledge,   { account_id: accountId });
+    await db.remove(db.links,       { account_id: accountId });
+    await db.remove(db.leadMagnets, { account_id: accountId });
+
+    const { applyDmcloserPreset } = require('../services/dmcloserPreset');
+    const result = await applyDmcloserPreset(db, accountId);
+
+    await audit(req, 'reset_and_apply_preset', accountId, { before, applied: result.created });
+    res.json({ ok: true, removed: before, applied: result.created, agentId: result.agentId });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 module.exports = router;

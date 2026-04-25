@@ -798,6 +798,7 @@ async function loadKnowledge() {
     entries.forEach(e => {
       const card = document.createElement('div');
       card.className = 'knowledge-card';
+      const isLong = (e.content || '').length > 200;
       card.innerHTML = `
         <div class="kc-header">
           <div>
@@ -810,8 +811,8 @@ async function loadKnowledge() {
           </div>
         </div>
         ${e.is_main ? '<span class="kc-tag">⭐ Main context</span>' : ''}
-        <div class="kc-content" id="kc-${e.id}">${escHtml(e.content)}</div>
-        <span class="kc-show-more" onclick="toggleKcContent('${e.id}')">▼ Ver más</span>
+        <div class="kc-content" id="kc-${e.id}" data-kc-id="${escHtml(e.id)}">${escHtml(e.content)}</div>
+        ${isLong ? `<span class="kc-show-more" data-kc-toggle="${escHtml(e.id)}">▼ Ver más</span>` : ''}
         ${e.agents?.length ? `
           <div class="kc-agents">
             <span style="font-size:12px;color:var(--text-2)">Agentes vinculados:</span>
@@ -828,8 +829,22 @@ async function loadKnowledge() {
 
 function toggleKcContent(id) {
   const el = document.getElementById(`kc-${id}`);
+  if (!el) return;
   el.classList.toggle('expanded');
+  const toggle = document.querySelector(`[data-kc-toggle="${id}"]`);
+  if (toggle) toggle.textContent = el.classList.contains('expanded') ? '▲ Ver menos' : '▼ Ver más';
 }
+window.toggleKcContent = toggleKcContent;
+
+// Event delegation: cualquier click en .kc-show-more dispara toggle
+// (más robusto que onclick inline; funciona aunque el script se cargue con CSP estricto)
+document.addEventListener('click', (ev) => {
+  const t = ev.target.closest?.('[data-kc-toggle]');
+  if (t) {
+    ev.preventDefault();
+    toggleKcContent(t.getAttribute('data-kc-toggle'));
+  }
+});
 
 async function openKnowledgeModal(id) {
   const modal = document.getElementById('knowledge-modal');
@@ -1846,10 +1861,10 @@ async function saveMagnet() {
 
   try {
     if (id) {
-      await apiFetch(`/api/lead-magnets/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
+      await apiFetch(`/api/lead-magnets/${id}`, 'PATCH', body);
       showToast('✅ Magnet actualizado');
     } else {
-      await apiFetch(`/api/lead-magnets`, { method: 'POST', body: JSON.stringify(body) });
+      await apiFetch(`/api/lead-magnets`, 'POST', body);
       showToast('✅ Magnet creado');
     }
     closeMagnetForm();
@@ -1859,7 +1874,7 @@ async function saveMagnet() {
 
 async function toggleMagnet(id, enabled) {
   try {
-    await apiFetch(`/api/lead-magnets/${id}`, { method: 'PATCH', body: JSON.stringify({ enabled }) });
+    await apiFetch(`/api/lead-magnets/${id}`, 'PATCH', { enabled });
     loadMagnets();
   } catch (e) { showToast('❌ ' + e.message); }
 }
@@ -1867,7 +1882,7 @@ async function toggleMagnet(id, enabled) {
 async function deleteMagnet(id) {
   if (!confirm('¿Eliminar este lead magnet? El bot dejará de ofrecerlo.')) return;
   try {
-    await apiFetch(`/api/lead-magnets/${id}`, { method: 'DELETE' });
+    await apiFetch(`/api/lead-magnets/${id}`, 'DELETE');
     showToast('🗑️ Magnet eliminado');
     loadMagnets();
   } catch (e) { showToast('❌ ' + e.message); }
@@ -1910,6 +1925,18 @@ async function loadInbox() {
           INBOX_SEARCH = searchInput.value.trim();
           renderInboxList();
         }, 250);
+      });
+    }
+
+    // Event delegation: click en cualquier .inbox-item dispara selectInboxItem
+    // (más robusto que onclick inline; no depende del global scope)
+    const listEl = document.getElementById('inbox-list');
+    if (listEl) {
+      listEl.addEventListener('click', (ev) => {
+        const item = ev.target.closest('.inbox-item');
+        if (!item) return;
+        const leadId = item.getAttribute('data-lead-id');
+        if (leadId) selectInboxItem(leadId);
       });
     }
   }
@@ -1959,7 +1986,7 @@ async function renderInboxList() {
       if (item.is_converted)             badges.push('<span class="badge-q converted">✓ Convertido</span>');
 
       return `
-        <div class="inbox-item ${item.unread ? 'unread' : ''} ${INBOX_SELECTED_ID === item.id ? 'selected' : ''}" onclick="selectInboxItem('${item.id}')">
+        <div class="inbox-item ${item.unread ? 'unread' : ''} ${INBOX_SELECTED_ID === item.id ? 'selected' : ''}" data-lead-id="${escHtmlSafe(item.id)}">
           <div class="avatar">${escHtmlSafe(initial)}</div>
           <div class="meta">
             <div class="top-row">
@@ -2010,15 +2037,13 @@ async function updateInboxBadge() {
 
 async function selectInboxItem(leadId) {
   INBOX_SELECTED_ID = leadId;
-  // Update selected en la lista
-  document.querySelectorAll('.inbox-item').forEach(el => el.classList.remove('selected'));
-  const items = document.querySelectorAll('.inbox-item');
-  items.forEach(el => {
-    if (el.getAttribute('onclick')?.includes(leadId)) el.classList.add('selected');
+  // Update selected en la lista por data-lead-id
+  document.querySelectorAll('.inbox-item').forEach(el => {
+    el.classList.toggle('selected', el.getAttribute('data-lead-id') === leadId);
   });
   await renderInboxThread(leadId);
-  // Marcar leído
-  apiFetch(`/api/inbox/${leadId}/read`, { method: 'POST' }).catch(() => null);
+  // Marcar leído (best-effort, no bloquea)
+  apiFetch(`/api/inbox/${leadId}/read`, 'POST').catch(() => null);
   setTimeout(() => { renderInboxList(); updateInboxBadge(); }, 400);
 }
 
@@ -2106,9 +2131,8 @@ async function sendInboxMessage() {
 
   input.disabled = true;
   try {
-    await apiFetch(`/api/leads/${INBOX_SELECTED_ID}/message`, {
-      method: 'POST',
-      body: JSON.stringify({ text, accountId: ACCOUNT_ID, takeControl: true }),
+    await apiFetch(`/api/leads/${INBOX_SELECTED_ID}/message`, 'POST', {
+      text, accountId: ACCOUNT_ID, takeControl: true,
     });
     input.value = '';
     await renderInboxThread(INBOX_SELECTED_ID, true);
@@ -2124,9 +2148,8 @@ async function sendInboxMessage() {
 async function takeControl() {
   if (!INBOX_SELECTED_ID) return;
   try {
-    await apiFetch(`/api/leads/${INBOX_SELECTED_ID}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ is_bypassed: true, automation: 'paused' }),
+    await apiFetch(`/api/leads/${INBOX_SELECTED_ID}`, 'PATCH', {
+      is_bypassed: true, automation: 'paused',
     });
     showToast('✋ Tomaste el control. El bot dejó de responder esta conversación.');
     renderInboxThread(INBOX_SELECTED_ID, true);
@@ -2138,9 +2161,8 @@ async function returnToBot() {
   if (!INBOX_SELECTED_ID) return;
   if (!confirm('¿Devolver esta conversación al bot? Va a seguir respondiendo automáticamente.')) return;
   try {
-    await apiFetch(`/api/leads/${INBOX_SELECTED_ID}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ is_bypassed: false, automation: 'automated' }),
+    await apiFetch(`/api/leads/${INBOX_SELECTED_ID}`, 'PATCH', {
+      is_bypassed: false, automation: 'automated',
     });
     showToast('🤖 Devuelto al bot.');
     renderInboxThread(INBOX_SELECTED_ID, true);
@@ -2468,7 +2490,7 @@ async function insertQuickReply(id) {
   input.setSelectionRange(input.value.length, input.value.length);
   closeQuickReplies();
   // Incrementar contador (best-effort)
-  apiFetch(`/api/quick-replies/${id}/used`, { method: 'POST' }).catch(() => null);
+  apiFetch(`/api/quick-replies/${id}/used`, 'POST').catch(() => null);
 }
 
 function resetQuickReplyForm() {
@@ -2498,9 +2520,9 @@ async function saveQuickReply() {
   }
   try {
     if (id) {
-      await apiFetch(`/api/quick-replies/${id}`, { method: 'PATCH', body: JSON.stringify({ title, content }) });
+      await apiFetch(`/api/quick-replies/${id}`, 'PATCH', { title, content });
     } else {
-      await apiFetch('/api/quick-replies', { method: 'POST', body: JSON.stringify({ accountId: ACCOUNT_ID, title, content }) });
+      await apiFetch('/api/quick-replies', 'POST', { accountId: ACCOUNT_ID, title, content });
     }
     resetQuickReplyForm();
     showToast('✅ Plantilla guardada');
@@ -2511,7 +2533,7 @@ async function saveQuickReply() {
 async function deleteQuickReply(id) {
   if (!confirm('¿Eliminar esta plantilla?')) return;
   try {
-    await apiFetch(`/api/quick-replies/${id}`, { method: 'DELETE' });
+    await apiFetch(`/api/quick-replies/${id}`, 'DELETE');
     loadQuickReplies();
   } catch (e) { showToast('❌ ' + e.message); }
 }

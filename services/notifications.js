@@ -118,22 +118,38 @@ async function detectTelegramChatId(botToken) {
 //   3. Recibe apikey numérica → la pega en DMCloser
 // ─────────────────────────────────────────────────────────────────────────────
 async function sendWhatsApp({ phone, apikey, text }) {
-  if (!phone || !apikey) return { ok: false, reason: 'missing_config' };
+  if (!phone || !apikey) return { ok: false, reason: 'Falta el número o la API key' };
+  // Apikey debe ser numérica (CallMeBot la entrega así)
+  const cleanApikey = String(apikey).replace(/[^0-9]/g, '');
+  if (!cleanApikey) return { ok: false, reason: 'API key inválida — debe ser sólo números' };
   try {
     // Phone DEBE estar en E.164 sin el "+" (ej: 56912345678)
     const cleanPhone = String(phone).replace(/[^0-9]/g, '');
+    if (cleanPhone.length < 8) return { ok: false, reason: 'Número inválido — usá E.164 sin "+" (ej: 56912345678)' };
+
     const url = 'https://api.callmebot.com/whatsapp.php';
     const res = await axios.get(url, {
-      params: { phone: cleanPhone, apikey, text },
+      params: { phone: cleanPhone, apikey: cleanApikey, text },
       timeout: 10000,
     });
     // CallMeBot devuelve 200 + HTML; success si contiene "Message queued"
     const body = String(res.data || '');
     const ok = /Message queued|Message sent/i.test(body);
-    return { ok, response: body.slice(0, 200) };
+
+    // Si falló, intentamos extraer mensaje legible del HTML que devuelve
+    let reason = null;
+    if (!ok) {
+      // Pistas comunes de CallMeBot:
+      if (/APIKey is invalid/i.test(body))               reason = 'API key inválida. Repetí el setup en CallMeBot (mensaje "I allow callmebot to send me messages") y usá la API key REAL que te enviaron, no el placeholder.';
+      else if (/You need to ask for the APIKey/i.test(body)) reason = 'Todavía no completaste el setup. Mandale "I allow callmebot to send me messages" al +34 644 60 39 49 desde tu WhatsApp y esperá la respuesta con tu API key.';
+      else if (/Phone Number is not Valid/i.test(body))  reason = 'Número inválido. Usá formato E.164 sin "+" (ej: 56912345678).';
+      else if (/User is not registered/i.test(body))     reason = 'Tu número no está registrado en CallMeBot. Hacé el setup primero (paso 2 de las instrucciones).';
+      else                                                reason = 'CallMeBot rechazó el envío: ' + body.replace(/<[^>]+>/g, '').slice(0, 160).trim();
+    }
+    return { ok, response: body.slice(0, 200), reason };
   } catch (e) {
     console.error('CallMeBot error:', e.message);
-    return { ok: false, reason: e.message };
+    return { ok: false, reason: 'Error de red llamando a CallMeBot: ' + e.message };
   }
 }
 
