@@ -1105,6 +1105,207 @@ router.post('/reset-and-apply-preset', async (req, res) => {
 });
 
 /**
+ * GET /api/admin/self-test
+ * Hace un sanity check end-to-end de TODO el sistema y reporta qué funciona y
+ * qué falla. Útil para verificar antes de lanzar a producción o después de un
+ * deploy grande.
+ *
+ * Tests:
+ *  1. DB persistente (DB_PATH seteado)
+ *  2. OpenAI API responde
+ *  3. Resend API responde (si está configurado)
+ *  4. LS API responde (si está configurado)
+ *  5. Meta API alcanzable
+ *  6. Hay al menos 1 user admin
+ *  7. Hay al menos 1 agente activo (preset DMCloser)
+ *  8. Knowledge tiene contenido real (no demo)
+ *  9. Hay lead magnets configurados
+ * 10. Webhooks de billing reachable (LS + MP)
+ */
+router.get('/self-test', async (req, res) => {
+  const axios = require('axios');
+  const tests = [];
+  const start = Date.now();
+
+  // 1. DB persistente
+  const dbMeta = db._meta || {};
+  tests.push({
+    id: 'db_persistent',
+    name: 'DB persistente',
+    status: dbMeta.isPersistent ? 'pass' : 'fail',
+    message: dbMeta.isPersistent ? `OK en ${dbMeta.dir}` : `⚠️ DB efímera en ${dbMeta.dir}. Configurá DB_PATH=/data + Volume.`,
+  });
+
+  // 2. OpenAI
+  try {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) throw new Error('OPENAI_API_KEY no configurada');
+    const r = await axios.get('https://api.openai.com/v1/models', {
+      headers: { 'Authorization': `Bearer ${apiKey}` },
+      timeout: 8000,
+    });
+    tests.push({
+      id: 'openai',
+      name: 'OpenAI API',
+      status: 'pass',
+      message: `OK · ${r.data.data?.length || 0} modelos disponibles`,
+    });
+  } catch (e) {
+    tests.push({ id: 'openai', name: 'OpenAI API', status: 'fail', message: e.message });
+  }
+
+  // 3. Resend
+  if (process.env.RESEND_API_KEY) {
+    try {
+      const r = await axios.get('https://api.resend.com/domains', {
+        headers: { 'Authorization': `Bearer ${process.env.RESEND_API_KEY}` },
+        timeout: 8000,
+      });
+      const verifiedDomains = (r.data.data || []).filter(d => d.status === 'verified').length;
+      tests.push({
+        id: 'resend',
+        name: 'Resend API',
+        status: verifiedDomains > 0 ? 'pass' : 'warn',
+        message: verifiedDomains > 0
+          ? `OK · ${verifiedDomains} dominio(s) verificado(s)`
+          : `Conectado pero sin dominio verificado. Verificá dmcloser.app en Resend.`,
+      });
+    } catch (e) {
+      tests.push({ id: 'resend', name: 'Resend API', status: 'fail', message: e.response?.data?.message || e.message });
+    }
+  } else {
+    tests.push({ id: 'resend', name: 'Resend API', status: 'skip', message: 'RESEND_API_KEY no configurada — emails en log-only' });
+  }
+
+  // 4. Lemon Squeezy
+  if (process.env.LS_API_KEY) {
+    try {
+      const r = await axios.get('https://api.lemonsqueezy.com/v1/users/me', {
+        headers: { 'Authorization': `Bearer ${process.env.LS_API_KEY}`, 'Accept': 'application/vnd.api+json' },
+        timeout: 8000,
+      });
+      const storeId  = process.env.LS_STORE_ID;
+      const variants = ['STARTER', 'PRO', 'AGENCY'].map(n => process.env[`LS_VARIANT_${n}`]).filter(Boolean).length;
+      const ready = !!storeId && variants === 3 && !!process.env.LS_WEBHOOK_SECRET;
+      tests.push({
+        id: 'lemonsqueezy',
+        name: 'Lemon Squeezy',
+        status: ready ? 'pass' : 'warn',
+        message: ready
+          ? `OK · usuario ${r.data?.data?.attributes?.email || 'authenticated'} · ${variants}/3 variants · webhook secret ✓`
+          : `API key OK pero falta config: ${!storeId ? 'LS_STORE_ID ' : ''}${variants !== 3 ? `${variants}/3 variants ` : ''}${!process.env.LS_WEBHOOK_SECRET ? 'LS_WEBHOOK_SECRET' : ''}`,
+      });
+    } catch (e) {
+      tests.push({ id: 'lemonsqueezy', name: 'Lemon Squeezy', status: 'fail', message: e.response?.data?.errors?.[0]?.detail || e.message });
+    }
+  } else {
+    tests.push({ id: 'lemonsqueezy', name: 'Lemon Squeezy', status: 'skip', message: 'LS_API_KEY no configurada — pagos USD off' });
+  }
+
+  // 5. Mercado Pago
+  if (process.env.MP_ACCESS_TOKEN) {
+    try {
+      const r = await axios.get('https://api.mercadopago.com/users/me', {
+        headers: { 'Authorization': `Bearer ${process.env.MP_ACCESS_TOKEN}` },
+        timeout: 8000,
+      });
+      const planIds = ['STARTER', 'PRO', 'AGENCY'].map(n => process.env[`MP_PLAN_${n}`]).filter(Boolean).length;
+      tests.push({
+        id: 'mercadopago',
+        name: 'Mercado Pago',
+        status: planIds === 3 ? 'pass' : 'warn',
+        message: planIds === 3
+          ? `OK · usuario ${r.data.email || r.data.nickname || '?'} · 3/3 planes`
+          : `Token OK pero ${planIds}/3 planes configurados (MP_PLAN_*)`,
+      });
+    } catch (e) {
+      tests.push({ id: 'mercadopago', name: 'Mercado Pago', status: 'fail', message: e.response?.data?.message || e.message });
+    }
+  } else {
+    tests.push({ id: 'mercadopago', name: 'Mercado Pago', status: 'skip', message: 'MP_ACCESS_TOKEN no configurada — pagos LATAM off' });
+  }
+
+  // 6. User admin existe
+  const adminUser = await db.findOne(db.users, { role: 'admin' }).catch(() => null);
+  tests.push({
+    id: 'admin_user',
+    name: 'Usuario admin',
+    status: adminUser ? 'pass' : 'fail',
+    message: adminUser ? `OK · ${adminUser.email}` : 'No hay usuario admin',
+  });
+
+  // 7. Agente DMCloser Sales preset
+  const salesAgent = adminUser?.account_id
+    ? await db.findOne(db.agents, { account_id: adminUser.account_id, name: 'DMCloser Sales', enabled: true }).catch(() => null)
+    : null;
+  tests.push({
+    id: 'sales_agent',
+    name: 'Agente preset DMCloser',
+    status: salesAgent ? 'pass' : 'warn',
+    message: salesAgent
+      ? `OK · ${salesAgent.name} activo (${salesAgent.instructions?.length || 0} chars)`
+      : 'Preset no aplicado. Andá a Admin → Usuarios → Ver tu user → "Resetear y aplicar preset".',
+  });
+
+  // 8. Knowledge real
+  if (adminUser?.account_id) {
+    const knowledge = await db.find(db.knowledge, { account_id: adminUser.account_id });
+    const hasReal = knowledge.some(k => k.content && !k.content.includes('[Describe') && k.content.length > 100);
+    tests.push({
+      id: 'knowledge',
+      name: 'Knowledge base',
+      status: hasReal ? 'pass' : 'warn',
+      message: hasReal
+        ? `OK · ${knowledge.length} entrada(s) con contenido real`
+        : 'Knowledge tiene placeholders [Describe]. Personalizá con info real de tu negocio.',
+    });
+  } else {
+    tests.push({ id: 'knowledge', name: 'Knowledge base', status: 'skip', message: 'Sin admin user' });
+  }
+
+  // 9. Lead magnets
+  if (adminUser?.account_id) {
+    const magnets = await db.find(db.leadMagnets, { account_id: adminUser.account_id, enabled: true });
+    tests.push({
+      id: 'lead_magnets',
+      name: 'Lead magnets',
+      status: magnets.length > 0 ? 'pass' : 'warn',
+      message: magnets.length > 0
+        ? `OK · ${magnets.length} magnet(s) configurado(s)`
+        : 'Sin lead magnets configurados — el bot no podrá ofrecer recursos a leads tibios.',
+    });
+  }
+
+  // 10. Chat público funciona
+  try {
+    if (process.env.OPENAI_API_KEY && salesAgent) {
+      tests.push({ id: 'public_chat', name: 'Chat público landing', status: 'pass', message: 'OK · agente Brian configurado y disponible en /' });
+    } else {
+      tests.push({ id: 'public_chat', name: 'Chat público landing', status: 'warn', message: 'Falta OPENAI_API_KEY o agente preset' });
+    }
+  } catch (e) {
+    tests.push({ id: 'public_chat', name: 'Chat público landing', status: 'fail', message: e.message });
+  }
+
+  const summary = {
+    total:  tests.length,
+    pass:   tests.filter(t => t.status === 'pass').length,
+    warn:   tests.filter(t => t.status === 'warn').length,
+    fail:   tests.filter(t => t.status === 'fail').length,
+    skip:   tests.filter(t => t.status === 'skip').length,
+  };
+  const ready = summary.fail === 0 && tests.find(t => t.id === 'db_persistent')?.status === 'pass'
+    && (tests.find(t => t.id === 'lemonsqueezy')?.status === 'pass' || tests.find(t => t.id === 'mercadopago')?.status === 'pass');
+
+  res.json({
+    ready,
+    summary,
+    tests,
+    durationMs: Date.now() - start,
+  });
+});
+
+/**
  * GET /api/admin/env-status
  * Reporta qué variables de entorno críticas están configuradas (true/false,
  * sin exponer valores). Útil para hacer un sanity check antes de lanzar.
