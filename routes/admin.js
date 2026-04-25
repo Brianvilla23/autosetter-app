@@ -1105,6 +1105,105 @@ router.post('/reset-and-apply-preset', async (req, res) => {
 });
 
 /**
+ * GET /api/admin/ls-products
+ * Lista los productos + variantes en Lemon Squeezy con su frecuencia y precio.
+ * Útil para verificar después de configurar productos en LS que todo está OK
+ * (sin tener que entrar al dashboard de LS).
+ *
+ * Devuelve para cada variante: nombre, status, precio, intervalo (week/month/year),
+ * count del intervalo (1 month, 3 months, etc), y un flag `matchesEnv` que indica
+ * si el variant_id está en LS_VARIANT_STARTER/PRO/AGENCY.
+ */
+router.get('/ls-products', async (req, res) => {
+  try {
+    if (!process.env.LS_API_KEY)  return res.status(400).json({ error: 'LS_API_KEY no configurada' });
+    if (!process.env.LS_STORE_ID) return res.status(400).json({ error: 'LS_STORE_ID no configurada' });
+
+    const axios = require('axios');
+    const headers = {
+      'Authorization': `Bearer ${process.env.LS_API_KEY}`,
+      'Accept':        'application/vnd.api+json',
+      'Content-Type':  'application/vnd.api+json',
+    };
+
+    // Pedir variantes del store con productos relacionados
+    const r = await axios.get(
+      `https://api.lemonsqueezy.com/v1/variants?filter[store_id]=${process.env.LS_STORE_ID}&include=product&page[size]=50`,
+      { headers, timeout: 10000 }
+    );
+
+    const products = {};
+    (r.data.included || []).forEach(p => {
+      if (p.type === 'products') products[p.id] = p.attributes.name;
+    });
+
+    const expectedVariants = {
+      [process.env.LS_VARIANT_STARTER || '0']: 'starter',
+      [process.env.LS_VARIANT_PRO     || '0']: 'pro',
+      [process.env.LS_VARIANT_AGENCY  || '0']: 'agency',
+    };
+
+    const variants = (r.data.data || [])
+      .filter(v => v.attributes.status !== 'pending')
+      .map(v => {
+        const a = v.attributes;
+        const productId = v.relationships?.product?.data?.id;
+        const matchesEnv = expectedVariants[v.id] || null;
+        const expectedMonthly = a.interval === 'month' && a.interval_count === 1;
+        return {
+          variant_id:     v.id,
+          name:           a.name,
+          product_name:   products[productId] || '?',
+          status:         a.status,
+          price_usd:      a.price ? +(a.price / 100).toFixed(2) : null,
+          interval:       a.interval || null,         // 'day' | 'week' | 'month' | 'year'
+          interval_count: a.interval_count || null,
+          is_subscription: !!a.is_subscription,
+          matches_env:    matchesEnv,                  // 'starter' | 'pro' | 'agency' | null
+          frequency_ok:   matchesEnv ? expectedMonthly : null, // true si es 1 month
+          frequency_label: a.interval ? `cada ${a.interval_count} ${a.interval}${a.interval_count > 1 ? 's' : ''}` : '—',
+        };
+      })
+      .sort((a, b) => parseInt(a.variant_id) - parseInt(b.variant_id));
+
+    // Resumen para los 3 que esperamos en envs
+    const expectedSummary = {
+      starter: variants.find(v => v.matches_env === 'starter') || null,
+      pro:     variants.find(v => v.matches_env === 'pro')     || null,
+      agency:  variants.find(v => v.matches_env === 'agency')  || null,
+    };
+
+    const allOk = ['starter', 'pro', 'agency'].every(plan => {
+      const v = expectedSummary[plan];
+      return v && v.is_subscription && v.frequency_ok && v.status === 'published';
+    });
+
+    res.json({
+      allOk,
+      expected: expectedSummary,
+      allVariants: variants,
+      notes: [
+        !expectedSummary.starter ? '🔴 LS_VARIANT_STARTER no encuentra ese variant en LS' : null,
+        !expectedSummary.pro     ? '🔴 LS_VARIANT_PRO no encuentra ese variant en LS' : null,
+        !expectedSummary.agency  ? '🔴 LS_VARIANT_AGENCY no encuentra ese variant en LS' : null,
+        ...['starter', 'pro', 'agency'].map(plan => {
+          const v = expectedSummary[plan];
+          if (!v) return null;
+          if (!v.is_subscription)         return `⚠️ ${plan}: NO es subscription (es one-time payment)`;
+          if (v.interval !== 'month')     return `🔴 ${plan}: frecuencia es ${v.frequency_label}, debería ser cada 1 month`;
+          if (v.interval_count !== 1)     return `🔴 ${plan}: count es ${v.interval_count}, debería ser 1`;
+          if (v.status !== 'published')   return `⚠️ ${plan}: status=${v.status}, debería ser published`;
+          return null;
+        }),
+      ].filter(Boolean),
+    });
+  } catch (e) {
+    const detail = e.response?.data?.errors?.[0]?.detail || e.response?.data || e.message;
+    res.status(500).json({ error: typeof detail === 'string' ? detail : JSON.stringify(detail) });
+  }
+});
+
+/**
  * GET /api/admin/self-test
  * Hace un sanity check end-to-end de TODO el sistema y reporta qué funciona y
  * qué falla. Útil para verificar antes de lanzar a producción o después de un
