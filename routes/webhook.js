@@ -285,12 +285,17 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
     if (result.qualification === 'hot' && prevQualification !== 'hot') {
       try {
         const { notifyHotLead } = require('../services/notifications');
-        const owner = await db.findOne(db.users, { accountId: account._id });
+        // Bug fix: el campo en la tabla users es account_id (snake_case), no accountId.
+        // Con el bug viejo el lookup devolvía null y la notificación nunca salía.
+        const owner = await db.findOne(db.users, { account_id: account._id });
         if (owner) {
           const r = await notifyHotLead({ userId: owner._id, leadId: lead._id });
           const channels = (r.sent || []).filter(s => s.ok).map(s => s.channel).join(', ');
-          if (channels) console.log(`🔔 Notificación HOT enviada a owner (${channels}) para @${lead.ig_username}`);
+          if (channels) console.log(`🔔 Notificación HOT enviada a ${owner.email} (${channels}) para @${lead.ig_username}`);
           else if (r.throttled) console.log(`🔕 Notificación HOT throttled para @${lead.ig_username}`);
+          else console.log(`⚠️  Notificación HOT no enviada (sin canales activos) para @${lead.ig_username}`);
+        } else {
+          console.warn(`⚠️  HOT detectado pero no se encontró owner para account ${account._id}`);
         }
       } catch (e) { console.error('notifyHotLead error:', e.message); }
     }

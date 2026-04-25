@@ -159,9 +159,17 @@ async function sendWebhook({ url, payload }) {
 // ─────────────────────────────────────────────────────────────────────────────
 async function notifyHotLead({ userId, leadId }) {
   const user = await db.findOne(db.users, { _id: userId });
-  if (!user || !user.notifications) return { sent: [] };
+  if (!user) return { sent: [] };
 
-  const n = user.notifications;
+  // Si el user nunca configuró notifications, asumimos defaults con email ON
+  // para que reciba alertas al email de su cuenta sin tener que setear nada.
+  const n = {
+    email_enabled:    true,
+    telegram_enabled: false,
+    whatsapp_enabled: false,
+    webhook_enabled:  false,
+    ...(user.notifications || {}),
+  };
 
   // Throttle: ¿ya notificamos este lead hace poco?
   const lead = await db.findOne(db.leads, { _id: leadId });
