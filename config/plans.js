@@ -24,21 +24,21 @@ const PLANS = {
   starter: {
     id:          'starter',
     name:        'Starter',
-    price:       47,
+    price:       197,                // USD/mes (~CLP 180.000)
     maxAccounts: 1,
-    maxAgents:   1,
+    maxAgents:   3,
     maxDMs:      500,
-    maxMagnets:  1,
+    maxMagnets:  3,
     followups:   false,
     webhook:     false,
   },
   pro: {
     id:          'pro',
     name:        'Pro',
-    price:       97,
-    maxAccounts: 1,
+    price:       297,                // USD/mes (~CLP 270.000)
+    maxAccounts: 3,
     maxAgents:   UNLIMITED,
-    maxDMs:      5000,
+    maxDMs:      UNLIMITED,          // conversaciones ilimitadas
     maxMagnets:  UNLIMITED,
     followups:   true,
     webhook:     true,
@@ -46,8 +46,8 @@ const PLANS = {
   agency: {
     id:          'agency',
     name:        'Agency',
-    price:       297,
-    maxAccounts: 5,
+    price:       497,                // USD/mes (~CLP 450.000)
+    maxAccounts: 10,
     maxAgents:   UNLIMITED,
     maxDMs:      UNLIMITED,
     maxMagnets:  UNLIMITED,

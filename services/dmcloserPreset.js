@@ -60,10 +60,10 @@ Si es FRÍO o solo cotiza:
 5. MANEJO DE OBJECIONES
 
 "¿Cuánto cuesta?" →
-"Desde $29/mes el starter. Pero antes de tirarte el precio — ¿cuánto te vale un cliente tuyo? Con que cierre 1 extra al mes ya se paga 3 veces. ¿Tiene sentido?"
+"Antes de tirarte el número — ¿cuánto te vale un cliente tuyo? Porque el plan Pro ($297/mes USD o $270k CLP) con que cierre 1 cliente extra al mes ya se paga varias veces. ¿Qué ticket manejás?"
 
 "Es caro" →
-"Entiendo. Pregunta: ¿cuánto te cuesta HOY perder 3 leads al mes por no contestar a tiempo? Si cada cliente te vale $200, con 1 extra ya pagaste 8 meses de esto."
+"Entiendo. Pregunta: ¿cuánto te cuesta HOY perder 3 leads al mes por no contestar a tiempo? Si cada cliente te vale $500+, con que te cierre 1 extra al mes ya pagaste 2 meses de esto. Si el ticket es más chico, te sirve mejor el Starter ($197/mes)."
 
 "Lo voy a pensar" →
 "Dale. ¿Qué te falta saber para decidir? Así te tiro solo lo que te sirve, no todo el folleto."
@@ -112,32 +112,45 @@ Coaches, agencias, infoproductos, e-commerce y cualquier negocio que reciba DMs 
   },
   {
     title: 'Precios y planes',
-    content: `PLAN STARTER — $29 USD/mes
-- Hasta 500 DMs/mes
-- 1 agente IA
+    content: `PLAN STARTER — $197 USD/mes (o $180.000 CLP/mes)
 - 1 cuenta de Instagram
+- Hasta 3 agentes IA
+- 500 conversaciones/mes
+- Knowledge Base personalizable
+- Dashboard de leads + filtros
+- Delay humanizado en respuestas
+- Soporte por email
+
+PLAN PRO — $297 USD/mes (o $270.000 CLP/mes) ⭐ MÁS POPULAR
+- 3 cuentas de Instagram
+- Agentes IA ilimitados
+- Conversaciones ilimitadas
+- Clasificación automática HOT / WARM / COLD
 - Follow-ups automáticos
-- CRM básico
-
-PLAN PRO — $79 USD/mes
-- Hasta 3.000 DMs/mes
-- 3 agentes IA
-- 1 cuenta de Instagram
 - Lead magnets automáticos
-- Export CSV + analytics
-
-PLAN AGENCY — $199 USD/mes
-- DMs ilimitados
-- Agentes ilimitados
-- Hasta 5 cuentas IG
-- API access
+- Bypass manual por usuario
+- Onboarding personalizado
 - Soporte prioritario
+
+PLAN AGENCY — $497 USD/mes (o $450.000 CLP/mes)
+- 10 cuentas de Instagram
+- Todo lo del Pro +
+- White-label disponible
+- Multi-usuario (equipo)
+- Reportes avanzados
+- Setup completo incluido
+- Soporte dedicado 24/7
 
 PRUEBA GRATIS: 3 días sin tarjeta en todos los planes.
 
 GARANTÍA: 7 días de reembolso sin preguntas en el primer pago.
 
-FACTURACIÓN: Lemon Squeezy (tarjeta) o Mercado Pago (LATAM). Podés cancelar cuando quieras desde el panel.`,
+FACTURACIÓN: Lemon Squeezy (tarjeta internacional, USD) o Mercado Pago (LATAM, CLP/ARS/MXN). Podés cancelar cuando quieras desde el panel.
+
+CÓMO PRESENTAR EL PRECIO AL LEAD (no tires el número sin calificar):
+- Si te pregunta "cuánto sale" sin contexto: "antes de tirarte el número, ¿cuánto te vale un cliente tuyo hoy?" — hacé la cuenta con él.
+- El pitch clave: "con que cierre 1 cliente extra al mes ya se paga solo múltiples veces" (siempre).
+- Recomendá el Pro a coaches/agencias/infoproductos con ticket $500+. Starter solo para los que recién arrancan o tienen ticket bajo.`,
   },
   {
     title: 'Resultados típicos / casos',
