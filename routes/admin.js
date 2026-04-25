@@ -737,6 +737,123 @@ router.post('/meta-tokens/refresh-all', async (req, res) => {
 });
 
 /**
+ * GET /api/admin/funnel
+ * Funnel de activación: visitante → registrado → IG → agente personalizado →
+ * recibió DM → generó lead HOT → pagando.
+ * Sirve para ver donde se pierde la gente y cuanto optimizar cada paso.
+ * Con window opcional: ?days=30 (default 30).
+ */
+router.get('/funnel', async (req, res) => {
+  try {
+    const days = Math.min(Math.max(parseInt(req.query.days) || 30, 1), 365);
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
+    const [users, accounts, agents, messages, leads] = await Promise.all([
+      db.find(db.users, {}),
+      db.find(db.accounts, {}),
+      db.find(db.agents, {}),
+      db.find(db.messages, {}),
+      db.find(db.leads, {}),
+    ]);
+
+    // Filtrar solo users no-admin registrados dentro de la ventana
+    const cohort = users.filter(u =>
+      u.role !== 'admin' &&
+      (u.createdAt || '') >= since
+    );
+
+    // Indexar por accountId para lookups rápidos
+    const accountsById = {};
+    for (const a of accounts) accountsById[a._id] = a;
+
+    const agentsByAccount = {};
+    for (const a of agents) {
+      (agentsByAccount[a.account_id] = agentsByAccount[a.account_id] || []).push(a);
+    }
+
+    const messagesCountByAccount = {};
+    for (const m of messages) {
+      messagesCountByAccount[m.account_id] = (messagesCountByAccount[m.account_id] || 0) + 1;
+    }
+
+    const hotLeadsByAccount = {};
+    for (const l of leads) {
+      if (l.qualification === 'hot') {
+        hotLeadsByAccount[l.account_id] = (hotLeadsByAccount[l.account_id] || 0) + 1;
+      }
+    }
+
+    // Calcular cada etapa
+    let registered = 0, connectedIG = 0, customizedAgent = 0, receivedDM = 0, gotHotLead = 0, paying = 0;
+
+    for (const u of cohort) {
+      registered++;
+      const acc = u.account_id ? accountsById[u.account_id] : null;
+      if (!acc) continue;
+      if (!acc.ig_user_id) continue;
+      connectedIG++;
+
+      // Agente personalizado: tiene algún agente cuya instructions NO sean el placeholder del seed
+      const userAgents = agentsByAccount[acc._id] || [];
+      const hasCustomAgent = userAgents.some(a =>
+        a.instructions &&
+        !a.instructions.includes('[Nombre]') &&
+        !a.instructions.includes('[Describe')
+      );
+      if (!hasCustomAgent) continue;
+      customizedAgent++;
+
+      if ((messagesCountByAccount[acc._id] || 0) < 1) continue;
+      receivedDM++;
+
+      if ((hotLeadsByAccount[acc._id] || 0) < 1) continue;
+      gotHotLead++;
+
+      if (u.subscriptionStatus === 'active') paying++;
+    }
+
+    const stages = [
+      { id: 'registered',       icon: '📝', label: 'Registrados',             count: registered },
+      { id: 'connected_ig',     icon: '📸', label: 'Conectaron Instagram',    count: connectedIG },
+      { id: 'customized_agent', icon: '🤖', label: 'Personalizaron el agente', count: customizedAgent },
+      { id: 'received_dm',      icon: '💬', label: 'Recibieron ≥1 DM',         count: receivedDM },
+      { id: 'got_hot_lead',     icon: '🔥', label: 'Generaron un lead HOT',    count: gotHotLead },
+      { id: 'paying',           icon: '💰', label: 'Suscripción activa',       count: paying },
+    ];
+
+    // Porcentajes: vs top (registrados) y vs paso previo
+    const top = registered || 1;
+    for (let i = 0; i < stages.length; i++) {
+      stages[i].pctOfTop = +((stages[i].count / top) * 100).toFixed(1);
+      if (i > 0) {
+        const prev = stages[i - 1].count || 1;
+        stages[i].pctOfPrev = +((stages[i].count / prev) * 100).toFixed(1);
+        stages[i].dropOff = stages[i - 1].count - stages[i].count;
+      } else {
+        stages[i].pctOfPrev = 100;
+        stages[i].dropOff = 0;
+      }
+    }
+
+    // Identificar el peor cuello de botella (mayor drop-off absoluto)
+    const bottleneck = stages.slice(1).reduce((worst, s) =>
+      (s.dropOff > (worst?.dropOff || 0) ? s : worst), null);
+
+    const overallConversion = registered > 0
+      ? +((paying / registered) * 100).toFixed(2)
+      : 0;
+
+    res.json({
+      windowDays: days,
+      cohortSize: registered,
+      stages,
+      bottleneck,
+      overallConversion,
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
  * POST /api/admin/seed-sales-preset
  * Body: { accountId }
  * Instala el preset "DMCloser Sales Agent" en la cuenta indicada:

@@ -292,6 +292,29 @@
         <div class="metric-card"><div class="mc-label">Cargando…</div><div class="mc-value">—</div></div>
       </div>
 
+      <!-- ── FUNNEL DE CONVERSIÓN ── -->
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+          <h3 style="margin:0">🎯 Funnel de activación</h3>
+          <div style="display:flex;gap:6px;align-items:center">
+            <label style="font-size:0.8rem;color:#888">Ventana:</label>
+            <select id="funnelDays" onchange="loadFunnel()" style="background:#0f0f1a;border:1px solid #2a2a4a;color:#e0e0e0;padding:4px 8px;border-radius:4px;font-size:0.82rem">
+              <option value="7">7 días</option>
+              <option value="30" selected>30 días</option>
+              <option value="90">90 días</option>
+              <option value="180">180 días</option>
+              <option value="365">1 año</option>
+            </select>
+          </div>
+        </div>
+        <div id="funnelSummary" style="display:flex;gap:24px;font-size:0.86rem;color:#888;margin-bottom:18px;flex-wrap:wrap;padding:12px 14px;background:#0f0f1a;border-radius:8px">
+          <span>Cargando…</span>
+        </div>
+        <div id="funnelStages" style="display:flex;flex-direction:column;gap:8px">
+          <div style="color:#666;text-align:center;padding:20px">⏳ Cargando funnel...</div>
+        </div>
+      </div>
+
       <div class="card chart-wrap">
         <h3>📈 Mensajes por día (últimos 7)</h3>
         <div class="chart-bars" id="messagesChart"></div>
@@ -773,9 +796,54 @@ async function loadMetrics() {
     renderMetricCards(m);
     renderMessagesChart(m.messagesByDay);
     renderTopUsers(m.topUsers);
+    loadFunnel();
   } catch (e) {
     document.getElementById('metricsCards').innerHTML =
       `<div class="metric-card"><div class="mc-label">Error</div><div class="mc-value" style="color:#ef4444">${escHtml(e.message)}</div></div>`;
+  }
+}
+
+async function loadFunnel() {
+  const days = parseInt(document.getElementById('funnelDays')?.value) || 30;
+  try {
+    const f = await api('GET', `/api/admin/funnel?days=${days}`);
+    const summary = document.getElementById('funnelSummary');
+    const bn = f.bottleneck;
+    summary.innerHTML = `
+      <span>Cohorte: <strong style="color:#e0e0e0">${f.cohortSize}</strong> registros en ${f.windowDays}d</span>
+      <span>Conversión total: <strong style="color:${f.overallConversion >= 5 ? '#22c55e' : f.overallConversion >= 2 ? '#f59e0b' : '#ef4444'}">${f.overallConversion}%</strong> (→ pagando)</span>
+      ${bn && bn.dropOff > 0 ? `<span>Cuello de botella: <strong style="color:#ef4444">${escHtml(bn.label)}</strong> — perdés ${bn.dropOff} usuarios acá</span>` : ''}
+    `;
+
+    const maxCount = Math.max(...f.stages.map(s => s.count), 1);
+    document.getElementById('funnelStages').innerHTML = f.stages.map((s, i) => {
+      const width = Math.max(4, (s.count / maxCount) * 100);
+      const isBottleneck = bn && bn.id === s.id && bn.dropOff > 0;
+      const stageColor = isBottleneck ? '#ef4444' : i === 0 ? '#7c6af7' : '#60a5fa';
+      const dropRow = i > 0 && s.dropOff > 0
+        ? `<div style="font-size:0.75rem;color:${isBottleneck ? '#ef4444' : '#888'};margin-left:14px;margin-bottom:2px">↓ ${s.dropOff} se cayeron (${(100 - s.pctOfPrev).toFixed(1)}% drop)</div>`
+        : '';
+      return `
+        ${dropRow}
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="min-width:260px;display:flex;align-items:center;gap:10px">
+            <span style="font-size:1.2rem">${s.icon}</span>
+            <div>
+              <div style="font-size:0.92rem;color:#e0e0e0">${escHtml(s.label)}</div>
+              <div style="font-size:0.72rem;color:#888">${s.pctOfTop}% del total · ${s.pctOfPrev}% del paso anterior</div>
+            </div>
+          </div>
+          <div style="flex:1;position:relative;background:#0f0f1a;border-radius:6px;height:34px;overflow:hidden">
+            <div style="height:100%;width:${width}%;background:linear-gradient(90deg, ${stageColor}, ${stageColor}CC);transition:width .4s;border-radius:6px"></div>
+            <div style="position:absolute;inset:0;display:flex;align-items:center;padding-left:14px;font-size:0.9rem;font-weight:600;color:#fff">
+              ${s.count}
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+  } catch (e) {
+    document.getElementById('funnelStages').innerHTML =
+      `<div style="color:#ef4444;padding:12px;text-align:center">Error: ${escHtml(e.message)}</div>`;
   }
 }
 
