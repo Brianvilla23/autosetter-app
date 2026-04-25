@@ -289,6 +289,32 @@
     <div id="knowledge-list" class="knowledge-list"></div>
   </section>
 
+  <!-- MODAL DE PLANTILLAS RÁPIDAS (lo usa el inbox) ─────────────────────────── -->
+  <div id="qr-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:center;justify-content:center;padding:20px">
+    <div style="background:#fff;border-radius:12px;padding:24px;width:560px;max-width:100%;max-height:90vh;overflow-y:auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h3 style="margin:0">📋 Plantillas de respuesta</h3>
+        <button onclick="closeQuickReplies()" style="background:transparent;border:none;font-size:22px;cursor:pointer">×</button>
+      </div>
+      <p style="color:var(--text-2);font-size:13px;margin-bottom:14px">Click en una plantilla para insertarla. Variables disponibles: <code style="background:#f3f4f6;padding:1px 5px;border-radius:3px;font-size:12px">{nombre}</code> <code style="background:#f3f4f6;padding:1px 5px;border-radius:3px;font-size:12px">{primernombre}</code> <code style="background:#f3f4f6;padding:1px 5px;border-radius:3px;font-size:12px">{agente}</code></p>
+
+      <div id="qr-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px">
+        <div style="text-align:center;padding:30px;color:var(--text-3)">⏳ Cargando…</div>
+      </div>
+
+      <div style="border-top:1px solid var(--border);padding-top:16px">
+        <h4 style="margin:0 0 10px;font-size:14px" id="qr-form-title">Nueva plantilla</h4>
+        <input type="hidden" id="qr-id">
+        <input type="text" id="qr-title" placeholder="Título (ej: Info de envíos)" maxlength="80" style="width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:6px;font-size:13px;margin-bottom:8px">
+        <textarea id="qr-content" placeholder="Texto de la respuesta. Podés usar {nombre} y {agente}." maxlength="1000" rows="3" style="width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;resize:vertical;margin-bottom:10px"></textarea>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn-ghost" onclick="resetQuickReplyForm()" style="padding:7px 14px;font-size:13px">Limpiar</button>
+          <button class="btn-primary" onclick="saveQuickReply()" style="padding:7px 14px;font-size:13px">Guardar plantilla</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- INBOX (mensajería unificada) ─────────────────────────────────────────── -->
   <section id="section-inbox" class="section">
     <div class="page-header">

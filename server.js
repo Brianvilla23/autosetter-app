@@ -375,6 +375,7 @@ app.use('/api/settings',  apiLimiter, requireAuth, require('./routes/settings'))
 app.use('/api/growth',    apiLimiter, requireAuth, checkSubscription, require('./routes/growth'));
 app.use('/api/lead-magnets', apiLimiter, requireAuth, checkSubscription, require('./routes/leadMagnets'));
 app.use('/api/inbox',        apiLimiter, requireAuth, checkSubscription, require('./routes/inbox'));
+app.use('/api/quick-replies', apiLimiter, requireAuth, checkSubscription, require('./routes/quickReplies'));
 
 // Referrals: track-click es público (landing lo llama sin auth);
 // el resto del router está bajo requireAuth.

@@ -2074,6 +2074,7 @@ async function renderInboxThread(leadId, isRefresh = false) {
       <div class="thread-input">
         <div class="row">
           <textarea id="thread-input-text" placeholder="Escribí tu respuesta..." rows="1" onkeydown="handleThreadKey(event)"></textarea>
+          <button class="btn-ghost" onclick="openQuickReplies()" title="Insertar plantilla" style="padding:10px 12px;font-size:13px">📋</button>
           <button class="btn-primary" onclick="sendInboxMessage()" style="padding:10px 18px;font-size:13px">Enviar</button>
         </div>
         <div class="hint">${lead.is_bypassed ? '🚫 El bot está pausado en esta conversación. Lo que escribas se manda como vos.' : '⚠️ Si respondés vos, el bot se va a pausar automáticamente para esta conversación.'} <kbd style="font-size:10px;background:#f3f4f6;padding:2px 5px;border-radius:3px">Enter</kbd> envía · <kbd style="font-size:10px;background:#f3f4f6;padding:2px 5px;border-radius:3px">Shift+Enter</kbd> nueva línea</div>
@@ -2386,6 +2387,142 @@ function copyReferralLink() {
 
 window.loadReferralsPage = loadReferralsPage;
 window.copyReferralLink = copyReferralLink;
+
+// ── QUICK REPLIES (plantillas) ─────────────────────────────────────────────
+let QUICK_REPLIES = [];
+let CURRENT_LEAD_FOR_TEMPLATES = null;
+
+async function openQuickReplies() {
+  CURRENT_LEAD_FOR_TEMPLATES = INBOX_SELECTED_ID;
+  document.getElementById('qr-modal').style.display = 'flex';
+  resetQuickReplyForm();
+  await loadQuickReplies();
+}
+
+function closeQuickReplies() {
+  document.getElementById('qr-modal').style.display = 'none';
+}
+
+async function loadQuickReplies() {
+  try {
+    const items = await apiFetch(`/api/quick-replies?accountId=${ACCOUNT_ID}`);
+    QUICK_REPLIES = items || [];
+    const list = document.getElementById('qr-list');
+    if (!QUICK_REPLIES.length) {
+      list.innerHTML = `
+        <div style="text-align:center;padding:30px;color:var(--text-3);background:#f9fafb;border-radius:8px;border:1px dashed var(--border)">
+          <div style="font-size:24px;margin-bottom:6px">📋</div>
+          <div style="font-size:13px">Aún no creaste plantillas</div>
+          <div style="font-size:12px;margin-top:4px">Empezá creando una abajo (ej: "info de envíos", "horario de atención", "link de pago")</div>
+        </div>`;
+      return;
+    }
+    list.innerHTML = QUICK_REPLIES.map(q => `
+      <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:#f9fafb;border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:background .12s" onmouseover="this.style.background='#fff7ed';this.style.borderColor='#fed7aa'" onmouseout="this.style.background='#f9fafb';this.style.borderColor='var(--border)'" onclick="insertQuickReply('${q.id}')">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13.5px;font-weight:600;color:var(--text-1);margin-bottom:2px">${escHtmlSafe(q.title)} ${q.uses ? `<small style="color:var(--text-3);font-weight:400">· ${q.uses} usos</small>` : ''}</div>
+          <div style="font-size:12.5px;color:var(--text-2);line-height:1.4;white-space:pre-wrap;max-height:60px;overflow:hidden">${escHtmlSafe(q.content.slice(0, 200))}${q.content.length > 200 ? '…' : ''}</div>
+        </div>
+        <div style="display:flex;gap:4px;flex-shrink:0" onclick="event.stopPropagation()">
+          <button onclick="editQuickReply('${q.id}')" style="background:transparent;border:1px solid var(--border);color:var(--text-2);padding:4px 8px;border-radius:5px;font-size:11px;cursor:pointer">✏️</button>
+          <button onclick="deleteQuickReply('${q.id}')" style="background:transparent;border:1px solid var(--border);color:#dc2626;padding:4px 8px;border-radius:5px;font-size:11px;cursor:pointer">🗑️</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    document.getElementById('qr-list').innerHTML = `<div style="color:#ef4444;text-align:center;padding:20px">${escHtmlSafe(e.message)}</div>`;
+  }
+}
+
+function applyTemplateVariables(text, lead) {
+  if (!text) return '';
+  const ig = lead?.ig_username || '';
+  const firstName = ig.split(/[._-]/)[0] || ig;
+  const agentName = lead?.agent_name || 'Mi Agente';
+  return text
+    .replace(/\{nombre\}/g, ig ? '@' + ig : '')
+    .replace(/\{primernombre\}/g, firstName)
+    .replace(/\{agente\}/g, agentName);
+}
+
+async function insertQuickReply(id) {
+  const q = QUICK_REPLIES.find(x => x.id === id);
+  if (!q) return;
+  const input = document.getElementById('thread-input-text');
+  if (!input) {
+    showToast('Abrí una conversación primero');
+    return;
+  }
+  // Buscar lead actual para reemplazar variables
+  let lead = null;
+  if (CURRENT_LEAD_FOR_TEMPLATES) {
+    try {
+      lead = await apiFetch(`/api/leads/${CURRENT_LEAD_FOR_TEMPLATES}`);
+    } catch {}
+  }
+  const text = applyTemplateVariables(q.content, lead);
+  // Insertar al final del textarea, sumando espacio si ya tiene texto
+  input.value = input.value ? input.value.trimEnd() + ' ' + text : text;
+  input.focus();
+  // Setear cursor al final
+  input.setSelectionRange(input.value.length, input.value.length);
+  closeQuickReplies();
+  // Incrementar contador (best-effort)
+  apiFetch(`/api/quick-replies/${id}/used`, { method: 'POST' }).catch(() => null);
+}
+
+function resetQuickReplyForm() {
+  document.getElementById('qr-form-title').textContent = 'Nueva plantilla';
+  document.getElementById('qr-id').value = '';
+  document.getElementById('qr-title').value = '';
+  document.getElementById('qr-content').value = '';
+}
+
+function editQuickReply(id) {
+  const q = QUICK_REPLIES.find(x => x.id === id);
+  if (!q) return;
+  document.getElementById('qr-form-title').textContent = 'Editar plantilla';
+  document.getElementById('qr-id').value = id;
+  document.getElementById('qr-title').value = q.title;
+  document.getElementById('qr-content').value = q.content;
+  document.getElementById('qr-title').focus();
+}
+
+async function saveQuickReply() {
+  const id = document.getElementById('qr-id').value;
+  const title = document.getElementById('qr-title').value.trim();
+  const content = document.getElementById('qr-content').value.trim();
+  if (!title || !content) {
+    showToast('Completá título y contenido');
+    return;
+  }
+  try {
+    if (id) {
+      await apiFetch(`/api/quick-replies/${id}`, { method: 'PATCH', body: JSON.stringify({ title, content }) });
+    } else {
+      await apiFetch('/api/quick-replies', { method: 'POST', body: JSON.stringify({ accountId: ACCOUNT_ID, title, content }) });
+    }
+    resetQuickReplyForm();
+    showToast('✅ Plantilla guardada');
+    loadQuickReplies();
+  } catch (e) { showToast('❌ ' + e.message); }
+}
+
+async function deleteQuickReply(id) {
+  if (!confirm('¿Eliminar esta plantilla?')) return;
+  try {
+    await apiFetch(`/api/quick-replies/${id}`, { method: 'DELETE' });
+    loadQuickReplies();
+  } catch (e) { showToast('❌ ' + e.message); }
+}
+
+window.openQuickReplies = openQuickReplies;
+window.closeQuickReplies = closeQuickReplies;
+window.insertQuickReply = insertQuickReply;
+window.resetQuickReplyForm = resetQuickReplyForm;
+window.editQuickReply = editQuickReply;
+window.saveQuickReply = saveQuickReply;
+window.deleteQuickReply = deleteQuickReply;
 
 // ── START ─────────────────────────────────────────────────────────────────────
 init();
