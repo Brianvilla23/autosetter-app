@@ -11,7 +11,34 @@
  */
 
 const db = require('../db/database');
-const { getPlanFor, UNLIMITED } = require('../config/plans');
+const { getPlanFor, hasFeature, UNLIMITED } = require('../config/plans');
+
+/**
+ * Helper: genera un middleware que bloquea si el plan no tiene la feature.
+ * Uso: enforceFeature('leadMagnets', 'Lead magnets automáticos')
+ */
+function enforceFeature(featureKey, displayName) {
+  return async (req, res, next) => {
+    try {
+      const user = await getCurrentUser(req);
+      if (!user) return res.status(401).json({ error: 'No autenticado' });
+      if (user.role === 'admin') return next();
+      if (hasFeature(user, featureKey)) return next();
+      const plan = getPlanFor(user);
+      const required = featureKey === 'whiteLabel' || featureKey === 'multiUser' || featureKey === 'apiAccess' ? 'Agency' : 'Pro';
+      return res.status(403).json({
+        error:   `${displayName} requiere plan ${required} o superior. Tu plan actual: ${plan.name}.`,
+        upgrade: true,
+        limit:   featureKey,
+        plan:    plan.id,
+        required,
+      });
+    } catch (e) {
+      console.error(`enforceFeature(${featureKey}) error:`, e.message);
+      next();
+    }
+  };
+}
 
 /** Busca el user actual de req.user.userId */
 async function getCurrentUser(req) {
@@ -131,4 +158,11 @@ module.exports = {
   enforceMaxAccounts,
   enforceMaxMagnets,
   enforceFollowupFeature,
+  enforceFeature,
+  // Atajos pre-armados para las features mas usadas
+  enforceLeadMagnets:   enforceFeature('leadMagnets',   'Lead magnets automáticos'),
+  enforceQualification: enforceFeature('qualification', 'Calificación HOT/WARM/COLD automática'),
+  enforceWebhook:       enforceFeature('webhook',       'Webhooks personalizados'),
+  enforceWhiteLabel:    enforceFeature('whiteLabel',    'White-label'),
+  enforceApiAccess:     enforceFeature('apiAccess',     'API access'),
 };

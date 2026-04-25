@@ -155,9 +155,23 @@
     /* ── SOCIAL PROOF ── */
     .proof { max-width: 1100px; margin: 90px auto 0; padding: 0 28px; text-align: center; }
     .proof-label { font-size: 12px; color: var(--text-3); text-transform: uppercase; letter-spacing: .12em; font-weight: 700; margin-bottom: 24px; }
-    .proof-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; margin-bottom: 60px; }
+    .proof-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; margin-bottom: 32px; }
     .proof-stat { background: var(--surface); padding: 28px 16px; }
     .proof-num { font-size: 2rem; font-weight: 900; background: var(--grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+    /* Trusted stack — logos de tecnologías que dan credibilidad */
+    .trusted-stack { padding: 30px 0 10px; border-top: 1px solid var(--border); }
+    .ts-label { font-size: 11.5px; color: var(--text-3); letter-spacing: .14em; text-transform: uppercase; margin-bottom: 18px; font-weight: 600; }
+    .ts-logos { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+    .ts-logo {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 9px 16px; background: rgba(255,255,255,.03); border: 1px solid var(--border);
+      border-radius: 30px; font-size: 13px; color: var(--text-2);
+      transition: all .2s;
+    }
+    .ts-logo:hover { background: rgba(139,92,246,.06); border-color: rgba(139,92,246,.3); transform: translateY(-2px); }
+    .ts-logo span { font-size: 16px; }
+    .ts-logo strong { color: var(--text-1); font-weight: 700; }
     .proof-lbl { font-size: 12.5px; color: var(--text-3); margin-top: 4px; }
 
     /* ── PROBLEM ── */
@@ -225,6 +239,57 @@
     .trust-chip .e { font-size: 16px; }
     @media (max-width: 880px) { .uc-grid { grid-template-columns: 1fr; } }
 
+    /* ── PRICING SECTION (inline en home) ── */
+    .pricing-section { max-width: 1180px; margin: 110px auto 0; padding: 0 28px; }
+    .pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; align-items: stretch; }
+    .price-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 22px;
+      padding: 36px 28px; display: flex; flex-direction: column; position: relative;
+      transition: all .25s;
+    }
+    .price-card:hover { border-color: rgba(139,92,246,.35); transform: translateY(-3px); }
+    .price-card.featured {
+      background: linear-gradient(160deg, rgba(139,92,246,.18) 0%, rgba(236,72,153,.10) 100%);
+      border-color: rgba(139,92,246,.5);
+      transform: scale(1.03);
+      box-shadow: 0 24px 60px -20px rgba(139,92,246,.4);
+    }
+    .price-card.featured:hover { transform: scale(1.03) translateY(-3px); }
+    .price-badge {
+      position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
+      background: var(--grad); color: #fff; font-size: 11px; font-weight: 700;
+      letter-spacing: .12em; text-transform: uppercase; padding: 6px 16px; border-radius: 20px;
+      box-shadow: 0 8px 24px -6px rgba(139,92,246,.6);
+    }
+    .price-name { font-size: 13px; font-weight: 800; color: var(--orange); letter-spacing: .14em; text-transform: uppercase; margin-bottom: 8px; }
+    .price-amount { font-size: 2.4rem; font-weight: 900; color: var(--text-1); line-height: 1; letter-spacing: -.02em; }
+    .price-amount small { font-size: 14px; color: var(--text-3); font-weight: 500; margin-left: 4px; }
+    .price-tagline { color: var(--text-2); font-size: 13.5px; line-height: 1.55; margin: 14px 0 22px; min-height: 50px; }
+    .price-cta {
+      display: block; text-align: center; padding: 13px 22px; border-radius: 10px;
+      font-weight: 700; font-size: 14px; text-decoration: none; transition: all .15s;
+      margin-bottom: 22px;
+    }
+    .price-cta-grad { background: var(--grad); color: #fff; }
+    .price-cta-grad:hover { box-shadow: 0 12px 32px -10px rgba(139,92,246,.6); }
+    .price-cta-outline { background: transparent; color: var(--text-1); border: 1px solid var(--border); }
+    .price-cta-outline:hover { border-color: var(--orange); color: var(--orange); }
+    .price-features { list-style: none; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+    .price-features li { display: flex; align-items: flex-start; gap: 9px; font-size: 13px; color: var(--text-2); }
+    .price-features li .check { flex-shrink: 0; width: 16px; height: 16px; border-radius: 50%; background: rgba(139,92,246,.18); display: flex; align-items: center; justify-content: center; font-size: 9px; color: var(--orange); margin-top: 2px; }
+    .price-features li.locked { color: rgba(255,255,255,.32); font-style: italic; }
+    .price-features li.locked .check { background: rgba(255,255,255,.05); }
+    .price-features li strong { color: var(--text-1); }
+    .price-overage { padding-top: 12px; border-top: 1px dashed rgba(139,92,246,.25); margin-top: 6px; font-size: 12.5px; color: var(--text-2); }
+    .price-overage strong { color: #22c55e; }
+    .price-foot { text-align: center; margin-top: 30px; font-size: 13.5px; color: var(--text-2); }
+    .price-foot a { color: var(--orange); text-decoration: none; font-weight: 600; }
+    @media (max-width: 880px) {
+      .pricing-grid { grid-template-columns: 1fr; }
+      .price-card.featured { transform: none; }
+      .price-card.featured:hover { transform: translateY(-3px); }
+    }
+
     /* ── TRIAL CTA ── */
     .cta-section { max-width: 760px; margin: 120px auto 0; padding: 0 28px; }
     .cta-box { background: linear-gradient(135deg, rgba(139,92,246,.15) 0%, rgba(236,72,153,.08) 100%); border: 1px solid rgba(139,92,246,.3); border-radius: 22px; padding: 60px 44px; text-align: center; }
@@ -268,8 +333,8 @@
     <a href="#como-funciona">Cómo funciona</a>
     <a href="#features">Features</a>
     <a href="#casos">Casos</a>
+    <a href="#pricing">Planes</a>
     <a href="#faq">Preguntas</a>
-    <a href="/pricing.html">Precios</a>
   </div>
   <div class="nav-actions">
     <a href="/app" class="btn btn-outline">Iniciar sesión</a>
@@ -322,6 +387,18 @@
     <div class="proof-stat"><div class="proof-num">&lt;90s</div><div class="proof-lbl">Tiempo de respuesta</div></div>
     <div class="proof-stat"><div class="proof-num">3x</div><div class="proof-lbl">Más citas agendadas</div></div>
     <div class="proof-stat"><div class="proof-num">0</div><div class="proof-lbl">Setters humanos</div></div>
+  </div>
+
+  <!-- Trusted stack: tecnologías reales que usamos. Da confianza técnica. -->
+  <div class="trusted-stack">
+    <div class="ts-label">Construido sobre tecnología confiable:</div>
+    <div class="ts-logos">
+      <div class="ts-logo"><span>🤖</span> <strong>OpenAI</strong> GPT-4</div>
+      <div class="ts-logo"><span>📸</span> <strong>Meta API</strong> oficial</div>
+      <div class="ts-logo"><span>💳</span> <strong>Lemon Squeezy</strong></div>
+      <div class="ts-logo"><span>💸</span> <strong>Mercado Pago</strong></div>
+      <div class="ts-logo"><span>📧</span> <strong>Resend</strong></div>
+    </div>
   </div>
 </section>
 
@@ -578,6 +655,79 @@
   </p>
 </section>
 
+<!-- PRICING (inline en home — link a /pricing.html para detalle completo) -->
+<section class="pricing-section" id="pricing">
+  <div class="section-title">
+    <div class="eyebrow">Planes</div>
+    <h2>Elegí el que escala con vos</h2>
+    <p>Empezás con 3 días gratis sin tarjeta. Si pasás el límite de DMs, pagás solo por lo que usás de más — sin sorpresas.</p>
+  </div>
+
+  <div class="pricing-grid">
+
+    <!-- STARTER -->
+    <div class="price-card">
+      <div class="price-name">Starter</div>
+      <div class="price-amount">$197 <small>USD/mes</small></div>
+      <div class="price-tagline">Ideal si recién arrancás a recibir DMs y querés no perder leads.</div>
+      <a href="/app?register=1" class="price-cta price-cta-outline">Empezar gratis →</a>
+      <ul class="price-features">
+        <li><span class="check">✓</span> <strong>500 conversaciones/mes</strong></li>
+        <li><span class="check">✓</span> 1 cuenta de Instagram</li>
+        <li><span class="check">✓</span> 1 agente IA configurable</li>
+        <li><span class="check">✓</span> Knowledge Base + Inbox</li>
+        <li class="locked"><span class="check">🔒</span> Follow-ups automáticos</li>
+        <li class="locked"><span class="check">🔒</span> Calificación HOT/WARM/COLD</li>
+        <li class="locked"><span class="check">🔒</span> Lead magnets automáticos</li>
+      </ul>
+    </div>
+
+    <!-- PRO (featured) -->
+    <div class="price-card featured">
+      <div class="price-badge">⭐ Más popular</div>
+      <div class="price-name">Pro</div>
+      <div class="price-amount">$297 <small>USD/mes</small></div>
+      <div class="price-tagline">Para negocios que ya venden por DM y quieren escalar sin contratar setters.</div>
+      <a href="/app?register=1" class="price-cta price-cta-grad">Empezar gratis →</a>
+      <ul class="price-features">
+        <li><span class="check">✓</span> <strong>5.000 conversaciones/mes</strong></li>
+        <li><span class="check">✓</span> 3 cuentas de Instagram</li>
+        <li><span class="check">✓</span> 5 agentes IA</li>
+        <li><span class="check">✓</span> Calificación HOT/WARM/COLD</li>
+        <li><span class="check">✓</span> Follow-ups automáticos</li>
+        <li><span class="check">✓</span> Lead magnets automáticos (10)</li>
+        <li><span class="check">✓</span> Webhook + integración CRM</li>
+        <div class="price-overage">＋ DM extra: <strong>$0.025 USD</strong> c/u (sólo si te pasás)</div>
+      </ul>
+    </div>
+
+    <!-- AGENCY -->
+    <div class="price-card">
+      <div class="price-name">Agency</div>
+      <div class="price-amount">$497 <small>USD/mes</small></div>
+      <div class="price-tagline">Para agencias y negocios de alto volumen con múltiples cuentas y equipo.</div>
+      <a href="/app?register=1" class="price-cta price-cta-outline">Empezar gratis →</a>
+      <ul class="price-features">
+        <li><span class="check">✓</span> <strong>25.000 conversaciones/mes</strong></li>
+        <li><span class="check">✓</span> 10 cuentas de Instagram</li>
+        <li><span class="check">✓</span> 20 agentes IA</li>
+        <li><span class="check">✓</span> Todo lo del Pro +</li>
+        <li><span class="check">✓</span> White-label disponible</li>
+        <li><span class="check">✓</span> Multi-usuario (equipo)</li>
+        <li><span class="check">✓</span> API access + reportes</li>
+        <li><span class="check">✓</span> Soporte 24/7 dedicado</li>
+        <div class="price-overage">＋ DM extra: <strong>$0.015 USD</strong> c/u</div>
+      </ul>
+    </div>
+
+  </div>
+
+  <div class="price-foot">
+    💳 Pagos en USD vía Lemon Squeezy · Pagos en CLP/ARS/MXN/BRL vía Mercado Pago<br>
+    🛡️ Garantía de reembolso 7 días sin preguntas · <a href="/pricing.html">Ver pricing completo y comparativa →</a>
+  </div>
+</section>
+
 <!-- CTA -->
 <section class="cta-section">
   <div class="cta-box">
@@ -608,7 +758,7 @@
   </div>
   <div class="faq-item">
     <div class="faq-q">¿Cuántos mensajes puedo enviar al mes? <span>+</span></div>
-    <div class="faq-a">Depende del plan. Starter incluye 500 conversaciones/mes, Pro y Agency son ilimitadas. Ver <a href="/pricing.html" style="color:var(--orange)">la página de precios</a> para el detalle.</div>
+    <div class="faq-a">Starter incluye <strong>500 conversaciones/mes</strong>, Pro <strong>5.000/mes</strong> y Agency <strong>25.000/mes</strong>. Si pasás el límite, cobramos sólo $0.025 USD por DM extra (Pro) o $0.015 (Agency) — sin sorpresas, todo facturado a fin de mes. Ver <a href="/pricing.html" style="color:var(--orange)">la página de precios completa</a>.</div>
   </div>
   <div class="faq-item">
     <div class="faq-q">¿Qué pasa cuando termina la prueba de 3 días? <span>+</span></div>

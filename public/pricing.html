@@ -232,6 +232,12 @@
     .plan-features { list-style: none; display: flex; flex-direction: column; gap: 11px; }
     .plan-features li { display: flex; align-items: flex-start; gap: 10px; font-size: 13.5px; color: var(--text-2); }
     .plan-features li .icon { flex-shrink: 0; width: 18px; height: 18px; background: rgba(139,92,246,.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; margin-top: 2px; }
+    .plan-features li.locked { color: rgba(255,255,255,.32); font-style: italic; }
+    .plan-features li.locked .icon-locked { background: rgba(255,255,255,.06); font-size: 11px; }
+    .plan-features li.locked em { color: rgba(255,255,255,.5); font-style: normal; font-weight: 600; }
+    .plan-features li.overage { color: var(--text-2); padding-top: 6px; border-top: 1px dashed rgba(139,92,246,.25); margin-top: 4px; font-size: 12.5px; }
+    .plan-features li.overage .icon { background: rgba(34,197,94,.15); color: #22c55e; font-size: 12px; font-weight: 700; }
+    .plan-features li.overage strong { color: #22c55e; }
 
     /* ── CURRENCY TOGGLE ── */
     .currency-toggle {
@@ -390,17 +396,20 @@
         <span class="amount">$197</span>
         <span class="period">USD /mes</span>
       </div>
-      <div class="plan-desc">Perfecto para coaches y consultores que están empezando a escalar sus DMs.</div>
+      <div class="plan-desc">Para coaches y consultores que recién empiezan a recibir DMs y quieren no perderlos.</div>
       <a href="#" class="plan-btn plan-btn-outline" data-plan="starter" data-provider="ls">Suscribirme →</a>
       <div class="plan-divider"></div>
       <ul class="plan-features">
+        <li><span class="icon">✓</span> <strong>500 conversaciones/mes</strong></li>
         <li><span class="icon">✓</span> 1 cuenta de Instagram</li>
-        <li><span class="icon">✓</span> Hasta 3 agentes IA</li>
-        <li><span class="icon">✓</span> 500 conversaciones/mes</li>
+        <li><span class="icon">✓</span> 1 agente IA configurable</li>
         <li><span class="icon">✓</span> Knowledge Base personalizable</li>
-        <li><span class="icon">✓</span> Leads dashboard + filtros</li>
-        <li><span class="icon">✓</span> Delay humanizado en respuestas</li>
+        <li><span class="icon">✓</span> Inbox unificado con take-control</li>
+        <li><span class="icon">✓</span> Lead magnets manuales (1)</li>
         <li><span class="icon">✓</span> Soporte por email</li>
+        <li class="locked"><span class="icon icon-locked">🔒</span> Follow-ups automáticos · <em>Pro</em></li>
+        <li class="locked"><span class="icon icon-locked">🔒</span> Calificación HOT/WARM/COLD · <em>Pro</em></li>
+        <li class="locked"><span class="icon icon-locked">🔒</span> Lead magnets automáticos · <em>Pro</em></li>
       </ul>
     </div>
 
@@ -412,18 +421,21 @@
         <span class="amount">$297</span>
         <span class="period">USD /mes</span>
       </div>
-      <div class="plan-desc">Para negocios en crecimiento que quieren escalar sus conversaciones sin contratar setters.</div>
+      <div class="plan-desc">Para negocios que ya venden por DM y quieren escalar sin contratar setters humanos.</div>
       <a href="#" class="plan-btn plan-btn-grad" data-plan="pro" data-provider="ls">Suscribirme →</a>
       <div class="plan-divider"></div>
       <ul class="plan-features">
+        <li><span class="icon">✓</span> <strong>5.000 conversaciones/mes</strong></li>
         <li><span class="icon">✓</span> 3 cuentas de Instagram</li>
-        <li><span class="icon">✓</span> Agentes IA ilimitados</li>
-        <li><span class="icon">✓</span> Conversaciones ilimitadas</li>
-        <li><span class="icon">✓</span> Knowledge Base avanzada</li>
-        <li><span class="icon">✓</span> Clasificación de leads (Hot/Warm/Cold)</li>
-        <li><span class="icon">✓</span> Bypass manual por usuario</li>
-        <li><span class="icon">✓</span> Onboarding personalizado</li>
+        <li><span class="icon">✓</span> Hasta 5 agentes IA</li>
+        <li><span class="icon">✓</span> Calificación automática HOT/WARM/COLD</li>
+        <li><span class="icon">✓</span> Follow-ups automáticos (Meta-compliant)</li>
+        <li><span class="icon">✓</span> Lead magnets automáticos (10)</li>
+        <li><span class="icon">✓</span> Webhook + integración con tu CRM</li>
         <li><span class="icon">✓</span> Soporte prioritario</li>
+        <li class="overage"><span class="icon">＋</span> DM extra: <strong>$0.025 USD c/u</strong></li>
+        <li class="locked"><span class="icon icon-locked">🔒</span> White-label · <em>Agency</em></li>
+        <li class="locked"><span class="icon icon-locked">🔒</span> Multi-usuario + API · <em>Agency</em></li>
       </ul>
     </div>
 
@@ -434,18 +446,21 @@
         <span class="amount">$497</span>
         <span class="period">USD /mes</span>
       </div>
-      <div class="plan-desc">Para agencias y negocios de alto volumen que gestionan múltiples clientes.</div>
+      <div class="plan-desc">Para agencias y negocios de alto volumen que gestionan múltiples cuentas con equipo.</div>
       <a href="#" class="plan-btn plan-btn-outline" data-plan="agency" data-provider="ls">Suscribirme →</a>
       <div class="plan-divider"></div>
       <ul class="plan-features">
+        <li><span class="icon">✓</span> <strong>25.000 conversaciones/mes</strong></li>
         <li><span class="icon">✓</span> 10 cuentas de Instagram</li>
-        <li><span class="icon">✓</span> Agentes IA ilimitados</li>
-        <li><span class="icon">✓</span> Conversaciones ilimitadas</li>
+        <li><span class="icon">✓</span> Hasta 20 agentes IA</li>
+        <li><span class="icon">✓</span> Todo lo del Pro +</li>
         <li><span class="icon">✓</span> White-label disponible</li>
         <li><span class="icon">✓</span> Multi-usuario (equipo)</li>
-        <li><span class="icon">✓</span> Reportes avanzados</li>
+        <li><span class="icon">✓</span> API access para integraciones</li>
+        <li><span class="icon">✓</span> Reportes avanzados + export</li>
         <li><span class="icon">✓</span> Soporte dedicado 24/7</li>
         <li><span class="icon">✓</span> Setup completo incluido</li>
+        <li class="overage"><span class="icon">＋</span> DM extra: <strong>$0.015 USD c/u</strong></li>
       </ul>
     </div>
 
@@ -461,17 +476,20 @@
         <span class="amount">$180.000</span>
         <span class="period">CLP /mes</span>
       </div>
-      <div class="plan-desc">Perfecto para coaches y consultores que están empezando a escalar sus DMs.</div>
+      <div class="plan-desc">Para coaches y consultores que recién empiezan a recibir DMs y quieren no perderlos.</div>
       <a href="#" class="plan-btn plan-btn-outline" data-plan="starter" data-provider="mp">Suscribirme →</a>
       <div class="plan-divider"></div>
       <ul class="plan-features">
+        <li><span class="icon">✓</span> <strong>500 conversaciones/mes</strong></li>
         <li><span class="icon">✓</span> 1 cuenta de Instagram</li>
-        <li><span class="icon">✓</span> Hasta 3 agentes IA</li>
-        <li><span class="icon">✓</span> 500 conversaciones/mes</li>
+        <li><span class="icon">✓</span> 1 agente IA configurable</li>
         <li><span class="icon">✓</span> Knowledge Base personalizable</li>
-        <li><span class="icon">✓</span> Leads dashboard + filtros</li>
-        <li><span class="icon">✓</span> Delay humanizado en respuestas</li>
+        <li><span class="icon">✓</span> Inbox unificado con take-control</li>
+        <li><span class="icon">✓</span> Lead magnets manuales (1)</li>
         <li><span class="icon">✓</span> Soporte por email</li>
+        <li class="locked"><span class="icon icon-locked">🔒</span> Follow-ups automáticos · <em>Pro</em></li>
+        <li class="locked"><span class="icon icon-locked">🔒</span> Calificación HOT/WARM/COLD · <em>Pro</em></li>
+        <li class="locked"><span class="icon icon-locked">🔒</span> Lead magnets automáticos · <em>Pro</em></li>
       </ul>
     </div>
 
@@ -483,18 +501,21 @@
         <span class="amount">$270.000</span>
         <span class="period">CLP /mes</span>
       </div>
-      <div class="plan-desc">Para negocios en crecimiento que quieren escalar sus conversaciones sin contratar setters.</div>
+      <div class="plan-desc">Para negocios que ya venden por DM y quieren escalar sin contratar setters humanos.</div>
       <a href="#" class="plan-btn plan-btn-grad" data-plan="pro" data-provider="mp">Suscribirme →</a>
       <div class="plan-divider"></div>
       <ul class="plan-features">
+        <li><span class="icon">✓</span> <strong>5.000 conversaciones/mes</strong></li>
         <li><span class="icon">✓</span> 3 cuentas de Instagram</li>
-        <li><span class="icon">✓</span> Agentes IA ilimitados</li>
-        <li><span class="icon">✓</span> Conversaciones ilimitadas</li>
-        <li><span class="icon">✓</span> Knowledge Base avanzada</li>
-        <li><span class="icon">✓</span> Clasificación de leads (Hot/Warm/Cold)</li>
-        <li><span class="icon">✓</span> Bypass manual por usuario</li>
-        <li><span class="icon">✓</span> Onboarding personalizado</li>
+        <li><span class="icon">✓</span> Hasta 5 agentes IA</li>
+        <li><span class="icon">✓</span> Calificación automática HOT/WARM/COLD</li>
+        <li><span class="icon">✓</span> Follow-ups automáticos (Meta-compliant)</li>
+        <li><span class="icon">✓</span> Lead magnets automáticos (10)</li>
+        <li><span class="icon">✓</span> Webhook + integración con tu CRM</li>
         <li><span class="icon">✓</span> Soporte prioritario</li>
+        <li class="overage"><span class="icon">＋</span> DM extra: <strong>$25 CLP c/u</strong></li>
+        <li class="locked"><span class="icon icon-locked">🔒</span> White-label · <em>Agency</em></li>
+        <li class="locked"><span class="icon icon-locked">🔒</span> Multi-usuario + API · <em>Agency</em></li>
       </ul>
     </div>
 
@@ -505,18 +526,21 @@
         <span class="amount">$450.000</span>
         <span class="period">CLP /mes</span>
       </div>
-      <div class="plan-desc">Para agencias y negocios de alto volumen que gestionan múltiples clientes.</div>
+      <div class="plan-desc">Para agencias y negocios de alto volumen que gestionan múltiples cuentas con equipo.</div>
       <a href="#" class="plan-btn plan-btn-outline" data-plan="agency" data-provider="mp">Suscribirme →</a>
       <div class="plan-divider"></div>
       <ul class="plan-features">
+        <li><span class="icon">✓</span> <strong>25.000 conversaciones/mes</strong></li>
         <li><span class="icon">✓</span> 10 cuentas de Instagram</li>
-        <li><span class="icon">✓</span> Agentes IA ilimitados</li>
-        <li><span class="icon">✓</span> Conversaciones ilimitadas</li>
+        <li><span class="icon">✓</span> Hasta 20 agentes IA</li>
+        <li><span class="icon">✓</span> Todo lo del Pro +</li>
         <li><span class="icon">✓</span> White-label disponible</li>
         <li><span class="icon">✓</span> Multi-usuario (equipo)</li>
-        <li><span class="icon">✓</span> Reportes avanzados</li>
+        <li><span class="icon">✓</span> API access para integraciones</li>
+        <li><span class="icon">✓</span> Reportes avanzados + export</li>
         <li><span class="icon">✓</span> Soporte dedicado 24/7</li>
         <li><span class="icon">✓</span> Setup completo incluido</li>
+        <li class="overage"><span class="icon">＋</span> DM extra: <strong>$15 CLP c/u</strong></li>
       </ul>
     </div>
 
