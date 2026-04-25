@@ -736,6 +736,133 @@ router.post('/meta-tokens/refresh-all', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── DISCOUNTS / CUPONES (Lemon Squeezy) ─────────────────────────────────────
+// Permite al admin crear, listar y eliminar codigos de descuento via LS API.
+// Mercado Pago no tiene API equivalente (su modelo es de planes con precio
+// fijo); para descuentos en MP hay que crear un plan alternativo con precio
+// reducido manualmente desde su dashboard.
+
+function lsHeaders() {
+  const key = process.env.LS_API_KEY;
+  if (!key) throw new Error('LS_API_KEY no configurado en Railway');
+  return {
+    'Authorization':  `Bearer ${key}`,
+    'Accept':         'application/vnd.api+json',
+    'Content-Type':   'application/vnd.api+json',
+  };
+}
+
+/**
+ * GET /api/admin/discounts
+ * Lista los discount codes del store en Lemon Squeezy con stats.
+ */
+router.get('/discounts', async (req, res) => {
+  try {
+    if (!process.env.LS_API_KEY) return res.status(400).json({ error: 'LS_API_KEY no configurado' });
+    if (!process.env.LS_STORE_ID) return res.status(400).json({ error: 'LS_STORE_ID no configurado' });
+    const axios = require('axios');
+    const r = await axios.get(
+      `https://api.lemonsqueezy.com/v1/discounts?filter[store_id]=${process.env.LS_STORE_ID}&page[size]=100`,
+      { headers: lsHeaders() }
+    );
+    const items = (r.data.data || []).map(d => ({
+      id:          d.id,
+      name:        d.attributes.name,
+      code:        d.attributes.code,
+      amount:      d.attributes.amount,
+      amount_type: d.attributes.amount_type, // 'percent' | 'fixed'
+      duration:    d.attributes.duration,    // 'once' | 'repeating' | 'forever'
+      duration_in_months: d.attributes.duration_in_months,
+      max_redemptions:    d.attributes.max_redemptions,
+      is_limited_redemptions: d.attributes.is_limited_redemptions,
+      times_used:  d.attributes.times_used || 0,
+      starts_at:   d.attributes.starts_at,
+      expires_at:  d.attributes.expires_at,
+      status:      d.attributes.status,
+    }));
+    res.json(items);
+  } catch (e) {
+    const detail = e.response?.data?.errors?.[0]?.detail || e.response?.data || e.message;
+    res.status(500).json({ error: typeof detail === 'string' ? detail : JSON.stringify(detail) });
+  }
+});
+
+/**
+ * POST /api/admin/discounts
+ * Body: { name, code, amount, amount_type: 'percent'|'fixed', duration: 'once'|'repeating'|'forever',
+ *         duration_in_months?, max_redemptions?, expires_at? }
+ *
+ * Si amount_type === 'fixed', amount es en CENTAVOS (LS lo pide así).
+ * Ej: 5000 = $50.00 USD off.
+ */
+router.post('/discounts', async (req, res) => {
+  try {
+    if (!process.env.LS_API_KEY)  return res.status(400).json({ error: 'LS_API_KEY no configurado' });
+    if (!process.env.LS_STORE_ID) return res.status(400).json({ error: 'LS_STORE_ID no configurado' });
+
+    const { name, code, amount, amount_type, duration, duration_in_months, max_redemptions, expires_at } = req.body;
+    if (!name || !code || !amount || !amount_type) {
+      return res.status(400).json({ error: 'name, code, amount y amount_type requeridos' });
+    }
+    if (!['percent', 'fixed'].includes(amount_type)) return res.status(400).json({ error: 'amount_type debe ser percent o fixed' });
+    if (!['once', 'repeating', 'forever'].includes(duration || 'once')) {
+      return res.status(400).json({ error: 'duration debe ser once|repeating|forever' });
+    }
+
+    const axios = require('axios');
+    const attributes = {
+      name:        String(name).slice(0, 80),
+      code:        String(code).toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 24),
+      amount:      parseInt(amount),
+      amount_type,
+      duration:    duration || 'once',
+    };
+    if (duration === 'repeating' && duration_in_months) {
+      attributes.duration_in_months = parseInt(duration_in_months);
+    }
+    if (max_redemptions) {
+      attributes.is_limited_redemptions = true;
+      attributes.max_redemptions = parseInt(max_redemptions);
+    }
+    if (expires_at) attributes.expires_at = new Date(expires_at).toISOString();
+
+    const r = await axios.post(
+      'https://api.lemonsqueezy.com/v1/discounts',
+      {
+        data: {
+          type: 'discounts',
+          attributes,
+          relationships: {
+            store: { data: { type: 'stores', id: process.env.LS_STORE_ID } },
+          },
+        },
+      },
+      { headers: lsHeaders() }
+    );
+    await audit(req, 'discount.create', r.data.data.id, { code: attributes.code, amount, amount_type, duration });
+    res.json({ ok: true, id: r.data.data.id, code: attributes.code });
+  } catch (e) {
+    const detail = e.response?.data?.errors?.[0]?.detail || e.response?.data || e.message;
+    res.status(500).json({ error: typeof detail === 'string' ? detail : JSON.stringify(detail) });
+  }
+});
+
+/**
+ * DELETE /api/admin/discounts/:id
+ */
+router.delete('/discounts/:id', async (req, res) => {
+  try {
+    if (!process.env.LS_API_KEY) return res.status(400).json({ error: 'LS_API_KEY no configurado' });
+    const axios = require('axios');
+    await axios.delete(`https://api.lemonsqueezy.com/v1/discounts/${req.params.id}`, { headers: lsHeaders() });
+    await audit(req, 'discount.delete', req.params.id, {});
+    res.json({ ok: true });
+  } catch (e) {
+    const detail = e.response?.data?.errors?.[0]?.detail || e.response?.data || e.message;
+    res.status(500).json({ error: typeof detail === 'string' ? detail : JSON.stringify(detail) });
+  }
+});
+
 /**
  * GET /api/admin/errors?limit=100&kind=request|uncaught|rejection
  * Últimos errores capturados por el errorTracker.

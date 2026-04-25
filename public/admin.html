@@ -183,6 +183,7 @@
     <div class="tabs">
       <div class="tab active" onclick="switchTab('users',this)">👥 Usuarios</div>
       <div class="tab" onclick="switchTab('codes',this)">🎟️ Códigos</div>
+      <div class="tab" onclick="switchTab('discounts',this)">💸 Cupones LS</div>
       <div class="tab" onclick="switchTab('metrics',this)">📊 Métricas</div>
       <div class="tab" onclick="switchTab('system',this)">⚙️ Sistema</div>
     </div>
@@ -285,6 +286,84 @@
             <tr><td colspan="8" class="empty"><div class="icon">⏳</div>Cargando...</td></tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- ── CUPONES LS (Lemon Squeezy discount codes) ── -->
+    <div id="tab-discounts" class="section">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+          <h3 style="margin:0">💸 Cupones de descuento</h3>
+          <button class="btn btn-primary" onclick="openDiscountForm()">+ Nuevo cupón</button>
+        </div>
+        <p style="color:#888;font-size:0.86rem;margin-bottom:14px">
+          Los cupones se crean directo en Lemon Squeezy y los clientes los pueden aplicar al checkout.
+          Para Mercado Pago no hay API equivalente — los descuentos se hacen creando un plan alternativo en su dashboard.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Código</th><th>Nombre</th><th>Descuento</th><th>Duración</th><th>Usos</th><th>Vence</th><th>Status</th><th></th></tr>
+            </thead>
+            <tbody id="discountsTable">
+              <tr><td colspan="8" class="empty">⏳ Cargando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Modal crear cupón -->
+      <div class="modal-overlay" id="discountModal">
+        <div class="modal" style="width:520px">
+          <h3>Nuevo cupón de descuento</h3>
+          <div class="form-group">
+            <label>Nombre interno</label>
+            <input type="text" id="dc-name" placeholder="Ej: Black Friday 2026" maxlength="80">
+          </div>
+          <div class="form-group">
+            <label>Código (lo que tipea el cliente)</label>
+            <input type="text" id="dc-code" placeholder="BF50" maxlength="24" style="text-transform:uppercase">
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="form-group">
+              <label>Tipo</label>
+              <select id="dc-type">
+                <option value="percent">Porcentaje %</option>
+                <option value="fixed">Monto fijo (USD centavos)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Cantidad</label>
+              <input type="number" id="dc-amount" placeholder="50" min="1">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Duración</label>
+            <select id="dc-duration" onchange="document.getElementById('dc-months-row').style.display = this.value === 'repeating' ? '' : 'none'">
+              <option value="once">Una vez (solo primer cobro)</option>
+              <option value="repeating">N meses</option>
+              <option value="forever">Para siempre (mientras siga pagando)</option>
+            </select>
+          </div>
+          <div class="form-group" id="dc-months-row" style="display:none">
+            <label>Cantidad de meses</label>
+            <input type="number" id="dc-months" min="1" max="24" value="3">
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="form-group">
+              <label>Máx redenciones (opcional)</label>
+              <input type="number" id="dc-max" placeholder="Sin límite" min="1">
+            </div>
+            <div class="form-group">
+              <label>Vence (opcional)</label>
+              <input type="date" id="dc-expires">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="closeDiscountForm()">Cancelar</button>
+            <button class="btn btn-primary" onclick="saveDiscount()">Crear cupón</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -553,8 +632,98 @@ function switchTab(name, el) {
   document.getElementById('tab-' + name).classList.add('active');
 
   // Carga bajo demanda
-  if (name === 'metrics') loadMetrics();
-  if (name === 'system')  loadSystem();
+  if (name === 'metrics')   loadMetrics();
+  if (name === 'system')    loadSystem();
+  if (name === 'discounts') loadDiscounts();
+}
+
+// ── DISCOUNTS / CUPONES LS ──────────────────────────────────────────────────
+async function loadDiscounts() {
+  const tbody = document.getElementById('discountsTable');
+  try {
+    const items = await api('GET', '/api/admin/discounts');
+    if (!items.length) {
+      tbody.innerHTML = `<tr><td colspan="8" class="empty">Sin cupones creados aún. Click en "+ Nuevo cupón" para crear el primero.</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = items.map(d => {
+      const amount = d.amount_type === 'percent' ? `${d.amount}%` : `$${(d.amount/100).toFixed(2)}`;
+      const dur = d.duration === 'once' ? '1 cobro' : d.duration === 'repeating' ? `${d.duration_in_months}m` : '∞';
+      const usesText = d.is_limited_redemptions ? `${d.times_used}/${d.max_redemptions}` : `${d.times_used}`;
+      const expires = d.expires_at ? new Date(d.expires_at).toLocaleDateString('es-ES', { day:'2-digit', month:'short', year:'numeric' }) : '—';
+      const statusBadge = d.status === 'published'
+        ? '<span style="color:#22c55e">✅ Activo</span>'
+        : `<span style="color:#888">${escHtml(d.status||'?')}</span>`;
+      return `
+        <tr>
+          <td><span class="code-text">${escHtml(d.code)}</span></td>
+          <td style="font-size:0.86rem">${escHtml(d.name||'')}</td>
+          <td><strong style="color:#7c6af7">${amount}</strong></td>
+          <td style="font-size:0.82rem">${dur}</td>
+          <td style="font-size:0.82rem">${usesText}</td>
+          <td style="font-size:0.82rem;color:#888">${expires}</td>
+          <td>${statusBadge}</td>
+          <td><button class="btn btn-sm btn-danger" onclick="deleteDiscount('${d.id}', '${escHtml(d.code)}')">🗑️</button></td>
+        </tr>`;
+    }).join('');
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="8" class="empty" style="color:#ef4444">${escHtml(e.message)}</td></tr>`;
+  }
+}
+
+function openDiscountForm() {
+  document.getElementById('dc-name').value = '';
+  document.getElementById('dc-code').value = '';
+  document.getElementById('dc-type').value = 'percent';
+  document.getElementById('dc-amount').value = '';
+  document.getElementById('dc-duration').value = 'once';
+  document.getElementById('dc-months-row').style.display = 'none';
+  document.getElementById('dc-months').value = '3';
+  document.getElementById('dc-max').value = '';
+  document.getElementById('dc-expires').value = '';
+  document.getElementById('discountModal').classList.add('open');
+}
+
+function closeDiscountForm() {
+  document.getElementById('discountModal').classList.remove('open');
+}
+
+async function saveDiscount() {
+  const body = {
+    name:           document.getElementById('dc-name').value.trim(),
+    code:           document.getElementById('dc-code').value.trim().toUpperCase(),
+    amount_type:    document.getElementById('dc-type').value,
+    amount:         parseInt(document.getElementById('dc-amount').value),
+    duration:       document.getElementById('dc-duration').value,
+  };
+  if (body.duration === 'repeating') body.duration_in_months = parseInt(document.getElementById('dc-months').value) || 3;
+  const max = parseInt(document.getElementById('dc-max').value);
+  if (max > 0) body.max_redemptions = max;
+  const expires = document.getElementById('dc-expires').value;
+  if (expires) body.expires_at = expires;
+
+  if (!body.name || !body.code || !body.amount) {
+    alert('Completá nombre, código y cantidad');
+    return;
+  }
+
+  try {
+    await api('POST', '/api/admin/discounts', body);
+    closeDiscountForm();
+    loadDiscounts();
+  } catch (e) {
+    alert('Error: ' + e.message);
+  }
+}
+
+async function deleteDiscount(id, code) {
+  if (!confirm(`¿Eliminar el cupón ${code}? No se puede deshacer.`)) return;
+  try {
+    await api('DELETE', `/api/admin/discounts/${id}`);
+    loadDiscounts();
+  } catch (e) {
+    alert('Error: ' + e.message);
+  }
 }
 
 // ── Stats ──────────────────────────────────────────────────────────────────
