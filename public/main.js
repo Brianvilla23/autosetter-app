@@ -259,6 +259,7 @@ function loadSection(name) {
     case 'agents':    loadAgents(); break;
     case 'knowledge': loadKnowledge(); break;
     case 'inbox':     loadInbox(); break;
+    case 'analytics': loadAnalytics(); break;
     case 'leads':     loadLeads(); break;
     case 'billing':   loadBillingPage(); break;
     case 'referrals': loadReferralsPage(); break;
@@ -1956,6 +1957,152 @@ window.editMagnet = editMagnet;
 window.saveMagnet = saveMagnet;
 window.toggleMagnet = toggleMagnet;
 window.deleteMagnet = deleteMagnet;
+
+// ── ANALYTICS DASHBOARD ─────────────────────────────────────────────────────
+async function loadAnalytics() {
+  if (!ACCOUNT_ID) return;
+  const winSel = document.getElementById('analytics-window');
+  const days = winSel ? parseInt(winSel.value) || 30 : 30;
+
+  // Bind window selector + export button (una sola vez)
+  if (!window.__analyticsBound) {
+    window.__analyticsBound = true;
+    if (winSel) winSel.addEventListener('change', loadAnalytics);
+    const btnExport = document.getElementById('btn-export-csv');
+    if (btnExport) {
+      btnExport.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        try {
+          // Como el endpoint requiere Authorization header, hacemos fetch + descargamos blob
+          const r = await fetch(`/api/growth/export-leads?accountId=${ACCOUNT_ID}`, {
+            headers: { 'Authorization': 'Bearer ' + AUTH_TOKEN },
+          });
+          if (!r.ok) { showToast('❌ Error al exportar'); return; }
+          const blob = await r.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = `dmcloser-leads-${new Date().toISOString().slice(0, 10)}.csv`;
+          a.click();
+          URL.revokeObjectURL(url);
+          showToast('✅ CSV descargado');
+        } catch (e) { showToast('❌ ' + e.message); }
+      });
+    }
+  }
+
+  try {
+    const data = await apiFetch(`/api/growth/analytics?accountId=${ACCOUNT_ID}&days=${days}`);
+    if (!data) return;
+    renderAnalyticsKPIs(data);
+    renderLeadsChart(data.leadsByDay);
+    renderQualBars(data.qualificationBreakdown);
+    renderHeatmap(data.dmsByHour);
+    renderAnalyticsFunnel(data.funnel);
+  } catch (e) {
+    showToast('❌ Error cargando analytics');
+  }
+}
+
+function renderAnalyticsKPIs(d) {
+  const k = d.kpis;
+  const fmtSec = (s) => {
+    if (s === null || s === undefined) return '—';
+    if (s < 60) return s + 's';
+    if (s < 3600) return Math.round(s / 60) + 'm';
+    return (s / 3600).toFixed(1) + 'h';
+  };
+  document.getElementById('kpi-total').textContent       = k.total;
+  document.getElementById('kpi-hot').textContent         = k.hot;
+  document.getElementById('kpi-converted').textContent   = k.converted;
+  document.getElementById('kpi-resp').textContent        = fmtSec(k.avgResponseSec);
+  document.getElementById('kpi-qualified').textContent   = k.qualifiedRate + '%';
+  document.getElementById('kpi-conv').textContent        = k.conversionRate + '%';
+  document.getElementById('kpi-hotrate').textContent     = k.hotRate + '%';
+  document.getElementById('kpi-respondidos').textContent = k.respondidos;
+}
+
+function renderLeadsChart(byDay) {
+  const entries = Object.entries(byDay || {});
+  const max = Math.max(1, ...entries.map(([, v]) => v));
+  const chart = document.getElementById('analytics-leads-chart');
+  if (!entries.length) {
+    chart.innerHTML = '<div style="margin:auto;color:var(--text-3);font-size:13px">Sin datos en este período</div>';
+    return;
+  }
+  chart.innerHTML = entries.map(([date, count]) => {
+    const pct = (count / max) * 100;
+    const day = date.slice(8); // DD
+    const month = date.slice(5, 7);
+    return `
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0" title="${date}: ${count} leads">
+        <div style="background:linear-gradient(180deg,#7c6af7,#ec4899);width:100%;height:${pct}%;min-height:${count > 0 ? '4px' : '0'};border-radius:4px 4px 0 0;transition:.3s"></div>
+        ${count > 0 ? `<div style="font-size:9px;color:var(--text-3);font-weight:600">${count}</div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+function renderQualBars(q) {
+  const total = (q.hot || 0) + (q.warm || 0) + (q.cold || 0) + (q.sin_calificar || 0);
+  if (total === 0) {
+    document.getElementById('analytics-qual-bars').innerHTML = '<div style="color:var(--text-3);text-align:center;padding:20px;font-size:13px">Sin leads aún</div>';
+    return;
+  }
+  const items = [
+    { label: '🔥 HOT',  count: q.hot || 0,            color: '#ef4444' },
+    { label: '🟡 WARM', count: q.warm || 0,           color: '#f59e0b' },
+    { label: '❄️ COLD', count: q.cold || 0,           color: '#3b82f6' },
+    { label: '⚪ Sin calificar', count: q.sin_calificar || 0, color: '#94a3b8' },
+  ];
+  document.getElementById('analytics-qual-bars').innerHTML = items.map(it => {
+    const pct = total > 0 ? Math.round((it.count / total) * 100) : 0;
+    return `
+      <div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+          <span>${it.label}</span>
+          <span style="color:var(--text-2)"><strong>${it.count}</strong> · ${pct}%</span>
+        </div>
+        <div style="background:#f3f4f6;height:8px;border-radius:4px;overflow:hidden">
+          <div style="width:${pct}%;height:100%;background:${it.color};transition:.3s"></div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderHeatmap(byHour) {
+  const max = Math.max(1, ...byHour);
+  document.getElementById('analytics-heatmap').innerHTML = byHour.map((count, h) => {
+    const intensity = count / max;
+    const opacity = 0.15 + intensity * 0.85;
+    return `<div title="${h}h: ${count} DMs" style="background:rgba(124,106,247,${opacity});aspect-ratio:1;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:9px;color:${intensity>0.5?'#fff':'var(--text-3)'}">${count > 0 ? count : ''}</div>`;
+  }).join('');
+}
+
+function renderAnalyticsFunnel(stages) {
+  if (!stages || !stages.length) {
+    document.getElementById('analytics-funnel').innerHTML = '<div style="color:var(--text-3);text-align:center;padding:20px">Sin datos</div>';
+    return;
+  }
+  const max = Math.max(...stages.map(s => s.count), 1);
+  document.getElementById('analytics-funnel').innerHTML = stages.map((s, i) => {
+    const width = Math.max(8, (s.count / max) * 100);
+    const prev = i > 0 ? stages[i-1].count : null;
+    const dropPct = prev && prev > 0 ? Math.round((1 - s.count / prev) * 100) : 0;
+    const colors = ['#7c6af7', '#3b82f6', '#f59e0b', '#ef4444', '#16a34a'];
+    return `
+      <div>
+        ${i > 0 && dropPct > 0 ? `<div style="font-size:11px;color:#94a3b8;margin-left:14px;margin-bottom:2px">↓ ${dropPct}% drop (${prev - s.count} se cayeron)</div>` : ''}
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="min-width:180px;font-size:13.5px"><strong>${escHtmlSafe(s.label)}</strong></div>
+          <div style="flex:1;background:#f3f4f6;border-radius:6px;height:32px;position:relative;overflow:hidden">
+            <div style="height:100%;width:${width}%;background:linear-gradient(90deg,${colors[i] || '#7c6af7'},${colors[i] || '#7c6af7'}cc);transition:.4s;border-radius:6px"></div>
+            <div style="position:absolute;inset:0;display:flex;align-items:center;padding-left:12px;font-size:13px;font-weight:700;color:#fff">${s.count}</div>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+window.loadAnalytics = loadAnalytics;
 
 // ── INBOX UNIFICADO ────────────────────────────────────────────────────────
 let INBOX_FILTER = 'all';

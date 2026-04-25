@@ -51,6 +51,10 @@
       Leads
       <span class="nav-badge" id="leads-badge"></span>
     </a>
+    <a class="nav-item" data-section="analytics">
+      <span class="nav-icon">📊</span>
+      Analytics
+    </a>
     <a class="nav-item" data-section="links">
       <span class="nav-icon"><svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clip-rule="evenodd"/></svg></span>
       Links
@@ -351,6 +355,87 @@
           <div style="font-size:13px;margin-top:6px">Vas a poder leer el thread completo y responder vos directamente.</div>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- ANALYTICS — dashboard rico del cliente con KPIs y gráficos ───────────── -->
+  <section id="section-analytics" class="section">
+    <div class="page-header">
+      <div>
+        <h1>📊 Analytics</h1>
+        <p>Métricas detalladas de tu bot: performance, conversión y comportamiento de leads.</p>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select id="analytics-window" style="padding:7px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:#fff">
+          <option value="7">Últimos 7 días</option>
+          <option value="30" selected>Últimos 30 días</option>
+          <option value="90">Últimos 90 días</option>
+          <option value="365">Último año</option>
+        </select>
+        <button class="btn-ghost" onclick="loadAnalytics()" title="Refrescar" style="padding:7px 12px">↻</button>
+        <a href="#" id="btn-export-csv" class="btn-primary" style="padding:7px 14px;text-decoration:none;font-size:13px">📥 Exportar CSV</a>
+      </div>
+    </div>
+
+    <!-- KPIs principales -->
+    <div id="analytics-kpis" class="stats-grid" style="margin-bottom:18px">
+      <div class="stat-card"><div class="stat-icon">👥</div><div><div class="stat-val" id="kpi-total">—</div><div class="stat-label">Leads totales</div></div></div>
+      <div class="stat-card"><div class="stat-icon">🔥</div><div><div class="stat-val" id="kpi-hot" style="color:#ef4444">—</div><div class="stat-label">Leads HOT</div></div></div>
+      <div class="stat-card"><div class="stat-icon">✅</div><div><div class="stat-val" id="kpi-converted" style="color:#22c55e">—</div><div class="stat-label">Convertidos</div></div></div>
+      <div class="stat-card"><div class="stat-icon">⚡</div><div><div class="stat-val" id="kpi-resp">—</div><div class="stat-label">Respuesta promedio</div></div></div>
+    </div>
+
+    <!-- Conversion stats -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:18px">
+      <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px">
+        <div style="font-size:12px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Tasa de calificación</div>
+        <div style="font-size:1.6rem;font-weight:800;color:#7c6af7" id="kpi-qualified">—</div>
+        <div style="font-size:12px;color:var(--text-2);margin-top:4px">% de leads que el bot pudo calificar</div>
+      </div>
+      <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px">
+        <div style="font-size:12px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Tasa de conversión</div>
+        <div style="font-size:1.6rem;font-weight:800;color:#16a34a" id="kpi-conv">—</div>
+        <div style="font-size:12px;color:var(--text-2);margin-top:4px">leads → cliente convertido</div>
+      </div>
+      <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px">
+        <div style="font-size:12px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Tasa HOT</div>
+        <div style="font-size:1.6rem;font-weight:800;color:#dc2626" id="kpi-hotrate">—</div>
+        <div style="font-size:12px;color:var(--text-2);margin-top:4px">% de leads calificados como caliente</div>
+      </div>
+      <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px">
+        <div style="font-size:12px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Bot respondió</div>
+        <div style="font-size:1.6rem;font-weight:800;color:#0ea5e9" id="kpi-respondidos">—</div>
+        <div style="font-size:12px;color:var(--text-2);margin-top:4px">leads con al menos 1 respuesta del bot</div>
+      </div>
+    </div>
+
+    <!-- Gráfico de leads por día -->
+    <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:18px">
+      <h3 style="margin:0 0 14px;font-size:15px">📈 Leads por día</h3>
+      <div id="analytics-leads-chart" style="display:flex;align-items:flex-end;gap:3px;height:200px;border-bottom:1px solid var(--border);padding-bottom:8px">
+        <div style="margin:auto;color:var(--text-3);font-size:13px">⏳ Cargando...</div>
+      </div>
+    </div>
+
+    <!-- Layout 2 columnas: distribución pie + heatmap horario -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px">
+      <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px">
+        <h3 style="margin:0 0 14px;font-size:15px">🎯 Distribución por calificación</h3>
+        <div id="analytics-qual-bars" style="display:flex;flex-direction:column;gap:10px"></div>
+      </div>
+      <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px">
+        <h3 style="margin:0 0 14px;font-size:15px">🕐 Heatmap horario (DMs entrantes)</h3>
+        <div id="analytics-heatmap" style="display:grid;grid-template-columns:repeat(24,1fr);gap:2px;margin-top:10px"></div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-3);margin-top:4px">
+          <span>0h</span><span>6h</span><span>12h</span><span>18h</span><span>23h</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Funnel -->
+    <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px">
+      <h3 style="margin:0 0 14px;font-size:15px">🎯 Funnel del bot</h3>
+      <div id="analytics-funnel" style="display:flex;flex-direction:column;gap:10px"></div>
     </div>
   </section>
 

@@ -113,35 +113,117 @@ router.get('/export-leads', async (req, res) => {
     if (!accountId) return res.status(400).json({ error: 'accountId requerido' });
     if (accountId !== req.user.accountId) return res.status(403).json({ error: 'Prohibido' });
 
-    const leads = await db.find(db.leads, { account_id: accountId });
-    const agents = await db.find(db.agents, { account_id: accountId });
-    const agentById = {};
-    for (const a of agents) agentById[a._id] = a.name;
+    const leads      = await db.find(db.leads,      { account_id: accountId });
+    const agents     = await db.find(db.agents,     { account_id: accountId });
+    const allMsgs    = await db.find(db.messages,   {});
+    const deliveries = await db.find(db.magnetDeliveries, { account_id: accountId });
+    const magnets    = await db.find(db.leadMagnets,      { account_id: accountId });
 
-    // Contar mensajes por lead (optimización: una sola pasada)
-    const allMessages = await db.find(db.messages, {});
-    const msgCountByLead = {};
-    for (const m of allMessages) {
-      msgCountByLead[m.lead_id] = (msgCountByLead[m.lead_id] || 0) + 1;
+    const agentById  = {};
+    for (const a of agents)  agentById[a._id]  = a.name;
+    const magnetById = {};
+    for (const m of magnets) magnetById[m._id] = m.title;
+
+    // Indexar mensajes por lead (una sola pasada — N+1 evitado)
+    const msgsByLead = {};
+    for (const m of allMsgs) {
+      if (!m.lead_id) continue;
+      (msgsByLead[m.lead_id] = msgsByLead[m.lead_id] || []).push(m);
+    }
+    for (const id of Object.keys(msgsByLead)) {
+      msgsByLead[id].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
     }
 
-    const rows = [
-      ['ig_username', 'qualification', 'status', 'automation', 'agent',
-       'is_converted', 'is_bypassed', 'message_count', 'first_contact', 'last_message_at']
-    ];
+    const deliveriesByLead = {};
+    for (const d of deliveries) {
+      (deliveriesByLead[d.lead_id] = deliveriesByLead[d.lead_id] || []).push(d);
+    }
+
+    const isoDate = (s) => s ? new Date(s).toISOString().slice(0, 10) : '';
+    const isoTime = (s) => s ? new Date(s).toISOString().slice(0, 16).replace('T', ' ') : '';
+    const truncate = (s, n) => {
+      const x = String(s || '').replace(/\s+/g, ' ').trim();
+      return x.length > n ? x.slice(0, n - 1) + '…' : x;
+    };
+
+    // 30 columnas — info completa para análisis en Excel/Sheets/CRM
+    const rows = [[
+      'fecha_primer_contacto', 'hora_primer_contacto',
+      'ig_username', 'ig_link', 'ig_user_id',
+      'agente_asignado', 'estado', 'automatizacion',
+      'calificacion', 'razon_calificacion',
+      'es_caliente', 'es_tibio', 'es_frio',
+      'convertido', 'bypassed', 'limite_alcanzado',
+      'total_mensajes', 'mensajes_lead', 'mensajes_bot', 'mensajes_manuales',
+      'primer_mensaje_lead', 'ultimo_mensaje_lead',
+      'ultimo_mensaje_bot', 'fecha_ultimo_mensaje',
+      'email_capturado', 'telefono_capturado',
+      'magnet_entregado', 'fecha_entrega_magnet',
+      'duracion_conversacion_horas', 'tiempo_respuesta_bot_promedio_seg',
+      'notas_admin',
+    ]];
 
     for (const l of leads) {
+      const msgs = msgsByLead[l._id] || [];
+      const userMsgs   = msgs.filter(m => m.role === 'user');
+      const agentMsgs  = msgs.filter(m => m.role === 'agent');
+      const manualMsgs = msgs.filter(m => m.role === 'manual');
+      const firstUserMsg = userMsgs[0];
+      const lastUserMsg  = userMsgs[userMsgs.length - 1];
+      const lastAgentMsg = agentMsgs[agentMsgs.length - 1] || manualMsgs[manualMsgs.length - 1];
+
+      // Tiempo de respuesta del bot promedio
+      let respDeltas = [];
+      for (let i = 0; i < msgs.length - 1; i++) {
+        if (msgs[i].role === 'user' && (msgs[i+1].role === 'agent' || msgs[i+1].role === 'manual')) {
+          respDeltas.push((new Date(msgs[i+1].createdAt) - new Date(msgs[i].createdAt)) / 1000);
+        }
+      }
+      const avgRespSec = respDeltas.length > 0
+        ? Math.round(respDeltas.reduce((a, b) => a + b, 0) / respDeltas.length)
+        : '';
+
+      const firstMsgAt = msgs[0]?.createdAt || l.createdAt;
+      const lastMsgAt  = msgs[msgs.length - 1]?.createdAt || l.last_message_at;
+      const durationH = firstMsgAt && lastMsgAt
+        ? +((new Date(lastMsgAt) - new Date(firstMsgAt)) / 3_600_000).toFixed(1)
+        : '';
+
+      const delivery = (deliveriesByLead[l._id] || [])[0];
+      const igUser = l.ig_username || '';
+
       rows.push([
-        l.ig_username || '',
-        l.qualification || '',
-        l.status || '',
-        l.automation || '',
+        isoDate(firstMsgAt),
+        isoTime(firstMsgAt),
+        igUser,
+        igUser ? `https://instagram.com/${igUser}` : '',
+        l.ig_user_id || '',
         agentById[l.agent_id] || '',
-        l.is_converted ? 'yes' : 'no',
-        l.is_bypassed  ? 'yes' : 'no',
-        msgCountByLead[l._id] || 0,
-        l.createdAt || '',
-        l.last_message_at || '',
+        l.status || '',
+        l.automation || 'automated',
+        l.qualification || 'sin_calificar',
+        truncate(l.qualification_reason, 200),
+        l.qualification === 'hot'  ? 'sí' : '',
+        l.qualification === 'warm' ? 'sí' : '',
+        l.qualification === 'cold' ? 'sí' : '',
+        l.is_converted ? 'sí' : 'no',
+        l.is_bypassed  ? 'sí' : 'no',
+        l.limit_reached ? 'sí' : '',
+        msgs.length,
+        userMsgs.length,
+        agentMsgs.length,
+        manualMsgs.length,
+        truncate(firstUserMsg?.content, 150),
+        truncate(lastUserMsg?.content, 150),
+        truncate(lastAgentMsg?.content, 150),
+        isoTime(lastMsgAt),
+        l.email || '',
+        l.phone || '',
+        delivery ? (magnetById[delivery.magnet_id] || delivery.magnet_id) : '',
+        delivery ? isoDate(delivery.createdAt) : '',
+        durationH,
+        avgRespSec,
+        truncate(l.admin_notes || l.notes, 200),
       ]);
     }
 
@@ -179,6 +261,111 @@ router.get('/followup-stats', async (req, res) => {
       sent:      all.filter(f => f.sent_at).length,
       pending:   all.filter(f => !f.sent_at && !f.cancelled).length,
       cancelled: all.filter(f => f.cancelled).length,
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
+ * GET /api/growth/analytics?accountId=X&days=30
+ * Stats ricas para el dashboard del cliente:
+ * - KPIs: leads totales, HOT/WARM/COLD, conversion rate, avg response time
+ * - Serie temporal: leads por día (últimos N días)
+ * - Distribución de calificación
+ * - Funnel: total → respondido → calificado → HOT → convertido
+ * - Top 10 fuentes (de dónde vienen los leads)
+ * - Top 10 horas con más DMs (heatmap)
+ */
+router.get('/analytics', async (req, res) => {
+  try {
+    const { accountId } = req.query;
+    if (!accountId) return res.status(400).json({ error: 'accountId requerido' });
+    if (accountId !== req.user.accountId) return res.status(403).json({ error: 'Prohibido' });
+
+    const days = Math.min(Math.max(parseInt(req.query.days) || 30, 1), 365);
+    const since = new Date(Date.now() - days * 24 * 3_600_000);
+
+    const leads = await db.find(db.leads, { account_id: accountId });
+    const allMsgs = await db.find(db.messages, {});
+
+    // Index msgs por lead
+    const msgsByLead = {};
+    for (const m of allMsgs) {
+      if (!m.lead_id) continue;
+      (msgsByLead[m.lead_id] = msgsByLead[m.lead_id] || []).push(m);
+    }
+
+    // KPIs principales
+    const total      = leads.length;
+    const hot        = leads.filter(l => l.qualification === 'hot').length;
+    const warm       = leads.filter(l => l.qualification === 'warm').length;
+    const cold       = leads.filter(l => l.qualification === 'cold').length;
+    const unclass    = leads.filter(l => !l.qualification).length;
+    const converted  = leads.filter(l => l.is_converted).length;
+    const bypassed   = leads.filter(l => l.is_bypassed).length;
+    const respondidos = Object.values(msgsByLead).filter(arr =>
+      arr.some(m => m.role === 'agent' || m.role === 'manual')
+    ).length;
+    const conversionRate = total > 0 ? +((converted / total) * 100).toFixed(2) : 0;
+    const qualifiedRate  = total > 0 ? +(((hot + warm + cold) / total) * 100).toFixed(2) : 0;
+    const hotRate        = total > 0 ? +((hot / total) * 100).toFixed(2) : 0;
+
+    // Avg response time (segundos) — sólo dentro de la ventana
+    const allDeltas = [];
+    for (const arr of Object.values(msgsByLead)) {
+      for (let i = 0; i < arr.length - 1; i++) {
+        if (arr[i].role === 'user' && (arr[i+1].role === 'agent' || arr[i+1].role === 'manual')) {
+          const t = new Date(arr[i+1].createdAt) - new Date(arr[i].createdAt);
+          if (t > 0 && t < 24 * 3_600_000) allDeltas.push(t / 1000);
+        }
+      }
+    }
+    const avgResponseSec = allDeltas.length > 0
+      ? Math.round(allDeltas.reduce((a,b) => a+b, 0) / allDeltas.length)
+      : null;
+
+    // Serie temporal: leads por día (últimos N días)
+    const leadsByDay = {};
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 24 * 3_600_000).toISOString().slice(0, 10);
+      leadsByDay[d] = 0;
+    }
+    for (const l of leads) {
+      const d = (l.createdAt || '').slice(0, 10);
+      if (leadsByDay[d] !== undefined) leadsByDay[d]++;
+    }
+
+    // Distribución por hora (heatmap simple — 0-23h)
+    const dmsByHour = Array(24).fill(0);
+    for (const arr of Object.values(msgsByLead)) {
+      for (const m of arr) {
+        if (m.role !== 'user') continue;
+        if (new Date(m.createdAt) < since) continue;
+        const h = new Date(m.createdAt).getHours();
+        dmsByHour[h]++;
+      }
+    }
+
+    // Funnel
+    const funnel = [
+      { id: 'total',      label: 'Leads totales',      count: total },
+      { id: 'respondido', label: 'Bot respondió',      count: respondidos },
+      { id: 'calificado', label: 'Bot calificó',       count: hot + warm + cold },
+      { id: 'hot',        label: 'Lead HOT',           count: hot },
+      { id: 'convertido', label: 'Convertido',         count: converted },
+    ];
+
+    res.json({
+      windowDays: days,
+      kpis: {
+        total, hot, warm, cold, unclass,
+        converted, bypassed, respondidos,
+        conversionRate, qualifiedRate, hotRate,
+        avgResponseSec,
+      },
+      leadsByDay,
+      qualificationBreakdown: { hot, warm, cold, sin_calificar: unclass },
+      dmsByHour,
+      funnel,
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
