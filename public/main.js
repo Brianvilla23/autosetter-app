@@ -232,6 +232,7 @@ function loadSection(name) {
     case 'knowledge': loadKnowledge(); break;
     case 'leads':     loadLeads(); break;
     case 'links':     loadLinks(); break;
+    case 'magnets':   loadMagnets(); break;
     case 'growth':    loadGrowth(); break;
     case 'settings':  loadSettings(); break;
   }
@@ -1705,6 +1706,149 @@ function escHtmlSafe(str) {
 
 // Exponer delete para onclick inline
 window.deleteMagnetLink = deleteMagnetLink;
+
+// ── LEAD MAGNETS ────────────────────────────────────────────────────────────
+const TRIGGER_LABEL = {
+  pricing_objection: '💸 Objeción de precio',
+  not_ready:         '🤔 No está listo',
+  cold_lead:         '❄️ Lead frío',
+  diagnostic:        '🔍 Diagnóstico',
+  info_request:      '📖 Pide más info',
+  generic:           '✨ Genérico',
+};
+
+const DELIVERY_LABEL = {
+  email: '📧 Email',
+  dm:    '💬 DM',
+  link:  '🔗 Link',
+};
+
+async function loadMagnets() {
+  if (!ACCOUNT_ID) return;
+  const list = document.getElementById('magnets-list');
+  list.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-3)">⏳ Cargando…</div>';
+
+  try {
+    const rows = await apiFetch(`/api/lead-magnets?accountId=${ACCOUNT_ID}`);
+    if (!rows || !rows.length) {
+      list.innerHTML = `
+        <div style="background:#fff7ed;border:1px dashed #fed7aa;border-radius:10px;padding:30px;text-align:center">
+          <div style="font-size:32px;margin-bottom:8px">🧲</div>
+          <h4 style="margin:0 0 6px;color:#9a3412">Aún no tenés lead magnets</h4>
+          <p style="color:var(--text-2);font-size:14px;margin:0">Creá el primero y el bot empezará a ofrecerlo automáticamente a los leads que no están listos para comprar.</p>
+        </div>`;
+      return;
+    }
+
+    list.innerHTML = rows.map(m => `
+      <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:16px">
+        <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div style="flex:1;min-width:240px">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+              <strong style="font-size:15px">${escHtmlSafe(m.title)}</strong>
+              ${m.enabled ? '' : '<span style="background:#fef2f2;color:#991b1b;font-size:11px;padding:2px 8px;border-radius:10px">Pausado</span>'}
+            </div>
+            ${m.description ? `<div style="color:var(--text-2);font-size:13px;margin-bottom:6px">${escHtmlSafe(m.description)}</div>` : ''}
+            ${m.pitch ? `<div style="background:#f9fafb;border-left:3px solid var(--orange);padding:8px 10px;font-size:13px;color:var(--text-2);font-style:italic;margin-bottom:8px">💬 "${escHtmlSafe(m.pitch)}"</div>` : ''}
+            <div style="display:flex;gap:10px;font-size:12px;color:var(--text-3);flex-wrap:wrap">
+              <span>${TRIGGER_LABEL[m.trigger_intent] || m.trigger_intent}</span>
+              <span>•</span>
+              <span>${DELIVERY_LABEL[m.delivery] || m.delivery}</span>
+              <span>•</span>
+              <span>📦 ${m.deliveries} entregados</span>
+              ${m.delivery_url ? `<span>•</span><a href="${escHtmlSafe(m.delivery_url)}" target="_blank" style="color:var(--orange);text-decoration:none">Abrir recurso →</a>` : ''}
+            </div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:flex-start">
+            <button class="btn-ghost" onclick='editMagnet(${JSON.stringify(m).replace(/'/g, "&apos;")})' style="padding:6px 12px;font-size:13px">Editar</button>
+            <button class="btn-ghost" onclick="toggleMagnet('${m.id}', ${!m.enabled})" style="padding:6px 12px;font-size:13px">${m.enabled ? 'Pausar' : 'Activar'}</button>
+            <button class="btn-ghost" onclick="deleteMagnet('${m.id}')" style="padding:6px 12px;font-size:13px;color:#dc2626">🗑️</button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    list.innerHTML = `<div style="color:#ef4444;padding:20px;text-align:center">Error: ${escHtmlSafe(e.message)}</div>`;
+  }
+}
+
+function openMagnetForm() {
+  document.getElementById('magnet-form-title').textContent = 'Nuevo lead magnet';
+  document.getElementById('magnet-id').value = '';
+  document.getElementById('magnet-title').value = '';
+  document.getElementById('magnet-description').value = '';
+  document.getElementById('magnet-pitch').value = '';
+  document.getElementById('magnet-trigger').value = 'generic';
+  document.getElementById('magnet-delivery').value = 'email';
+  document.getElementById('magnet-url').value = '';
+  document.getElementById('magnet-modal').style.display = 'flex';
+}
+
+function closeMagnetForm() {
+  document.getElementById('magnet-modal').style.display = 'none';
+}
+
+function editMagnet(m) {
+  document.getElementById('magnet-form-title').textContent = 'Editar lead magnet';
+  document.getElementById('magnet-id').value = m.id;
+  document.getElementById('magnet-title').value = m.title || '';
+  document.getElementById('magnet-description').value = m.description || '';
+  document.getElementById('magnet-pitch').value = m.pitch || '';
+  document.getElementById('magnet-trigger').value = m.trigger_intent || 'generic';
+  document.getElementById('magnet-delivery').value = m.delivery || 'email';
+  document.getElementById('magnet-url').value = m.delivery_url || '';
+  document.getElementById('magnet-modal').style.display = 'flex';
+}
+
+async function saveMagnet() {
+  const id = document.getElementById('magnet-id').value;
+  const body = {
+    accountId:      ACCOUNT_ID,
+    title:          document.getElementById('magnet-title').value.trim(),
+    description:    document.getElementById('magnet-description').value.trim(),
+    pitch:          document.getElementById('magnet-pitch').value.trim(),
+    trigger_intent: document.getElementById('magnet-trigger').value,
+    delivery:       document.getElementById('magnet-delivery').value,
+    delivery_url:   document.getElementById('magnet-url').value.trim(),
+  };
+  if (!body.title) { showToast('Agregá un título'); return; }
+
+  try {
+    if (id) {
+      await apiFetch(`/api/lead-magnets/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
+      showToast('✅ Magnet actualizado');
+    } else {
+      await apiFetch(`/api/lead-magnets`, { method: 'POST', body: JSON.stringify(body) });
+      showToast('✅ Magnet creado');
+    }
+    closeMagnetForm();
+    loadMagnets();
+  } catch (e) { showToast('❌ ' + e.message); }
+}
+
+async function toggleMagnet(id, enabled) {
+  try {
+    await apiFetch(`/api/lead-magnets/${id}`, { method: 'PATCH', body: JSON.stringify({ enabled }) });
+    loadMagnets();
+  } catch (e) { showToast('❌ ' + e.message); }
+}
+
+async function deleteMagnet(id) {
+  if (!confirm('¿Eliminar este lead magnet? El bot dejará de ofrecerlo.')) return;
+  try {
+    await apiFetch(`/api/lead-magnets/${id}`, { method: 'DELETE' });
+    showToast('🗑️ Magnet eliminado');
+    loadMagnets();
+  } catch (e) { showToast('❌ ' + e.message); }
+}
+
+// Exponer para onclick inline
+window.openMagnetForm = openMagnetForm;
+window.closeMagnetForm = closeMagnetForm;
+window.editMagnet = editMagnet;
+window.saveMagnet = saveMagnet;
+window.toggleMagnet = toggleMagnet;
+window.deleteMagnet = deleteMagnet;
 
 // ── START ─────────────────────────────────────────────────────────────────────
 init();

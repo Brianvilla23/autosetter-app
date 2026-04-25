@@ -48,6 +48,10 @@
       <span class="nav-icon"><svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clip-rule="evenodd"/></svg></span>
       Links
     </a>
+    <a class="nav-item" data-section="magnets">
+      <span class="nav-icon">🧲</span>
+      Lead Magnets
+    </a>
     <a class="nav-item" data-section="growth">
       <span class="nav-icon"><svg viewBox="0 0 20 20"><path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z"/><path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z"/></svg></span>
       Growth
@@ -392,6 +396,82 @@
       <div class="form-actions">
         <button class="btn-ghost" id="btn-cancel-link">Cancelar</button>
         <button class="btn-primary" id="btn-save-link">Guardar link</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- LEAD MAGNETS ─────────────────────────────────────────────────────────── -->
+  <section id="section-magnets" class="section">
+    <div class="page-header">
+      <div>
+        <h1>Lead Magnets 🧲</h1>
+        <p>Ganchos de valor que el bot ofrece para capturar leads que no están listos para comprar</p>
+      </div>
+      <button class="btn-primary" onclick="openMagnetForm()">+ Nuevo magnet</button>
+    </div>
+
+    <div class="links-info">
+      🧲 Cuando un lead muestra interés pero dice "lo pienso" / "es caro" / "no estoy listo", el bot le ofrece uno de estos recursos (PDF, guía, caso, diagnóstico) a cambio de su email.
+      <br>Así convertís ruido en base de datos con la que podés hacer follow-up después.
+    </div>
+
+    <div id="magnets-list" style="display:grid;gap:14px;margin-top:16px"></div>
+
+    <!-- Modal crear/editar magnet -->
+    <div id="magnet-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:100;align-items:center;justify-content:center;padding:20px">
+      <div style="background:#fff;border-radius:12px;padding:24px;width:520px;max-width:100%;max-height:90vh;overflow-y:auto">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <h3 id="magnet-form-title" style="margin:0">Nuevo lead magnet</h3>
+          <button onclick="closeMagnetForm()" style="background:transparent;border:none;font-size:22px;cursor:pointer">×</button>
+        </div>
+        <input type="hidden" id="magnet-id">
+
+        <div class="form-row" style="flex-direction:column;align-items:stretch">
+          <label style="font-size:13px;color:var(--text-2);margin-bottom:4px">Título interno <small>(cómo lo identificás vos)</small></label>
+          <input type="text" id="magnet-title" placeholder="Ej: Guía 7 errores al vender por DM" class="form-input" maxlength="120">
+        </div>
+
+        <div class="form-row" style="flex-direction:column;align-items:stretch;margin-top:10px">
+          <label style="font-size:13px;color:var(--text-2);margin-bottom:4px">Descripción <small>(qué recibe el lead)</small></label>
+          <textarea id="magnet-description" placeholder="Ej: PDF de 12 páginas con los errores más comunes y cómo evitarlos" class="form-input" rows="2" maxlength="500" style="resize:vertical"></textarea>
+        </div>
+
+        <div class="form-row" style="flex-direction:column;align-items:stretch;margin-top:10px">
+          <label style="font-size:13px;color:var(--text-2);margin-bottom:4px">Frase que usa el bot para ofrecerlo <small>(opcional, tono natural)</small></label>
+          <textarea id="magnet-pitch" placeholder="Ej: mirá, te mando la guía que uso con los que están arrancando — ¿a qué mail te la paso?" class="form-input" rows="2" maxlength="300" style="resize:vertical"></textarea>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px">
+          <div class="form-row" style="flex-direction:column;align-items:stretch">
+            <label style="font-size:13px;color:var(--text-2);margin-bottom:4px">Cuándo ofrecerlo</label>
+            <select id="magnet-trigger" class="form-input">
+              <option value="generic">Situación genérica</option>
+              <option value="pricing_objection">Objeción de precio ("es caro")</option>
+              <option value="not_ready">No está listo ("lo pienso")</option>
+              <option value="cold_lead">Lead frío / no califica</option>
+              <option value="diagnostic">Quiere evaluar si le sirve</option>
+              <option value="info_request">Pide más info</option>
+            </select>
+          </div>
+          <div class="form-row" style="flex-direction:column;align-items:stretch">
+            <label style="font-size:13px;color:var(--text-2);margin-bottom:4px">Entrega</label>
+            <select id="magnet-delivery" class="form-input">
+              <option value="email">Por email</option>
+              <option value="dm">Por DM directo</option>
+              <option value="link">Link abierto</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row" style="flex-direction:column;align-items:stretch;margin-top:10px">
+          <label style="font-size:13px;color:var(--text-2);margin-bottom:4px">URL del recurso <small>(Drive, Dropbox, página, etc.)</small></label>
+          <input type="url" id="magnet-url" placeholder="https://..." class="form-input" maxlength="500">
+        </div>
+
+        <div class="form-actions" style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn-ghost" onclick="closeMagnetForm()">Cancelar</button>
+          <button class="btn-primary" onclick="saveMagnet()">Guardar magnet</button>
+        </div>
       </div>
     </div>
   </section>
