@@ -127,6 +127,27 @@
     .compare-col .dot { background: rgba(239,68,68,.15); color: #ef4444; }
     .compare-col.good .dot { background: rgba(34,197,94,.18); color: #22c55e; }
 
+    /* ── USE CASES (prueba social honesta) ── */
+    .usecases { max-width: 1180px; margin: 110px auto 0; padding: 0 28px; }
+    .uc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+    .uc-card { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 30px 26px; position: relative; overflow: hidden; transition: all .2s; }
+    .uc-card:hover { border-color: rgba(139,92,246,.35); transform: translateY(-3px); box-shadow: 0 14px 40px rgba(0,0,0,.32); }
+    .uc-tag { display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--orange); background: rgba(139,92,246,.12); border: 1px solid rgba(139,92,246,.25); padding: 4px 10px; border-radius: 16px; margin-bottom: 14px; }
+    .uc-card h3 { font-size: 1.15rem; font-weight: 800; margin-bottom: 12px; letter-spacing: -.01em; }
+    .uc-flow { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 18px 0 16px; padding: 14px; background: rgba(0,0,0,.25); border-radius: 12px; border: 1px solid rgba(255,255,255,.04); }
+    .uc-flow > div { font-size: 12px; line-height: 1.5; }
+    .uc-flow .label { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-3); margin-bottom: 6px; }
+    .uc-flow .before strong { color: #ef4444; }
+    .uc-flow .after strong { color: #22c55e; }
+    .uc-metric { display: flex; align-items: baseline; gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+    .uc-metric .num { font-size: 1.6rem; font-weight: 900; color: var(--orange); letter-spacing: -.02em; }
+    .uc-metric .lbl { font-size: 12.5px; color: var(--text-2); }
+    .uc-disclaimer { text-align: center; margin-top: 36px; font-size: 12px; color: var(--text-3); max-width: 640px; margin-left: auto; margin-right: auto; line-height: 1.6; padding: 14px 18px; background: rgba(255,255,255,.02); border: 1px dashed var(--border); border-radius: 10px; }
+    .trust-bar { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; margin-top: 50px; }
+    .trust-chip { display: flex; align-items: center; gap: 8px; padding: 10px 18px; background: rgba(255,255,255,.03); border: 1px solid var(--border); border-radius: 30px; font-size: 13px; color: var(--text-2); }
+    .trust-chip .e { font-size: 16px; }
+    @media (max-width: 880px) { .uc-grid { grid-template-columns: 1fr; } }
+
     /* ── TRIAL CTA ── */
     .cta-section { max-width: 760px; margin: 120px auto 0; padding: 0 28px; }
     .cta-box { background: linear-gradient(135deg, rgba(139,92,246,.15) 0%, rgba(236,72,153,.08) 100%); border: 1px solid rgba(139,92,246,.3); border-radius: 22px; padding: 60px 44px; text-align: center; }
@@ -169,6 +190,7 @@
   <div class="nav-links">
     <a href="#como-funciona">Cómo funciona</a>
     <a href="#features">Features</a>
+    <a href="#casos">Casos</a>
     <a href="#faq">Preguntas</a>
     <a href="/pricing.html">Precios</a>
   </div>
@@ -359,7 +381,7 @@
     <div class="compare-col good">
       <div class="compare-title"><span class="em">⚡</span> DMCloser</div>
       <ul class="compare-list">
-        <li><span class="dot">✓</span> Desde $89 USD/mes — 10x más barato</li>
+        <li><span class="dot">✓</span> Desde $197 USD/mes — 3x más barato</li>
         <li><span class="dot">✓</span> Responde 24/7, incluso dormido</li>
         <li><span class="dot">✓</span> Config en 10 min, sin entrenamiento</li>
         <li><span class="dot">✓</span> Nunca se va ni se enferma</li>
@@ -368,6 +390,115 @@
       </ul>
     </div>
   </div>
+</section>
+
+<!--
+  ═══════════════════════════════════════════════════════════════════════
+  CASOS DE USO TÍPICOS — REEMPLAZAR cuando tengas testimonios REALES
+  ═══════════════════════════════════════════════════════════════════════
+  Estos son escenarios típicos del tipo de negocio target, NO testimonios
+  fabricados de personas que no existen (eso sería ilegal y rompe confianza).
+  Cuando tengas 3+ clientes reales con resultados, reemplazá cada uc-card
+  con: foto/avatar real, nombre y @, cargo/empresa, métrica concreta del
+  cliente, y cita literal del cliente entre comillas. Borrá el uc-tag
+  "Caso típico" y poné su nombre.
+  ═══════════════════════════════════════════════════════════════════════
+-->
+<section class="usecases" id="casos">
+  <div class="section-title">
+    <div class="eyebrow">Casos de uso</div>
+    <h2>Para quién es DMCloser</h2>
+    <p>Tres escenarios típicos de cómo distintos negocios usan el bot para dejar de perder ventas en sus DMs.</p>
+  </div>
+  <div class="uc-grid">
+
+    <!-- CASO 1: COACH / MENTOR -->
+    <div class="uc-card">
+      <span class="uc-tag">🎯 Coach / Mentor</span>
+      <h3>Calificar prospectos sin perder tiempo</h3>
+      <div class="uc-flow">
+        <div class="before">
+          <div class="label">Antes</div>
+          <strong>3-4 horas/día</strong> respondiendo DMs repetidos sobre precio y disponibilidad. La mayoría no califica.
+        </div>
+        <div class="after">
+          <div class="label">Con DMCloser</div>
+          <strong>El bot filtra</strong>, pregunta lo importante (problema, urgencia, capacidad) y solo te pasa los HOT.
+        </div>
+      </div>
+      <p style="font-size:13.5px;color:var(--text-2);line-height:1.65">
+        Mientras dormís, el bot agenda diagnósticos para los que califican y deriva a los que no con un lead magnet (PDF/audio). Vos abrís el dashboard a la mañana y solo cerrás los 🔥.
+      </p>
+      <div class="uc-metric">
+        <span class="num">10×</span>
+        <span class="lbl">leads cualificados sin trabajo manual</span>
+      </div>
+    </div>
+
+    <!-- CASO 2: AGENCIA -->
+    <div class="uc-card">
+      <span class="uc-tag">📈 Agencia / Marketing</span>
+      <h3>Tu equipo cierra, el bot prospecta</h3>
+      <div class="uc-flow">
+        <div class="before">
+          <div class="label">Antes</div>
+          <strong>Los closers</strong> perdían 60% del día respondiendo "info" y descartando curiosos.
+        </div>
+        <div class="after">
+          <div class="label">Con DMCloser</div>
+          <strong>El bot precalifica</strong>, agenda llamadas y los closers solo entran cuando hay intención real.
+        </div>
+      </div>
+      <p style="font-size:13.5px;color:var(--text-2);line-height:1.65">
+        Configurás el agente con tu pitch y objeciones. El bot maneja toda la prospección 24/7, pasa solo los leads calientes a tu CRM, y tu equipo enfoca su tiempo en cerrar.
+      </p>
+      <div class="uc-metric">
+        <span class="num">3×</span>
+        <span class="lbl">conversión DM → llamada agendada</span>
+      </div>
+    </div>
+
+    <!-- CASO 3: E-COMMERCE / INFOPRODUCTO -->
+    <div class="uc-card">
+      <span class="uc-tag">🛒 E-commerce / Infoproducto</span>
+      <h3>Responder dudas de producto al instante</h3>
+      <div class="uc-flow">
+        <div class="before">
+          <div class="label">Antes</div>
+          <strong>El cliente pregunta</strong> talles, stock, envío... y si no contestás en 5 min, compra en otro lado.
+        </div>
+        <div class="after">
+          <div class="label">Con DMCloser</div>
+          <strong>Respuesta en segundos</strong> con el link de checkout listo. El bot conoce tu catálogo de memoria.
+        </div>
+      </div>
+      <p style="font-size:13.5px;color:var(--text-2);line-height:1.65">
+        Cargás precios, talles, políticas de envío en la knowledge base. El bot responde igual que vos lo harías y manda el link de pago en el momento exacto. Cero leads perdidos por demora.
+      </p>
+      <div class="uc-metric">
+        <span class="num">+40%</span>
+        <span class="lbl">DM → checkout en negocios típicos</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Trust bar: tipos de negocio que pueden usarlo -->
+  <div class="trust-bar">
+    <div class="trust-chip"><span class="e">🎯</span> Coaches</div>
+    <div class="trust-chip"><span class="e">📈</span> Agencias</div>
+    <div class="trust-chip"><span class="e">🎓</span> Infoproductos</div>
+    <div class="trust-chip"><span class="e">🛒</span> E-commerce</div>
+    <div class="trust-chip"><span class="e">💪</span> Fitness</div>
+    <div class="trust-chip"><span class="e">💄</span> Estética</div>
+    <div class="trust-chip"><span class="e">🏠</span> Real estate</div>
+    <div class="trust-chip"><span class="e">🍝</span> Gastronomía</div>
+  </div>
+
+  <!-- Disclaimer honesto: somos un proyecto nuevo, los números son estimados típicos -->
+  <p class="uc-disclaimer">
+    Las métricas son <strong>estimaciones típicas</strong> en negocios que automatizan respuestas en DMs. Los resultados reales dependen del volumen de tráfico, ticket promedio y configuración del agente. <strong>DMCloser está abriendo cohorte de fundadores</strong>: si entrás ahora, tenés acompañamiento directo del equipo durante el setup.
+  </p>
 </section>
 
 <!-- CTA -->
