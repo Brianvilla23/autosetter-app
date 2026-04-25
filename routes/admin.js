@@ -736,4 +736,36 @@ router.post('/meta-tokens/refresh-all', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+/**
+ * POST /api/admin/seed-sales-preset
+ * Body: { accountId }
+ * Instala el preset "DMCloser Sales Agent" en la cuenta indicada:
+ * agente + knowledge + links + lead magnets para vender el propio SaaS.
+ * Dogfooding: que el bot venda a DMCloser para demostrar que vende cualquier cosa.
+ * NO pisa lo que ya existe — agrega encima. Si ya aplicaste antes, se duplica,
+ * así que hacelo una sola vez por cuenta.
+ */
+router.post('/seed-sales-preset', async (req, res) => {
+  try {
+    const { accountId } = req.body;
+    if (!accountId) return res.status(400).json({ error: 'accountId requerido' });
+
+    const account = await db.findOne(db.accounts, { _id: accountId });
+    if (!account) return res.status(404).json({ error: 'Cuenta no encontrada' });
+
+    // Anti-duplicado: si ya hay un agente llamado "DMCloser Sales", no volvemos a aplicar
+    const existing = await db.findOne(db.agents, { account_id: accountId, name: 'DMCloser Sales' });
+    if (existing) return res.status(409).json({
+      error: 'El preset ya fue aplicado a esta cuenta',
+      agentId: existing._id,
+    });
+
+    const { applyDmcloserPreset } = require('../services/dmcloserPreset');
+    const result = await applyDmcloserPreset(db, accountId);
+
+    await audit(req, 'seed_sales_preset', accountId, result);
+    res.json(result);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 module.exports = router;
