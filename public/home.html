@@ -356,24 +356,20 @@
     <div class="hero-sub"><strong>Setup en 10 minutos</strong> · Compatible con Instagram Business · Español nativo</div>
   </section>
 
-  <!-- Conversation mockup -->
+  <!-- Conversation mockup — animado en vivo (los mensajes aparecen progresivamente) -->
   <div class="mockup-wrap">
-    <div class="hot-badge">🔥 Lead caliente</div>
+    <div class="hot-badge" id="hero-hot-badge" style="opacity:0;transform:scale(.5);transition:all .5s">🔥 Lead caliente</div>
     <div class="mockup">
       <div class="mockup-header">
         <div class="mockup-avatar">M</div>
         <div style="flex:1">
           <div class="mockup-user">@maria_fitness</div>
-          <div class="mockup-status">Respondiendo…</div>
+          <div class="mockup-status" id="hero-mockup-status">Respondiendo…</div>
         </div>
       </div>
-      <div class="mockup-body">
-        <div class="msg in">Hola! Vi tu post del programa de mentorías, ¿tienen cupos?</div>
-        <div class="msg out">¡Hola María! 😊 Sí, tengo 3 cupos para este mes. Cuéntame, ¿qué te gustaría lograr con la mentoría?</div>
-        <div class="msg in">Quiero escalar mi negocio a 10k/mes. ¿Cuánto cuesta?</div>
-        <div class="msg out">Te entiendo perfecto 💪 El programa es de 3 meses y hacemos una llamada gratuita primero para ver si encaja contigo. ¿Podemos agendar 15 min esta semana?</div>
-        <div class="msg in">Sí dale, ¿cuándo?</div>
-        <div class="typing" style="align-self:flex-end;background:var(--grad)"><span style="background:#fff"></span><span style="background:#fff"></span><span style="background:#fff"></span></div>
+      <div class="mockup-body" id="hero-chat-body">
+        <!-- Los mensajes se insertan dinámicamente con animación typing -->
+      </div>
       </div>
     </div>
   </div>
@@ -853,6 +849,99 @@
       if (el) { e.preventDefault(); el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
     });
   });
+
+  // ── Hero mockup ANIMADO — el chat se construye solo en loop ────────────
+  // Da sensación de "demo en vivo" al visitante. Si scrolleó lejos, pausamos.
+  (function () {
+    const body  = document.getElementById('hero-chat-body');
+    const status= document.getElementById('hero-mockup-status');
+    const hotBadge = document.getElementById('hero-hot-badge');
+    if (!body) return;
+
+    const SCRIPT = [
+      { who: 'in',  text: 'Hola! Vi tu post del programa, ¿tienen cupos?', delayBefore: 800 },
+      { who: 'typing', who2: 'out', delayBefore: 1100 },
+      { who: 'out', text: '¡Hey! 😊 Sí, 3 cupos este mes. Contame qué querés lograr con la mentoría.', delayBefore: 1500 },
+      { who: 'in',  text: 'Escalar mi negocio a 10k/mes. ¿Cuánto sale?', delayBefore: 2200 },
+      { who: 'typing', who2: 'out', delayBefore: 1100 },
+      { who: 'out', text: 'Antes del precio: ¿cuánto ticket promedio manejás hoy?', delayBefore: 1700 },
+      { who: 'in',  text: '$300-500 por cliente. Es coaching 1 a 1.', delayBefore: 2400 },
+      { who: 'typing', who2: 'out', delayBefore: 1100 },
+      { who: 'hotbadge', delayBefore: 600 },
+      { who: 'out', text: 'Buenísimo 🔥 Con ese ticket, te conviene la mentoría Pro. Te paso el link de agenda gratis para que charlemos 15 min. ¿Te sirve?', delayBefore: 1800 },
+      { who: 'reset', delayBefore: 4000 },
+    ];
+
+    let cancelled = false;
+    let idx = 0;
+
+    function appendMsg(who, text) {
+      const div = document.createElement('div');
+      div.className = 'msg ' + who;
+      div.textContent = text;
+      div.style.opacity = '0';
+      div.style.transform = 'translateY(8px)';
+      div.style.transition = 'all .35s';
+      body.appendChild(div);
+      requestAnimationFrame(() => { div.style.opacity = '1'; div.style.transform = 'translateY(0)'; });
+      body.scrollTop = body.scrollHeight;
+      return div;
+    }
+
+    function appendTyping(side) {
+      const div = document.createElement('div');
+      div.className = 'typing';
+      div.dataset.typing = '1';
+      const bg = side === 'out' ? 'var(--grad)' : 'rgba(255,255,255,.06)';
+      div.style.cssText = 'align-self:' + (side === 'out' ? 'flex-end' : 'flex-start') + ';background:' + bg;
+      const dotColor = side === 'out' ? '#fff' : '#94a3b8';
+      div.innerHTML = `<span style="background:${dotColor}"></span><span style="background:${dotColor}"></span><span style="background:${dotColor}"></span>`;
+      body.appendChild(div);
+      body.scrollTop = body.scrollHeight;
+      return div;
+    }
+
+    function removeTypings() {
+      body.querySelectorAll('[data-typing]').forEach(el => el.remove());
+    }
+
+    function reset() {
+      body.innerHTML = '';
+      hotBadge.style.opacity = '0';
+      hotBadge.style.transform = 'scale(.5)';
+      idx = 0;
+    }
+
+    async function step() {
+      if (cancelled) return;
+      const s = SCRIPT[idx % SCRIPT.length];
+      idx++;
+      await new Promise(r => setTimeout(r, s.delayBefore));
+      if (cancelled) return;
+
+      if (s.who === 'reset') {
+        reset();
+      } else if (s.who === 'typing') {
+        appendTyping(s.who2);
+      } else if (s.who === 'hotbadge') {
+        hotBadge.style.opacity = '1';
+        hotBadge.style.transform = 'scale(1)';
+      } else {
+        removeTypings();
+        appendMsg(s.who, s.text);
+      }
+      step();
+    }
+
+    // Pausar animación si el mockup no está visible (ahorrar CPU)
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        cancelled = !e.isIntersecting;
+        if (e.isIntersecting && idx === 0) step();
+      });
+    }, { threshold: 0.1 });
+    io.observe(body);
+  })();
 </script>
 
 <!-- ═════════════════════════════════════════════════════════════════════
