@@ -38,12 +38,12 @@ app.use(helmet({
     useDefaults: true,
     directives: {
       defaultSrc:    ["'self'"],
-      scriptSrc:     ["'self'", "'unsafe-inline'"],      // <script> blocks
-      scriptSrcAttr: ["'unsafe-inline'"],                // onclick="..." inline (CRÍTICO)
-      styleSrc:      ["'self'", "'unsafe-inline'"],
+      scriptSrc:     ["'self'", "'unsafe-inline'", 'https://plausible.io'],   // <script> blocks + Plausible
+      scriptSrcAttr: ["'unsafe-inline'"],                                      // onclick="..." inline (CRÍTICO)
+      styleSrc:      ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       imgSrc:        ["'self'", 'data:', 'https:'],
-      connectSrc:    ["'self'", 'https://api.openai.com', 'https://graph.facebook.com', 'https://graph.instagram.com'],
-      fontSrc:       ["'self'", 'data:'],
+      connectSrc:    ["'self'", 'https://api.openai.com', 'https://graph.facebook.com', 'https://graph.instagram.com', 'https://plausible.io'],
+      fontSrc:       ["'self'", 'data:', 'https://fonts.gstatic.com'],
       frameAncestors:["'none'"],                          // clickjacking
       objectSrc:     ["'none'"],
       baseUri:       ["'self'"],

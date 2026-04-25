@@ -1,9 +1,25 @@
 const Datastore = require('@seald-io/nedb');
 const path      = require('path');
+const fs        = require('fs');
 const { v4: uuidv4 } = require('uuid');
 
-const dir = path.join(__dirname, 'data');
-require('fs').mkdirSync(dir, { recursive: true });
+// ── DB PATH ──────────────────────────────────────────────────────────────────
+// CRITICO en producción: Railway containers son EFÍMEROS. Sin volumen montado,
+// cada deploy/restart pierde TODOS los datos (users, leads, msgs, suscripciones).
+//
+// Configurá un Railway Volume montado en /data y seteá:
+//     DB_PATH=/data
+// en las variables de entorno. Local dev cae al fallback ./db/data automáticamente.
+const dir = process.env.DB_PATH || path.join(__dirname, 'data');
+fs.mkdirSync(dir, { recursive: true });
+
+// Marker para distinguir entornos (lo expone el healthcheck)
+const isPersistent = !!process.env.DB_PATH;
+if (isPersistent) {
+  console.log(`📦 DB persistente en ${dir}`);
+} else {
+  console.warn(`⚠️  DB en path EFÍMERO (${dir}). Configurá DB_PATH a un Railway Volume para no perder datos en cada deploy.`);
+}
 
 // ── Collections ───────────────────────────────────────────────────────────────
 const db = {
@@ -261,5 +277,8 @@ migrate().catch(console.error);
 // syncAccountFromEnv removed — account is properly linked via Instagram Business Login OAuth.
 // The OAuth flow in routes/auth.js stores ig_user_id, ig_platform_id and access_token in DB.
 // Using META_ACCESS_TOKEN env var with graph.facebook.com is incompatible with IGAA tokens.
+
+// Metadata para healthcheck/admin (qué path usa, si es persistente)
+db._meta = { dir, isPersistent };
 
 module.exports = db;

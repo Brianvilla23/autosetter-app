@@ -76,6 +76,18 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Plausible Analytics (privacy-first, sin cookies, no necesita banner GDPR).
+       Cuando configures el dominio real (dmcloser.app) en Plausible, cambiá
+       data-domain por el dominio que apuntes. Mientras tanto se queda en railway
+       y registra las visitas igual. Para desactivar: borrá el script. -->
+  <script defer data-domain="dmcloser.app" src="https://plausible.io/js/script.outbound-links.js"></script>
+  <script>
+    // Helper para custom events. Lo usamos abajo en los CTAs para trackear
+    // qué tanto convierten el hero, el cta del medio y el final.
+    window.plausible = window.plausible || function(){ (window.plausible.q = window.plausible.q || []).push(arguments) };
+  </script>
+
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -659,13 +671,29 @@
   })();
 
   // Register/trial CTAs — guardar auth_mode=register y redirigir al app
-  document.querySelectorAll('a[href="/app?register=1"]').forEach(a => {
+  document.querySelectorAll('a[href="/app?register=1"]').forEach((a, i) => {
     a.addEventListener('click', (e) => {
       e.preventDefault();
       try { sessionStorage.setItem('auth_mode', 'register'); } catch {}
+      // Trackear qué CTA disparó: hero, mid o final (segun orden en el DOM)
+      try { window.plausible('CTA Register Click', { props: { position: i === 0 ? 'nav' : (i === 1 ? 'hero' : (i === 2 ? 'cta-mid' : 'cta-final')) } }); } catch {}
       window.location.href = '/app';
     });
   });
+
+  // Trackear scroll-depth para entender dónde se cae la gente
+  let maxScroll = 0;
+  let trackedDepths = new Set();
+  window.addEventListener('scroll', () => {
+    const scrollPct = Math.round((window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100);
+    maxScroll = Math.max(maxScroll, scrollPct);
+    [25, 50, 75, 100].forEach(d => {
+      if (maxScroll >= d && !trackedDepths.has(d)) {
+        trackedDepths.add(d);
+        try { window.plausible('Scroll Depth', { props: { depth: d + '%' } }); } catch {}
+      }
+    });
+  }, { passive: true });
 
   // Smooth scroll para anchors
   document.querySelectorAll('a[href^="#"]').forEach(a => {

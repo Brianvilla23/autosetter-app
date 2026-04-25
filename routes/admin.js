@@ -535,7 +535,13 @@ router.get('/health', async (req, res) => {
     const checks = {};
 
     // DB OK (si find() funcionó)
-    checks.database = { status: 'ok', message: 'NeDB responsive' };
+    const meta = db._meta || {};
+    checks.database = {
+      status:  meta.isPersistent ? 'ok' : 'error',
+      message: meta.isPersistent
+        ? `NeDB persistente en ${meta.dir}`
+        : `⚠️ DB en path EFÍMERO (${meta.dir || '?'}) — CONFIGURÁ DB_PATH a un Railway Volume YA, sino vas a perder datos en cada deploy`,
+    };
 
     // OpenAI configurado?
     const anyOpenai = !!process.env.OPENAI_API_KEY
@@ -1095,6 +1101,69 @@ router.post('/reset-and-apply-preset', async (req, res) => {
 
     await audit(req, 'reset_and_apply_preset', accountId, { before, applied: result.created });
     res.json({ ok: true, removed: before, applied: result.created, agentId: result.agentId });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
+ * GET /api/admin/backup
+ * Descarga TODOS los datos de la app como JSON (un objeto con cada colección).
+ * Útil para:
+ *  - Hacer backup manual antes de un cambio crítico
+ *  - Migrar entre entornos (dev → prod, prod → otro Railway)
+ *  - Auditoría / cumplimiento
+ *
+ * Devuelve un archivo descargable con timestamp en el nombre.
+ */
+router.get('/backup', async (req, res) => {
+  try {
+    const collections = [
+      'accounts','agents','knowledge','links','leads','messages','bypassed',
+      'settings','users','inviteCodes','aiUsage','auditLog','followups',
+      'magnetLinks','linkClicks','emailLog','leadMagnets','magnetDeliveries',
+      'errorLog','referrals','quickReplies',
+    ];
+    const out = { _meta: { exportedAt: new Date().toISOString(), version: process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0,7) || 'unknown' } };
+    for (const name of collections) {
+      if (!db[name]) continue;
+      out[name] = await db.find(db[name], {});
+    }
+    await audit(req, 'db.backup', null, { collections: collections.length });
+
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="dmcloser-backup-${stamp}.json"`);
+    res.send(JSON.stringify(out, null, 2));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
+ * POST /api/admin/restore
+ * Body: el JSON producido por /backup, más { confirm: 'YES' }.
+ *
+ * DESTRUCTIVO: borra el contenido actual de cada colección y carga lo del JSON.
+ * Saltea colecciones que no estén en el JSON (no las toca).
+ */
+router.post('/restore', express.json({ limit: '50mb' }), async (req, res) => {
+  try {
+    const body = req.body || {};
+    if (body.confirm !== 'YES') {
+      return res.status(400).json({ error: 'Pasá { confirm: "YES" } en el body. Esto sobreescribe la DB.' });
+    }
+    const collections = Object.keys(body).filter(k => k !== 'confirm' && k !== '_meta');
+    const stats = {};
+    for (const name of collections) {
+      if (!db[name] || !Array.isArray(body[name])) continue;
+      await db.remove(db[name], {});
+      let inserted = 0;
+      for (const doc of body[name]) {
+        // Preservamos _id original
+        await new Promise((res, rej) => db[name].insert(doc, (e) => e ? rej(e) : res()));
+        inserted++;
+      }
+      stats[name] = inserted;
+    }
+    await audit(req, 'db.restore', null, { stats });
+    res.json({ ok: true, stats });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
