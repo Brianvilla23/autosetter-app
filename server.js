@@ -460,6 +460,22 @@ app.use(errorTracker);
 // Captura crashes async fuera de Express
 installProcessHandlers();
 
+// ── PUBLIC PAGES (sin .html en la URL) ────────────────────────────────────────
+// Necesario porque Meta App Review valida que /privacy y /terms devuelvan
+// la página real (no el dashboard del SPA). El catch-all de abajo captura
+// todo lo demás y lo manda al dashboard.
+app.get('/privacy', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'privacy.html'));
+});
+app.get('/terms', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'terms.html'));
+});
+app.get('/data-deletion', (req, res) => {
+  // Meta requiere una URL de "instrucciones para eliminación de datos".
+  // La privacy explica cómo pedir eliminación, así que apuntamos ahí.
+  res.sendFile(path.join(__dirname, 'public', 'privacy.html'));
+});
+
 // ── CATCH ALL → serve dashboard ───────────────────────────────────────────────
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
