@@ -208,10 +208,29 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
   const settings = await db.findOne(db.settings, { account_id: account._id });
   const apiKey   = process.env.OPENAI_API_KEY || settings?.openai_key;
 
+  // ── LEAD MAGNET: detección + entrega automática ─────────────────────────
+  // Si el lead respondió con email y el bot había ofrecido un magnet, lo entregamos
+  // antes de generar la respuesta, para que el bot pueda confirmar la entrega en su reply.
+  let magnetContext = null;
+  try {
+    const { tryDeliverMagnet } = require('../services/magnetDelivery');
+    const delivery = await tryDeliverMagnet({
+      lead, account,
+      incomingText: text,
+      recentHistory: history,
+    });
+    if (delivery.delivered) {
+      magnetContext = `MAGNET ENTREGADO: Acabás de enviarle al lead "${delivery.magnet.title}" a su email (${delivery.email}). Confirmá brevemente en tu respuesta ("listo, te lo mandé al mail, revisalo cuando puedas") y seguí la conversación natural. NO pidas el email de nuevo.`;
+    } else if (delivery.alreadyDelivered) {
+      magnetContext = `NOTA: Al lead ya le entregaste "${delivery.magnet.title}" antes. No vuelvas a ofrecerlo ni a pedirle email.`;
+    }
+  } catch (e) { console.warn('magnetDelivery skip:', e.message); }
+
   // Contexto extra si fue disparado por comentario
-  const extraContext = isCommentTrigger
+  const baseContext = isCommentTrigger
     ? `NOTA: Este usuario comentó "info" en uno de tus posts. Inicia la conversación presentándote y preguntando cómo puedes ayudarle.`
     : null;
+  const extraContext = [baseContext, magnetContext].filter(Boolean).join('\n\n') || null;
 
   const reply = await generateReply({
     agent, knowledge, links,
