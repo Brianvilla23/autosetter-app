@@ -178,23 +178,40 @@
       </div>
     </div>
 
-    <div class="home-cards">
-      <div class="home-card">
-        <h3>🚀 Primeros pasos</h3>
-        <ol>
-          <li>Configura tu cuenta de Instagram en <strong>Settings</strong></li>
-          <li>Añade tu OpenAI API Key en <strong>Settings</strong></li>
-          <li>Personaliza el <strong>Agent Instructions</strong> en Agents</li>
-          <li>Carga tu <strong>Knowledge Base</strong> con info del negocio</li>
-          <li>Añade los <strong>Links</strong> que el agente puede compartir</li>
-          <li>Conecta el webhook de Meta y ¡listo!</li>
-        </ol>
+    <!-- Checklist dinámico de onboarding (sólo se muestra hasta completar todos los pasos) -->
+    <div id="onboarding-card" style="display:none;background:linear-gradient(135deg,#fff7ed,#fff);border:1px solid #fed7aa;border-radius:12px;padding:22px;margin-bottom:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+        <div>
+          <h3 style="margin:0;font-size:17px;color:#9a3412">🚀 Terminá tu setup</h3>
+          <p style="margin:4px 0 0;color:var(--text-2);font-size:13px" id="onboarding-subtitle">Completá estos pasos para activar tu bot</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span id="onboarding-progress-text" style="font-size:13px;color:var(--text-2);font-weight:600">0/6</span>
+          <button id="onboarding-dismiss" onclick="dismissOnboarding()" style="background:transparent;border:none;color:var(--text-3);cursor:pointer;font-size:22px;line-height:1" title="Ocultar por ahora">×</button>
+        </div>
       </div>
+      <!-- Barra de progreso -->
+      <div style="background:#fed7aa;height:6px;border-radius:3px;overflow:hidden;margin-bottom:18px">
+        <div id="onboarding-progress-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#f97316,#ea580c);transition:width .4s"></div>
+      </div>
+      <div id="onboarding-steps" style="display:grid;gap:10px"></div>
+    </div>
+
+    <div class="home-cards">
       <div class="home-card">
         <h3>📡 Webhook URL</h3>
         <p style="color:var(--text-2);margin-bottom:12px">Configura este URL en tu Meta App:</p>
         <div class="code-block" id="webhook-url">http://localhost:3000/webhook</div>
         <p style="color:var(--text-2);font-size:13px;margin-top:8px">Verify Token: <code id="verify-token">autosetter_webhook_2024</code></p>
+      </div>
+      <div class="home-card">
+        <h3>💡 Tips rápidos</h3>
+        <ul style="padding-left:18px;color:var(--text-2);font-size:14px;line-height:1.7;margin:0">
+          <li>Probá el bot en el <strong>Tester</strong> antes de ponerlo live.</li>
+          <li>Revisá los <strong>Leads HOT</strong> — ésos son tus ventas calientes.</li>
+          <li>Editá el prompt del agente cuando detectes respuestas flojas.</li>
+          <li>Configurá <strong>follow-ups</strong> para rescatar leads que te dejaron en visto.</li>
+        </ul>
       </div>
     </div>
   </section>

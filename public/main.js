@@ -251,8 +251,89 @@ async function loadHome() {
   document.getElementById('webhook-url').textContent = `${location.origin}/webhook`;
   document.getElementById('settings-webhook-url').textContent = `${location.origin}/webhook`;
 
-  // Carga la card de uso/límites
+  // Carga la card de uso/límites y el checklist de onboarding
   loadUsage();
+  loadOnboarding();
+}
+
+// ── ONBOARDING CHECKLIST ────────────────────────────────────────────────────
+async function loadOnboarding() {
+  const card = document.getElementById('onboarding-card');
+  if (!card) return;
+
+  // Si el usuario ocultó el checklist manualmente en esta sesión, no lo mostramos
+  if (sessionStorage.getItem('onboardingDismissed') === '1') {
+    card.style.display = 'none';
+    return;
+  }
+
+  try {
+    const data = await apiFetch(`/api/settings/onboarding?accountId=${ACCOUNT_ID}`);
+    if (!data || !data.steps) { card.style.display = 'none'; return; }
+
+    if (data.allDone) {
+      // Usuario completó todo → ocultar para siempre
+      card.style.display = 'none';
+      localStorage.setItem('onboardingCompleted', '1');
+      return;
+    }
+
+    card.style.display = '';
+    document.getElementById('onboarding-progress-text').textContent = `${data.completedSteps}/${data.totalSteps}`;
+    document.getElementById('onboarding-progress-bar').style.width = `${data.percent}%`;
+
+    const subtitle = data.nextStep
+      ? `Próximo paso: <strong>${escHtmlStep(data.nextStep.title)}</strong>`
+      : 'Completá estos pasos para activar tu bot';
+    document.getElementById('onboarding-subtitle').innerHTML = subtitle;
+
+    document.getElementById('onboarding-steps').innerHTML = data.steps.map((s, i) => {
+      const isNext = !s.done && data.nextStep && data.nextStep.id === s.id;
+      const bg     = s.done ? '#f0fdf4' : isNext ? '#fff' : '#fafafa';
+      const border = s.done ? '#bbf7d0' : isNext ? '#f97316' : 'var(--border)';
+      const check  = s.done
+        ? '<span style="width:24px;height:24px;border-radius:50%;background:#22c55e;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">✓</span>'
+        : `<span style="width:24px;height:24px;border-radius:50%;background:#fff;border:2px solid ${isNext ? '#f97316' : 'var(--border)'};color:${isNext ? '#f97316' : 'var(--text-3)'};display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">${i+1}</span>`;
+      const titleStyle = s.done ? 'color:var(--text-2);text-decoration:line-through' : 'color:var(--text-1);font-weight:600';
+      const btnStyle = s.done
+        ? 'background:transparent;color:#16a34a;border:1px solid #bbf7d0;cursor:default'
+        : isNext
+          ? 'background:var(--orange);color:#fff;border:1px solid var(--orange);cursor:pointer'
+          : 'background:#fff;color:var(--text-2);border:1px solid var(--border);cursor:pointer';
+      const onclickAttr = s.done ? '' : `onclick="goOnboardingStep('${s.cta.section}')"`;
+      return `
+        <div style="display:flex;align-items:center;gap:14px;padding:12px 14px;background:${bg};border:1px solid ${border};border-radius:8px">
+          ${check}
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px;${titleStyle}">${s.icon} ${escHtmlStep(s.title)}</div>
+            <div style="font-size:12px;color:var(--text-3);margin-top:2px;line-height:1.4">${escHtmlStep(s.description)}</div>
+          </div>
+          <button ${onclickAttr} style="padding:7px 14px;font-size:12px;font-weight:600;border-radius:6px;white-space:nowrap;${btnStyle}">
+            ${escHtmlStep(s.cta.label)}
+          </button>
+        </div>`;
+    }).join('');
+  } catch (e) {
+    console.warn('onboarding load skip:', e.message);
+    card.style.display = 'none';
+  }
+}
+
+function escHtmlStep(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function goOnboardingStep(section) {
+  if (typeof loadSection === 'function') loadSection(section);
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const navItem = document.querySelector(`.nav-item[data-section="${section}"]`);
+  if (navItem) navItem.classList.add('active');
+}
+
+function dismissOnboarding() {
+  sessionStorage.setItem('onboardingDismissed', '1');
+  const card = document.getElementById('onboarding-card');
+  if (card) card.style.display = 'none';
 }
 
 // ── USAGE (uso vs límites del plan) ─────────────────────────────────────────
