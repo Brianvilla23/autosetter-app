@@ -1939,6 +1939,20 @@ async function loadInbox() {
         if (leadId) selectInboxItem(leadId);
       });
     }
+
+    // Event delegation para los botones del thread (header + input bar)
+    const threadEl = document.getElementById('inbox-thread');
+    if (threadEl) {
+      threadEl.addEventListener('click', (ev) => {
+        const btn = ev.target.closest('[data-action]');
+        if (!btn) return;
+        const action = btn.getAttribute('data-action');
+        if (action === 'take-control')   takeControl();
+        if (action === 'return-to-bot')  returnToBot();
+        if (action === 'open-templates') openQuickReplies();
+        if (action === 'send-message')   sendInboxMessage();
+      });
+    }
   }
 
   await Promise.all([renderInboxList(), updateInboxBadge()]);
@@ -2051,6 +2065,17 @@ async function renderInboxThread(leadId, isRefresh = false) {
   const container = document.getElementById('inbox-thread');
   if (!container) return;
 
+  // Preservar la posición de scroll del thread y el contenido del input antes
+  // de re-renderizar (refresh cada 20s no debería arrastrar al user al fondo
+  // mientras está leyendo arriba, ni borrar lo que está escribiendo).
+  const prevBody = document.getElementById('thread-body');
+  const prevInput = document.getElementById('thread-input-text');
+  const prevScrollTop = prevBody?.scrollTop ?? 0;
+  const prevScrollHeight = prevBody?.scrollHeight ?? 0;
+  const prevClientHeight = prevBody?.clientHeight ?? 0;
+  const wasAtBottom = prevBody ? (prevScrollHeight - prevScrollTop - prevClientHeight < 60) : true;
+  const draftText = prevInput?.value ?? '';
+
   if (!isRefresh) {
     container.innerHTML = '<div style="margin:auto;color:var(--text-3);padding:30px">⏳ Cargando…</div>';
   }
@@ -2079,6 +2104,21 @@ async function renderInboxThread(leadId, isRefresh = false) {
       : lead.qualification === 'warm' ? '<span class="badge-q warm">🟡 WARM</span>'
       : lead.qualification === 'cold' ? '<span class="badge-q cold">❄️ COLD</span>' : '';
 
+    // Banner que muestra inequivocamente si el bot esta activo o pausado en esta conversacion
+    const stateBanner = lead.is_bypassed
+      ? `<div style="background:#fef2f2;border-bottom:2px solid #fca5a5;color:#991b1b;padding:8px 16px;font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:8px">
+           <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#dc2626;box-shadow:0 0 0 3px rgba(220,38,38,.18)"></span>
+           ✋ Vos tenés el control · el bot está pausado en esta conversación
+         </div>`
+      : `<div style="background:#f0fdf4;border-bottom:1px solid #bbf7d0;color:#166534;padding:8px 16px;font-size:12.5px;font-weight:500;display:flex;align-items:center;gap:8px">
+           <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.18)"></span>
+           🤖 El bot está respondiendo automáticamente esta conversación
+         </div>`;
+
+    const ctlBtn = lead.is_bypassed
+      ? '<button id="thread-ctl-btn" class="btn-primary" data-action="return-to-bot" style="padding:7px 12px;font-size:12.5px;background:#16a34a">🤖 Devolver al bot</button>'
+      : '<button id="thread-ctl-btn" class="btn-ghost" data-action="take-control" style="padding:7px 12px;font-size:12.5px;border:2px solid var(--orange);color:var(--orange);font-weight:600">✋ Tomar control</button>';
+
     container.innerHTML = `
       <div class="thread-header">
         <div class="avatar">${escHtmlSafe(initial)}</div>
@@ -2088,27 +2128,37 @@ async function renderInboxThread(leadId, isRefresh = false) {
         </div>
         <div class="actions">
           <a href="${dmUrl}" target="_blank" class="btn-ghost" style="padding:7px 12px;font-size:12.5px;text-decoration:none;display:inline-flex;align-items:center;gap:5px">📲 Abrir IG</a>
-          ${lead.is_bypassed
-            ? '<button class="btn-primary" onclick="returnToBot()" style="padding:7px 12px;font-size:12.5px">🤖 Devolver al bot</button>'
-            : '<button class="btn-ghost" onclick="takeControl()" style="padding:7px 12px;font-size:12.5px">✋ Tomar control</button>'}
+          ${ctlBtn}
         </div>
       </div>
+      ${stateBanner}
       <div class="thread-body" id="thread-body">
         ${messages || '<div style="margin:auto;color:var(--text-3);padding:30px;text-align:center">Sin mensajes aún</div>'}
       </div>
       <div class="thread-input">
         <div class="row">
           <textarea id="thread-input-text" placeholder="Escribí tu respuesta..." rows="1" onkeydown="handleThreadKey(event)"></textarea>
-          <button class="btn-ghost" onclick="openQuickReplies()" title="Insertar plantilla" style="padding:10px 12px;font-size:13px">📋</button>
-          <button class="btn-primary" onclick="sendInboxMessage()" style="padding:10px 18px;font-size:13px">Enviar</button>
+          <button class="btn-ghost" data-action="open-templates" title="Insertar plantilla" style="padding:10px 12px;font-size:13px">📋</button>
+          <button class="btn-primary" data-action="send-message" style="padding:10px 18px;font-size:13px">Enviar</button>
         </div>
-        <div class="hint">${lead.is_bypassed ? '🚫 El bot está pausado en esta conversación. Lo que escribas se manda como vos.' : '⚠️ Si respondés vos, el bot se va a pausar automáticamente para esta conversación.'} <kbd style="font-size:10px;background:#f3f4f6;padding:2px 5px;border-radius:3px">Enter</kbd> envía · <kbd style="font-size:10px;background:#f3f4f6;padding:2px 5px;border-radius:3px">Shift+Enter</kbd> nueva línea</div>
+        <div class="hint">${lead.is_bypassed ? '🚫 El bot está pausado · lo que escribas se manda como vos.' : '⚠️ Si respondés vos, el bot se pausa automáticamente para esta conversación.'} <kbd style="font-size:10px;background:#f3f4f6;padding:2px 5px;border-radius:3px">Enter</kbd> envía · <kbd style="font-size:10px;background:#f3f4f6;padding:2px 5px;border-radius:3px">Shift+Enter</kbd> nueva línea</div>
       </div>
     `;
 
-    // Scroll al final
+    // Restaurar draft + scroll position correcto:
+    // - En primera carga (no refresh): scroll al fondo
+    // - En refresh: solo scrollear al fondo si el user YA estaba en el fondo
+    //   (esto permite leer mensajes viejos sin que el auto-refresh te tire abajo)
     const body = document.getElementById('thread-body');
-    if (body) body.scrollTop = body.scrollHeight;
+    const input = document.getElementById('thread-input-text');
+    if (input && draftText) input.value = draftText;
+    if (body) {
+      if (!isRefresh || wasAtBottom) {
+        body.scrollTop = body.scrollHeight;
+      } else {
+        body.scrollTop = prevScrollTop;
+      }
+    }
 
   } catch (e) {
     container.innerHTML = `<div style="margin:auto;color:#ef4444;padding:30px">${escHtmlSafe(e.message)}</div>`;
@@ -2545,6 +2595,43 @@ window.resetQuickReplyForm = resetQuickReplyForm;
 window.editQuickReply = editQuickReply;
 window.saveQuickReply = saveQuickReply;
 window.deleteQuickReply = deleteQuickReply;
+
+// ── EXPORT EXPLÍCITO A window (defensa total) ──────────────────────────────
+// Hay onclick="funcName(...)" inline en muchos lugares del HTML. Si por
+// cualquier razón la función no quedó en el global scope (CSP, error de
+// parsing previo, etc), el botón no responde. Este bloque las expone
+// explícitamente y silencia cualquier ReferenceError de funciones que
+// pudieron haber sido renombradas.
+function _safeExpose(name, fn) {
+  try { if (typeof fn === 'function') window[name] = fn; } catch {}
+}
+try { _safeExpose('logout', logout); } catch {}
+try { _safeExpose('openLinkForm', openLinkForm); } catch {}
+try { _safeExpose('saveLink', saveLink); } catch {}
+try { _safeExpose('deleteLink', deleteLink); } catch {}
+try { _safeExpose('deleteLinkInBuilder', deleteLinkInBuilder); } catch {}
+try { _safeExpose('openKnowledgeModal', openKnowledgeModal); } catch {}
+try { _safeExpose('saveKnowledge', saveKnowledge); } catch {}
+try { _safeExpose('deleteKnowledge', deleteKnowledge); } catch {}
+try { _safeExpose('toggleKcContent', toggleKcContent); } catch {}
+try { _safeExpose('selectAgent', selectAgent); } catch {}
+try { _safeExpose('createAgent', createAgent); } catch {}
+try { _safeExpose('deleteAgent', deleteAgent); } catch {}
+try { _safeExpose('switchAgentTab', switchAgentTab); } catch {}
+try { _safeExpose('changeLeadAutomation', changeLeadAutomation); } catch {}
+try { _safeExpose('changeLeadAgent', changeLeadAgent); } catch {}
+try { _safeExpose('closeLeadDetail', closeLeadDetail); } catch {}
+try { _safeExpose('bypassLead', bypassLead); } catch {}
+try { _safeExpose('markConverted', markConverted); } catch {}
+try { _safeExpose('sendManualMessage', sendManualMessage); } catch {}
+try { _safeExpose('addBypassedUser', addBypassedUser); } catch {}
+try { _safeExpose('removeBypassedUser', removeBypassedUser); } catch {}
+try { _safeExpose('showUpgradeModal', showUpgradeModal); } catch {}
+try { _safeExpose('switchProvider', switchProvider); } catch {}
+try { _safeExpose('upgradePlan', upgradePlan); } catch {}
+try { _safeExpose('switchTab', switchTab); } catch {}
+try { _safeExpose('createMagnetLink', createMagnetLink); } catch {}
+try { _safeExpose('showLeadDetail', showLeadDetail); } catch {}
 
 // ── START ─────────────────────────────────────────────────────────────────────
 init();

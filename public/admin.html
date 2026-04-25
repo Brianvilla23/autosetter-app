@@ -1359,6 +1359,14 @@ async function openUserDetail(id) {
         <span id="extendStatus-${u.id}" style="font-size:0.78rem;color:#666;margin-left:auto"></span>
       </div>` : ''}
 
+      ${a ? `
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:#1a0f1a;padding:10px 12px;border-radius:8px;border:1px solid #5a2a4a;margin-bottom:4px">
+        <span style="font-size:0.82rem;color:#fbcfe8">🔄 Preset DMCloser:</span>
+        <button class="btn btn-sm btn-ghost" onclick="applyPresetSafe('${a.id}')" title="Agrega el preset DMCloser sin tocar lo existente (puede generar duplicados)">+ Aplicar preset</button>
+        <button class="btn btn-sm btn-danger" onclick="resetAndApplyPreset('${a.id}', '${escHtml(u.email)}')" title="BORRA agentes/knowledge/links/magnets de la cuenta y aplica el preset DMCloser limpio. Útil para cuentas con datos viejos.">⚠️ Resetear y aplicar</button>
+        <span id="presetStatus-${a.id}" style="font-size:0.78rem;color:#666;margin-left:auto"></span>
+      </div>` : ''}
+
       <!-- Instagram -->
       <h4 style="color:#a5a5c8;font-size:0.85rem;margin:14px 0 8px">📸 Cuenta Instagram</h4>
       ${igSection}
@@ -1432,6 +1440,39 @@ async function extendTrial(userId, days) {
     }
     // Refrescar el modal y la tabla de usuarios en ~600ms para ver el cambio
     setTimeout(() => { openUserDetail(userId); loadUsers(); }, 700);
+  } catch (e) {
+    if (statusEl) { statusEl.textContent = '❌ ' + e.message; statusEl.style.color = '#f87171'; }
+  }
+}
+
+async function applyPresetSafe(accountId) {
+  const statusEl = document.getElementById(`presetStatus-${accountId}`);
+  if (!confirm('Va a AGREGAR el preset DMCloser (agente "DMCloser Sales" + 4 knowledge items + 3 links + 4 lead magnets) a la cuenta. Lo existente NO se borra (puede haber duplicados). ¿Continuar?')) return;
+  if (statusEl) { statusEl.textContent = '⏳ Aplicando...'; statusEl.style.color = '#888'; }
+  try {
+    const r = await api('POST', '/api/admin/seed-sales-preset', { accountId });
+    if (statusEl) {
+      statusEl.textContent = `✅ Preset aplicado · ${r.created.knowledge}KB · ${r.created.links}L · ${r.created.magnets}M`;
+      statusEl.style.color = '#22c55e';
+    }
+  } catch (e) {
+    if (statusEl) { statusEl.textContent = '❌ ' + e.message; statusEl.style.color = '#f87171'; }
+  }
+}
+
+async function resetAndApplyPreset(accountId, email) {
+  const statusEl = document.getElementById(`presetStatus-${accountId}`);
+  const msg = `⚠️ ATENCIÓN: esto BORRA todos los agentes, knowledge, links y lead magnets de la cuenta de ${email} y aplica el preset DMCloser limpio.\n\nNO se borran los leads ni los mensajes (historia real).\n\n¿Confirmás?`;
+  if (!confirm(msg)) return;
+  if (!confirm('Última confirmación. Esta acción no se puede deshacer. ¿Seguro?')) return;
+
+  if (statusEl) { statusEl.textContent = '⏳ Reseteando...'; statusEl.style.color = '#888'; }
+  try {
+    const r = await api('POST', '/api/admin/reset-and-apply-preset', { accountId, confirm: 'YES' });
+    if (statusEl) {
+      statusEl.textContent = `✅ Reset OK · borré ${r.removed.agents}A/${r.removed.knowledge}K/${r.removed.links}L/${r.removed.magnets}M · apliqué preset`;
+      statusEl.style.color = '#22c55e';
+    }
   } catch (e) {
     if (statusEl) { statusEl.textContent = '❌ ' + e.message; statusEl.style.color = '#f87171'; }
   }
