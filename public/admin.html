@@ -364,6 +364,34 @@
       </div>
 
       <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+          <h3 style="margin:0">🐛 Errores capturados</h3>
+          <div style="display:flex;gap:6px;align-items:center">
+            <select id="errorKindFilter" onchange="loadErrors()" style="background:#0f0f1a;border:1px solid #2a2a4a;color:#e0e0e0;padding:4px 8px;border-radius:4px;font-size:0.82rem">
+              <option value="">Todos</option>
+              <option value="request">5xx requests</option>
+              <option value="uncaught">Uncaught exceptions</option>
+              <option value="rejection">Unhandled rejections</option>
+            </select>
+            <button class="btn btn-sm btn-ghost" onclick="clearErrors()">🗑️ Vaciar</button>
+          </div>
+        </div>
+        <div id="errorStats" style="display:flex;gap:18px;font-size:0.86rem;color:#888;margin-bottom:12px;flex-wrap:wrap;padding:10px 12px;background:#0f0f1a;border-radius:6px">
+          <span>Cargando…</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Fecha</th><th>Tipo</th><th>Mensaje</th><th>Ruta</th><th>Usuario</th></tr>
+            </thead>
+            <tbody id="errorLogTable">
+              <tr><td colspan="5" class="empty">⏳ Cargando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
         <h3>📜 Log de auditoría</h3>
         <div class="table-wrap">
           <table>
@@ -907,7 +935,87 @@ function renderTopUsers(users) {
 
 // ── System (health + logs) ─────────────────────────────────────────────────
 async function loadSystem() {
-  await Promise.all([loadHealth(), loadAIUsage(), loadAuditLog(), loadEmailLog()]);
+  await Promise.all([loadHealth(), loadAIUsage(), loadAuditLog(), loadEmailLog(), loadErrors()]);
+}
+
+async function loadErrors() {
+  const kind = document.getElementById('errorKindFilter')?.value || '';
+  try {
+    const url = `/api/admin/errors?limit=100${kind ? `&kind=${kind}` : ''}`;
+    const r = await api('GET', url);
+    const stats = r.stats || {};
+    const last24Color = stats.last24h > 10 ? '#ef4444' : stats.last24h > 0 ? '#f59e0b' : '#22c55e';
+    document.getElementById('errorStats').innerHTML = `
+      <span>Total: <strong style="color:#e0e0e0">${stats.total||0}</strong></span>
+      <span>Últimas 24h: <strong style="color:${last24Color}">${stats.last24h||0}</strong></span>
+      <span>📨 5xx requests: <strong>${stats.requests||0}</strong></span>
+      <span>💥 Uncaught: <strong style="color:${stats.uncaught>0?'#ef4444':'#888'}">${stats.uncaught||0}</strong></span>
+      <span>🌀 Rejections: <strong style="color:${stats.rejections>0?'#ef4444':'#888'}">${stats.rejections||0}</strong></span>
+    `;
+    const rows = r.errors || [];
+    const tbody = document.getElementById('errorLogTable');
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="5" class="empty">✨ Sin errores capturados${kind ? ' de este tipo' : ''}</td></tr>`;
+      return;
+    }
+    const kindBadge = (k) => {
+      const map = {
+        request:   '<span class="badge-plan badge-monthly">5xx</span>',
+        uncaught:  '<span class="badge-plan badge-expired">uncaught</span>',
+        rejection: '<span class="badge-plan badge-annual">rejection</span>',
+        manual:    '<span class="badge-plan badge-trial">manual</span>',
+      };
+      return map[k] || `<span class="badge-plan">${escHtml(k||'?')}</span>`;
+    };
+    tbody.innerHTML = rows.map(e => `
+      <tr style="cursor:pointer" onclick="showErrorDetail(${JSON.stringify(e).replace(/'/g, '&apos;').replace(/"/g, '&quot;')})">
+        <td style="color:#888;font-size:0.78rem;white-space:nowrap">${fmtDateTime(e.createdAt)}</td>
+        <td>${kindBadge(e.kind)}</td>
+        <td style="font-size:0.82rem;max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(e.message||'')}">${escHtml(e.message||'')}</td>
+        <td style="font-size:0.78rem;color:#888"><code class="code-text" style="font-size:0.72rem">${escHtml(e.method ? `${e.method} ${e.url||''}` : (e.url||'—'))}</code></td>
+        <td style="font-size:0.78rem;color:#888">${escHtml(e.userEmail || e.userId?.slice(0,8) || '—')}</td>
+      </tr>`).join('');
+  } catch (e) {
+    document.getElementById('errorLogTable').innerHTML =
+      `<tr><td colspan="5" class="empty" style="color:#ef4444">${escHtml(e.message)}</td></tr>`;
+  }
+}
+
+function showErrorDetail(e) {
+  // Modal simple con stack
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay open';
+  overlay.style.zIndex = 200;
+  overlay.innerHTML = `
+    <div class="modal" style="width: 720px; max-height: 85vh; overflow-y: auto;">
+      <h3 style="margin-bottom:14px">🐛 ${escHtml(e.kind || 'error')}</h3>
+      <div style="margin-bottom:14px">
+        <div style="font-size:0.78rem;color:#888;margin-bottom:4px">Mensaje</div>
+        <div style="font-size:0.9rem;background:#0f0f1a;padding:10px 12px;border-radius:6px;color:#fca5a5;font-family:monospace;word-break:break-word">${escHtml(e.message||'')}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;font-size:0.82rem">
+        <div><small style="color:#888">Cuándo</small><div>${fmtDateTime(e.createdAt)}</div></div>
+        <div><small style="color:#888">Código</small><div>${escHtml(e.code || '—')}</div></div>
+        <div><small style="color:#888">Ruta</small><div><code class="code-text">${escHtml(e.method||'')} ${escHtml(e.url||'—')}</code></div></div>
+        <div><small style="color:#888">Usuario</small><div>${escHtml(e.userEmail || e.userId || '—')}</div></div>
+        <div><small style="color:#888">IP</small><div>${escHtml(e.ip || '—')}</div></div>
+        <div><small style="color:#888">User-Agent</small><div style="font-size:0.74rem;color:#888;word-break:break-all">${escHtml((e.userAgent||'').slice(0,80))}</div></div>
+      </div>
+      ${e.stack ? `<div><div style="font-size:0.78rem;color:#888;margin-bottom:4px">Stack trace</div><pre style="background:#0f0f1a;padding:12px;border-radius:6px;font-size:0.75rem;color:#ddd;overflow-x:auto;max-height:320px">${escHtml(e.stack)}</pre></div>` : ''}
+      <div class="modal-footer" style="margin-top:18px">
+        <button class="btn btn-ghost" onclick="this.closest('.modal-overlay').remove()">Cerrar</button>
+      </div>
+    </div>`;
+  overlay.addEventListener('click', (ev) => { if (ev.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
+async function clearErrors() {
+  if (!confirm('¿Vaciar todo el log de errores? Esto no se puede deshacer.')) return;
+  try {
+    await api('DELETE', '/api/admin/errors');
+    loadErrors();
+  } catch (e) { alert('Error: ' + e.message); }
 }
 
 async function loadEmailLog() {

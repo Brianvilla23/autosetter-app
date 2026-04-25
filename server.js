@@ -428,15 +428,18 @@ app.get('/go/:slug', async (req, res) => {
   }
 });
 
-// ── ERROR HANDLER GLOBAL ──────────────────────────────────────────────────────
+// ── ERROR HANDLER GLOBAL (homebrew tracker — persiste 5xx en db.errorLog) ─────
+const { errorTracker, captureError, installProcessHandlers } = require('./middleware/errorTracker');
+
+// CORS-specific shortcut antes del tracker (no es un 5xx real)
 app.use((err, req, res, next) => {
-  // No exponer stack traces en producción
-  console.error('[ERROR]', err.message);
-  if (err.message?.includes('CORS')) {
-    return res.status(403).json({ error: 'Not allowed by CORS' });
-  }
-  res.status(500).json({ error: 'Internal server error' });
+  if (err.message?.includes('CORS')) return res.status(403).json({ error: 'Not allowed by CORS' });
+  return next(err);
 });
+app.use(errorTracker);
+
+// Captura crashes async fuera de Express
+installProcessHandlers();
 
 // ── CATCH ALL → serve dashboard ───────────────────────────────────────────────
 app.get('*', (req, res) => {

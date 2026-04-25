@@ -737,6 +737,47 @@ router.post('/meta-tokens/refresh-all', async (req, res) => {
 });
 
 /**
+ * GET /api/admin/errors?limit=100&kind=request|uncaught|rejection
+ * Últimos errores capturados por el errorTracker.
+ */
+router.get('/errors', async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 100, 500);
+    const kind  = req.query.kind || null;
+    const all   = await db.find(db.errorLog, {});
+    const filtered = kind ? all.filter(e => e.kind === kind) : all;
+    const sorted = filtered.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+    const sliced = sorted.slice(0, limit);
+
+    // Stats agregadas
+    const stats = {
+      total:      all.length,
+      requests:   all.filter(e => e.kind === 'request').length,
+      uncaught:   all.filter(e => e.kind === 'uncaught').length,
+      rejections: all.filter(e => e.kind === 'rejection').length,
+      last24h:    all.filter(e => {
+        const t = new Date(e.createdAt || 0).getTime();
+        return Date.now() - t < 24 * 3_600_000;
+      }).length,
+    };
+
+    res.json({ errors: sliced, stats });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
+ * DELETE /api/admin/errors
+ * Vacía el log de errores (útil después de resolver un incidente).
+ */
+router.delete('/errors', async (req, res) => {
+  try {
+    await db.remove(db.errorLog, {});
+    await audit(req, 'errors.clear', null, {});
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
  * GET /api/admin/funnel
  * Funnel de activación: visitante → registrado → IG → agente personalizado →
  * recibió DM → generó lead HOT → pagando.
