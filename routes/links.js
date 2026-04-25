@@ -29,9 +29,30 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    await db.remove(db.links, { _id: req.params.id });
-    res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+    const id = req.params.id;
+    // Verificar que el link existe ANTES de remover (mejor diagnóstico)
+    const link = await db.findOne(db.links, { _id: id });
+    if (!link) {
+      console.warn(`[links.delete] not found: ${id}`);
+      return res.status(404).json({ error: 'Link no encontrado', id });
+    }
+    const removed = await db.remove(db.links, { _id: id });
+    console.log(`[links.delete] removed ${removed} doc(s) for id=${id} (${link.name})`);
+
+    // Quitar referencia de cualquier agente que apunte a este link
+    const agents = await db.find(db.agents, {});
+    for (const a of agents) {
+      if (Array.isArray(a.link_ids) && a.link_ids.includes(id)) {
+        const newIds = a.link_ids.filter(lid => lid !== id);
+        await db.update(db.agents, { _id: a._id }, { link_ids: newIds }).catch(() => null);
+      }
+    }
+
+    res.json({ ok: true, removed });
+  } catch (e) {
+    console.error('[links.delete] error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 module.exports = router;

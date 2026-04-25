@@ -905,8 +905,13 @@ async function openKnowledgeModal(id) {
 }
 
 async function deleteKnowledge(id) {
-  if (!confirm('¿Eliminar esta entrada de conocimiento?')) return;
-  await apiFetch(`/api/knowledge/${id}`, 'DELETE');
+  if (!confirm('¿Eliminar esta entrada de conocimiento? El bot dejará de usar esta info.')) return;
+  const r = await apiFetch(`/api/knowledge/${id}`, 'DELETE');
+  if (!r) {
+    showToast('❌ No se pudo eliminar — recargá la página y probá de nuevo');
+    return;
+  }
+  if (r.removed > 0) showToast('✅ Eliminado');
   loadKnowledge();
 }
 
@@ -1203,8 +1208,13 @@ async function saveLink() {
 }
 
 async function deleteLink(id) {
-  if (!confirm('¿Eliminar este link?')) return;
-  await apiFetch(`/api/links/${id}`, 'DELETE');
+  if (!confirm('¿Eliminar este link? El bot dejará de poder compartirlo.')) return;
+  const r = await apiFetch(`/api/links/${id}`, 'DELETE');
+  if (!r) {
+    showToast('❌ No se pudo eliminar — recargá la página y probá de nuevo');
+    return;
+  }
+  if (r.removed > 0) showToast('✅ Link eliminado');
   loadLinks();
 }
 

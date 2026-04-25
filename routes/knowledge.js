@@ -36,9 +36,19 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    await db.remove(db.knowledge, { _id: req.params.id });
-    res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+    const id = req.params.id;
+    const entry = await db.findOne(db.knowledge, { _id: id });
+    if (!entry) {
+      console.warn(`[knowledge.delete] not found: ${id}`);
+      return res.status(404).json({ error: 'Entrada no encontrada', id });
+    }
+    const removed = await db.remove(db.knowledge, { _id: id });
+    console.log(`[knowledge.delete] removed ${removed} doc(s) for id=${id} (${entry.title})`);
+    res.json({ ok: true, removed });
+  } catch (e) {
+    console.error('[knowledge.delete] error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 module.exports = router;
