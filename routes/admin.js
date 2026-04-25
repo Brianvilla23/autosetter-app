@@ -1105,6 +1105,90 @@ router.post('/reset-and-apply-preset', async (req, res) => {
 });
 
 /**
+ * GET /api/admin/env-status
+ * Reporta qué variables de entorno críticas están configuradas (true/false,
+ * sin exponer valores). Útil para hacer un sanity check antes de lanzar.
+ */
+router.get('/env-status', async (req, res) => {
+  const env = process.env;
+  const has = (k) => !!(env[k] && String(env[k]).trim());
+
+  const groups = {
+    // CORE — sin esto la app no levanta bien
+    core: {
+      JWT_SECRET:        has('JWT_SECRET'),
+      OPENAI_API_KEY:    has('OPENAI_API_KEY'),
+      DB_PATH:           has('DB_PATH'),
+      APP_URL:           has('APP_URL'),
+    },
+    // META / Instagram — sin esto el bot no recibe DMs reales
+    meta: {
+      META_APP_ID:       has('META_APP_ID'),
+      META_APP_SECRET:   has('META_APP_SECRET'),
+      META_VERIFY_TOKEN: has('META_VERIFY_TOKEN'),
+    },
+    // LS billing — sin esto los pagos USD no funcionan
+    lemonSqueezy: {
+      LS_API_KEY:           has('LS_API_KEY'),
+      LS_STORE_ID:          has('LS_STORE_ID'),
+      LS_WEBHOOK_SECRET:    has('LS_WEBHOOK_SECRET'),
+      LS_VARIANT_STARTER:   has('LS_VARIANT_STARTER'),
+      LS_VARIANT_PRO:       has('LS_VARIANT_PRO'),
+      LS_VARIANT_AGENCY:    has('LS_VARIANT_AGENCY'),
+    },
+    // MP billing — sin esto los pagos LATAM (CLP/ARS/MXN/BRL) no funcionan
+    mercadoPago: {
+      MP_ACCESS_TOKEN:    has('MP_ACCESS_TOKEN'),
+      MP_PLAN_STARTER:    has('MP_PLAN_STARTER'),
+      MP_PLAN_PRO:        has('MP_PLAN_PRO'),
+      MP_PLAN_AGENCY:     has('MP_PLAN_AGENCY'),
+    },
+    // Email — sin esto los emails se guardan log-only
+    email: {
+      RESEND_API_KEY:    has('RESEND_API_KEY'),
+      EMAIL_FROM:        has('EMAIL_FROM'),
+      EMAIL_REPLY_TO:    has('EMAIL_REPLY_TO'),
+    },
+    // OpenAI tuning (opcionales)
+    openaiTuning: {
+      OPENAI_FAST_MODEL:      has('OPENAI_FAST_MODEL'),
+      OPENAI_REASONING_MODEL: has('OPENAI_REASONING_MODEL'),
+      OPENAI_USE_REASONING:   has('OPENAI_USE_REASONING'),
+    },
+  };
+
+  // Calcular readiness por grupo
+  const summary = {};
+  for (const [name, group] of Object.entries(groups)) {
+    const total   = Object.keys(group).length;
+    const present = Object.values(group).filter(Boolean).length;
+    summary[name] = { present, total, allOk: present === total };
+  }
+
+  // Status global de readiness (los grupos críticos)
+  const productionReady =
+    summary.core.allOk &&
+    summary.meta.allOk &&
+    (summary.lemonSqueezy.allOk || summary.mercadoPago.allOk) && // al menos un billing
+    summary.email.allOk;
+
+  res.json({
+    productionReady,
+    summary,
+    groups,
+    env: env.NODE_ENV || 'development',
+    notes: [
+      summary.core.allOk ? null : '🔴 Core incompleto — la app puede tener fallas serias',
+      has('DB_PATH') ? null : '🔴 DB_PATH faltante — datos efímeros, se borran en cada deploy',
+      summary.meta.allOk ? null : '🔴 Meta/IG incompleto — el bot no recibe DMs reales',
+      summary.lemonSqueezy.allOk ? null : '🟡 LS incompleto — pagos USD no funcionarán',
+      summary.mercadoPago.allOk ? null : '🟡 MP incompleto — pagos LATAM no funcionarán',
+      summary.email.allOk ? null : '🟡 Email incompleto — emails se guardan local pero no salen',
+    ].filter(Boolean),
+  });
+});
+
+/**
  * GET /api/admin/backup
  * Descarga TODOS los datos de la app como JSON (un objeto con cada colección).
  * Útil para:
