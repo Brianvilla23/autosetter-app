@@ -81,8 +81,8 @@ router.get('/me', async (req, res) => {
       code,
       inviteUrl,
       stats,
-      // Cuánto crédito da por cada referido pagado:
-      creditDaysPerReferral: 30,
+      // Cuánto crédito da por cada referido pagado: 5 referidos = 15 días → 3 días por referido
+      creditDaysPerReferral: 3,
       // Si el user ya recibió algún crédito y aún tiene tiempo, le mostramos hasta cuándo
       currentExpiresAt: user.membershipExpiresAt || null,
     });
