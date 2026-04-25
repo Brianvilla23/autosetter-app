@@ -63,19 +63,31 @@ async function getUsage(userId) {
   const pct = (val, max) => max === UNLIMITED ? 0 : Math.min(100, Math.round((val / max) * 100));
   const over = (val, max) => max !== UNLIMITED && val >= max;
 
+  // Calcular overage de DMs si aplica (solo Pro y Agency permiten overage)
+  const extraDMs = plan.overagePerDM && usage.dms > plan.maxDMs ? usage.dms - plan.maxDMs : 0;
+  const overageCost = +(extraDMs * (plan.overagePerDM || 0)).toFixed(2);
+
   return {
     plan: {
-      id:          plan.id,
-      name:        plan.name,
-      price:       plan.price,
-      maxDMs:      plan.maxDMs,
-      maxAgents:   plan.maxAgents,
-      maxAccounts: plan.maxAccounts,
-      maxMagnets:  plan.maxMagnets,
-      followups:   plan.followups,
-      webhook:     plan.webhook,
+      id:           plan.id,
+      name:         plan.name,
+      price:        plan.price,
+      priceCLP:     plan.priceCLP,
+      maxDMs:       plan.maxDMs,
+      maxAgents:    plan.maxAgents,
+      maxAccounts:  plan.maxAccounts,
+      maxMagnets:   plan.maxMagnets,
+      followups:    plan.followups,
+      webhook:      plan.webhook,
+      overagePerDM: plan.overagePerDM,
+      features:     plan.features,
     },
     usage,
+    overage: {
+      extraDMs,
+      perDM:   plan.overagePerDM,
+      costUSD: overageCost,
+    },
     percent: {
       dms:      pct(usage.dms,      plan.maxDMs),
       agents:   pct(usage.agents,   plan.maxAgents),
@@ -124,9 +136,14 @@ async function checkDMAllowance(accountId) {
   }
 
   if (plan.maxDMs !== UNLIMITED && dms >= plan.maxDMs) {
+    // Si el plan permite overage (Pro, Agency) → seguir respondiendo, se cobra extra
+    if (plan.overagePerDM) {
+      return { allowed: true, user, plan, dms, overage: true };
+    }
+    // Plan sin overage (Starter, Trial) → bloquear y avisar
     return {
       allowed: false,
-      reason:  `Límite mensual de ${plan.maxDMs} DMs alcanzado en plan ${plan.name}.`,
+      reason:  `Límite mensual de ${plan.maxDMs} DMs alcanzado en plan ${plan.name}. Upgradea a Pro para continuar respondiendo.`,
       user, plan, dms,
     };
   }

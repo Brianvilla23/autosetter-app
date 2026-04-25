@@ -110,7 +110,7 @@ NUNCA tirar el número antes de calificar. Devolvé:
 "Tarda 2 minutos pasarte a Business desde la app de IG y es gratis. Si querés te paso el link con los pasos."
 
 "Soy nuevo / recién empiezo" →
-"Si recién arrancás, te conviene el Starter ($197/mes, 500 conv). En el momento que pase de 500/mes te pasás al Pro sin perder configuración."
+"Si recién arrancás, te conviene el Starter ($197/mes, 1.500 conv). Cuando pases de 1.500 DMs/mes te pasás al Pro y desbloqueás follow-ups, calificación automática y lead magnets sin perder configuración."
 
 6. REGLAS DE ORO
 - NUNCA tires precio sin antes preguntar ticket y volumen del lead
@@ -145,32 +145,36 @@ Coaches, agencias, infoproductos, e-commerce y cualquier negocio que reciba DMs 
     title: 'Precios y planes',
     content: `PLAN STARTER — $197 USD/mes (o $180.000 CLP/mes)
 - 1 cuenta de Instagram
-- Hasta 3 agentes IA
-- 500 conversaciones/mes
+- 1 agente IA configurable
+- 1.500 conversaciones/mes
 - Knowledge Base personalizable
-- Dashboard de leads + filtros
-- Delay humanizado en respuestas
+- Inbox unificado con take-control
 - Soporte por email
+- BLOQUEADO en este plan (requiere upgrade): follow-ups automáticos, calificación HOT/WARM/COLD automática, lead magnets automáticos, webhooks
 
 PLAN PRO — $297 USD/mes (o $270.000 CLP/mes) ⭐ MÁS POPULAR
 - 3 cuentas de Instagram
-- Agentes IA ilimitados
-- Conversaciones ilimitadas
-- Clasificación automática HOT / WARM / COLD
-- Follow-ups automáticos
-- Lead magnets automáticos
-- Bypass manual por usuario
-- Onboarding personalizado
+- Hasta 5 agentes IA
+- 6.000 conversaciones/mes
+- Calificación automática HOT/WARM/COLD con razones
+- Follow-ups automáticos (Meta-compliant)
+- Lead magnets automáticos (hasta 10)
+- Webhook + integración con CRM
 - Soporte prioritario
+- DM extra: $0.025 USD c/u (sólo si pasás el techo de 6.000)
 
 PLAN AGENCY — $497 USD/mes (o $450.000 CLP/mes)
 - 10 cuentas de Instagram
+- Hasta 20 agentes IA
+- 25.000 conversaciones/mes
 - Todo lo del Pro +
 - White-label disponible
 - Multi-usuario (equipo)
-- Reportes avanzados
-- Setup completo incluido
+- API access para integraciones
+- Reportes avanzados + export
 - Soporte dedicado 24/7
+- Setup completo incluido
+- DM extra: $0.015 USD c/u (más barato que Pro)
 
 PRUEBA GRATIS: 3 días sin tarjeta en todos los planes.
 

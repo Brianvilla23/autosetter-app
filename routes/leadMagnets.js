@@ -16,6 +16,7 @@
 const express = require('express');
 const router  = express.Router();
 const db      = require('../db/database');
+const { enforceLeadMagnets } = require('../middleware/checkPlanLimits');
 
 // Los triggers posibles — le dicen al bot CUÁNDO ofrecer cada magnet
 const VALID_TRIGGERS = ['pricing_objection', 'not_ready', 'cold_lead', 'diagnostic', 'info_request', 'generic'];
@@ -68,7 +69,7 @@ router.get('/', async (req, res) => {
  *   - delivery: email | dm | link
  *   - delivery_url: URL del recurso (Drive, Dropbox, página, etc.)
  */
-router.post('/', async (req, res) => {
+router.post('/', enforceLeadMagnets, async (req, res) => {
   try {
     const { accountId, title, description, pitch, trigger_intent, delivery, delivery_url } = req.body;
     if (!accountId || !title) return res.status(400).json({ error: 'accountId y title requeridos' });

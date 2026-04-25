@@ -376,19 +376,27 @@ async function loadUsage() {
   const card = document.getElementById('usage-card');
   if (card) card.style.display = '';
 
-  const { plan, usage, percent, overLimit } = data;
+  const { plan, usage, percent, overLimit, overage } = data;
 
   document.getElementById('usage-plan-name').textContent = plan.name;
   const monthLbl = new Date(usage.month + '-01T00:00:00').toLocaleDateString('es', { month: 'long', year: 'numeric' });
-  document.getElementById('usage-month').textContent = `Período: ${monthLbl} (se resetea el día 1 de cada mes)`;
+  let periodTxt = `Período: ${monthLbl} (se resetea el día 1 de cada mes)`;
+  // Si hay overage activo (DMs > maxDMs), mostrar el costo en USD ya acumulado
+  if (overage && overage.extraDMs > 0) {
+    periodTxt += ` · ⚡ ${overage.extraDMs} DMs extra · cargo overage: $${overage.costUSD.toFixed(2)} USD`;
+  }
+  document.getElementById('usage-month').textContent = periodTxt;
 
   const fmt = (v, max) => max === null || !isFinite(max) ? `${v} / ∞` : `${v} / ${max}`;
 
-  // DMs
+  // DMs (en planes con overage permitido, mostrar como "X / max (+Y extra)")
   const maxDMs = isFinite(plan.maxDMs) ? plan.maxDMs : null;
-  document.getElementById('usage-dms-text').textContent = fmt(usage.dms, maxDMs);
-  document.getElementById('usage-dms-fill').style.width = `${percent.dms}%`;
-  document.getElementById('usage-dms-fill').style.background = percent.dms >= 90 ? '#ef4444' : percent.dms >= 75 ? '#f59e0b' : 'var(--orange)';
+  let dmsLabel = fmt(usage.dms, maxDMs);
+  if (overage && overage.extraDMs > 0) dmsLabel += ` (+${overage.extraDMs} extra)`;
+  document.getElementById('usage-dms-text').textContent = dmsLabel;
+  document.getElementById('usage-dms-fill').style.width = `${Math.min(100, percent.dms)}%`;
+  document.getElementById('usage-dms-fill').style.background =
+    overage && overage.extraDMs > 0 ? '#7c6af7' : (percent.dms >= 90 ? '#ef4444' : percent.dms >= 75 ? '#f59e0b' : 'var(--orange)');
 
   // Agentes
   const maxA = isFinite(plan.maxAgents) ? plan.maxAgents : null;
@@ -1462,11 +1470,10 @@ async function apiFetch(path, method = 'GET', body) {
       return null;
     }
     if (res.status === 403) {
-      // Límite de plan alcanzado → leer body y mostrar modal de upgrade
+      // Límite de plan alcanzado → leer body y mostrar modal de upgrade contextual
       const err = await res.json().catch(() => ({}));
       if (err.upgrade) {
-        showToast('⚠️ ' + (err.error || 'Límite del plan alcanzado'));
-        showUpgradeModal(false);
+        showFeatureLockedToast(err);
         return null;
       }
       return null;
@@ -1511,7 +1518,7 @@ function showToast(msg) {
   if (!toast) {
     toast = document.createElement('div');
     toast.id = 'toast';
-    toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#111;color:white;padding:12px 20px;border-radius:8px;font-size:14px;z-index:9999;transition:opacity .3s';
+    toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#111;color:white;padding:12px 20px;border-radius:8px;font-size:14px;z-index:9999;transition:opacity .3s;max-width:420px';
     document.body.appendChild(toast);
   }
   toast.textContent = msg;
@@ -1519,6 +1526,50 @@ function showToast(msg) {
   clearTimeout(toastTimeout);
   toastTimeout = setTimeout(() => toast.style.opacity = '0', 3000);
 }
+
+/**
+ * Toast con CTA para upgradear cuando una feature está bloqueada por plan.
+ * Body recibido del backend: { error, upgrade: true, limit, plan, max?, required? }
+ */
+function showFeatureLockedToast(err) {
+  // Quitar toast anterior si existe
+  const old = document.getElementById('feature-locked-toast');
+  if (old) old.remove();
+
+  const required = err.required || 'Pro';
+  const isPro    = required === 'Pro';
+  const ctaColor = isPro ? '#7c6af7' : '#16a34a';
+  const ctaLabel = isPro ? '⭐ Upgradear a Pro' : '🚀 Upgradear a Agency';
+
+  const t = document.createElement('div');
+  t.id = 'feature-locked-toast';
+  t.style.cssText = `
+    position:fixed;bottom:24px;right:24px;z-index:10000;
+    background:linear-gradient(135deg,#1a1a2e,#0f0f1a);
+    color:#fff;padding:18px 22px;border-radius:14px;
+    box-shadow:0 20px 60px rgba(0,0,0,.4),0 0 0 1px rgba(124,106,247,.3);
+    font-size:14px;line-height:1.5;max-width:420px;
+    animation:slide-in .25s ease-out;
+  `;
+  t.innerHTML = `
+    <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:12px">
+      <div style="font-size:22px;flex-shrink:0">🔒</div>
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:15px;color:#fff;margin-bottom:4px">Feature bloqueada</div>
+        <div style="color:#cbd5e1;font-size:13px">${escHtml(err.error || 'Esta función no está disponible en tu plan actual.')}</div>
+      </div>
+      <button onclick="this.closest('#feature-locked-toast').remove()" style="background:none;border:none;color:#94a3b8;font-size:18px;cursor:pointer;padding:0;line-height:1">×</button>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button onclick="this.closest('#feature-locked-toast').remove()" style="background:transparent;color:#cbd5e1;border:1px solid rgba(255,255,255,.15);padding:8px 14px;border-radius:8px;font-size:13px;cursor:pointer">Más tarde</button>
+      <button onclick="this.closest('#feature-locked-toast').remove();showUpgradeModal(false)" style="background:${ctaColor};color:#fff;border:none;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">${ctaLabel}</button>
+    </div>
+  `;
+  document.body.appendChild(t);
+  // Auto-dismiss en 12s si no hace click
+  setTimeout(() => t.remove(), 12000);
+}
+window.showFeatureLockedToast = showFeatureLockedToast;
 
 // ── BILLING ───────────────────────────────────────────────────────────────────
 let billingStatus = null;

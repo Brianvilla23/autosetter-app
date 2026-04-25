@@ -45,7 +45,7 @@ const PLANS = {
     priceCLP:    180000,
     maxAccounts: 1,
     maxAgents:   1,             // 1 agente — diferenciador claro vs Pro
-    maxDMs:      500,
+    maxDMs:      1500,
     maxMagnets:  1,
     overagePerDM: null,         // Starter no permite overage, sube de plan
     features: {
@@ -68,7 +68,7 @@ const PLANS = {
     priceCLP:    270000,
     maxAccounts: 3,
     maxAgents:   5,             // 5 agentes (no ilimitado)
-    maxDMs:      5000,          // 5,000 DMs/mes (NO ilimitado)
+    maxDMs:      6000,          // 6,000 DMs/mes (NO ilimitado)
     maxMagnets:  10,
     overagePerDM: 0.025,        // $0.025 por DM extra ($25 / 1000 DMs)
     features: {
