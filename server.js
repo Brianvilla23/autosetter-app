@@ -26,20 +26,28 @@ app.set('trust proxy', 1);
 
 // 1. Helmet — headers HTTP seguros (XSS protection, HSTS, etc.)
 // CSP mínima: inline permitido (la UI usa inline handlers), pero restringimos connect/frame.
+//
+// IMPORTANTE: helmet con useDefaults agrega `script-src-attr 'none'` que
+// BLOQUEA todos los onclick="..." inline (independiente de script-src).
+// Hay que setearlo explícitamente a 'unsafe-inline' para que funcionen los
+// handlers inline que tiene la UI (Editar/Eliminar/etc en knowledge, links,
+// agents, lead detail). Sin esto, los botones quedan visualmente OK pero el
+// click no dispara nada (bug que tuvimos hasta el commit 8e23d12).
 app.use(helmet({
   contentSecurityPolicy: {
     useDefaults: true,
     directives: {
-      defaultSrc:  ["'self'"],
-      scriptSrc:   ["'self'", "'unsafe-inline'"],      // UI inline handlers
-      styleSrc:    ["'self'", "'unsafe-inline'"],
-      imgSrc:      ["'self'", 'data:', 'https:'],
-      connectSrc:  ["'self'", 'https://api.openai.com', 'https://graph.facebook.com', 'https://graph.instagram.com'],
-      fontSrc:     ["'self'", 'data:'],
-      frameAncestors: ["'none'"],                       // clickjacking
-      objectSrc:   ["'none'"],
-      baseUri:     ["'self'"],
-      formAction:  ["'self'"],
+      defaultSrc:    ["'self'"],
+      scriptSrc:     ["'self'", "'unsafe-inline'"],      // <script> blocks
+      scriptSrcAttr: ["'unsafe-inline'"],                // onclick="..." inline (CRÍTICO)
+      styleSrc:      ["'self'", "'unsafe-inline'"],
+      imgSrc:        ["'self'", 'data:', 'https:'],
+      connectSrc:    ["'self'", 'https://api.openai.com', 'https://graph.facebook.com', 'https://graph.instagram.com'],
+      fontSrc:       ["'self'", 'data:'],
+      frameAncestors:["'none'"],                          // clickjacking
+      objectSrc:     ["'none'"],
+      baseUri:       ["'self'"],
+      formAction:    ["'self'"],
     },
   },
   crossOriginEmbedderPolicy: false,
