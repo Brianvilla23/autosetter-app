@@ -232,6 +232,7 @@ function loadSection(name) {
     case 'knowledge': loadKnowledge(); break;
     case 'inbox':     loadInbox(); break;
     case 'leads':     loadLeads(); break;
+    case 'billing':   loadBillingPage(); break;
     case 'links':     loadLinks(); break;
     case 'magnets':   loadMagnets(); break;
     case 'growth':    loadGrowth(); break;
@@ -2140,6 +2141,129 @@ window.loadInbox = loadInbox;
 
 // Refrescar el badge del nav cada 30s mientras la app esté abierta
 setInterval(() => { if (ACCOUNT_ID) updateInboxBadge(); }, 30000);
+
+// ── PÁGINA DE FACTURACIÓN ──────────────────────────────────────────────────
+const PLAN_LABEL = {
+  trial:   { name: 'Prueba gratuita', usd: 0,   clp: 0,       desc: 'Probando DMCloser' },
+  starter: { name: 'Starter',         usd: 197, clp: 180000,  desc: '500 conv/mes · 3 agentes' },
+  pro:     { name: 'Pro',             usd: 297, clp: 270000,  desc: 'Ilimitado · 3 cuentas IG' },
+  agency:  { name: 'Agency',          usd: 497, clp: 450000,  desc: '10 cuentas · white-label' },
+  admin:   { name: 'Admin',           usd: 0,   clp: 0,       desc: 'Acceso total' },
+};
+
+const STATUS_LABEL = {
+  active:    { text: 'Activa',    color: '#16a34a', bg: '#dcfce7' },
+  trial:     { text: 'En prueba', color: '#d97706', bg: '#fef3c7' },
+  cancelled: { text: 'Cancelada — accedés hasta el vencimiento', color: '#dc2626', bg: '#fee2e2' },
+  past_due:  { text: 'Pago pendiente', color: '#dc2626', bg: '#fee2e2' },
+  paused:    { text: 'Pausada', color: '#6b7280', bg: '#f3f4f6' },
+  expired:   { text: 'Expirada', color: '#dc2626', bg: '#fee2e2' },
+};
+
+async function loadBillingPage() {
+  const card = document.getElementById('billing-current');
+  const actions = document.getElementById('billing-actions');
+  if (!card) return;
+
+  try {
+    const data = await apiFetch('/api/billing/status');
+    if (!data) return;
+
+    const planInfo = PLAN_LABEL[data.plan] || PLAN_LABEL.trial;
+    const statusKey = data.subscriptionStatus || (data.plan === 'trial' ? 'trial' : (data.isExpired ? 'expired' : 'active'));
+    const statusInfo = STATUS_LABEL[statusKey] || STATUS_LABEL.active;
+
+    const isPaid = ['starter', 'pro', 'agency'].includes(data.plan) && data.subscriptionStatus === 'active';
+    const isTrial = data.plan === 'trial';
+    const providerLabel = data.provider === 'ls' ? 'Lemon Squeezy (USD)' : data.provider === 'mp' ? 'Mercado Pago (CLP)' : '—';
+
+    const renewDate = data.expiresAt ? new Date(data.expiresAt).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' }) : '—';
+    const monthlyAmount = data.provider === 'mp'
+      ? `$${planInfo.clp.toLocaleString('es-CL')} CLP/mes`
+      : `$${planInfo.usd} USD/mes`;
+
+    card.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px;margin-bottom:18px">
+        <div>
+          <div style="font-size:12px;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Plan actual</div>
+          <h2 style="margin:0;font-size:26px;letter-spacing:-.01em">${escHtmlSafe(planInfo.name)}</h2>
+          <div style="color:var(--text-2);font-size:13.5px;margin-top:4px">${escHtmlSafe(planInfo.desc)}</div>
+        </div>
+        <div style="text-align:right">
+          <span style="display:inline-block;background:${statusInfo.bg};color:${statusInfo.color};padding:5px 12px;border-radius:20px;font-size:12.5px;font-weight:600">${escHtmlSafe(statusInfo.text)}</span>
+          ${isPaid ? `<div style="margin-top:8px;font-size:18px;font-weight:700;color:var(--text-1)">${monthlyAmount}</div>` : ''}
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;border-top:1px solid var(--border);padding-top:18px">
+        <div>
+          <div style="font-size:11.5px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">${isTrial || data.subscriptionStatus === 'cancelled' ? 'Vence' : 'Próximo cobro'}</div>
+          <div style="font-size:14px;color:var(--text-1);font-weight:600">${renewDate}</div>
+          ${data.daysLeft ? `<div style="font-size:12px;color:var(--text-3);margin-top:2px">${data.daysLeft} ${data.daysLeft === 1 ? 'día' : 'días'} restantes</div>` : ''}
+        </div>
+        <div>
+          <div style="font-size:11.5px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Procesador</div>
+          <div style="font-size:14px;color:var(--text-1);font-weight:600">${escHtmlSafe(providerLabel)}</div>
+        </div>
+        ${isPaid ? `
+        <div>
+          <div style="font-size:11.5px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Garantía</div>
+          <div style="font-size:14px;color:#16a34a;font-weight:600">7 días reembolso</div>
+          <div style="font-size:12px;color:var(--text-3);margin-top:2px">Sin preguntas</div>
+        </div>` : ''}
+      </div>
+
+      ${isTrial && data.daysLeft <= 1 ? `
+        <div style="margin-top:16px;padding:14px 16px;background:linear-gradient(135deg,#fff7ed,#fef3c7);border:1px solid #fbbf24;border-radius:8px">
+          <strong style="color:#92400e">⚡ Tu trial vence ${data.daysLeft === 0 ? 'hoy' : 'mañana'}.</strong>
+          <span style="color:var(--text-2);font-size:13.5px"> Activá un plan para no perder acceso a tus leads y conversaciones.</span>
+        </div>` : ''}
+
+      ${data.subscriptionStatus === 'past_due' ? `
+        <div style="margin-top:16px;padding:14px 16px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px">
+          <strong style="color:#991b1b">⚠️ El último pago no se procesó.</strong>
+          <span style="color:var(--text-2);font-size:13.5px"> Actualizá tu método de pago en el botón de gestionar abajo.</span>
+        </div>` : ''}
+
+      ${data.subscriptionStatus === 'cancelled' ? `
+        <div style="margin-top:16px;padding:14px 16px;background:#f9fafb;border:1px solid var(--border);border-radius:8px">
+          <strong>Tu suscripción está cancelada.</strong>
+          <span style="color:var(--text-2);font-size:13.5px"> Mantenés acceso hasta el ${renewDate}. Después de eso, tus datos quedan guardados 30 días por si querés reactivar.</span>
+        </div>` : ''}
+    `;
+
+    actions.style.display = 'flex';
+
+    // Mostrar botón gestionar solo si tiene proveedor configurado
+    const portalBtn = document.getElementById('btn-billing-portal');
+    if (portalBtn) {
+      portalBtn.style.display = (data.provider === 'ls' || data.provider === 'mp') ? '' : 'none';
+    }
+
+    // Provider name en la card de info
+    const providerNameEl = document.getElementById('billing-provider-name');
+    if (providerNameEl) {
+      providerNameEl.textContent = data.provider === 'ls' ? 'Lemon Squeezy' : data.provider === 'mp' ? 'Mercado Pago' : 'tu proveedor';
+    }
+  } catch (e) {
+    card.innerHTML = `<div style="color:#ef4444;text-align:center;padding:30px">${escHtmlSafe(e.message)}</div>`;
+  }
+}
+
+async function openBillingPortal() {
+  try {
+    const r = await apiFetch('/api/billing/portal');
+    if (!r || !r.url) {
+      showToast('No hay portal disponible. Contactanos en soporte@dmcloser.app');
+      return;
+    }
+    window.open(r.url, '_blank');
+  } catch (e) {
+    showToast('❌ ' + e.message);
+  }
+}
+
+window.loadBillingPage = loadBillingPage;
+window.openBillingPortal = openBillingPortal;
 
 // ── START ─────────────────────────────────────────────────────────────────────
 init();
