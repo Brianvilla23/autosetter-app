@@ -854,5 +854,271 @@
     });
   });
 </script>
+
+<!-- ═════════════════════════════════════════════════════════════════════
+     CHAT WIDGET — bot público para que visitantes prueben DMCloser
+     Estilo flotante abajo a la derecha, expande a panel chat tipo Claude.
+     Conversa con el agente "DMCloser Sales" del founder via /api/public/chat.
+     ═════════════════════════════════════════════════════════════════════ -->
+<style>
+  #dmc-chat-fab {
+    position: fixed; bottom: 22px; right: 22px; z-index: 9999;
+    width: 64px; height: 64px; border-radius: 50%;
+    background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+    color: #fff; border: none; cursor: pointer;
+    box-shadow: 0 14px 38px rgba(139,92,246,.45), 0 0 0 0 rgba(139,92,246,.4);
+    font-size: 28px; transition: all .3s;
+    display: flex; align-items: center; justify-content: center;
+    animation: pulse-chat 2.4s infinite;
+  }
+  #dmc-chat-fab:hover { transform: scale(1.08); box-shadow: 0 20px 50px rgba(139,92,246,.55); }
+  @keyframes pulse-chat {
+    0%, 100% { box-shadow: 0 14px 38px rgba(139,92,246,.45), 0 0 0 0 rgba(139,92,246,.4); }
+    50%      { box-shadow: 0 14px 38px rgba(139,92,246,.45), 0 0 0 14px rgba(139,92,246,0); }
+  }
+  #dmc-chat-fab.active { background: #1a1a2e; animation: none; }
+  #dmc-chat-fab .badge-new {
+    position: absolute; top: -4px; right: -4px;
+    background: #fff; color: #ec4899; font-size: 10px; font-weight: 800;
+    padding: 3px 7px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,.3);
+  }
+  #dmc-chat-panel {
+    position: fixed; bottom: 100px; right: 22px; z-index: 9999;
+    width: 380px; max-width: calc(100vw - 44px); height: 560px; max-height: calc(100vh - 130px);
+    background: #14141f; border: 1px solid rgba(139,92,246,.3); border-radius: 18px;
+    box-shadow: 0 30px 80px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.04);
+    display: none; flex-direction: column; overflow: hidden;
+    animation: chat-slide-in .25s ease-out;
+  }
+  #dmc-chat-panel.open { display: flex; }
+  @keyframes chat-slide-in {
+    from { opacity: 0; transform: translateY(20px) scale(.95); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .dmc-chat-header {
+    background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+    padding: 16px 18px; display: flex; align-items: center; gap: 12px;
+    color: #fff;
+  }
+  .dmc-chat-avatar {
+    width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,.18);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,.25);
+  }
+  .dmc-chat-header .info { flex: 1; }
+  .dmc-chat-header .info .name { font-weight: 700; font-size: 15px; }
+  .dmc-chat-header .info .status { font-size: 12px; opacity: .85; display: flex; align-items: center; gap: 5px; }
+  .dmc-chat-header .info .status::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 2px rgba(34,197,94,.3); }
+  .dmc-chat-header button {
+    background: transparent; border: none; color: #fff; cursor: pointer;
+    font-size: 22px; opacity: .8; padding: 4px 8px; border-radius: 6px;
+    transition: opacity .15s;
+  }
+  .dmc-chat-header button:hover { opacity: 1; background: rgba(255,255,255,.1); }
+  .dmc-chat-body {
+    flex: 1; overflow-y: auto; padding: 18px 16px;
+    background: #0e0e18; display: flex; flex-direction: column; gap: 12px;
+    scroll-behavior: smooth;
+  }
+  .dmc-chat-body::-webkit-scrollbar { width: 6px; }
+  .dmc-chat-body::-webkit-scrollbar-thumb { background: rgba(139,92,246,.3); border-radius: 3px; }
+  .dmc-msg {
+    max-width: 82%; padding: 10px 14px; border-radius: 14px;
+    font-size: 13.5px; line-height: 1.5; word-wrap: break-word;
+    animation: msg-pop .2s ease-out;
+  }
+  @keyframes msg-pop { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+  .dmc-msg.bot { background: rgba(139,92,246,.12); color: #e7e7f5; align-self: flex-start; border: 1px solid rgba(139,92,246,.2); border-bottom-left-radius: 4px; }
+  .dmc-msg.me  { background: linear-gradient(135deg,#8b5cf6,#ec4899); color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; box-shadow: 0 4px 12px rgba(236,72,153,.18); }
+  .dmc-typing { display: flex; gap: 4px; align-self: flex-start; padding: 10px 14px; background: rgba(139,92,246,.12); border-radius: 14px; border: 1px solid rgba(139,92,246,.2); }
+  .dmc-typing span { width: 7px; height: 7px; background: rgba(139,92,246,.7); border-radius: 50%; animation: typing-dot 1.2s infinite; }
+  .dmc-typing span:nth-child(2) { animation-delay: .15s; }
+  .dmc-typing span:nth-child(3) { animation-delay: .3s; }
+  @keyframes typing-dot { 0%, 60%, 100% { transform: translateY(0); opacity: .5; } 30% { transform: translateY(-5px); opacity: 1; } }
+  .dmc-chat-footer {
+    padding: 12px 14px; background: #14141f; border-top: 1px solid rgba(255,255,255,.05);
+    display: flex; gap: 8px; align-items: flex-end;
+  }
+  .dmc-chat-footer textarea {
+    flex: 1; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);
+    border-radius: 10px; padding: 10px 12px; color: #fff; font-family: inherit;
+    font-size: 13.5px; resize: none; outline: none; min-height: 38px; max-height: 100px;
+    line-height: 1.4;
+  }
+  .dmc-chat-footer textarea:focus { border-color: rgba(139,92,246,.5); background: rgba(255,255,255,.06); }
+  .dmc-chat-footer textarea::placeholder { color: rgba(255,255,255,.3); }
+  .dmc-chat-footer button {
+    background: linear-gradient(135deg,#8b5cf6,#ec4899); color: #fff; border: none;
+    padding: 10px 16px; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: 13px;
+    transition: opacity .15s;
+  }
+  .dmc-chat-footer button:hover { opacity: .9; }
+  .dmc-chat-footer button:disabled { opacity: .4; cursor: not-allowed; }
+  .dmc-chat-suggestions { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 16px 12px; }
+  .dmc-chat-suggestions .chip {
+    background: rgba(139,92,246,.08); border: 1px solid rgba(139,92,246,.2); color: #c4b5fd;
+    padding: 6px 12px; border-radius: 14px; font-size: 12px; cursor: pointer;
+    transition: all .15s;
+  }
+  .dmc-chat-suggestions .chip:hover { background: rgba(139,92,246,.18); border-color: rgba(139,92,246,.4); }
+  .dmc-chat-foot-info { font-size: 10.5px; color: rgba(255,255,255,.35); text-align: center; padding: 6px 14px 10px; background: #14141f; }
+  @media (max-width: 480px) {
+    #dmc-chat-panel { right: 12px; bottom: 90px; width: calc(100vw - 24px); height: calc(100vh - 110px); }
+    #dmc-chat-fab { bottom: 16px; right: 16px; }
+  }
+</style>
+
+<button id="dmc-chat-fab" aria-label="Abrir chat con el bot">
+  <span id="dmc-fab-icon">💬</span>
+  <span class="badge-new" id="dmc-fab-badge">demo</span>
+</button>
+
+<div id="dmc-chat-panel" role="dialog" aria-label="Chat de demo DMCloser">
+  <div class="dmc-chat-header">
+    <div class="dmc-chat-avatar" id="dmc-avatar">⚡</div>
+    <div class="info">
+      <div class="name" id="dmc-bot-name">Brian de DMCloser</div>
+      <div class="status">Demo en vivo</div>
+    </div>
+    <button id="dmc-chat-close" aria-label="Cerrar chat">×</button>
+  </div>
+  <div class="dmc-chat-body" id="dmc-chat-body"></div>
+  <div class="dmc-chat-suggestions" id="dmc-chat-suggestions">
+    <div class="chip" data-q="¿Cómo funciona DMCloser?">¿Cómo funciona?</div>
+    <div class="chip" data-q="¿Cuánto sale?">¿Cuánto sale?</div>
+    <div class="chip" data-q="¿Sirve para mi negocio?">¿Sirve para mi negocio?</div>
+    <div class="chip" data-q="¿Es seguro para Instagram?">¿Es seguro para IG?</div>
+  </div>
+  <div class="dmc-chat-footer">
+    <textarea id="dmc-chat-input" placeholder="Escribí tu mensaje..." rows="1"></textarea>
+    <button id="dmc-chat-send">Enviar</button>
+  </div>
+  <div class="dmc-chat-foot-info">
+    💡 Estás chateando con la IA real de DMCloser. Probala con tus dudas.
+  </div>
+</div>
+
+<script>
+(function () {
+  const fab     = document.getElementById('dmc-chat-fab');
+  const panel   = document.getElementById('dmc-chat-panel');
+  const closeBtn= document.getElementById('dmc-chat-close');
+  const fabIcon = document.getElementById('dmc-fab-icon');
+  const fabBadge= document.getElementById('dmc-fab-badge');
+  const body    = document.getElementById('dmc-chat-body');
+  const input   = document.getElementById('dmc-chat-input');
+  const sendBtn = document.getElementById('dmc-chat-send');
+  const suggEl  = document.getElementById('dmc-chat-suggestions');
+  const nameEl  = document.getElementById('dmc-bot-name');
+  const avEl    = document.getElementById('dmc-avatar');
+
+  let history   = [];
+  let isOpen    = false;
+  let bootstrapped = false;
+
+  function escapeHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function addMsg(role, text) {
+    const div = document.createElement('div');
+    div.className = 'dmc-msg ' + (role === 'bot' ? 'bot' : 'me');
+    div.innerHTML = escapeHtml(text).replace(/\n/g, '<br>');
+    body.appendChild(div);
+    body.scrollTop = body.scrollHeight;
+    return div;
+  }
+
+  function showTyping() {
+    const t = document.createElement('div');
+    t.className = 'dmc-typing';
+    t.id = 'dmc-typing-indicator';
+    t.innerHTML = '<span></span><span></span><span></span>';
+    body.appendChild(t);
+    body.scrollTop = body.scrollHeight;
+    return t;
+  }
+  function hideTyping() {
+    const t = document.getElementById('dmc-typing-indicator');
+    if (t) t.remove();
+  }
+
+  async function bootstrap() {
+    if (bootstrapped) return;
+    bootstrapped = true;
+    try {
+      const r = await fetch('/api/public/chat/agent').then(r => r.json());
+      if (r.name)    nameEl.textContent = r.name + ' de DMCloser';
+      if (r.avatar)  avEl.textContent = r.avatar;
+      addMsg('bot', r.greeting || 'Hola 👋 ¿en qué te ayudo?');
+    } catch {
+      addMsg('bot', 'Hola 👋 Soy el bot de DMCloser. ¿Qué dudas tenés?');
+    }
+  }
+
+  async function send(text) {
+    if (!text || !text.trim()) return;
+    const message = text.trim();
+    input.value = '';
+    autoresize();
+    suggEl.style.display = 'none';
+    addMsg('me', message);
+    history.push({ role: 'user', content: message });
+    sendBtn.disabled = true;
+    showTyping();
+    try {
+      const r = await fetch('/api/public/chat', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message, history }),
+      }).then(r => r.json());
+      hideTyping();
+      const reply = r.reply || 'No pude responder ahora. Probá registrarte gratis para usar el bot completo.';
+      addMsg('bot', reply);
+      history.push({ role: 'agent', content: reply });
+      // Trackear evento Plausible si está disponible
+      try { window.plausible && window.plausible('Public Chat Message'); } catch {}
+    } catch (e) {
+      hideTyping();
+      addMsg('bot', 'Hubo un problema, probá en un momento.');
+    } finally {
+      sendBtn.disabled = false;
+      input.focus();
+    }
+  }
+
+  function open() {
+    panel.classList.add('open');
+    fab.classList.add('active');
+    fabIcon.textContent = '×';
+    if (fabBadge) fabBadge.style.display = 'none';
+    isOpen = true;
+    bootstrap();
+    setTimeout(() => input.focus(), 250);
+    try { window.plausible && window.plausible('Public Chat Open'); } catch {}
+  }
+  function close() {
+    panel.classList.remove('open');
+    fab.classList.remove('active');
+    fabIcon.textContent = '💬';
+    isOpen = false;
+  }
+
+  function autoresize() {
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 100) + 'px';
+  }
+
+  fab.addEventListener('click', () => isOpen ? close() : open());
+  closeBtn.addEventListener('click', close);
+  sendBtn.addEventListener('click', () => send(input.value));
+  input.addEventListener('input', autoresize);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input.value); }
+  });
+  suggEl.querySelectorAll('.chip').forEach(c => {
+    c.addEventListener('click', () => send(c.dataset.q));
+  });
+})();
+</script>
+
 </body>
 </html>

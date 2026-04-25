@@ -433,9 +433,36 @@
     </div>
 
     <!-- Funnel -->
-    <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px">
+    <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:18px">
       <h3 style="margin:0 0 14px;font-size:15px">🎯 Funnel del bot</h3>
       <div id="analytics-funnel" style="display:flex;flex-direction:column;gap:10px"></div>
+    </div>
+
+    <!-- Comparativa con período anterior + Top keywords (2 cols) -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px">
+      <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px">
+        <h3 style="margin:0 0 14px;font-size:15px">📊 vs período anterior</h3>
+        <div id="analytics-compare" style="display:flex;flex-direction:column;gap:14px"></div>
+      </div>
+      <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px">
+        <h3 style="margin:0 0 14px;font-size:15px">🔍 Palabras más usadas por leads</h3>
+        <div id="analytics-keywords" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+      </div>
+    </div>
+
+    <!-- Tabla de leads recientes filtrable -->
+    <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+        <h3 style="margin:0;font-size:15px">👥 Leads recientes</h3>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="lead-filter active" data-filter="all" style="padding:5px 11px;font-size:12px;border:1px solid var(--border);background:var(--orange);color:#fff;border-radius:14px;cursor:pointer">Todos</button>
+          <button class="lead-filter" data-filter="hot" style="padding:5px 11px;font-size:12px;border:1px solid var(--border);background:#fff;color:var(--text-2);border-radius:14px;cursor:pointer">🔥 HOT</button>
+          <button class="lead-filter" data-filter="warm" style="padding:5px 11px;font-size:12px;border:1px solid var(--border);background:#fff;color:var(--text-2);border-radius:14px;cursor:pointer">🟡 WARM</button>
+          <button class="lead-filter" data-filter="cold" style="padding:5px 11px;font-size:12px;border:1px solid var(--border);background:#fff;color:var(--text-2);border-radius:14px;cursor:pointer">❄️ COLD</button>
+          <button class="lead-filter" data-filter="converted" style="padding:5px 11px;font-size:12px;border:1px solid var(--border);background:#fff;color:var(--text-2);border-radius:14px;cursor:pointer">✓ Convertidos</button>
+        </div>
+      </div>
+      <div id="analytics-leads-table" style="overflow-x:auto"></div>
     </div>
   </section>
 

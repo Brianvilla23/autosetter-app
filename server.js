@@ -390,6 +390,9 @@ app.use('/api/quick-replies', apiLimiter, requireAuth, checkSubscription, requir
 const referralsRouter = require('./routes/referrals');
 app.post('/api/referrals/track-click', apiLimiter, referralsRouter.trackClick);
 app.use('/api/referrals',    apiLimiter, requireAuth, referralsRouter);
+
+// Chat público de la landing (sin auth, con rate limit propio)
+app.use('/api/public/chat',  require('./routes/publicChat'));
 app.use('/api/notifications', apiLimiter, requireAuth, require('./routes/notifications'));
 app.use('/api/usage',         apiLimiter, requireAuth, require('./routes/usage'));
 

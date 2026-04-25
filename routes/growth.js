@@ -354,6 +354,80 @@ router.get('/analytics', async (req, res) => {
       { id: 'convertido', label: 'Convertido',         count: converted },
     ];
 
+    // ── COMPARATIVA con período anterior ─────────────────────────────────
+    // Misma duración hacia atrás. Ej: si days=30, comparamos 0-30d vs 30-60d.
+    const prevSince = new Date(Date.now() - 2 * days * 24 * 3_600_000);
+    const currentLeads = leads.filter(l => l.createdAt && new Date(l.createdAt) >= since);
+    const prevLeads    = leads.filter(l => l.createdAt && new Date(l.createdAt) >= prevSince && new Date(l.createdAt) < since);
+    const pctChange = (curr, prev) => {
+      if (!prev) return curr > 0 ? 100 : 0;
+      return +(((curr - prev) / prev) * 100).toFixed(1);
+    };
+    const compare = {
+      total:     { current: currentLeads.length, prev: prevLeads.length, pct: pctChange(currentLeads.length, prevLeads.length) },
+      hot:       { current: currentLeads.filter(l => l.qualification === 'hot').length,
+                   prev:    prevLeads.filter(l => l.qualification === 'hot').length },
+      converted: { current: currentLeads.filter(l => l.is_converted).length,
+                   prev:    prevLeads.filter(l => l.is_converted).length },
+    };
+    compare.hot.pct       = pctChange(compare.hot.current,       compare.hot.prev);
+    compare.converted.pct = pctChange(compare.converted.current, compare.converted.prev);
+
+    // ── TOP KEYWORDS de mensajes de leads ────────────────────────────────
+    // Stop words en español + inglés común. Heuristic simple: tokenizar,
+    // bajar case, sacar stop words, contar frecuencia. Más útil que sentiment fancy.
+    const STOP = new Set([
+      // español
+      'a','al','algo','algún','algun','alguna','algunas','alguno','algunos','allá','ante','aquel','aquella','así',
+      'aún','aun','aunque','bastante','bien','cada','casi','cierto','como','con','contra','cual','cuales','cuán',
+      'cuando','de','del','desde','donde','dos','el','él','ella','ellas','ellos','en','entre','era','eran','eres',
+      'es','esa','esas','ese','eso','esos','esta','está','estaba','estado','estamos','están','estar','estas','este',
+      'esto','estos','estoy','fue','fueron','fui','ha','había','han','hasta','hay','haya','hola','la','las','le',
+      'les','lo','los','más','me','mi','mí','mientras','muy','nada','ni','no','nos','o','otra','otras','otro','otros',
+      'para','pero','poco','por','porque','que','qué','quien','quién','se','sea','sea','ser','si','sí','sido','sin',
+      'sobre','solo','sólo','son','soy','su','sus','también','tan','te','tengo','ti','tienen','tiene','toda','todas',
+      'todo','todos','tu','tú','un','una','uno','unos','vos','y','ya','yo','ese','esos','aqui','aquí','ahi','ahí',
+      'gracias','dale','okay','ok','si','no','que','pero','vez','ver',
+      // ingles común
+      'the','to','and','for','of','in','is','it','that','this','was','have','i','my','you','your','me','we','us','if',
+      'or','as','at','be','an','by','do','dont','don','t','m','s','re','ve','ll',
+    ]);
+    const keywordCounts = {};
+    for (const arr of Object.values(msgsByLead)) {
+      for (const m of arr) {
+        if (m.role !== 'user') continue;
+        if (new Date(m.createdAt) < since) continue;
+        const text = String(m.content || '').toLowerCase()
+          .normalize('NFD').replace(/[̀-ͯ]/g, '')   // quitar tildes para agrupar mejor
+          .replace(/[^a-z0-9\s]/g, ' ');
+        const words = text.split(/\s+/).filter(w => w.length >= 4 && !STOP.has(w) && !/^\d+$/.test(w));
+        for (const w of words) {
+          keywordCounts[w] = (keywordCounts[w] || 0) + 1;
+        }
+      }
+    }
+    const topKeywords = Object.entries(keywordCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 20)
+      .map(([word, count]) => ({ word, count }));
+
+    // ── TOP LEADS (preview de últimos 20 con info de quick view) ────────
+    const recentLeads = leads
+      .sort((a, b) => new Date(b.last_message_at || b.createdAt) - new Date(a.last_message_at || a.createdAt))
+      .slice(0, 20)
+      .map(l => ({
+        id:           l._id,
+        ig_username:  l.ig_username || null,
+        qualification: l.qualification || null,
+        qualification_reason: l.qualification_reason ? String(l.qualification_reason).slice(0, 120) : null,
+        is_converted: !!l.is_converted,
+        is_bypassed:  !!l.is_bypassed,
+        message_count: (msgsByLead[l._id] || []).length,
+        last_message_at: l.last_message_at || l.createdAt,
+        email:  l.email || null,
+        phone:  l.phone || null,
+      }));
+
     res.json({
       windowDays: days,
       kpis: {
@@ -366,6 +440,9 @@ router.get('/analytics', async (req, res) => {
       qualificationBreakdown: { hot, warm, cold, sin_calificar: unclass },
       dmsByHour,
       funnel,
+      compare,
+      topKeywords,
+      recentLeads,
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

@@ -1998,9 +1998,125 @@ async function loadAnalytics() {
     renderQualBars(data.qualificationBreakdown);
     renderHeatmap(data.dmsByHour);
     renderAnalyticsFunnel(data.funnel);
+    renderCompareCard(data.compare);
+    renderTopKeywords(data.topKeywords);
+    ANALYTICS_LEADS_CACHE = data.recentLeads || [];
+    renderAnalyticsLeadsTable('all');
+
+    // Bind filtros la primera vez
+    if (!window.__analyticsLeadFiltersBound) {
+      window.__analyticsLeadFiltersBound = true;
+      document.querySelectorAll('.lead-filter').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.lead-filter').forEach(b => {
+            b.classList.remove('active');
+            b.style.background = '#fff';
+            b.style.color = 'var(--text-2)';
+          });
+          btn.classList.add('active');
+          btn.style.background = 'var(--orange)';
+          btn.style.color = '#fff';
+          renderAnalyticsLeadsTable(btn.dataset.filter);
+        });
+      });
+    }
   } catch (e) {
     showToast('❌ Error cargando analytics');
   }
+}
+
+let ANALYTICS_LEADS_CACHE = [];
+
+function renderCompareCard(c) {
+  if (!c) return;
+  const arrow = (pct) => {
+    if (pct > 0) return `<span style="color:#16a34a;font-weight:700">↑ ${pct}%</span>`;
+    if (pct < 0) return `<span style="color:#dc2626;font-weight:700">↓ ${Math.abs(pct)}%</span>`;
+    return `<span style="color:var(--text-3)">— sin cambio</span>`;
+  };
+  const row = (label, item, color) => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div>
+        <div style="font-size:13px;color:var(--text-2)">${label}</div>
+        <div style="font-size:1.4rem;font-weight:800;color:${color || 'var(--text-1)'};margin-top:2px">${item.current}</div>
+        <div style="font-size:11px;color:var(--text-3);margin-top:2px">vs ${item.prev} en período anterior</div>
+      </div>
+      <div style="font-size:14px">${arrow(item.pct)}</div>
+    </div>`;
+  document.getElementById('analytics-compare').innerHTML =
+    row('Leads totales', c.total, 'var(--text-1)') +
+    row('Leads HOT',     c.hot,   '#dc2626') +
+    row('Convertidos',   c.converted, '#16a34a');
+}
+
+function renderTopKeywords(words) {
+  const cont = document.getElementById('analytics-keywords');
+  if (!words || !words.length) {
+    cont.innerHTML = '<div style="color:var(--text-3);font-size:13px;text-align:center;padding:20px;width:100%">Sin mensajes suficientes para analizar</div>';
+    return;
+  }
+  // Tamaño según frecuencia
+  const max = words[0].count;
+  cont.innerHTML = words.map(w => {
+    const intensity = w.count / max;
+    const fontSize = 12 + intensity * 6;
+    const opacity = 0.5 + intensity * 0.5;
+    return `<span style="background:rgba(124,106,247,${opacity * 0.15});color:rgba(124,106,247,${0.6 + intensity * 0.4});border:1px solid rgba(124,106,247,${0.2 + intensity * 0.3});padding:5px 11px;border-radius:14px;font-size:${fontSize}px;font-weight:${500 + Math.round(intensity * 300)}" title="${w.count} usos">${escHtmlSafe(w.word)} <small style="opacity:.6">${w.count}</small></span>`;
+  }).join('');
+}
+
+function renderAnalyticsLeadsTable(filter) {
+  let leads = ANALYTICS_LEADS_CACHE.slice();
+  if (filter === 'hot')        leads = leads.filter(l => l.qualification === 'hot');
+  else if (filter === 'warm')  leads = leads.filter(l => l.qualification === 'warm');
+  else if (filter === 'cold')  leads = leads.filter(l => l.qualification === 'cold');
+  else if (filter === 'converted') leads = leads.filter(l => l.is_converted);
+
+  const cont = document.getElementById('analytics-leads-table');
+  if (!leads.length) {
+    cont.innerHTML = '<div style="color:var(--text-3);text-align:center;padding:30px;font-size:13px">Sin leads que coincidan</div>';
+    return;
+  }
+
+  const qBadge = (q) => {
+    if (q === 'hot')  return '<span style="background:#fef2f2;color:#dc2626;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600">🔥 HOT</span>';
+    if (q === 'warm') return '<span style="background:#fef3c7;color:#d97706;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600">🟡 WARM</span>';
+    if (q === 'cold') return '<span style="background:#dbeafe;color:#2563eb;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600">❄️ COLD</span>';
+    return '<span style="color:var(--text-3);font-size:11px">—</span>';
+  };
+
+  cont.innerHTML = `
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead>
+        <tr style="text-align:left;color:var(--text-3);font-size:11px;text-transform:uppercase;letter-spacing:.06em">
+          <th style="padding:10px 8px;border-bottom:1px solid var(--border)">@usuario</th>
+          <th style="padding:10px 8px;border-bottom:1px solid var(--border)">Calificación</th>
+          <th style="padding:10px 8px;border-bottom:1px solid var(--border)">Razón</th>
+          <th style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:center">Msgs</th>
+          <th style="padding:10px 8px;border-bottom:1px solid var(--border)">Email</th>
+          <th style="padding:10px 8px;border-bottom:1px solid var(--border)">Estado</th>
+          <th style="padding:10px 8px;border-bottom:1px solid var(--border)">Última actividad</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${leads.map(l => `
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:10px 8px"><a href="https://instagram.com/${escHtmlSafe(l.ig_username || '')}" target="_blank" style="color:var(--orange);text-decoration:none;font-weight:600">@${escHtmlSafe(l.ig_username || '—')}</a></td>
+            <td style="padding:10px 8px">${qBadge(l.qualification)}</td>
+            <td style="padding:10px 8px;color:var(--text-2);font-size:12px;max-width:280px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtmlSafe(l.qualification_reason || '')}">${escHtmlSafe(l.qualification_reason || '—')}</div></td>
+            <td style="padding:10px 8px;text-align:center;color:var(--text-2)">${l.message_count}</td>
+            <td style="padding:10px 8px;font-size:12px;color:var(--text-2)">${escHtmlSafe(l.email || '—')}</td>
+            <td style="padding:10px 8px">
+              ${l.is_converted ? '<span style="color:#16a34a;font-size:12px;font-weight:600">✓ Convertido</span>' : ''}
+              ${l.is_bypassed ? '<span style="color:#6b7280;font-size:12px">⏸ Pausado</span>' : ''}
+              ${!l.is_converted && !l.is_bypassed ? '<span style="color:var(--text-3);font-size:12px">activo</span>' : ''}
+            </td>
+            <td style="padding:10px 8px;color:var(--text-3);font-size:12px">${l.last_message_at ? relTime(l.last_message_at) : '—'}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
 }
 
 function renderAnalyticsKPIs(d) {
