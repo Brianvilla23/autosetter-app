@@ -184,6 +184,7 @@ Para restaurar: `POST /api/admin/restore` con el JSON + `{ "confirm": "YES" }`.
 ## ✅ Checklist rápido pre-launch
 
 - [ ] `DB_PATH=/data` + Volume montado en Railway → `/api/admin/health` dice "persistente"
+- [ ] `META_APP_SECRET` configurado en Railway (sin esto el webhook devuelve 401 a TODO)
 - [ ] LS configurado y un test de checkout pasa
 - [ ] MP configurado (si target LATAM, especialmente Argentina)
 - [ ] Resend con dominio verificado, email de welcome llega al inbox
@@ -193,5 +194,27 @@ Para restaurar: `POST /api/admin/restore` con el JSON + `{ "confirm": "YES" }`.
 - [ ] Plausible registrado y trackeando
 - [ ] Recursos de lead magnets subidos (o URLs cambiadas)
 - [ ] Backup de la DB descargado y guardado seguro
+- [ ] `node scripts/verify-deploy.js` pasa los 16 checks (incluye verificación de seguridad post-fix)
 
 Cuando todo esto esté ✅, el SaaS está listo para que pongas el primer ad y empieces a vender.
+
+---
+
+## 🔍 Verificación automática post-deploy
+
+Hay un script que corre 16 checks contra producción y reporta verde/rojo:
+
+```bash
+node scripts/verify-deploy.js
+# o contra otra URL:
+node scripts/verify-deploy.js https://otra-url.up.railway.app
+```
+
+Ejecutalo siempre después de cada push para confirmar que no se rompió nada. Verifica:
+- Endpoints públicos responden (home, /privacy, /terms, sitemap)
+- Webhooks rechazan correctamente requests sin firma (Meta + LS)
+- Endpoints protegidos requieren auth
+- Headers de seguridad presentes (CSP, HSTS, X-Frame, Permissions-Policy)
+- `X-Powered-By` ausente
+
+Sale con código 0 si pasa todo, 1 si algo falla. Apto para CI/CD.

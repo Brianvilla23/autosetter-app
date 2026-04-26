@@ -55,6 +55,16 @@ app.use(helmet({
   referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
 }));
 
+// 1.b Permissions-Policy: deshabilita features de browser que DMCloser no usa.
+// Reduce surface de ataque si alguna vulnerabilidad permitiera ejecutar scripts.
+app.use((req, res, next) => {
+  res.setHeader(
+    'Permissions-Policy',
+    'camera=(), microphone=(), geolocation=(), payment=(), usb=(), accelerometer=(), gyroscope=(), magnetometer=(), midi=(), interest-cohort=()'
+  );
+  next();
+});
+
 // 2. CORS — solo orígenes conocidos en producción
 const allowedOrigins = process.env.APP_URL
   ? [process.env.APP_URL, 'http://localhost:3000']
