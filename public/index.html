@@ -1494,7 +1494,8 @@ async function onbSkipAll() {
 function onbConnectIG() {
   const accountId = ONB_STATE.accountId || '';
   if (!accountId) { alert('Tu cuenta aún no está lista. Refrescá la página.'); return; }
-  window.location.href = `/auth/instagram?accountId=${accountId}`;
+  const token = localStorage.getItem('autosetter_token') || '';
+  window.location.href = `/auth/instagram?accountId=${accountId}&token=${encodeURIComponent(token)}`;
 }
 function onbGoToAgents() {
   onbHide();

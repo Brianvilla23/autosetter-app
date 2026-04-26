@@ -1260,7 +1260,8 @@ async function loadSettings() {
 
   // OAuth connect button
   document.getElementById('btn-connect-ig')?.addEventListener('click', () => {
-    window.location.href = `/auth/instagram?accountId=${ACCOUNT_ID}`;
+    const token = localStorage.getItem('autosetter_token') || '';
+    window.location.href = `/auth/instagram?accountId=${ACCOUNT_ID}&token=${encodeURIComponent(token)}`;
   });
 
   // Disconnect
