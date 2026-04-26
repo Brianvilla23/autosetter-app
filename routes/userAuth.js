@@ -176,6 +176,12 @@ router.post('/login', async (req, res, next) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Email y contraseña requeridos' });
+    // Validación de tipo: bloquea NoSQL injection y crashes por payload no-string
+    // (sin esto, {"email":{"$gt":""}} causa 500 con leak de error interno)
+    if (typeof email !== 'string' || typeof password !== 'string') {
+      return res.status(400).json({ error: 'Email y contraseña deben ser texto' });
+    }
+    if (!validateEmail(email)) return res.status(400).json({ error: 'Email inválido' });
 
     const user = await db.findOne(db.users, { email: email.toLowerCase() });
 
