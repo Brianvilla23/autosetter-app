@@ -206,4 +206,57 @@ router.delete('/bypassed/:id', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// ── DELETE lead (borra lead + mensajes + pendingSends asociados) ──────────────
+// Útil para limpiar testing antes de un demo en vivo.
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const lead = await loadOwnedLead(req, res);
+    if (!lead) return;
+    await db.remove(db.messages,     { lead_id: lead._id }, { multi: true });
+    await db.remove(db.pendingSends, { lead_id: lead._id }, { multi: true });
+    await db.remove(db.leads,        { _id: lead._id });
+    console.log(`🗑️ Lead borrado: @${lead.ig_username} (${lead._id})`);
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+
+// ── POST clear messages (limpia conversación pero mantiene el lead) ──────────
+// Útil cuando querés "resetear" la conversación con un lead conocido sin
+// perderlo de la lista. El bot va a tratar el próximo DM como primer mensaje.
+router.post('/:id/clear-messages', async (req, res, next) => {
+  try {
+    const lead = await loadOwnedLead(req, res);
+    if (!lead) return;
+    await db.remove(db.messages,     { lead_id: lead._id }, { multi: true });
+    await db.remove(db.pendingSends, { lead_id: lead._id }, { multi: true });
+    // Resetear estado del lead para que el flujo arranque limpio
+    await db.update(db.leads, { _id: lead._id }, {
+      qualification: null,
+      last_message_at: null,
+      limit_reached: false,
+    });
+    console.log(`🧹 Mensajes limpiados para lead @${lead.ig_username} (${lead._id})`);
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+
+// ── POST clear all (borra TODOS los leads del account — para reset completo) ─
+// Pide confirm explícito en body para evitar accidentes.
+router.post('/clear-all', async (req, res, next) => {
+  try {
+    const { accountId, confirm } = req.body;
+    if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
+    if (confirm !== 'YES_DELETE_ALL_LEADS') {
+      return res.status(400).json({ error: 'confirm required: send {"confirm":"YES_DELETE_ALL_LEADS"}' });
+    }
+    const leads = await db.find(db.leads, { account_id: accountId });
+    const leadIds = leads.map(l => l._id);
+    await db.remove(db.messages,     { lead_id: { $in: leadIds } }, { multi: true });
+    await db.remove(db.pendingSends, { lead_id: { $in: leadIds } }, { multi: true });
+    await db.remove(db.leads,        { account_id: accountId }, { multi: true });
+    console.warn(`🗑️🗑️ CLEAR-ALL: ${leads.length} leads borrados para account ${accountId}`);
+    res.json({ ok: true, deleted: leads.length });
+  } catch (e) { next(e); }
+});
+
 module.exports = router;

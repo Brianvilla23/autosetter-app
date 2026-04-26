@@ -2278,6 +2278,8 @@ async function loadInbox() {
         if (action === 'return-to-bot')  returnToBot();
         if (action === 'open-templates') openQuickReplies();
         if (action === 'send-message')   sendInboxMessage();
+        if (action === 'clear-chat')     clearChatMessages();
+        if (action === 'delete-lead')    deleteLead();
       });
     }
   }
@@ -2456,6 +2458,8 @@ async function renderInboxThread(leadId, isRefresh = false) {
         <div class="actions">
           <a href="${dmUrl}" target="_blank" class="btn-ghost" style="padding:7px 12px;font-size:12.5px;text-decoration:none;display:inline-flex;align-items:center;gap:5px">📲 Abrir IG</a>
           ${ctlBtn}
+          <button class="btn-ghost" data-action="clear-chat" title="Borrar mensajes pero mantener el lead (útil para resetear conversación de prueba)" style="padding:7px 10px;font-size:12.5px">🧹</button>
+          <button class="btn-ghost" data-action="delete-lead" title="Borrar este lead y toda su conversación" style="padding:7px 10px;font-size:12.5px;color:#dc2626">🗑️</button>
         </div>
       </div>
       ${stateBanner}
@@ -2547,6 +2551,35 @@ async function returnToBot() {
   } catch (e) { showToast('❌ ' + e.message); }
 }
 
+// ── Limpiar mensajes pero mantener el lead ─────────────────────────────────
+// Útil para resetear conversaciones de prueba antes de un demo en vivo.
+// El bot va a tratar el próximo DM como primer mensaje (vuelve a calificar).
+async function clearChatMessages() {
+  if (!INBOX_SELECTED_ID) return;
+  if (!confirm('¿Borrar todos los mensajes de esta conversación?\n\nEl lead se mantiene en la lista pero la próxima vez que escriba el bot lo trata como primer contacto. NO afecta el chat real en Instagram, solo los mensajes guardados acá.')) return;
+  try {
+    await apiFetch(`/api/leads/${INBOX_SELECTED_ID}/clear-messages`, 'POST');
+    showToast('🧹 Conversación limpiada.');
+    renderInboxThread(INBOX_SELECTED_ID, true);
+    renderInboxList();
+  } catch (e) { showToast('❌ ' + e.message); }
+}
+
+// ── Borrar lead completo (lead + mensajes + queue) ─────────────────────────
+async function deleteLead() {
+  if (!INBOX_SELECTED_ID) return;
+  if (!confirm('¿Borrar este lead completamente?\n\nVa a desaparecer de tu inbox junto con toda la conversación. Esta acción no se puede deshacer (pero si el lead te vuelve a escribir por IG, va a aparecer como nuevo).')) return;
+  try {
+    await apiFetch(`/api/leads/${INBOX_SELECTED_ID}`, 'DELETE');
+    showToast('🗑️ Lead borrado.');
+    INBOX_SELECTED_ID = null;
+    const container = document.getElementById('inbox-thread');
+    if (container) container.innerHTML = '<div style="margin:auto;color:var(--text-3);padding:30px;text-align:center">Seleccioná una conversación</div>';
+    renderInboxList();
+    updateInboxBadge();
+  } catch (e) { showToast('❌ ' + e.message); }
+}
+
 function relTime(iso) {
   if (!iso) return '';
   const d = new Date(iso);
@@ -2566,6 +2599,8 @@ window.handleThreadKey = handleThreadKey;
 window.sendInboxMessage = sendInboxMessage;
 window.takeControl = takeControl;
 window.returnToBot = returnToBot;
+window.clearChatMessages = clearChatMessages;
+window.deleteLead = deleteLead;
 window.loadInbox = loadInbox;
 
 // Refrescar el badge del nav cada 30s mientras la app esté abierta
