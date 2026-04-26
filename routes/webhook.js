@@ -291,11 +291,15 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
   // Guardar respuesta del agente
   await db.insert(db.messages, { lead_id: lead._id, role: 'agent', content: reply });
 
-  // Calcular delay humanizador (30-90s en pasos de 10s)
-  const delayMin = agent.delay_min ?? 30;
-  const delayMax = agent.delay_max ?? 90;
-  const steps = Math.floor((delayMax - delayMin) / 10) + 1;
-  const delaySeconds = delayMin + Math.floor(Math.random() * steps) * 10;
+  // Calcular delay humanizador (5-15s default, configurable por agente)
+  // Bajamos default de 30-90s a 5-15s tras feedback: setters/closers necesitan
+  // respuesta rápida para no perder leads HOT. 5-15s sigue siendo "humano-like"
+  // (un humano tipea en ~10s) sin parecer bot instantáneo.
+  const delayMin = agent.delay_min ?? 5;
+  const delayMax = agent.delay_max ?? 15;
+  const stepSize = (delayMax - delayMin) >= 30 ? 10 : 5; // pasos de 10s para ranges grandes, 5s para chicos
+  const steps = Math.floor((delayMax - delayMin) / stepSize) + 1;
+  const delaySeconds = delayMin + Math.floor(Math.random() * steps) * stepSize;
   const sendAt = new Date(Date.now() + delaySeconds * 1000).toISOString();
 
   // Guardar en queue persistente — sobrevive reinicios de Railway

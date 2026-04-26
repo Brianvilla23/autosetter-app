@@ -543,18 +543,20 @@ async function renderAgentBuilder(agentId) {
             <div style="flex:1">
               <label style="font-size:0.72rem;color:#666;display:block;margin-bottom:4px">Mínimo</label>
               <select id="agent-delay-min" style="width:100%;background:#1a1a2e;border:1px solid #3a3a5a;color:#e0e0e0;padding:7px 10px;border-radius:6px;font-size:0.85rem">
-                ${[30,40,50,60,70,80].map(s => `<option value="${s}" ${(agentData.delay_min??30)===s?'selected':''}>${s}s</option>`).join('')}
+                ${[5,10,15,20,25,30,40,50,60,70,80].map(s => `<option value="${s}" ${(agentData.delay_min??5)===s?'selected':''}>${s}s</option>`).join('')}
               </select>
             </div>
             <div style="flex:1">
               <label style="font-size:0.72rem;color:#666;display:block;margin-bottom:4px">Máximo</label>
               <select id="agent-delay-max" style="width:100%;background:#1a1a2e;border:1px solid #3a3a5a;color:#e0e0e0;padding:7px 10px;border-radius:6px;font-size:0.85rem">
-                ${[40,50,60,70,80,90].map(s => `<option value="${s}" ${(agentData.delay_max??90)===s?'selected':''}>${s}s</option>`).join('')}
+                ${[10,15,20,25,30,40,50,60,70,80,90].map(s => `<option value="${s}" ${(agentData.delay_max??15)===s?'selected':''}>${s}s</option>`).join('')}
               </select>
             </div>
           </div>
           <small style="color:#666;font-size:0.72rem;display:block;margin-top:6px">
-            El bot espera un tiempo aleatorio entre estos valores antes de responder. Recomendado: 30-90s para evitar detección.
+            El bot espera un tiempo aleatorio entre estos valores antes de responder.
+            <strong>Recomendado: 5-15s</strong> para responder rápido (lead HOT no se enfría) sin parecer instantáneo.
+            Si tu cuenta es nueva o querés ser conservador, usá 20-40s.
           </small>
         </div>
       </div>
