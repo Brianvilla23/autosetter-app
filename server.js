@@ -221,6 +221,15 @@ app.use(sanitizeBody);
 // (queremos landing pública en "/" y dashboard en "/app")
 app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
+// 7.b Cache-Control: no-store en respuestas /api/*
+// Evita que CDN/proxy intermedio cachee respuestas con datos de usuario.
+// Endpoints individuales pueden override (ej: /api/billing/plans con cache pública).
+app.use('/api', (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.setHeader('Pragma', 'no-cache');
+  next();
+});
+
 // ── LANDING PÚBLICA ───────────────────────────────────────────────────────────
 // "/" → home.html (marketing). Si el user ya está logueado, home.html lo
 // redirige con JS a "/app" leyendo localStorage.autosetter_token.
@@ -495,7 +504,14 @@ app.get('/data-deletion', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'privacy.html'));
 });
 
-// ── CATCH ALL → serve dashboard ───────────────────────────────────────────────
+// ── 404 para rutas API inexistentes ───────────────────────────────────────────
+// Evita que GET/POST a /api/no-existe devuelva dashboard HTML 200 (engañoso para
+// crawlers, atacantes y para nosotros mismos al debuggear).
+app.all('/api/*', (req, res) => {
+  res.status(404).json({ error: 'Not found' });
+});
+
+// ── CATCH ALL → serve dashboard (SPA routing) ─────────────────────────────────
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });

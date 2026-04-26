@@ -117,6 +117,18 @@ const CHECKS = [
     path: '/',
     expectHeaderAbsent: 'x-powered-by',
   },
+  {
+    name: 'API path inexistente devuelve 404 JSON (no dashboard)',
+    method: 'GET',
+    path: '/api/no-existe',
+    expectStatus: 404,
+  },
+  {
+    name: 'Endpoints API tienen Cache-Control: no-store',
+    method: 'GET',
+    path: '/api/user/check',
+    expectHeaderIncludes: { 'cache-control': 'no-store' },
+  },
 ];
 
 function request(method, path, body) {
