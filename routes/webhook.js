@@ -14,42 +14,29 @@ const { v4: uuidv4 } = require('uuid');
 function verifyMetaSignature(req) {
   const secret = process.env.META_APP_SECRET;
   if (!secret) {
-    console.error('[webhook] DEBUG: META_APP_SECRET no configurado en process.env');
+    console.error('[webhook] META_APP_SECRET no configurado — rechazando');
     return false;
   }
   const signature = req.headers['x-hub-signature-256'];
-  if (!signature || typeof signature !== 'string') {
-    console.error('[webhook] DEBUG: header X-Hub-Signature-256 ausente o no es string');
-    return false;
-  }
+  if (!signature || typeof signature !== 'string') return false;
 
+  // El raw body es preservado por el verify hook de express.json en server.js
+  // (req.rawBody). Si no está, no podemos validar — fail closed.
+  // ⚠️ IMPORTANTE: META_APP_ID y META_APP_SECRET deben ser los de la SUB-APP
+  // de Instagram (DMCloser-IG, ID 1666...), NO de la Meta App principal
+  // (DMCloser, ID 1313...). Meta firma webhooks de Instagram con el secret
+  // de la Instagram Business sub-app. Buscarlo en: Meta Developers → tu app →
+  // API de Instagram → Configuración con inicio de sesión → "Clave secreta
+  // de la app de Instagram".
   const raw = req.rawBody;
-  if (!raw) {
-    console.error('[webhook] DEBUG: req.rawBody ausente — el verify hook de express.json no se ejecutó');
-    return false;
-  }
+  if (!raw) return false;
 
   const expected = 'sha256=' + crypto.createHmac('sha256', secret).update(raw).digest('hex');
   const sigBuf = Buffer.from(signature);
   const expBuf = Buffer.from(expected);
-
-  // DEBUG temporal: comparar primeros chars de cada para ver si es mismatch de secret
-  // o de rawBody. NO logueamos el secret entero ni el rawBody entero.
-  if (sigBuf.length !== expBuf.length) {
-    console.error(`[webhook] DEBUG: longitud distinta — recibido=${signature.length} esperado=${expected.length}`);
-    return false;
-  }
+  if (sigBuf.length !== expBuf.length) return false;
   try {
-    const ok = crypto.timingSafeEqual(sigBuf, expBuf);
-    if (!ok) {
-      // Loguear primeros 20 chars de cada uno (sha256=xxx...) — NO expone el secret completo
-      const recvHead = signature.slice(0, 20);
-      const expHead  = expected.slice(0, 20);
-      const secretLen = secret.length;
-      const rawLen = raw.length;
-      console.error(`[webhook] DEBUG: hash mismatch | recv=${recvHead}... | exp=${expHead}... | secret_len=${secretLen} | rawBody_len=${rawLen}`);
-    }
-    return ok;
+    return crypto.timingSafeEqual(sigBuf, expBuf);
   } catch {
     return false;
   }
