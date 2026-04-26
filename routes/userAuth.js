@@ -24,15 +24,15 @@ function validateEmail(email) {
 }
 
 // ── CHECK: ¿Hay usuarios registrados? ─────────────────────────────────────────
-router.get('/check', async (req, res) => {
+router.get('/check', async (req, res, next) => {
   try {
     const count = await db.count(db.users, {});
     res.json({ hasUsers: count > 0 });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { next(e); }
 });
 
 // ── REGISTER ──────────────────────────────────────────────────────────────────
-router.post('/register', async (req, res) => {
+router.post('/register', async (req, res, next) => {
   try {
     const { email, password, name, inviteCode, referralCode } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Email y contraseña requeridos' });
@@ -168,11 +168,11 @@ router.post('/register', async (req, res) => {
         membershipExpiresAt,
       }
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { next(e); }
 });
 
 // ── LOGIN ─────────────────────────────────────────────────────────────────────
-router.post('/login', async (req, res) => {
+router.post('/login', async (req, res, next) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Email y contraseña requeridos' });
@@ -219,11 +219,11 @@ router.post('/login', async (req, res) => {
         membershipExpiresAt: user.membershipExpiresAt || null,
       }
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { next(e); }
 });
 
 // ── CHANGE PASSWORD ───────────────────────────────────────────────────────────
-router.post('/change-password', async (req, res) => {
+router.post('/change-password', async (req, res, next) => {
   try {
     const { email, currentPassword, newPassword } = req.body;
     if (!email || !currentPassword || !newPassword) return res.status(400).json({ error: 'Faltan campos' });
@@ -240,7 +240,7 @@ router.post('/change-password', async (req, res) => {
     await db.update(db.users, { _id: user._id }, { password_hash: hash });
 
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { next(e); }
 });
 
 // ── Helper: seed demo agent ───────────────────────────────────────────────────
@@ -272,7 +272,7 @@ async function seedDemoAgent(accountId) {
 // ── GET /api/user/me ─────────────────────────────────────────────────────────
 // Devuelve el usuario actual + estado de onboarding + estado IG/agente/telegram
 // para que el wizard sepa qué pasos ya están completos.
-router.get('/me', requireAuth, async (req, res) => {
+router.get('/me', requireAuth, async (req, res, next) => {
   try {
     const user = await db.findOne(db.users, { _id: req.user.userId });
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
@@ -303,13 +303,13 @@ router.get('/me', requireAuth, async (req, res) => {
         hasOpenAIKey: !!user.hasOpenAIKey, // flag opcional — settings lo setea si hay key
       },
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { next(e); }
 });
 
 // ── PATCH /api/user/me/onboarding ────────────────────────────────────────────
 // Actualiza el progreso del wizard.
 // Body: { step?: number, completed?: boolean, skip?: boolean }
-router.patch('/me/onboarding', requireAuth, async (req, res) => {
+router.patch('/me/onboarding', requireAuth, async (req, res, next) => {
   try {
     const { step, completed, skip } = req.body || {};
     const upd = {};
@@ -322,7 +322,7 @@ router.patch('/me/onboarding', requireAuth, async (req, res) => {
     if (Object.keys(upd).length === 0) return res.status(400).json({ error: 'Nada que actualizar' });
     await db.update(db.users, { _id: req.user.userId }, upd);
     res.json({ ok: true, ...upd });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { next(e); }
 });
 
 module.exports = router;

@@ -10,6 +10,14 @@ const { v4: uuidv4 } = require('uuid');
 // Configurá un Railway Volume montado en /data y seteá:
 //     DB_PATH=/data
 // en las variables de entorno. Local dev cae al fallback ./db/data automáticamente.
+
+// Startup check: en producción, DB_PATH es OBLIGATORIO. Sin él, los datos se
+// pierden en cada deploy y la app efectivamente no es operable. Fail fast.
+if (process.env.NODE_ENV === 'production' && !process.env.DB_PATH) {
+  console.error('❌ FATAL: DB_PATH no configurado en producción. Datos serían efímeros (se borran en cada deploy de Railway). Configurá un Volume montado y seteá DB_PATH=/data. Abortando.');
+  process.exit(1);
+}
+
 const dir = process.env.DB_PATH || path.join(__dirname, 'data');
 fs.mkdirSync(dir, { recursive: true });
 
@@ -34,6 +42,7 @@ const db = {
   users:         new Datastore({ filename: path.join(dir, 'users.db'),         autoload: true }),
   inviteCodes:   new Datastore({ filename: path.join(dir, 'inviteCodes.db'),   autoload: true }),
   pendingSends:  new Datastore({ filename: path.join(dir, 'pendingSends.db'),  autoload: true }),
+  failedSends:   new Datastore({ filename: path.join(dir, 'failedSends.db'),   autoload: true }),
   aiUsage:       new Datastore({ filename: path.join(dir, 'aiUsage.db'),       autoload: true }),
   auditLog:      new Datastore({ filename: path.join(dir, 'auditLog.db'),      autoload: true }),
   followups:     new Datastore({ filename: path.join(dir, 'followups.db'),     autoload: true }),

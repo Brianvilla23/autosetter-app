@@ -1,10 +1,40 @@
 const express = require('express');
+const crypto  = require('crypto');
 const router  = express.Router();
 const db      = require('../db/database');
 const { generateReply, classifyLead } = require('../services/openai');
 const { sendMessage, getIGUserInfo } = require('../services/meta');
 const { checkDMAllowance, incrementDMCount } = require('../services/limits');
 const { v4: uuidv4 } = require('uuid');
+
+// ── Verify Meta webhook signature (HMAC-SHA256) ─────────────────────────────
+// Meta firma cada POST con header X-Hub-Signature-256 = "sha256=<hex>"
+// usando el APP_SECRET sobre el raw body. Sin esta validación, cualquier
+// atacante puede inyectar mensajes falsos y dispararle DMs reales a leads.
+function verifyMetaSignature(req) {
+  const secret = process.env.META_APP_SECRET;
+  if (!secret) {
+    console.error('[webhook] META_APP_SECRET no configurado — rechazando');
+    return false;
+  }
+  const signature = req.headers['x-hub-signature-256'];
+  if (!signature || typeof signature !== 'string') return false;
+
+  // El raw body es preservado por el verify hook de express.json en server.js
+  // (req.rawBody). Si no está, no podemos validar — fail closed.
+  const raw = req.rawBody;
+  if (!raw) return false;
+
+  const expected = 'sha256=' + crypto.createHmac('sha256', secret).update(raw).digest('hex');
+  const sigBuf = Buffer.from(signature);
+  const expBuf = Buffer.from(expected);
+  if (sigBuf.length !== expBuf.length) return false;
+  try {
+    return crypto.timingSafeEqual(sigBuf, expBuf);
+  } catch {
+    return false;
+  }
+}
 
 // Verificar si el texto contiene alguno de los keywords del agente
 // trigger_keywords: string con palabras separadas por comas, ej: "info,precio,hola"
@@ -28,8 +58,25 @@ router.get('/', (req, res) => {
 });
 
 // ── WEBHOOK PRINCIPAL ─────────────────────────────────────────────────────────
-router.post('/', express.json(), async (req, res) => {
-  res.sendStatus(200); // Siempre 200 inmediato
+// Nota: NO usamos express.json() acá porque el body parser global en server.js
+// ya parsea el JSON Y guarda el raw body en req.rawBody (necesario para HMAC).
+router.post('/', async (req, res) => {
+  // 1. Validar firma ANTES de procesar nada — fail closed.
+  if (!verifyMetaSignature(req)) {
+    console.error('[webhook] firma inválida o ausente');
+    return res.status(401).send('invalid signature');
+  }
+
+  // 2. Backpressure: si la queue está llena, rechazar antes de hacer trabajo.
+  try {
+    const queueCount = await db.count(db.pendingSends, {});
+    if (queueCount > 10000) {
+      console.error(`[QUEUE] pendingSends overflow (${queueCount}), rejecting webhook`);
+      return res.status(429).json({ error: 'queue full' });
+    }
+  } catch (e) { /* si el count falla, seguimos — no queremos perder webhooks por un error transitorio */ }
+
+  res.sendStatus(200); // Siempre 200 inmediato (después de validar)
   try {
     const body = req.body;
     if (body.object !== 'instagram') return;

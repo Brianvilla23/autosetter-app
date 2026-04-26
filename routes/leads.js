@@ -3,10 +3,27 @@ const router  = express.Router();
 const db      = require('../db/database');
 const { v4: uuidv4 } = require('uuid');
 
+// ── Tenant isolation helper ─────────────────────────────────────────────────
+function assertOwnsAccount(req, accountId) {
+  return accountId && accountId === req.user.accountId;
+}
+
+// ── Helper: cargar lead y validar pertenencia al tenant ────────────────────
+async function loadOwnedLead(req, res) {
+  const lead = await db.findOne(db.leads, { _id: req.params.id });
+  if (!lead) { res.status(404).json({ error: 'Not found' }); return null; }
+  if (lead.account_id !== req.user.accountId) {
+    res.status(403).json({ error: 'forbidden' });
+    return null;
+  }
+  return lead;
+}
+
 // GET leads with filters
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
   try {
     const { accountId, status, automation, qualification, search } = req.query;
+    if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
     let query = { account_id: accountId };
     if (status && status !== 'all') query.status = status;
     if (automation && automation !== 'all') query.automation = automation;
@@ -24,25 +41,38 @@ router.get('/', async (req, res) => {
     });
 
     res.json({ leads: result.slice(0, 20), total: leads.length });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { next(e); }
+});
+
+// GET bypassed list (must come before /:id route to avoid clash)
+router.get('/bypassed/list', async (req, res, next) => {
+  try {
+    const { accountId } = req.query;
+    if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
+    const list = await db.find(db.bypassed, { account_id: accountId },
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    res.json(list.map(u => ({ ...u, id: u._id })));
+  } catch (e) { next(e); }
 });
 
 // GET single lead with messages
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req, res, next) => {
   try {
     if (req.params.id === 'bypassed') return; // skip, handled below
-    const lead = await db.findOne(db.leads, { _id: req.params.id });
-    if (!lead) return res.status(404).json({ error: 'Not found' });
+    const lead = await loadOwnedLead(req, res);
+    if (!lead) return;
     const messages = await db.find(db.messages, { lead_id: req.params.id },
       (a, b) => new Date(a.createdAt) - new Date(b.createdAt));
     const agent = lead.agent_id ? await db.findOne(db.agents, { _id: lead.agent_id }) : null;
     res.json({ ...lead, id: lead._id, agent_name: agent?.name, agent_avatar: agent?.avatar, messages: messages.map(m => ({...m, id: m._id})) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { next(e); }
 });
 
 // PATCH update lead
-router.patch('/:id', async (req, res) => {
+router.patch('/:id', async (req, res, next) => {
   try {
+    const owned = await loadOwnedLead(req, res);
+    if (!owned) return;
     const { automation, agent_id, is_bypassed, is_converted, status, qualification } = req.body;
     const upd = {};
     if (automation     !== undefined) upd.automation     = automation;
@@ -54,14 +84,14 @@ router.patch('/:id', async (req, res) => {
     await db.update(db.leads, { _id: req.params.id }, upd);
     const lead = await db.findOne(db.leads, { _id: req.params.id });
     res.json({ ...lead, id: lead._id });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { next(e); }
 });
 
 // POST retrigger AI for last unanswered user message
-router.post('/:id/retrigger', async (req, res) => {
+router.post('/:id/retrigger', async (req, res, next) => {
   try {
-    const lead = await db.findOne(db.leads, { _id: req.params.id });
-    if (!lead) return res.status(404).json({ error: 'Not found' });
+    const lead = await loadOwnedLead(req, res);
+    if (!lead) return;
 
     const account = await db.findOne(db.accounts, { _id: lead.account_id });
     const agent   = await db.findOne(db.agents,   { _id: lead.agent_id });
@@ -102,19 +132,20 @@ router.post('/:id/retrigger', async (req, res) => {
 
     console.log(`🔁 Retrigger @${lead.ig_username}: ${reply.substring(0, 80)}`);
     res.json({ ok: true, reply });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { next(e); }
 });
 
 // POST manual message
 // Body: { text, accountId, takeControl? } — takeControl=true marca al lead como bypassed
 //                                            (el bot deja de responder esa conversación)
-router.post('/:id/message', async (req, res) => {
+router.post('/:id/message', async (req, res, next) => {
   try {
     const { text, accountId, takeControl } = req.body;
+    if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
     if (!text || !String(text).trim()) return res.status(400).json({ error: 'text requerido' });
 
-    const lead = await db.findOne(db.leads, { _id: req.params.id });
-    if (!lead) return res.status(404).json({ error: 'Not found' });
+    const lead = await loadOwnedLead(req, res);
+    if (!lead) return;
 
     const cleanText = String(text).slice(0, 1000);
     const message = await db.insert(db.messages, {
@@ -147,38 +178,32 @@ router.post('/:id/message', async (req, res) => {
     }
 
     res.json({ ok: true, message: { ...message, id: message._id }, metaSent });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// GET bypassed list
-router.get('/bypassed/list', async (req, res) => {
-  try {
-    const { accountId } = req.query;
-    const list = await db.find(db.bypassed, { account_id: accountId },
-      (a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    res.json(list.map(u => ({ ...u, id: u._id })));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { next(e); }
 });
 
 // POST add bypass
-router.post('/bypassed/add', async (req, res) => {
+router.post('/bypassed/add', async (req, res, next) => {
   try {
     const { accountId, igUsername } = req.body;
+    if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
     const username = igUsername.replace('@', '');
     const exists = await db.findOne(db.bypassed, { account_id: accountId, ig_username: username });
     if (exists) return res.status(400).json({ error: 'Already bypassed' });
     await db.insert(db.bypassed, { account_id: accountId, ig_username: username });
     await db.update(db.leads, { account_id: accountId, ig_username: username }, { is_bypassed: true, automation: 'paused' });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { next(e); }
 });
 
 // DELETE bypass
-router.delete('/bypassed/:id', async (req, res) => {
+router.delete('/bypassed/:id', async (req, res, next) => {
   try {
+    const entry = await db.findOne(db.bypassed, { _id: req.params.id });
+    if (!entry) return res.status(404).json({ error: 'Not found' });
+    if (entry.account_id !== req.user.accountId) return res.status(403).json({ error: 'forbidden' });
     await db.remove(db.bypassed, { _id: req.params.id });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { next(e); }
 });
 
 module.exports = router;

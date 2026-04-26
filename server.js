@@ -189,7 +189,12 @@ app.post('/api/billing/ls-webhook', express.raw({ type: 'application/json' }), a
 });
 
 // 3. Limitar tamaño de payload (previene ataques de payload gigante)
-app.use(express.json({ limit: '1mb' }));
+//    `verify` preserva el raw body en req.rawBody — necesario para validar
+//    HMAC del webhook de Meta (X-Hub-Signature-256).
+app.use(express.json({
+  limit: '1mb',
+  verify: (req, res, buf) => { req.rawBody = buf; },
+}));
 app.use(express.urlencoded({ extended: false, limit: '1mb' }));
 
 // 4. Bloquear bots y paths de ataque antes de procesar nada
@@ -397,23 +402,23 @@ app.use('/api/notifications', apiLimiter, requireAuth, require('./routes/notific
 app.use('/api/usage',         apiLimiter, requireAuth, require('./routes/usage'));
 
 // Helper: account info from JWT
-app.get('/api/account/me', requireAuth, async (req, res) => {
+app.get('/api/account/me', requireAuth, async (req, res, next) => {
   try {
     const db = require('./db/database');
     const account = await db.findOne(db.accounts, { _id: req.user.accountId });
     if (!account) return res.status(404).json({ error: 'No account' });
     res.json({ id: account._id, ig_username: account.ig_username });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { next(e); }
 });
 
 // Legacy backward compat
-app.get('/api/account/first', requireAuth, async (req, res) => {
+app.get('/api/account/first', requireAuth, async (req, res, next) => {
   try {
     const db = require('./db/database');
     const account = await db.findOne(db.accounts, { _id: req.user.accountId });
     if (!account) return res.status(404).json({ error: 'No account' });
     res.json({ id: account._id, ig_username: account.ig_username });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { next(e); }
 });
 
 // ── MAGNET LINK REDIRECT (público, con tracking) ──────────────────────────────
@@ -457,6 +462,10 @@ app.use((err, req, res, next) => {
 });
 app.use(errorTracker);
 
+// errorResponse como último fallback — sanitiza stack/message en producción.
+// Si errorTracker ya respondió (headersSent), este se saltea.
+app.use(require('./middleware/errorResponse'));
+
 // Captura crashes async fuera de Express
 installProcessHandlers();
 
@@ -491,7 +500,8 @@ async function processPendingSends() {
   try {
     const now = new Date().toISOString();
     const pending = await dbW.find(dbW.pendingSends, {});
-    const due = pending.filter(p => p.sendAt <= now);
+    // sendAt es la fecha de envío inicial; nextRetryAt sobrescribe si hubo retry.
+    const due = pending.filter(p => (p.nextRetryAt || p.sendAt) <= now);
     for (const item of due) {
       let sentOk = false;
       try {
@@ -507,12 +517,34 @@ async function processPendingSends() {
       } catch (e) {
         console.error(`❌ pendingSend error para @${item.leadUsername}:`, e.response?.data || e.message);
       }
+
       // Contabilizar solo envíos exitosos contra el límite del plan
       if (sentOk && item.accountId) {
         await incrementDMCount(item.accountId, 1).catch(() => null);
       }
-      // Eliminar siempre (éxito o error) para no reintentar indefinidamente
-      await dbW.remove(dbW.pendingSends, { _id: item._id });
+
+      if (sentOk) {
+        // Éxito → eliminar de queue
+        await dbW.remove(dbW.pendingSends, { _id: item._id });
+      } else {
+        // Falla → exponential backoff o descarte
+        const retries = (item.retries || 0) + 1;
+        if (retries > 5) {
+          // Descartar después de 5 intentos — mover a failedSends si la colección existe,
+          // sino simplemente loguear y eliminar.
+          console.error(`💀 pendingSend descartado tras ${retries} intentos: @${item.leadUsername}`);
+          if (dbW.failedSends) {
+            await dbW.insert(dbW.failedSends, { ...item, retries, failedAt: new Date().toISOString() }).catch(() => null);
+          }
+          await dbW.remove(dbW.pendingSends, { _id: item._id });
+        } else {
+          // 60s * 2^retries, capped a 1h
+          const delayMs = Math.min(60_000 * Math.pow(2, retries), 60 * 60 * 1000);
+          const nextRetryAt = new Date(Date.now() + delayMs).toISOString();
+          await dbW.update(dbW.pendingSends, { _id: item._id }, { retries, nextRetryAt });
+          console.warn(`⏳ pendingSend retry ${retries}/5 para @${item.leadUsername} en ${Math.round(delayMs/1000)}s`);
+        }
+      }
     }
   } catch (e) {
     console.error('processPendingSends error:', e.message);

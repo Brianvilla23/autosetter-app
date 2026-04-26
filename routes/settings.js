@@ -2,21 +2,26 @@ const express = require('express');
 const router  = express.Router();
 const db      = require('../db/database');
 
-router.get('/', async (req, res) => {
+// ── Tenant isolation helper ─────────────────────────────────────────────────
+function assertOwnsAccount(req, accountId) {
+  return accountId && accountId === req.user.accountId;
+}
+
+router.get('/', async (req, res, next) => {
   try {
     const { accountId } = req.query;
-    if (!accountId || accountId === 'first' || accountId === 'temp') {
-      const account = await db.findOne(db.accounts, {});
-      if (!account) return res.status(404).json({ error: 'No account' });
-      const settings = await db.findOne(db.settings, { account_id: account._id });
-      const stats = await buildStats(account._id);
-      return res.json({ account: { ...account, id: account._id }, settings, stats });
-    }
-    const account  = await db.findOne(db.accounts, { _id: accountId });
-    const settings = await db.findOne(db.settings, { account_id: accountId });
-    const stats    = await buildStats(accountId);
+    // Casos legacy: 'first'/'temp' caen al accountId del JWT, no a "el primer account de la DB".
+    // (El comportamiento viejo era una vulnerabilidad: cualquier user veía datos del primer account.)
+    const effectiveId = (!accountId || accountId === 'first' || accountId === 'temp')
+      ? req.user.accountId
+      : accountId;
+    if (!assertOwnsAccount(req, effectiveId)) return res.status(403).json({ error: 'forbidden' });
+
+    const account  = await db.findOne(db.accounts, { _id: effectiveId });
+    const settings = await db.findOne(db.settings, { account_id: effectiveId });
+    const stats    = await buildStats(effectiveId);
     res.json({ account: account ? { ...account, id: account._id } : null, settings, stats });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { next(e); }
 });
 
 async function buildStats(accountId) {
@@ -30,9 +35,10 @@ async function buildStats(accountId) {
   return { agents, leads, knowledge, links, converted };
 }
 
-router.put('/', async (req, res) => {
+router.put('/', async (req, res, next) => {
   try {
     const { accountId, openai_key } = req.body;
+    if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
     const exists = await db.findOne(db.settings, { account_id: accountId });
     if (exists) {
       await db.update(db.settings, { account_id: accountId }, { openai_key, updatedAt: new Date().toISOString() });
@@ -40,24 +46,26 @@ router.put('/', async (req, res) => {
       await db.insert(db.settings, { account_id: accountId, openai_key });
     }
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { next(e); }
 });
 
-router.put('/account', async (req, res) => {
+router.put('/account', async (req, res, next) => {
   try {
     const { accountId, ig_username, ig_user_id, access_token } = req.body;
+    if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
     await db.update(db.accounts, { _id: accountId }, { ig_username, ig_user_id, access_token });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { next(e); }
 });
 
 // ── ONBOARDING STATUS ───────────────────────────────────────────────────────
 // Devuelve el estado real del onboarding del usuario (qué pasos completó y cuál sigue).
 // Se usa para renderizar el checklist dinámico del home del dashboard.
-router.get('/onboarding', async (req, res) => {
+router.get('/onboarding', async (req, res, next) => {
   try {
     const { accountId } = req.query;
     if (!accountId) return res.status(400).json({ error: 'accountId requerido' });
+    if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
 
     const [account, settings, agents, knowledge, links, messagesCount, leadsCount] = await Promise.all([
       db.findOne(db.accounts, { _id: accountId }),
@@ -155,7 +163,7 @@ router.get('/onboarding', async (req, res) => {
     const nextStep = steps.find(s => !s.done) || null;
 
     res.json({ steps, completedSteps, totalSteps, percent, allDone, nextStep });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { next(e); }
 });
 
 module.exports = router;
