@@ -34,11 +34,27 @@ router.get('/check', async (req, res, next) => {
 // ── REGISTER ──────────────────────────────────────────────────────────────────
 router.post('/register', async (req, res, next) => {
   try {
-    const { email, password, name, inviteCode, referralCode } = req.body;
+    const { email, password, name, inviteCode, referralCode, businessInfo } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Email y contraseña requeridos' });
     if (!validateEmail(email)) return res.status(400).json({ error: 'Email inválido' });
     const pwErr = validatePassword(password);
     if (pwErr) return res.status(400).json({ error: pwErr });
+
+    // Sanitizar businessInfo si vino — todos los campos son opcionales y de
+    // longitud limitada para evitar payloads grandes en el agente.
+    let bizInfo = null;
+    if (businessInfo && typeof businessInfo === 'object') {
+      const trim = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+      bizInfo = {
+        nicho:         trim(businessInfo.nicho, 200),
+        servicio:      trim(businessInfo.servicio, 300),
+        precio:        trim(businessInfo.precio, 100),
+        cliente_ideal: trim(businessInfo.cliente_ideal, 300),
+        link_agenda:   trim(businessInfo.link_agenda, 300),
+      };
+      // Si todos quedaron vacíos después del trim, no usar nada
+      if (!Object.values(bizInfo).some(v => v)) bizInfo = null;
+    }
 
     const count = await db.count(db.users, {});
     const isFirstUser = count === 0;
@@ -137,7 +153,7 @@ router.post('/register', async (req, res, next) => {
       });
     }
 
-    await seedDemoAgent(account._id);
+    await seedDemoAgent(account._id, bizInfo);
 
     // Welcome email (async, no bloquea la respuesta al usuario)
     try {
@@ -250,53 +266,101 @@ router.post('/change-password', async (req, res, next) => {
 });
 
 // ── Helper: seed demo agent ───────────────────────────────────────────────────
-async function seedDemoAgent(accountId) {
+/**
+ * seedDemoAgent — crea agente, knowledge y 3 links default para una cuenta nueva.
+ *
+ * @param {string} accountId
+ * @param {object|null} bizInfo - opcional. Si viene, personaliza el prompt
+ *   y la knowledge con la info del cliente (nicho, servicio, precio,
+ *   cliente_ideal, link_agenda).
+ */
+async function seedDemoAgent(accountId, bizInfo = null) {
   const { v4: uuidv4 } = require('uuid');
   const { DEFAULT_AGENT_PROMPT } = require('../services/defaultAgentPrompt');
   const link1 = uuidv4(), link2 = uuidv4(), link3 = uuidv4();
 
-  // Agente PRO con las 9 capas que afinamos durante el lanzamiento
-  // (ANTI-VOSEO/FOCO/TONO/BREVEDAD/ROL/4-ÁNGULOS/3-MOMENTOS/etc).
-  // El cliente solo edita el bloque "1. CONTEXTO INICIAL" al final del prompt.
+  // Si tenemos info del negocio, reemplazamos los placeholders del bloque
+  // "1. CONTEXTO INICIAL" del prompt para que el agente quede personalizado
+  // de entrada. Si no hay info, dejamos los placeholders [Edita: ...]
+  // para que el cliente los rellene desde el dashboard.
+  let instructions = DEFAULT_AGENT_PROMPT;
+  if (bizInfo) {
+    const map = [
+      ['[Edita: nombre de tu negocio o servicio]', bizInfo.servicio || '[Edita: nombre de tu negocio o servicio]'],
+      ['[Edita: ej. "coaching de ventas", "inmobiliaria CDMX", etc.]', bizInfo.nicho || '[Edita: ej. "coaching de ventas", etc.]'],
+      ['[Edita: qué vendes]', bizInfo.servicio || '[Edita: qué vendes]'],
+      ['[Edita: tu rango de precios]', bizInfo.precio || '[Edita: tu rango de precios]'],
+      ['[Edita: tu cliente ideal]', bizInfo.cliente_ideal || '[Edita: tu cliente ideal]'],
+    ];
+    for (const [from, to] of map) instructions = instructions.replace(from, to);
+  }
+
+  // Agente PRO con las 9 capas que afinamos durante el lanzamiento.
   const agent = await db.insert(db.agents, {
     account_id: accountId,
     name: 'Mi Asistente IA',
     avatar: '🤖',
-    enabled: true,                    // habilitado de entrada
+    enabled: true,
     link_ids: [link1, link2, link3],
-    delay_min: 5,                     // respuesta en 5-15s (humano-like)
+    delay_min: 5,
     delay_max: 15,
-    trigger_keywords: '',             // vacío = responde a TODO mensaje entrante
-    instructions: DEFAULT_AGENT_PROMPT,
+    trigger_keywords: '',
+    instructions,
   });
 
-  // Knowledge base placeholder estructurada
+  // Knowledge base — pre-rellenada con bizInfo si vino, placeholders si no.
+  const knowledgeContent = bizInfo
+    ? [
+        `NEGOCIO: ${bizInfo.servicio || '[Tu marca]'}`,
+        `SERVICIO PRINCIPAL: ${bizInfo.servicio || '[Qué vendes]'}`,
+        `TICKET/PRECIO: ${bizInfo.precio || '[Tu rango de precios]'}`,
+        `NICHO: ${bizInfo.nicho || '[Tu nicho]'}`,
+        `CLIENTE IDEAL: ${bizInfo.cliente_ideal || '[A quién le sirves]'}`,
+        '',
+        'RESULTADOS QUE LOGRAN TUS CLIENTES:',
+        '- [Resultado concreto 1]',
+        '- [Resultado concreto 2]',
+        '- [Resultado concreto 3]',
+        '',
+        'FAQ — preguntas frecuentes:',
+        'P: [pregunta común 1]?',
+        'R: [respuesta breve]',
+      ].join('\n')
+    : [
+        'NEGOCIO: [Tu marca]',
+        'SERVICIO PRINCIPAL: [Qué vendes]',
+        'TICKET/PRECIO: [Tu rango de precios]',
+        'CLIENTE IDEAL: [A quién le sirves]',
+        '',
+        'RESULTADOS QUE LOGRAN TUS CLIENTES:',
+        '- [Resultado concreto 1]',
+        '- [Resultado concreto 2]',
+        '- [Resultado concreto 3]',
+        '',
+        'FAQ — preguntas frecuentes:',
+        'P: [pregunta común 1]?',
+        'R: [respuesta breve]',
+        '',
+        'P: [pregunta común 2]?',
+        'R: [respuesta breve]',
+      ].join('\n');
+
   await db.insert(db.knowledge, {
     account_id: accountId,
     title: '📌 Información de mi negocio',
-    content:
-      'NEGOCIO: [Tu marca]\n' +
-      'SERVICIO PRINCIPAL: [Qué vendes]\n' +
-      'TICKET/PRECIO: [Tu rango de precios]\n' +
-      'CLIENTE IDEAL: [A quién le sirves]\n' +
-      'RESULTADOS QUE LOGRAN TUS CLIENTES:\n' +
-      '- [Resultado concreto 1]\n' +
-      '- [Resultado concreto 2]\n' +
-      '- [Resultado concreto 3]\n' +
-      '\nFAQ — preguntas frecuentes:\n' +
-      'P: [pregunta común 1]?\n' +
-      'R: [respuesta breve]\n' +
-      '\nP: [pregunta común 2]?\n' +
-      'R: [respuesta breve]',
+    content: knowledgeContent,
     is_main: true,
     agent_ids: [agent._id],
   });
 
-  // Links placeholder con descripciones útiles para el bot
+  // Links — si bizInfo trae link_agenda, lo usamos en lugar del placeholder.
+  const calendlyUrl = (bizInfo && bizInfo.link_agenda) || 'https://calendly.com/tu-link';
+  const calendlyDesc = (bizInfo && bizInfo.link_agenda)
+    ? 'Mándalo cuando el lead esté listo para avanzar (MOMENTO 3). Tu link de agenda real ya está cargado.'
+    : 'Mándalo cuando el lead esté en MOMENTO 3 (próximo paso) y diga que quiere avanzar. Edita la URL con tu Calendly real.';
+
   for (const [id, name, url, desc] of [
-    [link1, 'Agendar llamada',
-      'https://calendly.com/tu-link',
-      'Mándalo cuando el lead esté en MOMENTO 3 (próximo paso) y diga que quiere avanzar. Edita la URL con tu Calendly real.'],
+    [link1, 'Agendar llamada', calendlyUrl, calendlyDesc],
     [link2, 'Activar prueba gratis',
       'https://tu-sitio.com/registro',
       'Mándalo cuando el lead diga "lo pruebo" o "cómo activo". Edita la URL con tu link de registro o checkout.'],
