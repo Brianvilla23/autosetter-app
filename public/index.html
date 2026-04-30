@@ -718,9 +718,16 @@
 
     <!-- EXPORT CSV -->
     <div class="settings-card" style="margin-bottom:20px">
-      <h3>📥 Exportar leads</h3>
-      <p>Descarga todos tus leads en CSV (compatible con Excel, Notion, Airtable)</p>
-      <button class="btn-primary" id="btn-export-csv">Descargar CSV</button>
+      <h3>📥 Exportar leads y conversaciones</h3>
+      <p>Descarga tus datos en CSV (compatible con Excel, Notion, Airtable). Útil para casos de éxito, auditoría y fine-tuning del prompt.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn-primary" id="btn-export-csv">📋 Leads (metadata)</button>
+        <button class="btn-primary" id="btn-export-conversations" style="background:linear-gradient(135deg,#16a34a,#15803d)">💬 Conversaciones completas</button>
+      </div>
+      <small style="color:var(--text-3);display:block;margin-top:8px;font-size:12px">
+        <strong>Leads</strong>: 31 columnas con info de cada lead (1 fila por lead).<br>
+        <strong>Conversaciones</strong>: cada mensaje con su contenido (1 fila por mensaje, ideal para revisar tonos del bot).
+      </small>
     </div>
 
     <!-- MAGNET LINKS -->

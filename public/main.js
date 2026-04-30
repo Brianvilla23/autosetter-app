@@ -1811,12 +1811,41 @@ function exportLeadsCSV() {
   .catch(e => showToast('❌ ' + e.message));
 }
 
+// Exporta TODAS las conversaciones (1 fila por mensaje) en CSV.
+// Útil para casos de éxito, auditoría conversacional, fine-tuning de prompts.
+function exportConversationsCSV() {
+  fetch(`/api/growth/export-conversations?accountId=${ACCOUNT_ID}&format=csv`, {
+    headers: { 'Authorization': `Bearer ${AUTH_TOKEN}` },
+  })
+  .then(async r => {
+    if (!r.ok) {
+      const text = await r.text();
+      throw new Error(text.includes('No hay') ? 'Sin conversaciones para exportar' : 'Error exportando conversaciones');
+    }
+    return r.blob();
+  })
+  .then(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `dmcloser-conversations-${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showToast('💬 Conversaciones descargadas');
+  })
+  .catch(e => showToast('❌ ' + e.message));
+}
+
 function escHtmlSafe(str) {
   return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 // Exponer delete para onclick inline
 window.deleteMagnetLink = deleteMagnetLink;
+window.exportLeadsCSV = exportLeadsCSV;
+window.exportConversationsCSV = exportConversationsCSV;
 
 // ── LEAD MAGNETS ────────────────────────────────────────────────────────────
 const TRIGGER_LABEL = {
@@ -1988,6 +2017,31 @@ async function loadAnalytics() {
           a.click();
           URL.revokeObjectURL(url);
           showToast('✅ CSV descargado');
+        } catch (e) { showToast('❌ ' + e.message); }
+      });
+    }
+    // Botón nuevo: descargar conversaciones completas (1 fila por mensaje)
+    const btnExportConv = document.getElementById('btn-export-conversations');
+    if (btnExportConv) {
+      btnExportConv.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        try {
+          const r = await fetch(`/api/growth/export-conversations?accountId=${ACCOUNT_ID}&format=csv`, {
+            headers: { 'Authorization': 'Bearer ' + AUTH_TOKEN },
+          });
+          if (!r.ok) {
+            const text = await r.text();
+            const msg = text.includes('No hay') ? 'Sin conversaciones para exportar todavía' : 'Error al exportar';
+            showToast('❌ ' + msg);
+            return;
+          }
+          const blob = await r.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = `dmcloser-conversations-${new Date().toISOString().slice(0, 10)}.csv`;
+          a.click();
+          URL.revokeObjectURL(url);
+          showToast('💬 Conversaciones descargadas');
         } catch (e) { showToast('❌ ' + e.message); }
       });
     }

@@ -252,24 +252,57 @@ router.post('/change-password', async (req, res, next) => {
 // ── Helper: seed demo agent ───────────────────────────────────────────────────
 async function seedDemoAgent(accountId) {
   const { v4: uuidv4 } = require('uuid');
+  const { DEFAULT_AGENT_PROMPT } = require('../services/defaultAgentPrompt');
   const link1 = uuidv4(), link2 = uuidv4(), link3 = uuidv4();
 
+  // Agente PRO con las 9 capas que afinamos durante el lanzamiento
+  // (ANTI-VOSEO/FOCO/TONO/BREVEDAD/ROL/4-ÁNGULOS/3-MOMENTOS/etc).
+  // El cliente solo edita el bloque "1. CONTEXTO INICIAL" al final del prompt.
   const agent = await db.insert(db.agents, {
-    account_id: accountId, name: 'Mi Agente', avatar: '🤖',
-    enabled: true, link_ids: [link1, link2, link3],
-    instructions: `1. IDENTIDAD\nEres [Nombre], un setter profesional del equipo. Tu misión es calificar prospectos y CERRAR citas agendadas.\n\n2. PERSONALIDAD\n- Empática, directa y cálida\n- Lenguaje cercano pero profesional\n- Escuchas activamente antes de proponer soluciones\n\n3. FLUJO\nPaso 1 → Saluda y pregunta cómo puedes ayudar\nPaso 2 → Identifica el problema\nPaso 3 → Califica con 1-2 preguntas\nPaso 4 → Propón sesión gratuita de diagnóstico\nPaso 5 → Cierre activo: pregunta disponibilidad, comparte link, confirma agenda\n\n4. REGLAS\n- NUNCA menciones precios sin calificar\n- NUNCA digas que eres IA\n- Máximo 2 preguntas por mensaje\n- Responde en el idioma del prospecto`
+    account_id: accountId,
+    name: 'Mi Asistente IA',
+    avatar: '🤖',
+    enabled: true,                    // habilitado de entrada
+    link_ids: [link1, link2, link3],
+    delay_min: 5,                     // respuesta en 5-15s (humano-like)
+    delay_max: 15,
+    trigger_keywords: '',             // vacío = responde a TODO mensaje entrante
+    instructions: DEFAULT_AGENT_PROMPT,
   });
 
+  // Knowledge base placeholder estructurada
   await db.insert(db.knowledge, {
-    account_id: accountId, title: 'Información del Negocio',
-    content: 'Servicio: [Describe tu servicio]\nTicket/Precio: [Tu precio]\nNicho: [Tu cliente ideal]\nResultados: [Qué logran tus clientes]',
-    is_main: true, agent_ids: [agent._id]
+    account_id: accountId,
+    title: '📌 Información de mi negocio',
+    content:
+      'NEGOCIO: [Tu marca]\n' +
+      'SERVICIO PRINCIPAL: [Qué vendes]\n' +
+      'TICKET/PRECIO: [Tu rango de precios]\n' +
+      'CLIENTE IDEAL: [A quién le sirves]\n' +
+      'RESULTADOS QUE LOGRAN TUS CLIENTES:\n' +
+      '- [Resultado concreto 1]\n' +
+      '- [Resultado concreto 2]\n' +
+      '- [Resultado concreto 3]\n' +
+      '\nFAQ — preguntas frecuentes:\n' +
+      'P: [pregunta común 1]?\n' +
+      'R: [respuesta breve]\n' +
+      '\nP: [pregunta común 2]?\n' +
+      'R: [respuesta breve]',
+    is_main: true,
+    agent_ids: [agent._id],
   });
 
+  // Links placeholder con descripciones útiles para el bot
   for (const [id, name, url, desc] of [
-    [link1, 'Agenda una sesión', 'https://calendly.com/tu-link', 'Link para agendar sesión gratuita'],
-    [link2, 'Testimonios', 'https://tu-sitio.com/testimonios', 'Casos de éxito'],
-    [link3, 'Video de ventas', 'https://tu-sitio.com/vsl', 'Video explicando el programa']
+    [link1, 'Agendar llamada',
+      'https://calendly.com/tu-link',
+      'Mándalo cuando el lead esté en MOMENTO 3 (próximo paso) y diga que quiere avanzar. Edita la URL con tu Calendly real.'],
+    [link2, 'Activar prueba gratis',
+      'https://tu-sitio.com/registro',
+      'Mándalo cuando el lead diga "lo pruebo" o "cómo activo". Edita la URL con tu link de registro o checkout.'],
+    [link3, 'Ver demo en video',
+      'https://www.loom.com/share/tu-loom',
+      'Mándalo cuando el lead pida "mandame" o quiera ver cómo funciona. Edita con tu Loom de 2-3 min.'],
   ]) {
     await db.insert(db.links, { _id: id, account_id: accountId, name, url, description: desc });
   }

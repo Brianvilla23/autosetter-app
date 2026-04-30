@@ -447,4 +447,132 @@ router.get('/analytics', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// EXPORT CONVERSACIONES COMPLETAS
+// Devuelve TODOS los mensajes de TODOS los leads del account.
+// Útil para casos de éxito, auditoría conversacional, fine-tuning de prompts.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * GET /api/growth/export-conversations?accountId=X&format=csv|json
+ *
+ * format=csv (default): 1 fila por mensaje, columnas legibles para Excel.
+ * format=json: array estructurado con leads y messages anidados.
+ */
+router.get('/export-conversations', async (req, res) => {
+  try {
+    const { accountId, format = 'csv' } = req.query;
+    if (!accountId) return res.status(400).json({ error: 'accountId requerido' });
+    if (accountId !== req.user.accountId) return res.status(403).json({ error: 'Prohibido' });
+
+    // Cargar todos los leads del account
+    const leads = await db.find(db.leads, { account_id: accountId },
+      (a, b) => new Date(b.last_message_at || b.createdAt) - new Date(a.last_message_at || a.createdAt));
+    if (leads.length === 0) {
+      return res.status(404).json({ error: 'No hay conversaciones para exportar' });
+    }
+
+    // Cargar agentes (para mostrar nombre del agente que respondió)
+    const agents = await db.find(db.agents, { account_id: accountId });
+    const agentById = {};
+    for (const a of agents) agentById[a._id] = a.name;
+
+    // Cargar TODOS los mensajes de TODOS los leads del account (1 query por lead)
+    // Para evitar N+1 con muchos leads, podríamos hacer query con $in pero NeDB no lo soporta nativo
+    // Para ≤500 leads esto está bien.
+    const conversations = [];
+    for (const lead of leads) {
+      const messages = await db.find(db.messages, { lead_id: lead._id },
+        (a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      conversations.push({
+        lead_id:               lead._id,
+        ig_username:           lead.ig_username,
+        ig_user_id:            lead.ig_user_id,
+        agent_name:            agentById[lead.agent_id] || '(sin agente)',
+        qualification:         lead.qualification || 'sin_calificar',
+        qualification_reason:  lead.qualification_reason || '',
+        status:                lead.status,
+        automation:            lead.automation,
+        is_bypassed:           !!lead.is_bypassed,
+        is_converted:          !!lead.is_converted,
+        triggered_by:          lead.triggered_by || '',
+        first_seen:            lead.createdAt,
+        last_message_at:       lead.last_message_at,
+        message_count:         messages.length,
+        messages:              messages.map(m => ({
+          role:       m.role,
+          content:    m.content,
+          created_at: m.createdAt,
+        })),
+      });
+    }
+
+    const totalMessages = conversations.reduce((sum, c) => sum + c.message_count, 0);
+    const exportedAt = new Date().toISOString();
+
+    if (format === 'json') {
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition',
+        `attachment; filename="dmcloser-conversations-${exportedAt.slice(0, 10)}.json"`);
+      return res.json({
+        exported_at:    exportedAt,
+        account_id:     accountId,
+        total_leads:    conversations.length,
+        total_messages: totalMessages,
+        conversations,
+      });
+    }
+
+    // CSV — 1 fila por mensaje. Si el lead no tiene mensajes (raro), 1 fila con campos vacíos.
+    const csvRows = [];
+    csvRows.push([
+      'lead_id', 'ig_username', 'ig_user_id', 'agent_name', 'qualification',
+      'qualification_reason', 'status', 'automation', 'is_bypassed', 'is_converted',
+      'triggered_by', 'first_seen', 'last_message_at', 'message_index',
+      'message_role', 'message_content', 'message_sent_at',
+    ]);
+
+    function csvEscape(val) {
+      if (val === null || val === undefined) return '';
+      const s = String(val);
+      // CSV: si contiene coma/comilla/salto de línea, encerrar en comillas y escapar comillas internas
+      if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+      return s;
+    }
+
+    for (const c of conversations) {
+      if (c.messages.length === 0) {
+        csvRows.push([
+          c.lead_id, c.ig_username, c.ig_user_id, c.agent_name, c.qualification,
+          c.qualification_reason, c.status, c.automation, c.is_bypassed, c.is_converted,
+          c.triggered_by, c.first_seen, c.last_message_at, '',
+          '', '', '',
+        ]);
+      } else {
+        for (let i = 0; i < c.messages.length; i++) {
+          const m = c.messages[i];
+          csvRows.push([
+            c.lead_id, c.ig_username, c.ig_user_id, c.agent_name, c.qualification,
+            c.qualification_reason, c.status, c.automation, c.is_bypassed, c.is_converted,
+            c.triggered_by, c.first_seen, c.last_message_at, i + 1,
+            m.role, m.content, m.created_at,
+          ]);
+        }
+      }
+    }
+
+    const csv = csvRows.map(row => row.map(csvEscape).join(',')).join('\n');
+    // BOM UTF-8 para que Excel abra con tildes y emojis correctos
+    const bom = '﻿';
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition',
+      `attachment; filename="dmcloser-conversations-${exportedAt.slice(0, 10)}.csv"`);
+    res.send(bom + csv);
+  } catch (e) {
+    console.error('[export-conversations] error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;
