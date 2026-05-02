@@ -438,7 +438,7 @@ async function loadUsage() {
   document.getElementById('usage-dms-text').textContent = dmsLabel;
   document.getElementById('usage-dms-fill').style.width = `${Math.min(100, percent.dms)}%`;
   document.getElementById('usage-dms-fill').style.background =
-    overage && overage.extraDMs > 0 ? '#7c6af7' : (percent.dms >= 90 ? '#ef4444' : percent.dms >= 75 ? '#f59e0b' : 'var(--orange)');
+    overage && overage.extraDMs > 0 ? '#10b981' : (percent.dms >= 90 ? '#ef4444' : percent.dms >= 75 ? '#f59e0b' : 'var(--orange)');
 
   // Agentes
   const maxA = isFinite(plan.maxAgents) ? plan.maxAgents : null;
@@ -1583,7 +1583,7 @@ function showFeatureLockedToast(err) {
 
   const required = err.required || 'Pro';
   const isPro    = required === 'Pro';
-  const ctaColor = isPro ? '#7c6af7' : '#16a34a';
+  const ctaColor = isPro ? '#10b981' : '#16a34a';
   const ctaLabel = isPro ? '⭐ Upgradear a Pro' : '🚀 Upgradear a Agency';
 
   const t = document.createElement('div');
@@ -1592,7 +1592,7 @@ function showFeatureLockedToast(err) {
     position:fixed;bottom:24px;right:24px;z-index:10000;
     background:linear-gradient(135deg,#1a1a2e,#0f0f1a);
     color:#fff;padding:18px 22px;border-radius:14px;
-    box-shadow:0 20px 60px rgba(0,0,0,.4),0 0 0 1px rgba(124,106,247,.3);
+    box-shadow:0 20px 60px rgba(0,0,0,.4),0 0 0 1px rgba(16,185,129,.3);
     font-size:14px;line-height:1.5;max-width:420px;
     animation:slide-in .25s ease-out;
   `;
@@ -2159,7 +2159,7 @@ function renderTopKeywords(words) {
     const intensity = w.count / max;
     const fontSize = 12 + intensity * 6;
     const opacity = 0.5 + intensity * 0.5;
-    return `<span style="background:rgba(124,106,247,${opacity * 0.15});color:rgba(124,106,247,${0.6 + intensity * 0.4});border:1px solid rgba(124,106,247,${0.2 + intensity * 0.3});padding:5px 11px;border-radius:14px;font-size:${fontSize}px;font-weight:${500 + Math.round(intensity * 300)}" title="${w.count} usos">${escHtmlSafe(w.word)} <small style="opacity:.6">${w.count}</small></span>`;
+    return `<span style="background:rgba(16,185,129,${opacity * 0.15});color:rgba(16,185,129,${0.6 + intensity * 0.4});border:1px solid rgba(16,185,129,${0.2 + intensity * 0.3});padding:5px 11px;border-radius:14px;font-size:${fontSize}px;font-weight:${500 + Math.round(intensity * 300)}" title="${w.count} usos">${escHtmlSafe(w.word)} <small style="opacity:.6">${w.count}</small></span>`;
   }).join('');
 }
 
@@ -2249,7 +2249,7 @@ function renderLeadsChart(byDay) {
     const month = date.slice(5, 7);
     return `
       <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0" title="${date}: ${count} leads">
-        <div style="background:linear-gradient(180deg,#7c6af7,#ec4899);width:100%;height:${pct}%;min-height:${count > 0 ? '4px' : '0'};border-radius:4px 4px 0 0;transition:.3s"></div>
+        <div style="background:linear-gradient(180deg,#10b981,#06b6d4);width:100%;height:${pct}%;min-height:${count > 0 ? '4px' : '0'};border-radius:4px 4px 0 0;transition:.3s"></div>
         ${count > 0 ? `<div style="font-size:9px;color:var(--text-3);font-weight:600">${count}</div>` : ''}
       </div>`;
   }).join('');
@@ -2287,7 +2287,7 @@ function renderHeatmap(byHour) {
   document.getElementById('analytics-heatmap').innerHTML = byHour.map((count, h) => {
     const intensity = count / max;
     const opacity = 0.15 + intensity * 0.85;
-    return `<div title="${h}h: ${count} DMs" style="background:rgba(124,106,247,${opacity});aspect-ratio:1;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:9px;color:${intensity>0.5?'#fff':'var(--text-3)'}">${count > 0 ? count : ''}</div>`;
+    return `<div title="${h}h: ${count} DMs" style="background:rgba(16,185,129,${opacity});aspect-ratio:1;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:9px;color:${intensity>0.5?'#fff':'var(--text-3)'}">${count > 0 ? count : ''}</div>`;
   }).join('');
 }
 
@@ -2301,14 +2301,14 @@ function renderAnalyticsFunnel(stages) {
     const width = Math.max(8, (s.count / max) * 100);
     const prev = i > 0 ? stages[i-1].count : null;
     const dropPct = prev && prev > 0 ? Math.round((1 - s.count / prev) * 100) : 0;
-    const colors = ['#7c6af7', '#3b82f6', '#f59e0b', '#ef4444', '#16a34a'];
+    const colors = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#16a34a'];
     return `
       <div>
         ${i > 0 && dropPct > 0 ? `<div style="font-size:11px;color:#94a3b8;margin-left:14px;margin-bottom:2px">↓ ${dropPct}% drop (${prev - s.count} se cayeron)</div>` : ''}
         <div style="display:flex;align-items:center;gap:12px">
           <div style="min-width:180px;font-size:13.5px"><strong>${escHtmlSafe(s.label)}</strong></div>
           <div style="flex:1;background:#f3f4f6;border-radius:6px;height:32px;position:relative;overflow:hidden">
-            <div style="height:100%;width:${width}%;background:linear-gradient(90deg,${colors[i] || '#7c6af7'},${colors[i] || '#7c6af7'}cc);transition:.4s;border-radius:6px"></div>
+            <div style="height:100%;width:${width}%;background:linear-gradient(90deg,${colors[i] || '#10b981'},${colors[i] || '#10b981'}cc);transition:.4s;border-radius:6px"></div>
             <div style="position:absolute;inset:0;display:flex;align-items:center;padding-left:12px;font-size:13px;font-weight:700;color:#fff">${s.count}</div>
           </div>
         </div>

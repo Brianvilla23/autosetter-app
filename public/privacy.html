@@ -13,8 +13,8 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --orange: #8b5cf6;
-      --grad: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+      --orange: #10b981;
+      --grad: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
       --bg: #0a0a12;
       --surface: #111120;
       --card: #16162a;
@@ -57,7 +57,9 @@
     DMCloser
   </a>
   <div class="nav-links">
+    <a href="/about.html">Nosotros</a>
     <a href="/pricing.html">Precios</a>
+    <a href="/contact.html">Contacto</a>
     <a href="/terms.html">Términos</a>
     <a href="/app">Iniciar sesión</a>
   </div>
@@ -65,16 +67,16 @@
 
 <main>
   <h1>Política de <span>Privacidad</span></h1>
-  <p class="updated">Última actualización: 24 de abril de 2026</p>
+  <p class="updated">Última actualización: 1 de mayo de 2026</p>
 
-  <p>DMCloser ("nosotros", "el Servicio") es una herramienta SaaS que automatiza la atención de mensajes directos en Instagram. Esta política describe qué información recopilamos, cómo la usamos y tus derechos sobre ella.</p>
+  <p>DMCloser ("nosotros", "el Servicio") es un software de atención al cliente para Instagram Business que asiste a equipos de soporte y ventas a responder mensajes directos con apoyo de inteligencia artificial. Esta política describe qué información recopilamos, cómo la usamos y tus derechos sobre ella.</p>
 
   <div class="box">
-    <strong>En una línea:</strong> solo guardamos lo necesario para que el bot funcione. No vendemos datos. Podés pedir la eliminación total en cualquier momento escribiendo a <a href="mailto:soporte@dmcloser.app">soporte@dmcloser.app</a>.
+    <strong>En una línea:</strong> solo guardamos lo necesario para que el asistente funcione. No vendemos datos. Puedes pedir la eliminación total en cualquier momento escribiendo a <a href="mailto:soporte@dmcloser.app">soporte@dmcloser.app</a>.
   </div>
 
   <h2>1. Quién es el responsable</h2>
-  <p>El responsable del tratamiento de datos es DMCloser, con sede operativa en La Serena, Chile. Para cualquier consulta sobre privacidad escribinos a <a href="mailto:soporte@dmcloser.app">soporte@dmcloser.app</a>.</p>
+  <p>El responsable del tratamiento de datos es DMCloser, con sede operativa en La Serena, Chile. Para cualquier consulta sobre privacidad escríbenos a <a href="mailto:soporte@dmcloser.app">soporte@dmcloser.app</a>.</p>
 
   <h2>2. Qué información recopilamos</h2>
 
@@ -85,7 +87,7 @@
     <li>Plan contratado y estado de suscripción</li>
   </ul>
 
-  <h3>2.2. Datos de tu cuenta de Instagram (cuando la conectás)</h3>
+  <h3>2.2. Datos de tu cuenta de Instagram (cuando la conectas)</h3>
   <ul>
     <li>ID público de Instagram y nombre de usuario</li>
     <li>Token de acceso a la API de Meta (cifrado en reposo)</li>
@@ -93,18 +95,18 @@
     <li>ID y username público de los prospectos que te escriben</li>
   </ul>
 
-  <h3>2.3. Datos de configuración del bot</h3>
+  <h3>2.3. Datos de configuración del asistente</h3>
   <ul>
-    <li>Instrucciones, base de conocimiento y links que vos cargás</li>
-    <li>Historial de conversaciones generadas por el bot</li>
-    <li>Clasificaciones HOT/WARM/COLD de prospectos</li>
+    <li>Instrucciones, base de conocimiento y links que tú cargas</li>
+    <li>Historial de conversaciones generadas por el asistente</li>
+    <li>Clasificaciones de prioridad de prospectos (HOT/WARM/COLD)</li>
   </ul>
 
   <h3>2.4. Datos de facturación</h3>
   <ul>
-    <li>ID de suscripción de Lemon Squeezy o Mercado Pago</li>
+    <li>ID de suscripción del procesador de pagos vigente</li>
     <li>Historial de pagos, estado y monto</li>
-    <li><strong>No almacenamos</strong> números de tarjeta ni CVV. Esos datos quedan en los procesadores de pago certificados PCI-DSS.</li>
+    <li><strong>No almacenamos</strong> números de tarjeta ni CVV. Esos datos quedan en procesadores de pago certificados PCI-DSS.</li>
   </ul>
 
   <h3>2.5. Datos técnicos</h3>
@@ -115,8 +117,8 @@
 
   <h2>3. Para qué usamos tus datos</h2>
   <ul>
-    <li>Generar respuestas automáticas a tus DMs con IA</li>
-    <li>Clasificar el interés de tus prospectos y alertarte de los HOT</li>
+    <li>Sugerir respuestas a tus mensajes directos con apoyo de IA</li>
+    <li>Priorizar la atención según el interés de tus clientes (HOT/WARM/COLD)</li>
     <li>Procesar pagos y gestionar tu suscripción</li>
     <li>Enviarte emails transaccionales (bienvenida, trial ending, fallos de pago, cambios de plan)</li>
     <li>Responder tus consultas de soporte</li>
@@ -131,10 +133,9 @@
       <tr><th>Proveedor</th><th>Qué recibe</th><th>Para qué</th></tr>
     </thead>
     <tbody>
-      <tr><td>Meta / Instagram</td><td>Mensajes que enviás vos</td><td>Entregar los DMs por su API</td></tr>
-      <tr><td>OpenAI</td><td>Conversaciones e instrucciones del bot</td><td>Generar respuestas con IA</td></tr>
-      <tr><td>Lemon Squeezy</td><td>Email, nombre, país, datos de pago</td><td>Procesar cobros (clientes internacionales)</td></tr>
-      <tr><td>Mercado Pago</td><td>Email, datos de pago</td><td>Procesar cobros (clientes LATAM)</td></tr>
+      <tr><td>Meta / Instagram</td><td>Mensajes que envías tú</td><td>Entregar los DMs por su API oficial</td></tr>
+      <tr><td>OpenAI</td><td>Conversaciones e instrucciones del asistente</td><td>Generar sugerencias de respuesta con IA</td></tr>
+      <tr><td>Procesador de pagos vigente</td><td>Email, nombre, país, datos de pago</td><td>Procesar cobros y suscripciones</td></tr>
       <tr><td>Railway</td><td>Toda la base de datos cifrada</td><td>Infraestructura (servidor y almacenamiento)</td></tr>
       <tr><td>Resend / SMTP</td><td>Email y nombre</td><td>Envío de emails transaccionales</td></tr>
     </tbody>
@@ -158,10 +159,10 @@
     <li><strong>instagram_business_content_publish</strong> — opcional, para comentar historias</li>
     <li><strong>instagram_business_manage_comments</strong> — gestionar comentarios en publicaciones</li>
   </ul>
-  <p>Podés revocar estos permisos en cualquier momento desde <a href="https://www.instagram.com/accounts/manage_access/" target="_blank" rel="noopener">Instagram → Configuración → Apps conectadas</a>.</p>
+  <p>Puedes revocar estos permisos en cualquier momento desde <a href="https://www.instagram.com/accounts/manage_access/" target="_blank" rel="noopener">Instagram → Configuración → Apps conectadas</a>.</p>
 
   <h2>7. Tus derechos</h2>
-  <p>Podés ejercer en cualquier momento los siguientes derechos escribiendo a <a href="mailto:soporte@dmcloser.app">soporte@dmcloser.app</a>:</p>
+  <p>Puedes ejercer en cualquier momento los siguientes derechos escribiendo a <a href="mailto:soporte@dmcloser.app">soporte@dmcloser.app</a>:</p>
   <ul>
     <li><strong>Acceso:</strong> obtener una copia de los datos que tenemos sobre vos</li>
     <li><strong>Rectificación:</strong> corregir información inexacta</li>
@@ -172,7 +173,7 @@
   <p>Respondemos solicitudes dentro de los 15 días hábiles.</p>
 
   <h2>8. Privacidad de tus prospectos</h2>
-  <p>Como cliente de DMCloser, actuás como <strong>responsable</strong> del tratamiento de los datos de las personas que te escriben; nosotros actuamos como <strong>encargado</strong>. Sos responsable de cumplir con la normativa que aplique a tu relación con tus prospectos (incluido responder sus pedidos de eliminación). Si un prospecto tuyo nos contacta directamente, te derivaremos a vos.</p>
+  <p>Como cliente de DMCloser, actúas como <strong>responsable</strong> del tratamiento de los datos de las personas que te escriben; nosotros actuamos como <strong>encargado</strong>. Eres responsable de cumplir con la normativa que aplique a tu relación con tus prospectos (incluido responder sus pedidos de eliminación). Si un prospecto tuyo nos contacta directamente, te derivaremos a ti.</p>
 
   <h2>9. Menores de edad</h2>
   <p>DMCloser no está dirigido a menores de 18 años. Si detectamos una cuenta creada por un menor, la eliminaremos.</p>
@@ -192,12 +193,13 @@
 </main>
 
 <footer>
-  <div>© 2026 DMCloser</div>
+  <div>© 2026 DMCloser · La Serena, Chile</div>
   <div>
+    <a href="/about.html">Sobre nosotros</a>
     <a href="/pricing.html">Precios</a>
+    <a href="/contact.html">Contacto</a>
     <a href="/terms.html">Términos</a>
     <a href="/privacy.html">Privacidad</a>
-    <a href="mailto:soporte@dmcloser.app">Soporte</a>
   </div>
 </footer>
 

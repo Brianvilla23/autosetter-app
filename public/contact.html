@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Contacto — DMCloser</title>
+  <meta name="description" content="Habla con el equipo de DMCloser. Soporte por email, horario de atención y formulario de contacto. Respondemos en menos de 24 horas hábiles.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://dmcloser.app/contact.html">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://dmcloser.app/contact.html">
+  <meta property="og:title" content="Contacto — DMCloser">
+  <meta property="og:description" content="Habla con el equipo de DMCloser. Respondemos en menos de 24h.">
+  <meta property="og:image" content="https://dmcloser.app/icon-1024.png">
+  <meta property="og:locale" content="es_LA">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --orange: #10b981;
+      --grad: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
+      --bg: #0a0a12;
+      --surface: #111120;
+      --card: #16162a;
+      --border: rgba(255,255,255,.08);
+      --text-1: #f0f0ff;
+      --text-2: #a0a0c0;
+      --text-3: #606080;
+    }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--text-1); min-height: 100vh; line-height: 1.7; }
+    nav { max-width: 1180px; margin: 0 auto; padding: 22px 28px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
+    .nav-logo { font-size: 1.25rem; font-weight: 800; display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text-1); }
+    .nav-logo-icon { width: 32px; height: 32px; background: var(--grad); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+    .nav-links a { text-decoration: none; color: var(--text-2); font-size: 14px; font-weight: 500; margin-left: 24px; transition: color .15s; }
+    .nav-links a:hover { color: var(--text-1); }
+
+    main { max-width: 920px; margin: 0 auto; padding: 60px 28px 80px; }
+    h1 { font-size: 2.4rem; font-weight: 900; letter-spacing: -.02em; margin-bottom: 14px; line-height: 1.15; }
+    h1 span { background: var(--grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .lead { color: var(--text-2); font-size: 1.05rem; margin-bottom: 40px; max-width: 640px; }
+
+    .contact-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
+      margin-bottom: 40px;
+    }
+
+    .contact-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 18px;
+      padding: 28px; display: flex; flex-direction: column;
+    }
+    .contact-card .icon {
+      width: 48px; height: 48px; border-radius: 12px; background: rgba(16,185,129,.15);
+      border: 1px solid rgba(16,185,129,.3); display: flex; align-items: center;
+      justify-content: center; font-size: 24px; margin-bottom: 16px;
+    }
+    .contact-card h3 { font-size: 1.15rem; font-weight: 800; margin-bottom: 8px; color: var(--text-1); }
+    .contact-card p { color: var(--text-2); font-size: 14.5px; margin-bottom: 14px; }
+    .contact-card .primary { color: var(--text-1); font-weight: 700; font-size: 1.05rem; }
+    .contact-card a { color: var(--orange); text-decoration: none; }
+    .contact-card a:hover { text-decoration: underline; }
+    .contact-card ul { list-style: none; padding: 0; margin: 0; }
+    .contact-card ul li { color: var(--text-2); font-size: 14px; padding: 4px 0; display: flex; gap: 8px; }
+    .contact-card ul li::before { content: '·'; color: var(--orange); font-weight: 800; }
+
+    .form-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 18px;
+      padding: 32px; margin-top: 12px;
+    }
+    .form-card h2 { font-size: 1.4rem; font-weight: 800; margin-bottom: 8px; }
+    .form-card .form-sub { color: var(--text-2); font-size: 14.5px; margin-bottom: 24px; }
+    .form-row { margin-bottom: 16px; }
+    .form-row label { display: block; font-size: 13px; font-weight: 600; color: var(--text-2); margin-bottom: 6px; }
+    .form-row input, .form-row select, .form-row textarea {
+      width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+      padding: 12px 14px; color: var(--text-1); font-family: inherit; font-size: 14.5px;
+      outline: none; transition: border-color .15s;
+    }
+    .form-row input:focus, .form-row select:focus, .form-row textarea:focus { border-color: rgba(16,185,129,.5); }
+    .form-row textarea { resize: vertical; min-height: 110px; line-height: 1.55; }
+
+    .btn-row { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 13px 26px; border-radius: 10px; font-size: 14.5px; font-weight: 700;
+      cursor: pointer; transition: all .15s; border: none; text-decoration: none;
+      font-family: inherit;
+    }
+    .btn-grad { background: var(--grad); color: #fff; box-shadow: 0 4px 16px rgba(16,185,129,.35); }
+    .btn-grad:hover { opacity: .92; transform: translateY(-1px); }
+    .form-note { color: var(--text-3); font-size: 12.5px; }
+
+    .info-strip {
+      background: var(--card); border: 1px dashed var(--border); border-radius: 12px;
+      padding: 18px 22px; margin-top: 30px; display: flex; gap: 18px; align-items: center;
+      flex-wrap: wrap; font-size: 13.5px; color: var(--text-2);
+    }
+    .info-strip strong { color: var(--text-1); }
+
+    footer { border-top: 1px solid var(--border); max-width: 1180px; margin: 40px auto 0; padding: 24px 28px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--text-3); }
+    footer a { color: var(--text-2); margin-left: 18px; }
+
+    @media (max-width: 720px) {
+      .contact-grid { grid-template-columns: 1fr; }
+      h1 { font-size: 1.9rem; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo">
+    <span class="nav-logo-icon">💬</span>
+    DMCloser
+  </a>
+  <div class="nav-links">
+    <a href="/about.html">Sobre nosotros</a>
+    <a href="/pricing.html">Precios</a>
+    <a href="/app">Iniciar sesión</a>
+  </div>
+</nav>
+
+<main>
+  <h1>Hablemos. <span>Estamos aquí.</span></h1>
+  <p class="lead">Soporte directo del fundador, sin tickets ni bots de soporte. Si tienes una pregunta antes de probar el servicio o necesitas ayuda con tu cuenta, escríbenos y te respondemos pronto.</p>
+
+  <div class="contact-grid">
+
+    <div class="contact-card">
+      <div class="icon">📧</div>
+      <h3>Email de soporte</h3>
+      <p>El canal principal. Lo revisamos varias veces al día en horario hábil.</p>
+      <div class="primary"><a href="mailto:soporte@dmcloser.app">soporte@dmcloser.app</a></div>
+    </div>
+
+    <div class="contact-card">
+      <div class="icon">⏰</div>
+      <h3>Horario de respuesta</h3>
+      <p>Tiempo objetivo de primera respuesta a consultas de soporte.</p>
+      <ul>
+        <li>Lunes a viernes: respuesta en menos de 12h hábiles</li>
+        <li>Fin de semana: respuesta el siguiente día hábil</li>
+        <li>Zona horaria: Chile (GMT-3)</li>
+      </ul>
+    </div>
+
+    <div class="contact-card">
+      <div class="icon">📍</div>
+      <h3>Dónde estamos</h3>
+      <p>Operamos desde la Región de Coquimbo, Chile.</p>
+      <ul>
+        <li>La Serena, Región de Coquimbo</li>
+        <li>República de Chile</li>
+        <li>Idioma de soporte: español nativo</li>
+      </ul>
+    </div>
+
+    <div class="contact-card">
+      <div class="icon">💼</div>
+      <h3>Otros canales</h3>
+      <p>Para temas específicos:</p>
+      <ul>
+        <li>Privacidad y eliminación de datos: <a href="mailto:soporte@dmcloser.app">soporte@dmcloser.app</a></li>
+        <li>Reembolsos y facturación: <a href="mailto:soporte@dmcloser.app">soporte@dmcloser.app</a></li>
+        <li>Reportar abuso o seguridad: <a href="mailto:soporte@dmcloser.app">soporte@dmcloser.app</a></li>
+      </ul>
+    </div>
+
+  </div>
+
+  <div class="form-card">
+    <h2>Mándanos un mensaje</h2>
+    <p class="form-sub">Te respondemos en menos de 24h hábiles. Si no recibes respuesta, revisa tu carpeta de spam o escríbenos directo a soporte@dmcloser.app.</p>
+
+    <form id="contact-form" action="mailto:soporte@dmcloser.app" method="post" enctype="text/plain">
+      <div class="form-row">
+        <label for="cf-name">Tu nombre</label>
+        <input type="text" id="cf-name" name="nombre" required autocomplete="name">
+      </div>
+      <div class="form-row">
+        <label for="cf-email">Tu email</label>
+        <input type="email" id="cf-email" name="email" required autocomplete="email">
+      </div>
+      <div class="form-row">
+        <label for="cf-topic">Tema</label>
+        <select id="cf-topic" name="tema">
+          <option>Pregunta antes de probar el servicio</option>
+          <option>Soporte técnico (cuenta existente)</option>
+          <option>Facturación o reembolso</option>
+          <option>Privacidad o eliminación de datos</option>
+          <option>Reportar un problema de seguridad</option>
+          <option>Partnership o prensa</option>
+          <option>Otro</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label for="cf-msg">Mensaje</label>
+        <textarea id="cf-msg" name="mensaje" required placeholder="Cuéntanos en qué te podemos ayudar..."></textarea>
+      </div>
+      <div class="btn-row">
+        <button type="submit" class="btn btn-grad">Enviar mensaje →</button>
+        <span class="form-note">Al enviar abrimos tu cliente de email con el mensaje listo.</span>
+      </div>
+    </form>
+  </div>
+
+  <div class="info-strip">
+    <strong>🛡️ Privacidad:</strong>
+    No usamos tus datos de contacto para marketing. Solo respondemos tu consulta. Más detalles en la <a href="/privacy.html" style="color:var(--orange)">Política de Privacidad</a>.
+  </div>
+
+</main>
+
+<footer>
+  <div>© 2026 DMCloser · La Serena, Chile</div>
+  <div>
+    <a href="/pricing.html">Precios</a>
+    <a href="/about.html">Sobre nosotros</a>
+    <a href="/contact.html">Contacto</a>
+    <a href="/terms.html">Términos</a>
+    <a href="/privacy.html">Privacidad</a>
+  </div>
+</footer>
+
+</body>
+</html>

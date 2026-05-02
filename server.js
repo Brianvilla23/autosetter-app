@@ -498,6 +498,12 @@ app.get('/privacy', (req, res) => {
 app.get('/terms', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'terms.html'));
 });
+app.get('/about', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'about.html'));
+});
+app.get('/contact', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'contact.html'));
+});
 app.get('/data-deletion', (req, res) => {
   // Meta requiere una URL de "instrucciones para eliminación de datos".
   // La privacy explica cómo pedir eliminación, así que apuntamos ahí.

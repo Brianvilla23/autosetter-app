@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DMCloser — Tu setter IA en Instagram 24/7</title>
-  <meta name="description" content="Agendá reuniones con leads calientes de Instagram sin contratar setters. IA que responde tus DMs con tu tono, clasifica leads y te alerta cuando alguien quiere comprar.">
-  <meta name="keywords" content="bot Instagram, DMs automáticos, setter IA, automatización Instagram, chatbot ventas, IA Instagram DM, captación leads Instagram">
+  <title>DMCloser — Asistente de inbox para Instagram Business</title>
+  <meta name="description" content="Software de atención al cliente para Instagram Business. Asistente con IA que sugiere respuestas con tu tono, prioriza consultas urgentes y unifica tu inbox para que no pierdas mensajes importantes.">
+  <meta name="keywords" content="atención al cliente Instagram, software inbox Instagram, asistente IA Instagram, gestión DMs Instagram, customer service Instagram, soporte clientes Instagram">
   <meta name="author" content="DMCloser">
   <meta name="robots" content="index, follow">
-  <meta name="theme-color" content="#7c6af7">
+  <meta name="theme-color" content="#10b981">
   <link rel="canonical" href="https://dmcloser.app/">
 
   <!-- TODO: cuando puedas, generá un og-cover.png de 1200x630 con tu branding
@@ -18,12 +18,12 @@
   <!-- Open Graph / Facebook / WhatsApp / LinkedIn -->
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://dmcloser.app/">
-  <meta property="og:title" content="DMCloser — Tu setter IA en Instagram 24/7">
-  <meta property="og:description" content="Convertí tus DMs de Instagram en citas agendadas. IA con tu tono, califica leads y te avisa cuando alguien quiere comprar.">
+  <meta property="og:title" content="DMCloser — Asistente de inbox para Instagram Business">
+  <meta property="og:description" content="Tu inbox de Instagram organizado. Asistente con IA que sugiere respuestas, prioriza consultas urgentes y centraliza la conversación con tus clientes.">
   <meta property="og:image" content="https://dmcloser.app/icon-1024.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="DMCloser — Setter IA para Instagram">
+  <meta property="og:image:alt" content="DMCloser — Asistente de inbox para Instagram">
   <meta property="og:site_name" content="DMCloser">
   <meta property="og:locale" content="es_LA">
   <meta property="og:locale:alternate" content="es_AR">
@@ -34,10 +34,10 @@
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:url" content="https://dmcloser.app/">
-  <meta name="twitter:title" content="DMCloser — Tu setter IA en Instagram 24/7">
-  <meta name="twitter:description" content="Convertí tus DMs de Instagram en citas agendadas. IA con tu tono, califica leads y te avisa cuando alguien quiere comprar.">
+  <meta name="twitter:title" content="DMCloser — Asistente de inbox para Instagram Business">
+  <meta name="twitter:description" content="Tu inbox de Instagram organizado. Asistente con IA que sugiere respuestas, prioriza consultas urgentes y centraliza la conversación con tus clientes.">
   <meta name="twitter:image" content="https://dmcloser.app/icon-1024.png">
-  <meta name="twitter:image:alt" content="DMCloser — Setter IA para Instagram">
+  <meta name="twitter:image:alt" content="DMCloser — Asistente de inbox para Instagram">
 
   <!-- Iconos -->
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
@@ -51,12 +51,10 @@
     "name": "DMCloser",
     "applicationCategory": "BusinessApplication",
     "operatingSystem": "Web",
-    "description": "SaaS de automatización de DMs de Instagram con IA conversacional que califica leads, hace follow-up y notifica al vendedor cuando aparece un lead caliente.",
+    "description": "Software de atención al cliente para Instagram Business. Asistente con IA que sugiere respuestas a mensajes de clientes, prioriza consultas urgentes y unifica el inbox del equipo de atención.",
     "url": "https://dmcloser.app/",
     "offers": [
-      { "@type": "Offer", "name": "Starter", "price": "197", "priceCurrency": "USD" },
-      { "@type": "Offer", "name": "Pro",     "price": "297", "priceCurrency": "USD" },
-      { "@type": "Offer", "name": "Agency",  "price": "497", "priceCurrency": "USD" }
+      { "@type": "Offer", "name": "Founder", "price": "148", "priceCurrency": "USD" }
     ],
     "aggregateRating": {
       "@type": "AggregateRating",
@@ -91,8 +89,8 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --orange: #8b5cf6;
-      --grad: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+      --orange: #10b981;
+      --grad: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
       --bg: #0a0a12;
       --surface: #111120;
       --card: #16162a;
@@ -115,15 +113,15 @@
     .btn { display: inline-flex; align-items: center; justify-content: center; padding: 10px 22px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all .15s; border: none; text-decoration: none; }
     .btn-outline { background: transparent; border: 1.5px solid var(--border); color: var(--text-2); }
     .btn-outline:hover { border-color: var(--orange); color: var(--orange); }
-    .btn-grad { background: var(--grad); color: #fff; box-shadow: 0 4px 16px rgba(139,92,246,.35); }
+    .btn-grad { background: var(--grad); color: #fff; box-shadow: 0 4px 16px rgba(16,185,129,.35); }
     .btn-grad:hover { opacity: .92; transform: translateY(-1px); }
     .btn-lg { padding: 14px 30px; font-size: 15px; }
 
     /* ── HERO ── */
     .hero-wrap { position: relative; overflow: hidden; }
-    .hero-glow { position: absolute; top: -200px; left: 50%; transform: translateX(-50%); width: 900px; height: 900px; background: radial-gradient(circle, rgba(139,92,246,.18) 0%, rgba(139,92,246,0) 60%); pointer-events: none; z-index: 0; }
+    .hero-glow { position: absolute; top: -200px; left: 50%; transform: translateX(-50%); width: 900px; height: 900px; background: radial-gradient(circle, rgba(16,185,129,.18) 0%, rgba(16,185,129,0) 60%); pointer-events: none; z-index: 0; }
     .hero { position: relative; text-align: center; padding: 80px 28px 40px; max-width: 860px; margin: 0 auto; z-index: 1; }
-    .hero-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(139,92,246,.12); border: 1px solid rgba(139,92,246,.3); color: var(--orange); padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; margin-bottom: 28px; }
+    .hero-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(16,185,129,.12); border: 1px solid rgba(16,185,129,.3); color: var(--orange); padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; margin-bottom: 28px; }
     .hero h1 { font-size: clamp(2.4rem, 5.5vw, 3.8rem); font-weight: 900; line-height: 1.08; margin-bottom: 24px; letter-spacing: -.02em; }
     .hero h1 span { background: var(--grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
     .hero p.lead { font-size: 1.15rem; color: var(--text-2); line-height: 1.6; max-width: 640px; margin: 0 auto 36px; }
@@ -133,9 +131,9 @@
 
     /* ── CONVO MOCKUP ── */
     .mockup-wrap { max-width: 460px; margin: 60px auto 0; padding: 0 20px; position: relative; z-index: 1; }
-    .mockup { background: var(--card); border: 1px solid var(--border); border-radius: 22px; overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,.6), 0 0 0 1px rgba(139,92,246,.08); }
+    .mockup { background: var(--card); border: 1px solid var(--border); border-radius: 22px; overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,.6), 0 0 0 1px rgba(16,185,129,.08); }
     .mockup-header { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--border); background: rgba(0,0,0,.2); }
-    .mockup-avatar { width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, #f9a8d4, #c084fc); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 800; color: #fff; }
+    .mockup-avatar { width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, #34d399, #06b6d4); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 800; color: #fff; }
     .mockup-user { font-size: 14px; font-weight: 700; }
     .mockup-status { font-size: 11px; color: #22c55e; display: flex; align-items: center; gap: 5px; }
     .mockup-status::before { content: ''; width: 6px; height: 6px; background: #22c55e; border-radius: 50%; }
@@ -169,7 +167,7 @@
       border-radius: 30px; font-size: 13px; color: var(--text-2);
       transition: all .2s;
     }
-    .ts-logo:hover { background: rgba(139,92,246,.06); border-color: rgba(139,92,246,.3); transform: translateY(-2px); }
+    .ts-logo:hover { background: rgba(16,185,129,.06); border-color: rgba(16,185,129,.3); transform: translateY(-2px); }
     .ts-logo span { font-size: 16px; }
     .ts-logo strong { color: var(--text-1); font-weight: 700; }
     .proof-lbl { font-size: 12.5px; color: var(--text-3); margin-top: 4px; }
@@ -194,14 +192,14 @@
     .step-num { font-size: 12px; font-weight: 800; color: var(--orange); letter-spacing: .12em; margin-bottom: 14px; }
     .step h3 { font-size: 1.15rem; font-weight: 700; margin-bottom: 12px; }
     .step p { color: var(--text-2); font-size: 13.5px; line-height: 1.65; }
-    .step-chip { display: inline-block; margin-top: 16px; padding: 5px 12px; background: rgba(139,92,246,.12); border: 1px solid rgba(139,92,246,.25); border-radius: 20px; font-size: 11.5px; color: var(--orange); font-weight: 600; }
+    .step-chip { display: inline-block; margin-top: 16px; padding: 5px 12px; background: rgba(16,185,129,.12); border: 1px solid rgba(16,185,129,.25); border-radius: 20px; font-size: 11.5px; color: var(--orange); font-weight: 600; }
 
     /* ── FEATURES ── */
     .features { max-width: 1180px; margin: 110px auto 0; padding: 0 28px; }
     .feat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
     .feat { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 26px 22px; transition: all .2s; }
-    .feat:hover { border-color: rgba(139,92,246,.3); transform: translateY(-3px); box-shadow: 0 12px 40px rgba(0,0,0,.3); }
-    .feat-icon { width: 40px; height: 40px; border-radius: 10px; background: rgba(139,92,246,.12); display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 14px; }
+    .feat:hover { border-color: rgba(16,185,129,.3); transform: translateY(-3px); box-shadow: 0 12px 40px rgba(0,0,0,.3); }
+    .feat-icon { width: 40px; height: 40px; border-radius: 10px; background: rgba(16,185,129,.12); display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 14px; }
     .feat h3 { font-size: .98rem; font-weight: 700; margin-bottom: 8px; }
     .feat p { color: var(--text-2); font-size: 13px; line-height: 1.55; }
 
@@ -209,7 +207,7 @@
     .compare { max-width: 960px; margin: 110px auto 0; padding: 0 28px; }
     .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
     .compare-col { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 32px 28px; }
-    .compare-col.good { background: linear-gradient(160deg, rgba(139,92,246,.12) 0%, rgba(236,72,153,.07) 100%); border-color: rgba(139,92,246,.4); }
+    .compare-col.good { background: linear-gradient(160deg, rgba(16,185,129,.12) 0%, rgba(6,182,212,.07) 100%); border-color: rgba(16,185,129,.4); }
     .compare-title { font-size: 1.1rem; font-weight: 800; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
     .compare-title .em { font-size: 22px; }
     .compare-list { list-style: none; display: flex; flex-direction: column; gap: 14px; }
@@ -220,10 +218,10 @@
 
     /* ── USE CASES (prueba social honesta) ── */
     .usecases { max-width: 1180px; margin: 110px auto 0; padding: 0 28px; }
-    .uc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+    .uc-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 22px; }
     .uc-card { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 30px 26px; position: relative; overflow: hidden; transition: all .2s; }
-    .uc-card:hover { border-color: rgba(139,92,246,.35); transform: translateY(-3px); box-shadow: 0 14px 40px rgba(0,0,0,.32); }
-    .uc-tag { display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--orange); background: rgba(139,92,246,.12); border: 1px solid rgba(139,92,246,.25); padding: 4px 10px; border-radius: 16px; margin-bottom: 14px; }
+    .uc-card:hover { border-color: rgba(16,185,129,.35); transform: translateY(-3px); box-shadow: 0 14px 40px rgba(0,0,0,.32); }
+    .uc-tag { display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--orange); background: rgba(16,185,129,.12); border: 1px solid rgba(16,185,129,.25); padding: 4px 10px; border-radius: 16px; margin-bottom: 14px; }
     .uc-card h3 { font-size: 1.15rem; font-weight: 800; margin-bottom: 12px; letter-spacing: -.01em; }
     .uc-flow { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 18px 0 16px; padding: 14px; background: rgba(0,0,0,.25); border-radius: 12px; border: 1px solid rgba(255,255,255,.04); }
     .uc-flow > div { font-size: 12px; line-height: 1.5; }
@@ -247,19 +245,19 @@
       padding: 36px 28px; display: flex; flex-direction: column; position: relative;
       transition: all .25s;
     }
-    .price-card:hover { border-color: rgba(139,92,246,.35); transform: translateY(-3px); }
+    .price-card:hover { border-color: rgba(16,185,129,.35); transform: translateY(-3px); }
     .price-card.featured {
-      background: linear-gradient(160deg, rgba(139,92,246,.18) 0%, rgba(236,72,153,.10) 100%);
-      border-color: rgba(139,92,246,.5);
+      background: linear-gradient(160deg, rgba(16,185,129,.18) 0%, rgba(6,182,212,.10) 100%);
+      border-color: rgba(16,185,129,.5);
       transform: scale(1.03);
-      box-shadow: 0 24px 60px -20px rgba(139,92,246,.4);
+      box-shadow: 0 24px 60px -20px rgba(16,185,129,.4);
     }
     .price-card.featured:hover { transform: scale(1.03) translateY(-3px); }
     .price-badge {
       position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
       background: var(--grad); color: #fff; font-size: 11px; font-weight: 700;
       letter-spacing: .12em; text-transform: uppercase; padding: 6px 16px; border-radius: 20px;
-      box-shadow: 0 8px 24px -6px rgba(139,92,246,.6);
+      box-shadow: 0 8px 24px -6px rgba(16,185,129,.6);
     }
     .price-name { font-size: 13px; font-weight: 800; color: var(--orange); letter-spacing: .14em; text-transform: uppercase; margin-bottom: 8px; }
     .price-amount { font-size: 2.4rem; font-weight: 900; color: var(--text-1); line-height: 1; letter-spacing: -.02em; }
@@ -271,16 +269,16 @@
       margin-bottom: 22px;
     }
     .price-cta-grad { background: var(--grad); color: #fff; }
-    .price-cta-grad:hover { box-shadow: 0 12px 32px -10px rgba(139,92,246,.6); }
+    .price-cta-grad:hover { box-shadow: 0 12px 32px -10px rgba(16,185,129,.6); }
     .price-cta-outline { background: transparent; color: var(--text-1); border: 1px solid var(--border); }
     .price-cta-outline:hover { border-color: var(--orange); color: var(--orange); }
     .price-features { list-style: none; display: flex; flex-direction: column; gap: 10px; flex: 1; }
     .price-features li { display: flex; align-items: flex-start; gap: 9px; font-size: 13px; color: var(--text-2); }
-    .price-features li .check { flex-shrink: 0; width: 16px; height: 16px; border-radius: 50%; background: rgba(139,92,246,.18); display: flex; align-items: center; justify-content: center; font-size: 9px; color: var(--orange); margin-top: 2px; }
+    .price-features li .check { flex-shrink: 0; width: 16px; height: 16px; border-radius: 50%; background: rgba(16,185,129,.18); display: flex; align-items: center; justify-content: center; font-size: 9px; color: var(--orange); margin-top: 2px; }
     .price-features li.locked { color: rgba(255,255,255,.32); font-style: italic; }
     .price-features li.locked .check { background: rgba(255,255,255,.05); }
     .price-features li strong { color: var(--text-1); }
-    .price-overage { padding-top: 12px; border-top: 1px dashed rgba(139,92,246,.25); margin-top: 6px; font-size: 12.5px; color: var(--text-2); }
+    .price-overage { padding-top: 12px; border-top: 1px dashed rgba(16,185,129,.25); margin-top: 6px; font-size: 12.5px; color: var(--text-2); }
     .price-overage strong { color: #22c55e; }
     .price-foot { text-align: center; margin-top: 30px; font-size: 13.5px; color: var(--text-2); }
     .price-foot a { color: var(--orange); text-decoration: none; font-weight: 600; }
@@ -292,7 +290,7 @@
 
     /* ── TRIAL CTA ── */
     .cta-section { max-width: 760px; margin: 120px auto 0; padding: 0 28px; }
-    .cta-box { background: linear-gradient(135deg, rgba(139,92,246,.15) 0%, rgba(236,72,153,.08) 100%); border: 1px solid rgba(139,92,246,.3); border-radius: 22px; padding: 60px 44px; text-align: center; }
+    .cta-box { background: linear-gradient(135deg, rgba(16,185,129,.15) 0%, rgba(6,182,212,.08) 100%); border: 1px solid rgba(16,185,129,.3); border-radius: 22px; padding: 60px 44px; text-align: center; }
     .cta-box h2 { font-size: clamp(1.8rem, 3.5vw, 2.2rem); font-weight: 800; margin-bottom: 14px; letter-spacing: -.01em; }
     .cta-box p { color: var(--text-2); font-size: 15px; margin-bottom: 32px; line-height: 1.6; }
     .cta-foot { font-size: 12.5px; color: var(--text-3); margin-top: 16px; }
@@ -334,7 +332,8 @@
     <a href="#features">Features</a>
     <a href="#casos">Casos</a>
     <a href="#pricing">Planes</a>
-    <a href="#faq">Preguntas</a>
+    <a href="/about.html">Nosotros</a>
+    <a href="/contact.html">Contacto</a>
   </div>
   <div class="nav-actions">
     <a href="/app" class="btn btn-outline">Iniciar sesión</a>
@@ -347,8 +346,8 @@
   <div class="hero-glow"></div>
   <section class="hero">
     <div class="hero-badge">🚀 Prueba gratis 3 días · sin tarjeta</div>
-    <h1>Convertí tus DMs de Instagram en <span>citas agendadas</span>, sin contratar setters</h1>
-    <p class="lead">DMCloser es un setter con IA que responde tus mensajes 24/7, detecta leads listos para comprar y te avisa a Telegram cuando alguien quiere reservar — con tu tono y tu oferta.</p>
+    <h1>Tu inbox de Instagram está lleno de personas que necesitaban una respuesta rápida — y <span>ya compraron en otro lado</span></h1>
+    <p class="lead">DMCloser es un asistente de inbox con IA que atiende lo repetitivo, prioriza quién viene en modo curiosidad versus quién viene listo para comprar, y te alerta a Telegram solo cuando hay intención real. Sin contratar más equipo de atención.</p>
     <div class="hero-cta">
       <a href="/app?register=1" class="btn btn-grad btn-lg">Empezar prueba gratis →</a>
       <a href="#como-funciona" class="btn btn-outline btn-lg">Ver cómo funciona</a>
@@ -358,7 +357,7 @@
 
   <!-- Conversation mockup — animado en vivo (los mensajes aparecen progresivamente) -->
   <div class="mockup-wrap">
-    <div class="hot-badge" id="hero-hot-badge" style="opacity:0;transform:scale(.5);transition:all .5s">🔥 Lead caliente</div>
+    <div class="hot-badge" id="hero-hot-badge" style="opacity:0;transform:scale(.5);transition:all .5s">🔥 Cliente prioritario</div>
     <div class="mockup">
       <div class="mockup-header">
         <div class="mockup-avatar">M</div>
@@ -377,22 +376,21 @@
 
 <!-- SOCIAL PROOF -->
 <section class="proof">
-  <div class="proof-label">Diseñado para coaches, mentores y agencias en LATAM</div>
+  <div class="proof-label">Diseñado para negocios que atienden clientes por Instagram</div>
   <div class="proof-stats">
-    <div class="proof-stat"><div class="proof-num">24/7</div><div class="proof-lbl">Respuesta automática</div></div>
-    <div class="proof-stat"><div class="proof-num">&lt;90s</div><div class="proof-lbl">Tiempo de respuesta</div></div>
-    <div class="proof-stat"><div class="proof-num">3x</div><div class="proof-lbl">Más citas agendadas</div></div>
-    <div class="proof-stat"><div class="proof-num">0</div><div class="proof-lbl">Setters humanos</div></div>
+    <div class="proof-stat"><div class="proof-num">24/7</div><div class="proof-lbl">Disponibilidad del asistente</div></div>
+    <div class="proof-stat"><div class="proof-num">&lt;90s</div><div class="proof-lbl">Tiempo de primera respuesta</div></div>
+    <div class="proof-stat"><div class="proof-num">3x</div><div class="proof-lbl">Más consultas atendidas</div></div>
+    <div class="proof-stat"><div class="proof-num">0</div><div class="proof-lbl">Mensajes ignorados</div></div>
   </div>
 
   <!-- Trusted stack: tecnologías reales que usamos. Da confianza técnica. -->
   <div class="trusted-stack">
     <div class="ts-label">Construido sobre tecnología confiable:</div>
     <div class="ts-logos">
-      <div class="ts-logo"><span>🤖</span> <strong>OpenAI</strong> GPT-4</div>
+      <div class="ts-logo"><span>🧠</span> <strong>OpenAI</strong> GPT-4o</div>
       <div class="ts-logo"><span>📸</span> <strong>Meta API</strong> oficial</div>
-      <div class="ts-logo"><span>💳</span> <strong>Lemon Squeezy</strong></div>
-      <div class="ts-logo"><span>💸</span> <strong>Mercado Pago</strong></div>
+      <div class="ts-logo"><span>🛡️</span> <strong>Railway</strong> · datos privados</div>
       <div class="ts-logo"><span>📧</span> <strong>Resend</strong></div>
     </div>
   </div>
@@ -402,24 +400,24 @@
 <section class="problem">
   <div class="section-title">
     <div class="eyebrow">El problema</div>
-    <h2>Los DMs te están costando plata</h2>
-    <p>Si vendés por Instagram, probablemente ya notaste esto:</p>
+    <h2>Hoy tu inbox de Instagram se ve así</h2>
+    <p>Si atiendes clientes por DM, probablemente ya viviste esto:</p>
   </div>
   <div class="problem-grid">
     <div class="pain">
       <div class="pain-icon">⏱️</div>
-      <h3>Se te enfrían los leads</h3>
-      <p>Alguien pregunta por tu oferta a las 11 PM, vos respondés a las 9 AM. Ya se fue con otro, o dejó de tener interés.</p>
+      <h3>Tu cliente espera demasiado</h3>
+      <p>Alguien pregunta por tu producto a las 11 PM, le contestas a las 9 AM. Cuando respondes, ya compró en otro lado o perdió el interés.</p>
     </div>
     <div class="pain">
       <div class="pain-icon">💸</div>
-      <h3>Un setter humano cuesta caro</h3>
-      <p>$600–$1.500 USD al mes, más comisiones. Y todavía tenés que entrenarlo, revisarle los mensajes y esperar que no te "robe" los leads.</p>
+      <h3>Contratar más equipo cuesta caro</h3>
+      <p>$600–$1.500 USD al mes por persona, más capacitación. Y aun así, en horarios pico o de noche, los mensajes siguen acumulándose sin respuesta.</p>
     </div>
     <div class="pain">
       <div class="pain-icon">🎯</div>
-      <h3>No sabés quién está listo</h3>
-      <p>Mezclás curiosos con gente que quiere comprar YA. Terminás haciendo seguimiento manual a 200 chats y perdiendo a los 5 que realmente convertían.</p>
+      <h3>Mezclas curiosos con clientes reales</h3>
+      <p>200 conversaciones nuevas por semana, y entre ellas hay 5 personas listas para comprar. El problema es que no las distingues a tiempo y se te pierden.</p>
     </div>
   </div>
 </section>
@@ -428,27 +426,56 @@
 <section class="how" id="como-funciona">
   <div class="section-title">
     <div class="eyebrow">Cómo funciona</div>
-    <h2>En 10 minutos lo tenés corriendo</h2>
-    <p>Conectás tu Instagram Business, configurás el agente con tu oferta, y listo. El bot hace el trabajo pesado.</p>
+    <h2>En 10 minutos tienes tu inbox organizado</h2>
+    <p>Conectas tu Instagram Business, configuras el asistente con la información de tu negocio, y listo.</p>
   </div>
   <div class="steps">
     <div class="step">
       <div class="step-num">PASO 01</div>
-      <h3>Conectá tu Instagram</h3>
-      <p>OAuth oficial de Meta. Un click y DMCloser queda autorizado para responder tus DMs. No se guarda tu contraseña — solo el permiso de Meta.</p>
+      <h3>Conecta tu Instagram</h3>
+      <p>OAuth oficial de Meta. Un click y DMCloser queda autorizado para asistirte con tu inbox. No se guarda tu contraseña — solo el permiso de Meta.</p>
       <span class="step-chip">✓ Instagram Business</span>
     </div>
     <div class="step">
       <div class="step-num">PASO 02</div>
-      <h3>Enseñale tu oferta</h3>
-      <p>Subís tu Knowledge Base: qué vendés, precios, objeciones comunes, tono de voz, link de reserva. El agente aprende y responde como vos.</p>
+      <h3>Carga la información de tu negocio</h3>
+      <p>Subes tu Knowledge Base: qué vendes, precios, preguntas frecuentes, tono de voz, link de reserva. El asistente la usa para responder con tu información, en tu tono.</p>
       <span class="step-chip">✓ Sin código</span>
     </div>
     <div class="step">
       <div class="step-num">PASO 03</div>
-      <h3>Recibí alertas de leads calientes</h3>
-      <p>Cuando alguien dice "lo quiero" o "cuándo podemos hablar", DMCloser te manda alerta a Telegram o email. Vos cerrás la venta — el bot hizo el trabajo previo.</p>
+      <h3>Recibe alertas de clientes prioritarios</h3>
+      <p>Cuando alguien dice "lo quiero" o "cuándo podemos hablar", DMCloser te alerta a Telegram o email. Tú entras a cerrar — la conversación ya está caliente y lista.</p>
       <span class="step-chip">✓ Telegram + Email</span>
+    </div>
+  </div>
+</section>
+
+<!-- SECRET OF BIG ACCOUNTS — insight: las cuentas grandes parecen "siempre disponibles" porque tienen un sistema atrás -->
+<section class="how" id="el-secreto" style="margin-top:110px">
+  <div class="section-title">
+    <div class="eyebrow">El secreto que no cuentan</div>
+    <h2>Los influencers que parecen "siempre disponibles" no están ahí.<br><span style="background:linear-gradient(135deg,#10b981 0%,#06b6d4 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Tienen un sistema.</span></h2>
+    <p>Detrás de cada cuenta de 100K+ followers que responde rápido hay un equipo de atención, respuestas prearmadas y escalamiento al fundador solo cuando hay intención real de comprar. DMCloser pone ese mismo sistema en tu negocio — sin contratar equipo de $1.000 USD por mes.</p>
+  </div>
+  <div class="compare-grid">
+    <div class="compare-col">
+      <div class="compare-title"><span class="em">👤</span> Equipo de atención humano</div>
+      <ul class="compare-list">
+        <li><span class="dot">✗</span> $600–$1.500 USD/mes por persona</li>
+        <li><span class="dot">✗</span> Trabaja 8h al día, no 24/7</li>
+        <li><span class="dot">✗</span> Tarda semanas en aprender tu negocio</li>
+        <li><span class="dot">✗</span> Renuncia, se enferma, pide vacaciones</li>
+      </ul>
+    </div>
+    <div class="compare-col good">
+      <div class="compare-title"><span class="em">⚡</span> DMCloser</div>
+      <ul class="compare-list">
+        <li><span class="dot">✓</span> $148 USD/mes (plan fundador, 20 cupos)</li>
+        <li><span class="dot">✓</span> Disponible 24/7, sin pausas</li>
+        <li><span class="dot">✓</span> Aprende tu negocio en 10 minutos</li>
+        <li><span class="dot">✓</span> Nunca se va, escala con tu volumen</li>
+      </ul>
     </div>
   </div>
 </section>
@@ -457,87 +484,54 @@
 <section class="features" id="features">
   <div class="section-title">
     <div class="eyebrow">Features</div>
-    <h2>Todo lo que necesitás para escalar</h2>
-    <p>Más que un autoresponder. Un setter virtual que clasifica, humaniza y escala.</p>
+    <h2>Todo lo que necesitas para no perder un cliente</h2>
+    <p>Sin contratar más equipo. Sin código. Sin curva de aprendizaje.</p>
   </div>
   <div class="feat-grid">
     <div class="feat">
       <div class="feat-icon">🔥</div>
-      <h3>Clasificación HOT / WARM / COLD</h3>
-      <p>GPT-4o clasifica cada lead en tiempo real. Vos ves directo quién tiene intención real de comprar.</p>
+      <h3>Priorización HOT / WARM / COLD</h3>
+      <p>GPT-4o analiza cada conversación en tiempo real. Ves directo qué clientes necesitan atención inmediata.</p>
     </div>
     <div class="feat">
-      <div class="feat-icon">🤖</div>
-      <h3>Agentes IA personalizados</h3>
-      <p>Configurá agentes con diferentes tonos, ofertas y flujos. Respuesta humana, no robótica — con delay natural 30–90s.</p>
+      <div class="feat-icon">🧠</div>
+      <h3>Asistentes personalizados</h3>
+      <p>Configura asistentes con diferentes tonos y áreas (ventas, soporte, postventa). Respuestas naturales con tu estilo, no genéricas.</p>
     </div>
     <div class="feat">
       <div class="feat-icon">📚</div>
       <h3>Knowledge Base propia</h3>
-      <p>Pegá tu pitch, FAQs, precios, objeciones. El agente responde con tu información — no inventa, no improvisa.</p>
+      <p>Pega tu información: precios, FAQs, políticas, links. El asistente responde con tus datos exactos — no inventa, no improvisa.</p>
     </div>
     <div class="feat">
       <div class="feat-icon">🔗</div>
-      <h3>Magnet Links con tracking</h3>
-      <p>Links del tipo <code>/go/mi-magnet</code> que abren chat con preset. Registrás clicks, origen y conversiones.</p>
+      <h3>Links smart con tracking</h3>
+      <p>Links del tipo <code>/go/mi-link</code> que abren chat preconfigurado. Registras clicks, origen y conversiones.</p>
     </div>
     <div class="feat">
       <div class="feat-icon">🔔</div>
       <h3>Alertas multi-canal</h3>
-      <p>Notificaciones de leads calientes por Telegram, email o webhook. Respondés tú al cierre, el bot ya calificó.</p>
+      <p>Notificaciones de clientes prioritarios por Telegram, email o webhook. Tú entras al cierre cuando hay intención real.</p>
     </div>
     <div class="feat">
       <div class="feat-icon">🔁</div>
-      <h3>Follow-ups automáticos</h3>
-      <p>El bot retoma conversaciones inactivas con mensajes naturales. Ningún lead se enfría por olvido.</p>
+      <h3>Recordatorios de seguimiento</h3>
+      <p>El asistente te recuerda retomar conversaciones inactivas con sugerencias de mensaje. Ningún cliente se queda sin respuesta por olvido.</p>
     </div>
     <div class="feat">
       <div class="feat-icon">📊</div>
       <h3>Dashboard y export CSV</h3>
-      <p>Ves todos tus leads, filtrás por estado, exportás a CSV para meter en tu CRM o hojas de cálculo.</p>
+      <p>Ves todas tus conversaciones, filtras por prioridad, exportas a CSV para tu CRM o hojas de cálculo.</p>
     </div>
     <div class="feat">
       <div class="feat-icon">🌎</div>
       <h3>Español nativo + multi-idioma</h3>
-      <p>Responde en el mismo idioma del lead. Entrenado para el tono de LATAM, no el traducido gringo.</p>
+      <p>Responde en el mismo idioma del cliente. Entrenado para tono LATAM natural, no el traducido genérico.</p>
     </div>
     <div class="feat">
       <div class="feat-icon">🛡️</div>
       <h3>Seguridad nivel producción</h3>
       <p>JWT + rate limiting + CSP + sanitización XSS. Tus datos en volumen privado, no en la nube compartida.</p>
-    </div>
-  </div>
-</section>
-
-<!-- COMPARISON -->
-<section class="compare">
-  <div class="section-title">
-    <div class="eyebrow">Comparativa</div>
-    <h2>DMCloser vs. un setter humano</h2>
-    <p>No es una crítica a los setters — es que hay tareas que la IA hace mejor, más barato y sin descanso.</p>
-  </div>
-  <div class="compare-grid">
-    <div class="compare-col">
-      <div class="compare-title"><span class="em">😓</span> Setter humano tradicional</div>
-      <ul class="compare-list">
-        <li><span class="dot">✗</span> $600–$1.500 USD/mes + comisiones</li>
-        <li><span class="dot">✗</span> Trabaja 8h al día, no 24/7</li>
-        <li><span class="dot">✗</span> Hay que entrenarlo y supervisarlo</li>
-        <li><span class="dot">✗</span> Renuncia, se enferma, pide vacaciones</li>
-        <li><span class="dot">✗</span> Puede "robarte" los leads</li>
-        <li><span class="dot">✗</span> Responde cuando puede, no al instante</li>
-      </ul>
-    </div>
-    <div class="compare-col good">
-      <div class="compare-title"><span class="em">⚡</span> DMCloser</div>
-      <ul class="compare-list">
-        <li><span class="dot">✓</span> Desde $197 USD/mes — 3x más barato</li>
-        <li><span class="dot">✓</span> Responde 24/7, incluso dormido</li>
-        <li><span class="dot">✓</span> Config en 10 min, sin entrenamiento</li>
-        <li><span class="dot">✓</span> Nunca se va ni se enferma</li>
-        <li><span class="dot">✓</span> Tus leads son 100% tuyos, siempre</li>
-        <li><span class="dot">✓</span> Respuesta en menos de 90 segundos</li>
-      </ul>
     </div>
   </div>
 </section>
@@ -558,49 +552,49 @@
   <div class="section-title">
     <div class="eyebrow">Casos de uso</div>
     <h2>Para quién es DMCloser</h2>
-    <p>Tres escenarios típicos de cómo distintos negocios usan el bot para dejar de perder ventas en sus DMs.</p>
+    <p>Cuatro escenarios típicos de cómo distintos negocios usan DMCloser para no perder clientes en su inbox de Instagram.</p>
   </div>
   <div class="uc-grid">
 
-    <!-- CASO 1: COACH / MENTOR -->
+    <!-- ÁNGULO A: COACH / MENTOR DE CAUSA HUMANA -->
     <div class="uc-card">
-      <span class="uc-tag">🎯 Coach / Mentor</span>
-      <h3>Calificar prospectos sin perder tiempo</h3>
+      <span class="uc-tag">💜 Coach / Mentor de causa humana</span>
+      <h3>Honra tu tiempo y tu causa</h3>
       <div class="uc-flow">
         <div class="before">
           <div class="label">Antes</div>
-          <strong>3-4 horas/día</strong> respondiendo DMs repetidos sobre precio y disponibilidad. La mayoría no califica.
+          <strong>3-4 horas/día</strong> respondiendo a personas con dudas similares. Tu causa requiere tu tiempo, pero tu inbox lo absorbe.
         </div>
         <div class="after">
           <div class="label">Con DMCloser</div>
-          <strong>El bot filtra</strong>, pregunta lo importante (problema, urgencia, capacidad) y solo te pasa los HOT.
+          <strong>El asistente atiende</strong> a quien viene en modo curiosidad — sin perder calidez — y prioriza a quien viene realmente lista para trabajar contigo.
         </div>
       </div>
       <p style="font-size:13.5px;color:var(--text-2);line-height:1.65">
-        Mientras dormís, el bot agenda diagnósticos para los que califican y deriva a los que no con un lead magnet (PDF/audio). Vos abrís el dashboard a la mañana y solo cerrás los 🔥.
+        Mientras estás en sesión con tus clientas, el asistente atiende preguntas frecuentes con tu Knowledge Base y comparte materiales (PDF/audio) cuando aplica. Tu único trabajo: entrar a cerrar a las que ya están listas.
       </p>
       <div class="uc-metric">
         <span class="num">10×</span>
-        <span class="lbl">leads cualificados sin trabajo manual</span>
+        <span class="lbl">conversaciones atendidas sin perder calidez</span>
       </div>
     </div>
 
-    <!-- CASO 2: AGENCIA -->
+    <!-- ÁNGULO B: SETTERS / CLOSERS / AGENCIAS -->
     <div class="uc-card">
-      <span class="uc-tag">📈 Agencia / Marketing</span>
-      <h3>Tu equipo cierra, el bot prospecta</h3>
+      <span class="uc-tag">📈 Setters / Closers / Agencias</span>
+      <h3>Tu equipo cierra, el asistente filtra</h3>
       <div class="uc-flow">
         <div class="before">
           <div class="label">Antes</div>
-          <strong>Los closers</strong> perdían 60% del día respondiendo "info" y descartando curiosos.
+          <strong>Tus closers</strong> perdían 60% del día respondiendo "info" y descartando curiosos a mano.
         </div>
         <div class="after">
           <div class="label">Con DMCloser</div>
-          <strong>El bot precalifica</strong>, agenda llamadas y los closers solo entran cuando hay intención real.
+          <strong>El asistente precalifica</strong> con HOT/WARM/COLD y solo deriva al equipo cuando hay intención real.
         </div>
       </div>
       <p style="font-size:13.5px;color:var(--text-2);line-height:1.65">
-        Configurás el agente con tu pitch y objeciones. El bot maneja toda la prospección 24/7, pasa solo los leads calientes a tu CRM, y tu equipo enfoca su tiempo en cerrar.
+        Configuras el asistente con tu pitch y objeciones. Atiende consultas iniciales 24/7, prioriza con HOT/WARM/COLD y deriva al equipo solo cuando se necesita una llamada humana.
       </p>
       <div class="uc-metric">
         <span class="num">3×</span>
@@ -608,26 +602,49 @@
       </div>
     </div>
 
-    <!-- CASO 3: E-COMMERCE / INFOPRODUCTO -->
+    <!-- ÁNGULO C: E-COMMERCE / TIENDAS -->
     <div class="uc-card">
-      <span class="uc-tag">🛒 E-commerce / Infoproducto</span>
-      <h3>Responder dudas de producto al instante</h3>
+      <span class="uc-tag">🛒 E-commerce / Tiendas</span>
+      <h3>Responde antes que la competencia</h3>
       <div class="uc-flow">
         <div class="before">
           <div class="label">Antes</div>
-          <strong>El cliente pregunta</strong> talles, stock, envío... y si no contestás en 5 min, compra en otro lado.
+          <strong>El cliente pregunta</strong> tallas, stock, envío... y si no contestas en 5 min, compra en otro lado.
         </div>
         <div class="after">
           <div class="label">Con DMCloser</div>
-          <strong>Respuesta en segundos</strong> con el link de checkout listo. El bot conoce tu catálogo de memoria.
+          <strong>Respuesta en segundos</strong> con el link de checkout. El asistente conoce tu catálogo y políticas de envío.
         </div>
       </div>
       <p style="font-size:13.5px;color:var(--text-2);line-height:1.65">
-        Cargás precios, talles, políticas de envío en la knowledge base. El bot responde igual que vos lo harías y manda el link de pago en el momento exacto. Cero leads perdidos por demora.
+        Cargas precios, tallas, políticas de envío en la Knowledge Base. El asistente responde con tu información exacta y comparte el link de pago en el momento. Cero clientes perdidos por demora.
       </p>
       <div class="uc-metric">
         <span class="num">+40%</span>
         <span class="lbl">DM → checkout en negocios típicos</span>
+      </div>
+    </div>
+
+    <!-- ÁNGULO D: INMOBILIARIAS / REAL ESTATE -->
+    <div class="uc-card">
+      <span class="uc-tag">🏠 Inmobiliarias / Real Estate</span>
+      <h3>Filtra consultas reales del ruido</h3>
+      <div class="uc-flow">
+        <div class="before">
+          <div class="label">Antes</div>
+          <strong>50 DMs por anuncio</strong>, la mayoría preguntando solo el precio. Los compradores reales se enfrían esperando respuesta.
+        </div>
+        <div class="after">
+          <div class="label">Con DMCloser</div>
+          <strong>El asistente envía precio</strong>, ficha y disponibilidad al instante, y prioriza a quien pregunta por visita o financiamiento.
+        </div>
+      </div>
+      <p style="font-size:13.5px;color:var(--text-2);line-height:1.65">
+        Cargas la ficha completa de cada propiedad (precio, m², ubicación, condiciones). El asistente responde consultas frecuentes 24/7 y te alerta cuando alguien pregunta por visita o tiene capacidad de compra real.
+      </p>
+      <div class="uc-metric">
+        <span class="num">5×</span>
+        <span class="lbl">visitas agendadas vs. inbox manual</span>
       </div>
     </div>
 
@@ -647,90 +664,57 @@
 
   <!-- Disclaimer honesto: somos un proyecto nuevo, los números son estimados típicos -->
   <p class="uc-disclaimer">
-    Las métricas son <strong>estimaciones típicas</strong> en negocios que automatizan respuestas en DMs. Los resultados reales dependen del volumen de tráfico, ticket promedio y configuración del agente. <strong>DMCloser está abriendo cohorte de fundadores</strong>: si entrás ahora, tenés acompañamiento directo del equipo durante el setup.
+    Las métricas son <strong>estimaciones típicas</strong> en negocios que usan asistentes de inbox para Instagram. Los resultados reales dependen del volumen de mensajes, tipo de negocio y configuración del asistente. <strong>DMCloser está abriendo cohorte de fundadores</strong>: si entras ahora, tienes acompañamiento directo del equipo durante el setup.
   </p>
 </section>
 
-<!-- PRICING (inline en home — link a /pricing.html para detalle completo) -->
+<!-- PRICING — plan único de fundadores -->
 <section class="pricing-section" id="pricing">
   <div class="section-title">
-    <div class="eyebrow">Planes</div>
-    <h2>Elegí el que escala con vos</h2>
-    <p>Empezás con 3 días gratis sin tarjeta. Si pasás el límite de DMs, pagás solo por lo que usás de más — sin sorpresas.</p>
+    <div class="eyebrow">Plan único de fundadores</div>
+    <h2>Un solo plan. 20 cupos. Para los primeros que confían.</h2>
+    <p>3 días de prueba gratis sin tarjeta. Conecta tu Instagram, configura tu asistente y ves tus propios números. Si no te suma, no pagas.</p>
   </div>
 
-  <div class="pricing-grid">
+  <div class="pricing-grid" style="max-width:540px;margin:0 auto;grid-template-columns:1fr">
 
-    <!-- STARTER -->
-    <div class="price-card">
-      <div class="price-name">Starter</div>
-      <div class="price-amount">$197 <small>USD/mes</small></div>
-      <div class="price-tagline">Ideal si recién arrancás a recibir DMs y querés no perder leads.</div>
-      <a href="/app?register=1" class="price-cta price-cta-outline">Empezar gratis →</a>
-      <ul class="price-features">
-        <li><span class="check">✓</span> <strong>1.500 conversaciones/mes</strong></li>
-        <li><span class="check">✓</span> 1 cuenta de Instagram</li>
-        <li><span class="check">✓</span> 1 agente IA configurable</li>
-        <li><span class="check">✓</span> Knowledge Base + Inbox</li>
-        <li class="locked"><span class="check">🔒</span> Follow-ups automáticos</li>
-        <li class="locked"><span class="check">🔒</span> Calificación HOT/WARM/COLD</li>
-        <li class="locked"><span class="check">🔒</span> Lead magnets automáticos</li>
-      </ul>
-    </div>
-
-    <!-- PRO (featured) -->
+    <!-- FOUNDER (único) -->
     <div class="price-card featured">
-      <div class="price-badge">⭐ Más popular</div>
-      <div class="price-name">Pro</div>
-      <div class="price-amount">$297 <small>USD/mes</small></div>
-      <div class="price-tagline">Para negocios que ya venden por DM y quieren escalar sin contratar setters.</div>
-      <a href="/app?register=1" class="price-cta price-cta-grad">Empezar gratis →</a>
+      <div class="price-badge">⭐ 50% off precio público</div>
+      <div class="price-name">Founder</div>
+      <div class="price-amount">$148 <small>USD/mes</small></div>
+      <div class="price-tagline">Plan único de fundadores. 20 cupos disponibles. Acceso a todo lo que vayamos lanzando, sin pagar más.</div>
+      <a href="/app?register=1" class="price-cta price-cta-grad">Empezar prueba gratis →</a>
       <ul class="price-features">
         <li><span class="check">✓</span> <strong>6.000 conversaciones/mes</strong></li>
-        <li><span class="check">✓</span> 3 cuentas de Instagram</li>
-        <li><span class="check">✓</span> 5 agentes IA</li>
-        <li><span class="check">✓</span> Calificación HOT/WARM/COLD</li>
-        <li><span class="check">✓</span> Follow-ups automáticos</li>
-        <li><span class="check">✓</span> Lead magnets automáticos (10)</li>
+        <li><span class="check">✓</span> 1 cuenta de Instagram</li>
+        <li><span class="check">✓</span> Hasta 5 asistentes IA</li>
+        <li><span class="check">✓</span> Knowledge Base + Inbox unificado</li>
+        <li><span class="check">✓</span> Priorización HOT/WARM/COLD</li>
+        <li><span class="check">✓</span> Recordatorios de seguimiento</li>
+        <li><span class="check">✓</span> Materiales descargables (10)</li>
         <li><span class="check">✓</span> Webhook + integración CRM</li>
-        <div class="price-overage">＋ DM extra: <strong>$0.025 USD</strong> c/u (sólo si te pasás)</div>
-      </ul>
-    </div>
-
-    <!-- AGENCY -->
-    <div class="price-card">
-      <div class="price-name">Agency</div>
-      <div class="price-amount">$497 <small>USD/mes</small></div>
-      <div class="price-tagline">Para agencias y negocios de alto volumen con múltiples cuentas y equipo.</div>
-      <a href="/app?register=1" class="price-cta price-cta-outline">Empezar gratis →</a>
-      <ul class="price-features">
-        <li><span class="check">✓</span> <strong>25.000 conversaciones/mes</strong></li>
-        <li><span class="check">✓</span> 10 cuentas de Instagram</li>
-        <li><span class="check">✓</span> 20 agentes IA</li>
-        <li><span class="check">✓</span> Todo lo del Pro +</li>
-        <li><span class="check">✓</span> White-label disponible</li>
-        <li><span class="check">✓</span> Multi-usuario (equipo)</li>
-        <li><span class="check">✓</span> API access + reportes</li>
-        <li><span class="check">✓</span> Soporte 24/7 dedicado</li>
-        <div class="price-overage">＋ DM extra: <strong>$0.015 USD</strong> c/u</div>
+        <li><span class="check">✓</span> Acompañamiento directo en setup</li>
+        <li><span class="check">✓</span> Acceso a futuras features sin pagar más</li>
+        <div class="price-overage">＋ DM extra: <strong>$0.025 USD</strong> c/u (sólo si te pasas)</div>
       </ul>
     </div>
 
   </div>
 
   <div class="price-foot">
-    💳 Pagos en USD vía Lemon Squeezy · Pagos en CLP/ARS/MXN/BRL vía Mercado Pago<br>
-    🛡️ Garantía de reembolso 7 días sin preguntas · <a href="/pricing.html">Ver pricing completo y comparativa →</a>
+    💳 Pagos seguros en USD · Acepta Visa, Mastercard, Amex y PayPal<br>
+    🛡️ Garantía de reembolso 7 días sin preguntas · <a href="/pricing.html">Ver detalle completo del plan →</a>
   </div>
 </section>
 
-<!-- CTA -->
+<!-- CTA — PRÓXIMO PASO de Alejo -->
 <section class="cta-section">
   <div class="cta-box">
-    <h2>Probalo 3 días gratis</h2>
-    <p>Conectás tu Instagram, configurás tu primer agente y empezás a ver leads entrar al dashboard. Si no te convence, no pagás nada.</p>
+    <h2>Pruébalo 3 días gratis</h2>
+    <p>Conectas tu Instagram, configuras tu primer asistente con tu información y ves tus propios números en el dashboard. Si no te suma, no pagas nada.</p>
     <a href="/app?register=1" class="btn btn-grad btn-lg">Crear cuenta gratis →</a>
-    <div class="cta-foot">✅ Sin tarjeta de crédito · ✅ Cancelás cuando quieras · ✅ Soporte en español</div>
+    <div class="cta-foot">✅ Sin tarjeta de crédito · ✅ Cancelas cuando quieras · ✅ Soporte en español</div>
   </div>
 </section>
 
@@ -742,31 +726,31 @@
   </div>
   <div class="faq-item">
     <div class="faq-q">¿Necesito saber programar? <span>+</span></div>
-    <div class="faq-a">No. Todo se configura desde el panel — cargás tu información, conectás Instagram y listo. Si podés usar WhatsApp Business, podés usar DMCloser.</div>
+    <div class="faq-a">No. Todo se configura desde el panel — cargas tu información, conectas Instagram y listo. Si puedes usar WhatsApp Business, puedes usar DMCloser.</div>
   </div>
   <div class="faq-item">
-    <div class="faq-q">¿El bot suena robótico? ¿Instagram lo detecta? <span>+</span></div>
-    <div class="faq-a">El agente usa GPT-4o con prompts humanizadores, responde con delays de 30 a 90 segundos (como una persona real escribiendo), y responde en el mismo tono y idioma del lead. Está diseñado explícitamente para no parecer un bot.</div>
+    <div class="faq-q">¿El asistente suena natural? ¿Es compatible con Instagram? <span>+</span></div>
+    <div class="faq-a">Sí. Usa GPT-4o con prompts diseñados para sonar natural, responde con delays variables que simulan escritura humana, y replica tu tono e idioma. Funciona sobre la API oficial de Meta para Instagram Business — totalmente dentro de los términos de la plataforma.</div>
   </div>
   <div class="faq-item">
     <div class="faq-q">¿Qué necesito para empezar? <span>+</span></div>
-    <div class="faq-a">Una cuenta de Instagram Business o Creator (gratis en la app de Instagram), una cuenta de OpenAI con API key (para el cerebro del agente), y 10 minutos para configurar tu primer agente.</div>
+    <div class="faq-a">Una cuenta de Instagram Business o Creator (gratis en la app de Instagram), una cuenta de OpenAI con API key (para el motor de IA del asistente), y 10 minutos para configurar tu primer asistente.</div>
   </div>
   <div class="faq-item">
-    <div class="faq-q">¿Cuántos mensajes puedo enviar al mes? <span>+</span></div>
-    <div class="faq-a">Starter incluye <strong>1.500 conversaciones/mes</strong>, Pro <strong>6.000/mes</strong> y Agency <strong>25.000/mes</strong>. Si pasás el límite, cobramos sólo $0.025 USD por DM extra (Pro) o $0.015 (Agency) — sin sorpresas, todo facturado a fin de mes. Ver <a href="/pricing.html" style="color:var(--orange)">la página de precios completa</a>.</div>
+    <div class="faq-q">¿Cuántas conversaciones puedo manejar al mes? <span>+</span></div>
+    <div class="faq-a">El plan Founder incluye <strong>6.000 conversaciones/mes</strong>. Si te pasas, se cobran $0.025 USD por mensaje extra — sin sorpresas, todo facturado a fin de mes. Ver <a href="/pricing.html" style="color:var(--orange)">la página de precios completa</a>.</div>
   </div>
   <div class="faq-item">
     <div class="faq-q">¿Qué pasa cuando termina la prueba de 3 días? <span>+</span></div>
-    <div class="faq-a">Al día 3 te pedimos que elijas un plan. Si no pagás, el bot se pausa pero tus datos y configuración quedan intactos. Podés volver cuando quieras.</div>
+    <div class="faq-a">Al día 3 te pedimos que actives la suscripción. Si no lo haces, el asistente queda pausado pero tus datos y configuración intactos. Puedes volver cuando quieras.</div>
   </div>
   <div class="faq-item">
     <div class="faq-q">¿Puedo cancelar cuando quiera? <span>+</span></div>
-    <div class="faq-a">Sí. Cancelás desde el panel de tu cuenta con un click. No hay permanencia, no hay letra chica.</div>
+    <div class="faq-a">Sí. Cancelas desde el panel de tu cuenta con un click. No hay permanencia, no hay letra chica.</div>
   </div>
   <div class="faq-item">
-    <div class="faq-q">¿Cómo pago desde Chile / LATAM? <span>+</span></div>
-    <div class="faq-a">Tenés dos opciones: <strong>Lemon Squeezy</strong> (internacional) con Visa, Mastercard, Amex, PayPal; o <strong>Mercado Pago</strong> (Chile) con Webpay, Redcompra y tarjetas chilenas. Elegís en la página de precios.</div>
+    <div class="faq-q">¿Qué métodos de pago aceptan? <span>+</span></div>
+    <div class="faq-a">Pagos seguros en USD con tarjeta internacional: Visa, Mastercard, Amex y PayPal. Próximamente sumamos Mercado Pago para Chile y LATAM (CLP, ARS, MXN, BRL).</div>
   </div>
 </section>
 
@@ -774,13 +758,14 @@
 <footer>
   <div class="foot-links">
     <a href="/pricing.html">Precios</a>
+    <a href="/about.html">Sobre nosotros</a>
+    <a href="/contact.html">Contacto</a>
     <a href="/app">Iniciar sesión</a>
     <a href="/app?register=1">Crear cuenta</a>
     <a href="/terms.html">Términos</a>
     <a href="/privacy.html">Privacidad</a>
-    <a href="mailto:soporte@dmcloser.app">Soporte</a>
   </div>
-  <div class="foot-copy">© 2026 DMCloser · Tu setter IA para Instagram</div>
+  <div class="foot-copy">© 2026 DMCloser · Asistente de inbox para Instagram Business · La Serena, Chile</div>
 </footer>
 
 <script>
@@ -861,14 +846,14 @@
     const SCRIPT = [
       { who: 'in',  text: 'Hola! Vi tu post del programa, ¿tienen cupos?', delayBefore: 800 },
       { who: 'typing', who2: 'out', delayBefore: 1100 },
-      { who: 'out', text: '¡Hey! 😊 Sí, 3 cupos este mes. Contame qué querés lograr con la mentoría.', delayBefore: 1500 },
+      { who: 'out', text: '¡Hey! 😊 Sí, 3 cupos este mes. Cuéntame qué quieres lograr con la mentoría.', delayBefore: 1500 },
       { who: 'in',  text: 'Escalar mi negocio a 10k/mes. ¿Cuánto sale?', delayBefore: 2200 },
       { who: 'typing', who2: 'out', delayBefore: 1100 },
-      { who: 'out', text: 'Antes del precio: ¿cuánto ticket promedio manejás hoy?', delayBefore: 1700 },
+      { who: 'out', text: 'Antes del precio: ¿cuánto ticket promedio manejas hoy?', delayBefore: 1700 },
       { who: 'in',  text: '$300-500 por cliente. Es coaching 1 a 1.', delayBefore: 2400 },
       { who: 'typing', who2: 'out', delayBefore: 1100 },
       { who: 'hotbadge', delayBefore: 600 },
-      { who: 'out', text: 'Buenísimo 🔥 Con ese ticket, te conviene la mentoría Pro. Te paso el link de agenda gratis para que charlemos 15 min. ¿Te sirve?', delayBefore: 1800 },
+      { who: 'out', text: 'Buenísimo 🔥 Con ese ticket, te conviene la mentoría Pro. Te paso el link de agenda para que conversemos 15 min. ¿Te sirve?', delayBefore: 1800 },
       { who: 'reset', delayBefore: 4000 },
     ];
 
@@ -945,7 +930,7 @@
 </script>
 
 <!-- ═════════════════════════════════════════════════════════════════════
-     CHAT WIDGET — bot público para que visitantes prueben DMCloser
+     CHAT WIDGET — asistente público para que visitantes prueben DMCloser
      Estilo flotante abajo a la derecha, expande a panel chat tipo Claude.
      Conversa con el agente "DMCloser Sales" del founder via /api/public/chat.
      ═════════════════════════════════════════════════════════════════════ -->
@@ -953,28 +938,28 @@
   #dmc-chat-fab {
     position: fixed; bottom: 22px; right: 22px; z-index: 9999;
     width: 64px; height: 64px; border-radius: 50%;
-    background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+    background: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
     color: #fff; border: none; cursor: pointer;
-    box-shadow: 0 14px 38px rgba(139,92,246,.45), 0 0 0 0 rgba(139,92,246,.4);
+    box-shadow: 0 14px 38px rgba(16,185,129,.45), 0 0 0 0 rgba(16,185,129,.4);
     font-size: 28px; transition: all .3s;
     display: flex; align-items: center; justify-content: center;
     animation: pulse-chat 2.4s infinite;
   }
-  #dmc-chat-fab:hover { transform: scale(1.08); box-shadow: 0 20px 50px rgba(139,92,246,.55); }
+  #dmc-chat-fab:hover { transform: scale(1.08); box-shadow: 0 20px 50px rgba(16,185,129,.55); }
   @keyframes pulse-chat {
-    0%, 100% { box-shadow: 0 14px 38px rgba(139,92,246,.45), 0 0 0 0 rgba(139,92,246,.4); }
-    50%      { box-shadow: 0 14px 38px rgba(139,92,246,.45), 0 0 0 14px rgba(139,92,246,0); }
+    0%, 100% { box-shadow: 0 14px 38px rgba(16,185,129,.45), 0 0 0 0 rgba(16,185,129,.4); }
+    50%      { box-shadow: 0 14px 38px rgba(16,185,129,.45), 0 0 0 14px rgba(16,185,129,0); }
   }
   #dmc-chat-fab.active { background: #1a1a2e; animation: none; }
   #dmc-chat-fab .badge-new {
     position: absolute; top: -4px; right: -4px;
-    background: #fff; color: #ec4899; font-size: 10px; font-weight: 800;
+    background: #fff; color: #06b6d4; font-size: 10px; font-weight: 800;
     padding: 3px 7px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,.3);
   }
   #dmc-chat-panel {
     position: fixed; bottom: 100px; right: 22px; z-index: 9999;
     width: 380px; max-width: calc(100vw - 44px); height: 560px; max-height: calc(100vh - 130px);
-    background: #14141f; border: 1px solid rgba(139,92,246,.3); border-radius: 18px;
+    background: #14141f; border: 1px solid rgba(16,185,129,.3); border-radius: 18px;
     box-shadow: 0 30px 80px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.04);
     display: none; flex-direction: column; overflow: hidden;
     animation: chat-slide-in .25s ease-out;
@@ -985,7 +970,7 @@
     to   { opacity: 1; transform: translateY(0) scale(1); }
   }
   .dmc-chat-header {
-    background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+    background: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
     padding: 16px 18px; display: flex; align-items: center; gap: 12px;
     color: #fff;
   }
@@ -1011,17 +996,17 @@
     scroll-behavior: smooth;
   }
   .dmc-chat-body::-webkit-scrollbar { width: 6px; }
-  .dmc-chat-body::-webkit-scrollbar-thumb { background: rgba(139,92,246,.3); border-radius: 3px; }
+  .dmc-chat-body::-webkit-scrollbar-thumb { background: rgba(16,185,129,.3); border-radius: 3px; }
   .dmc-msg {
     max-width: 82%; padding: 10px 14px; border-radius: 14px;
     font-size: 13.5px; line-height: 1.5; word-wrap: break-word;
     animation: msg-pop .2s ease-out;
   }
   @keyframes msg-pop { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
-  .dmc-msg.bot { background: rgba(139,92,246,.12); color: #e7e7f5; align-self: flex-start; border: 1px solid rgba(139,92,246,.2); border-bottom-left-radius: 4px; }
-  .dmc-msg.me  { background: linear-gradient(135deg,#8b5cf6,#ec4899); color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; box-shadow: 0 4px 12px rgba(236,72,153,.18); }
-  .dmc-typing { display: flex; gap: 4px; align-self: flex-start; padding: 10px 14px; background: rgba(139,92,246,.12); border-radius: 14px; border: 1px solid rgba(139,92,246,.2); }
-  .dmc-typing span { width: 7px; height: 7px; background: rgba(139,92,246,.7); border-radius: 50%; animation: typing-dot 1.2s infinite; }
+  .dmc-msg.bot { background: rgba(16,185,129,.12); color: #e7e7f5; align-self: flex-start; border: 1px solid rgba(16,185,129,.2); border-bottom-left-radius: 4px; }
+  .dmc-msg.me  { background: linear-gradient(135deg,#10b981,#06b6d4); color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; box-shadow: 0 4px 12px rgba(6,182,212,.18); }
+  .dmc-typing { display: flex; gap: 4px; align-self: flex-start; padding: 10px 14px; background: rgba(16,185,129,.12); border-radius: 14px; border: 1px solid rgba(16,185,129,.2); }
+  .dmc-typing span { width: 7px; height: 7px; background: rgba(16,185,129,.7); border-radius: 50%; animation: typing-dot 1.2s infinite; }
   .dmc-typing span:nth-child(2) { animation-delay: .15s; }
   .dmc-typing span:nth-child(3) { animation-delay: .3s; }
   @keyframes typing-dot { 0%, 60%, 100% { transform: translateY(0); opacity: .5; } 30% { transform: translateY(-5px); opacity: 1; } }
@@ -1035,10 +1020,10 @@
     font-size: 13.5px; resize: none; outline: none; min-height: 38px; max-height: 100px;
     line-height: 1.4;
   }
-  .dmc-chat-footer textarea:focus { border-color: rgba(139,92,246,.5); background: rgba(255,255,255,.06); }
+  .dmc-chat-footer textarea:focus { border-color: rgba(16,185,129,.5); background: rgba(255,255,255,.06); }
   .dmc-chat-footer textarea::placeholder { color: rgba(255,255,255,.3); }
   .dmc-chat-footer button {
-    background: linear-gradient(135deg,#8b5cf6,#ec4899); color: #fff; border: none;
+    background: linear-gradient(135deg,#10b981,#06b6d4); color: #fff; border: none;
     padding: 10px 16px; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: 13px;
     transition: opacity .15s;
   }
@@ -1046,11 +1031,11 @@
   .dmc-chat-footer button:disabled { opacity: .4; cursor: not-allowed; }
   .dmc-chat-suggestions { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 16px 12px; }
   .dmc-chat-suggestions .chip {
-    background: rgba(139,92,246,.08); border: 1px solid rgba(139,92,246,.2); color: #c4b5fd;
+    background: rgba(16,185,129,.08); border: 1px solid rgba(16,185,129,.2); color: #6ee7b7;
     padding: 6px 12px; border-radius: 14px; font-size: 12px; cursor: pointer;
     transition: all .15s;
   }
-  .dmc-chat-suggestions .chip:hover { background: rgba(139,92,246,.18); border-color: rgba(139,92,246,.4); }
+  .dmc-chat-suggestions .chip:hover { background: rgba(16,185,129,.18); border-color: rgba(16,185,129,.4); }
   .dmc-chat-foot-info { font-size: 10.5px; color: rgba(255,255,255,.35); text-align: center; padding: 6px 14px 10px; background: #14141f; }
   @media (max-width: 480px) {
     #dmc-chat-panel { right: 12px; bottom: 90px; width: calc(100vw - 24px); height: calc(100vh - 110px); }
@@ -1058,7 +1043,7 @@
   }
 </style>
 
-<button id="dmc-chat-fab" aria-label="Abrir chat con el bot">
+<button id="dmc-chat-fab" aria-label="Abrir chat con el asistente">
   <span id="dmc-fab-icon">💬</span>
   <span class="badge-new" id="dmc-fab-badge">demo</span>
 </button>
@@ -1077,14 +1062,14 @@
     <div class="chip" data-q="¿Cómo funciona DMCloser?">¿Cómo funciona?</div>
     <div class="chip" data-q="¿Cuánto sale?">¿Cuánto sale?</div>
     <div class="chip" data-q="¿Sirve para mi negocio?">¿Sirve para mi negocio?</div>
-    <div class="chip" data-q="¿Es seguro para Instagram?">¿Es seguro para IG?</div>
+    <div class="chip" data-q="¿Es compatible con Instagram?">¿Es compatible con IG?</div>
   </div>
   <div class="dmc-chat-footer">
-    <textarea id="dmc-chat-input" placeholder="Escribí tu mensaje..." rows="1"></textarea>
+    <textarea id="dmc-chat-input" placeholder="Escribe tu mensaje..." rows="1"></textarea>
     <button id="dmc-chat-send">Enviar</button>
   </div>
   <div class="dmc-chat-foot-info">
-    💡 Estás chateando con la IA real de DMCloser. Probala con tus dudas.
+    💡 Estás chateando con la IA real de DMCloser. Pruébala con tus dudas.
   </div>
 </div>
 
@@ -1140,7 +1125,7 @@
       if (r.avatar)  avEl.textContent = r.avatar;
       addMsg('bot', r.greeting || 'Hola 👋 ¿en qué te ayudo?');
     } catch {
-      addMsg('bot', 'Hola 👋 Soy el bot de DMCloser. ¿Qué dudas tenés?');
+      addMsg('bot', 'Hola 👋 Soy el asistente de DMCloser. ¿Qué dudas tienes?');
     }
   }
 
@@ -1160,14 +1145,14 @@
         body: JSON.stringify({ message, history }),
       }).then(r => r.json());
       hideTyping();
-      const reply = r.reply || 'No pude responder ahora. Probá registrarte gratis para usar el bot completo.';
+      const reply = r.reply || 'No pude responder ahora. Prueba registrarte gratis para usar el asistente completo.';
       addMsg('bot', reply);
       history.push({ role: 'agent', content: reply });
       // Trackear evento Plausible si está disponible
       try { window.plausible && window.plausible('Public Chat Message'); } catch {}
     } catch (e) {
       hideTyping();
-      addMsg('bot', 'Hubo un problema, probá en un momento.');
+      addMsg('bot', 'Hubo un problema, prueba en un momento.');
     } finally {
       sendBtn.disabled = false;
       input.focus();

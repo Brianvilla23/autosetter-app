@@ -12,9 +12,9 @@
 
   /* ── Layout ── */
   .header { background: #1a1a2e; border-bottom: 1px solid #2a2a4a; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
-  .header .logo { font-size: 1.2rem; font-weight: 700; color: #7c6af7; letter-spacing: -0.5px; }
+  .header .logo { font-size: 1.2rem; font-weight: 700; color: #10b981; letter-spacing: -0.5px; }
   .header .logo span { color: #e0e0e0; }
-  .header .badge { background: #7c6af7; color: #fff; font-size: 0.7rem; padding: 2px 8px; border-radius: 20px; margin-left: 8px; }
+  .header .badge { background: #10b981; color: #fff; font-size: 0.7rem; padding: 2px 8px; border-radius: 20px; margin-left: 8px; }
   .btn-logout { background: transparent; border: 1px solid #444; color: #aaa; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
   .btn-logout:hover { border-color: #e55; color: #e55; }
 
@@ -23,7 +23,7 @@
   /* ── Stats cards ── */
   .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 28px; }
   .stat-card { background: #1a1a2e; border: 1px solid #2a2a4a; border-radius: 10px; padding: 18px; text-align: center; }
-  .stat-card .num { font-size: 2rem; font-weight: 700; color: #7c6af7; }
+  .stat-card .num { font-size: 2rem; font-weight: 700; color: #10b981; }
   .stat-card .lbl { font-size: 0.78rem; color: #888; margin-top: 4px; }
   .stat-card.warn .num { color: #f59e0b; }
   .stat-card.danger .num { color: #ef4444; }
@@ -32,7 +32,7 @@
   /* ── Tabs ── */
   .tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid #2a2a4a; }
   .tab { padding: 10px 20px; cursor: pointer; border-radius: 8px 8px 0 0; font-size: 0.9rem; color: #888; border: 1px solid transparent; border-bottom: none; transition: all .2s; }
-  .tab.active { background: #1a1a2e; color: #7c6af7; border-color: #2a2a4a; }
+  .tab.active { background: #1a1a2e; color: #10b981; border-color: #2a2a4a; }
   .tab:hover:not(.active) { color: #ccc; }
 
   /* ── Sections ── */
@@ -62,7 +62,7 @@
   /* ── Buttons ── */
   .btn { padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; border: none; font-weight: 500; transition: opacity .15s; }
   .btn:hover { opacity: 0.85; }
-  .btn-primary { background: #7c6af7; color: #fff; }
+  .btn-primary { background: #10b981; color: #fff; }
   .btn-success { background: #16a34a; color: #fff; }
   .btn-danger  { background: #dc2626; color: #fff; }
   .btn-warn    { background: #d97706; color: #fff; }
@@ -77,7 +77,7 @@
   .form-group { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 140px; }
   label { font-size: 0.78rem; color: #888; }
   select, input { background: #0f0f1a; border: 1px solid #2a2a4a; color: #e0e0e0; padding: 8px 10px; border-radius: 6px; font-size: 0.85rem; width: 100%; }
-  select:focus, input:focus { outline: none; border-color: #7c6af7; }
+  select:focus, input:focus { outline: none; border-color: #10b981; }
 
   /* ── Code display ── */
   .code-text { font-family: monospace; background: #0f0f1a; padding: 4px 8px; border-radius: 4px; color: #a5b4fc; font-size: 0.85rem; }
@@ -86,14 +86,14 @@
   .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; }
   .modal-overlay.open { display: flex; }
   .modal { background: #1a1a2e; border: 1px solid #2a2a4a; border-radius: 12px; padding: 24px; width: 420px; max-width: 95vw; }
-  .modal h3 { margin-bottom: 16px; color: #c4b5fd; }
+  .modal h3 { margin-bottom: 16px; color: #6ee7b7; }
   .modal .form-group { margin-bottom: 12px; }
   .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
 
   /* ── Login screen ── */
   .login-wrap { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
   .login-box { background: #1a1a2e; border: 1px solid #2a2a4a; border-radius: 14px; padding: 36px; width: 360px; }
-  .login-box h2 { color: #7c6af7; margin-bottom: 6px; }
+  .login-box h2 { color: #10b981; margin-bottom: 6px; }
   .login-box p { color: #888; font-size: 0.85rem; margin-bottom: 24px; }
   .login-box .form-group { margin-bottom: 14px; }
   .login-box .btn-primary { width: 100%; padding: 10px; font-size: 0.95rem; }
@@ -107,7 +107,7 @@
   .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
   .metric-card { background: #1a1a2e; border: 1px solid #2a2a4a; border-radius: 10px; padding: 18px; }
   .metric-card .mc-label { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
-  .metric-card .mc-value { font-size: 1.8rem; font-weight: 700; color: #c4b5fd; }
+  .metric-card .mc-value { font-size: 1.8rem; font-weight: 700; color: #6ee7b7; }
   .metric-card .mc-sub { font-size: 0.78rem; color: #666; margin-top: 4px; }
   .metric-card.hot .mc-value   { color: #ef4444; }
   .metric-card.warm .mc-value  { color: #f59e0b; }
@@ -116,7 +116,7 @@
 
   /* ── Bar chart mini ── */
   .chart-bars { display: flex; align-items: flex-end; gap: 6px; height: 120px; margin-top: 10px; padding: 8px 0; }
-  .chart-bar { flex: 1; background: linear-gradient(to top, #7c6af7, #a78bfa); border-radius: 4px 4px 0 0; position: relative; min-height: 4px; transition: opacity .15s; }
+  .chart-bar { flex: 1; background: linear-gradient(to top, #10b981, #34d399); border-radius: 4px 4px 0 0; position: relative; min-height: 4px; transition: opacity .15s; }
   .chart-bar:hover { opacity: 0.8; }
   .chart-bar .val { position: absolute; top: -18px; left: 50%; transform: translateX(-50%); font-size: 0.72rem; color: #aaa; }
   .chart-bar .lbl { position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%); font-size: 0.68rem; color: #666; }
@@ -658,7 +658,7 @@ async function loadDiscounts() {
         <tr>
           <td><span class="code-text">${escHtml(d.code)}</span></td>
           <td style="font-size:0.86rem">${escHtml(d.name||'')}</td>
-          <td><strong style="color:#7c6af7">${amount}</strong></td>
+          <td><strong style="color:#10b981">${amount}</strong></td>
           <td style="font-size:0.82rem">${dur}</td>
           <td style="font-size:0.82rem">${usesText}</td>
           <td style="font-size:0.82rem;color:#888">${expires}</td>
@@ -789,7 +789,7 @@ function renderUsers() {
                      : '<span style="color:#555">—</span>';
 
     const igCell = u.ig_connected
-      ? `<a href="https://instagram.com/${escHtml(u.ig_username||'')}" target="_blank" style="color:#c4b5fd;text-decoration:none">
+      ? `<a href="https://instagram.com/${escHtml(u.ig_username||'')}" target="_blank" style="color:#6ee7b7;text-decoration:none">
            <span style="color:#22c55e">●</span> @${escHtml(u.ig_username||'—')}
          </a>`
       : `<span style="color:#666">⚪ No conectado</span>`;
@@ -799,7 +799,7 @@ function renderUsers() {
       : '<span style="color:#555">—</span>';
 
     const leadsCell = u.leadsCount > 0
-      ? `<strong style="color:#c4b5fd">${u.leadsCount}</strong>`
+      ? `<strong style="color:#6ee7b7">${u.leadsCount}</strong>`
       : '<span style="color:#555">0</span>';
 
     const toggleBtn = u.role !== 'admin' ? `
@@ -815,7 +815,7 @@ function renderUsers() {
     return `
       <tr>
         <td>
-          <a href="#" onclick="openUserDetail('${u.id}');return false" style="color:#c4b5fd;text-decoration:none">
+          <a href="#" onclick="openUserDetail('${u.id}');return false" style="color:#6ee7b7;text-decoration:none">
             <strong>${escHtml(u.name)}</strong>
           </a>${u.role==='admin'?' 👑':''}
           <br><small style="color:#666">${escHtml(u.email)}</small>
@@ -1018,7 +1018,7 @@ async function loadFunnel() {
     document.getElementById('funnelStages').innerHTML = f.stages.map((s, i) => {
       const width = Math.max(4, (s.count / maxCount) * 100);
       const isBottleneck = bn && bn.id === s.id && bn.dropOff > 0;
-      const stageColor = isBottleneck ? '#ef4444' : i === 0 ? '#7c6af7' : '#60a5fa';
+      const stageColor = isBottleneck ? '#ef4444' : i === 0 ? '#10b981' : '#60a5fa';
       const dropRow = i > 0 && s.dropOff > 0
         ? `<div style="font-size:0.75rem;color:${isBottleneck ? '#ef4444' : '#888'};margin-left:14px;margin-bottom:2px">↓ ${s.dropOff} se cayeron (${(100 - s.pctOfPrev).toFixed(1)}% drop)</div>`
         : '';
@@ -1099,7 +1099,7 @@ function renderTopUsers(users) {
     <tr>
       <td><strong>${escHtml(u.name)}</strong><br><small style="color:#666">${escHtml(u.email)}</small></td>
       <td>${getPlanBadge(u.plan, false)}</td>
-      <td style="font-weight:700;color:#c4b5fd">${u.leadsCount}</td>
+      <td style="font-weight:700;color:#6ee7b7">${u.leadsCount}</td>
       <td><button class="btn btn-sm btn-ghost" onclick="openUserDetail('${u.id}')">Ver</button></td>
     </tr>`).join('');
 }
@@ -1319,7 +1319,7 @@ async function openUserDetail(id) {
     };
     const recentHtml = (l.recent || []).map(r => `
       <tr>
-        <td>${r.ig_username ? `<a href="https://instagram.com/${escHtml(r.ig_username)}" target="_blank" style="color:#c4b5fd;text-decoration:none">@${escHtml(r.ig_username)}</a>` : `<span style="color:#666">${r.id.slice(0,8)}</span>`}</td>
+        <td>${r.ig_username ? `<a href="https://instagram.com/${escHtml(r.ig_username)}" target="_blank" style="color:#6ee7b7;text-decoration:none">@${escHtml(r.ig_username)}</a>` : `<span style="color:#666">${r.id.slice(0,8)}</span>`}</td>
         <td>${qualBadge(r.qualification)}</td>
         <td>${r.is_converted ? '✅ Convertido' : r.is_bypassed ? '🚫 Bypassed' : '…en proceso'}</td>
         <td style="font-size:0.78rem;color:#888">${r.last_message_at ? relTime(r.last_message_at) : '—'}</td>
@@ -1329,7 +1329,7 @@ async function openUserDetail(id) {
       <div style="display:flex;align-items:center;gap:10px;background:#0f0f1a;padding:10px 12px;border-radius:8px;border:1px solid #2a2a4a">
         <span style="font-size:1.4rem">📸</span>
         <div style="flex:1">
-          <div><a href="https://instagram.com/${escHtml(a.ig_username||'')}" target="_blank" style="color:#c4b5fd;font-weight:600;text-decoration:none">@${escHtml(a.ig_username||'—')}</a></div>
+          <div><a href="https://instagram.com/${escHtml(a.ig_username||'')}" target="_blank" style="color:#6ee7b7;font-weight:600;text-decoration:none">@${escHtml(a.ig_username||'—')}</a></div>
           <small style="color:#666">ID: ${escHtml(a.ig_user_id||'—')}</small>
         </div>
         <span style="color:#22c55e;font-size:0.8rem">🟢 Conectada</span>

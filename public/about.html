@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sobre nosotros — DMCloser</title>
+  <meta name="description" content="DMCloser es un software de atención al cliente para Instagram Business construido en Chile por un fundador independiente. Conoce nuestra misión, equipo y tecnología.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://dmcloser.app/about.html">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://dmcloser.app/about.html">
+  <meta property="og:title" content="Sobre nosotros — DMCloser">
+  <meta property="og:description" content="Software de atención al cliente para Instagram Business construido en Chile.">
+  <meta property="og:image" content="https://dmcloser.app/icon-1024.png">
+  <meta property="og:locale" content="es_LA">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --orange: #10b981;
+      --grad: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
+      --bg: #0a0a12;
+      --surface: #111120;
+      --card: #16162a;
+      --border: rgba(255,255,255,.08);
+      --text-1: #f0f0ff;
+      --text-2: #a0a0c0;
+      --text-3: #606080;
+    }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--text-1); min-height: 100vh; line-height: 1.7; }
+    nav { max-width: 1180px; margin: 0 auto; padding: 22px 28px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
+    .nav-logo { font-size: 1.25rem; font-weight: 800; display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text-1); }
+    .nav-logo-icon { width: 32px; height: 32px; background: var(--grad); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+    .nav-links a { text-decoration: none; color: var(--text-2); font-size: 14px; font-weight: 500; margin-left: 24px; transition: color .15s; }
+    .nav-links a:hover { color: var(--text-1); }
+    main { max-width: 820px; margin: 0 auto; padding: 60px 28px 80px; }
+    h1 { font-size: 2.6rem; font-weight: 900; letter-spacing: -.02em; margin-bottom: 14px; line-height: 1.15; }
+    h1 span { background: var(--grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    h2 { font-size: 1.35rem; font-weight: 700; margin-top: 50px; margin-bottom: 14px; color: var(--text-1); letter-spacing: -.01em; }
+    .lead { color: var(--text-2); font-size: 1.1rem; margin-bottom: 30px; max-width: 640px; }
+    p, li { color: var(--text-2); font-size: 15.5px; }
+    ul { padding-left: 22px; margin: 10px 0 16px; }
+    li { margin-bottom: 6px; }
+    a { color: var(--orange); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .founder-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 18px;
+      padding: 28px; margin: 24px 0; display: flex; gap: 24px; align-items: flex-start;
+    }
+    .founder-avatar {
+      width: 84px; height: 84px; border-radius: 50%;
+      background: var(--grad); flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem; font-weight: 900; color: #fff;
+    }
+    .founder-info h3 { font-size: 1.1rem; font-weight: 800; margin-bottom: 4px; color: var(--text-1); }
+    .founder-info .role { font-size: 13.5px; color: var(--orange); font-weight: 600; margin-bottom: 12px; }
+    .founder-info p { font-size: 14.5px; }
+    .founder-meta { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 14px; font-size: 13px; color: var(--text-3); }
+    .founder-meta span { display: inline-flex; align-items: center; gap: 6px; }
+
+    .stack-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px; margin: 14px 0 24px;
+    }
+    .stack-item {
+      background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+      padding: 14px 16px; display: flex; align-items: center; gap: 12px;
+    }
+    .stack-emoji { font-size: 1.4rem; }
+    .stack-item .lbl { font-size: 13px; color: var(--text-1); font-weight: 700; }
+    .stack-item .desc { font-size: 11.5px; color: var(--text-3); margin-top: 2px; }
+
+    .cta-row {
+      display: flex; gap: 14px; flex-wrap: wrap; margin-top: 30px;
+    }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600;
+      cursor: pointer; transition: all .15s; border: none; text-decoration: none;
+    }
+    .btn-grad { background: var(--grad); color: #fff; box-shadow: 0 4px 16px rgba(16,185,129,.35); }
+    .btn-grad:hover { opacity: .92; transform: translateY(-1px); }
+    .btn-outline { background: transparent; border: 1.5px solid var(--border); color: var(--text-2); }
+    .btn-outline:hover { border-color: var(--orange); color: var(--orange); }
+
+    footer { border-top: 1px solid var(--border); max-width: 1180px; margin: 40px auto 0; padding: 24px 28px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--text-3); }
+    footer a { color: var(--text-2); margin-left: 18px; }
+
+    @media (max-width: 720px) {
+      .founder-card { flex-direction: column; gap: 16px; }
+      h1 { font-size: 2rem; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo">
+    <span class="nav-logo-icon">💬</span>
+    DMCloser
+  </a>
+  <div class="nav-links">
+    <a href="/pricing.html">Precios</a>
+    <a href="/contact.html">Contacto</a>
+    <a href="/app">Iniciar sesión</a>
+  </div>
+</nav>
+
+<main>
+  <h1>Construido en <span>Chile</span> por un fundador<br>que vive el mismo problema</h1>
+  <p class="lead">DMCloser nació porque ningún software de atención al cliente que existía hablaba el idioma de los pequeños negocios LATAM que viven en Instagram. Lo construimos desde cero, con una sola persona detrás y la decisión de cobrar lo justo a los primeros 20 fundadores que confían.</p>
+
+  <h2>Quién está detrás</h2>
+
+  <div class="founder-card">
+    <div class="founder-avatar">B</div>
+    <div class="founder-info">
+      <h3>Brayan Villalobos</h3>
+      <div class="role">Fundador y desarrollador</div>
+      <p>Ingeniero Civil de Minas con 6 años en operación de proyectos industriales en el norte de Chile. Construyo DMCloser como producto único enfocado en negocios LATAM que viven en Instagram. Diseño, programo, atiendo a clientes y respondo emails — todo, por ahora.</p>
+      <div class="founder-meta">
+        <span>📍 La Serena, Región de Coquimbo, Chile</span>
+        <span>🇨🇱 Idioma: español nativo</span>
+        <span>📧 <a href="mailto:soporte@dmcloser.app">soporte@dmcloser.app</a></span>
+      </div>
+    </div>
+  </div>
+
+  <h2>Nuestra misión</h2>
+  <p>Ayudar a coaches, mentores, agencias, e-commerce e inmobiliarias de habla hispana a no perder clientes en Instagram porque la respuesta llegó tarde. Damos un asistente con IA que prioriza, sugiere respuestas con tono propio y centraliza la conversación — sin contratar más equipo de atención.</p>
+
+  <p>No competimos con los grandes ChatGPT-as-a-service genéricos. Estamos construidos específicamente para cómo se vende y se atiende por DM en LATAM.</p>
+
+  <h2>Tecnología y proveedores</h2>
+  <p>Construimos sobre stack auditable y proveedores reconocidos. Cada uno está documentado en nuestra <a href="/privacy.html">Política de Privacidad</a>.</p>
+
+  <div class="stack-grid">
+    <div class="stack-item">
+      <span class="stack-emoji">🧠</span>
+      <div>
+        <div class="lbl">OpenAI GPT-4o</div>
+        <div class="desc">Motor de IA conversacional</div>
+      </div>
+    </div>
+    <div class="stack-item">
+      <span class="stack-emoji">📸</span>
+      <div>
+        <div class="lbl">Meta API oficial</div>
+        <div class="desc">Conexión a Instagram Business</div>
+      </div>
+    </div>
+    <div class="stack-item">
+      <span class="stack-emoji">🛡️</span>
+      <div>
+        <div class="lbl">Railway</div>
+        <div class="desc">Hosting + datos cifrados</div>
+      </div>
+    </div>
+    <div class="stack-item">
+      <span class="stack-emoji">📧</span>
+      <div>
+        <div class="lbl">Resend</div>
+        <div class="desc">Emails transaccionales</div>
+      </div>
+    </div>
+  </div>
+
+  <h2>Compromisos</h2>
+  <ul>
+    <li><strong>Precio fundador para siempre.</strong> Si entras como uno de los 20 fundadores, mantienes el precio mientras tu suscripción siga activa, incluso cuando subamos el precio público.</li>
+    <li><strong>Acompañamiento directo en setup.</strong> El primer mes incluye soporte directo conmigo para configurar tu asistente.</li>
+    <li><strong>Reembolso 100% en 7 días.</strong> Si el primer mes no te suma, devuelvo el cobro completo sin preguntas.</li>
+    <li><strong>Datos privados.</strong> Tus conversaciones nunca entrenan modelos públicos. OpenAI tiene contractualmente prohibido usar nuestros datos para entrenar (zero data retention).</li>
+    <li><strong>Cancelación con un click.</strong> Sin permanencias, sin letra chica, desde tu propio panel.</li>
+  </ul>
+
+  <h2>¿Por qué confiar en un software hecho por una sola persona?</h2>
+  <p>Porque está diseñado para resolver el problema, no para escalar a costa del cliente. Cada feature que agregamos sale de algo que un cliente real necesitó. No tengo inversionistas presionando por crecimiento agresivo, así que el incentivo es uno solo: que te quedes contento y nos sigas pagando $148 por mes.</p>
+
+  <p>Si quieres conversar antes de probarlo, escríbeme directamente a <a href="mailto:soporte@dmcloser.app">soporte@dmcloser.app</a>.</p>
+
+  <div class="cta-row">
+    <a href="/?register=1" class="btn btn-grad">Probar 3 días gratis →</a>
+    <a href="/contact.html" class="btn btn-outline">Hablar con el fundador</a>
+  </div>
+</main>
+
+<footer>
+  <div>© 2026 DMCloser · La Serena, Chile</div>
+  <div>
+    <a href="/pricing.html">Precios</a>
+    <a href="/about.html">Sobre nosotros</a>
+    <a href="/contact.html">Contacto</a>
+    <a href="/terms.html">Términos</a>
+    <a href="/privacy.html">Privacidad</a>
+  </div>
+</footer>
+
+</body>
+</html>
