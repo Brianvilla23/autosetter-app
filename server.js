@@ -198,6 +198,72 @@ app.post('/api/billing/ls-webhook', express.raw({ type: 'application/json' }), a
   res.json({ received: true });
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// POLAR.SH WEBHOOK (raw body — MUST be before express.json())
+// Activado cuando POLAR_WEBHOOK_SECRET está seteado en Railway.
+// Eventos: checkout.updated, subscription.created/active/canceled/revoked.
+// ─────────────────────────────────────────────────────────────────────────────
+app.post('/api/billing/polar-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  const polar = require('./services/polar');
+  const sigHeader = req.headers['webhook-signature'] || req.headers['x-polar-signature'] || '';
+
+  if (!polar.verifyWebhookSignature(req.body, sigHeader)) {
+    console.error('❌ Polar webhook: firma inválida o ausente');
+    return res.status(401).send('Invalid signature');
+  }
+
+  let event;
+  try { event = JSON.parse(req.body.toString()); }
+  catch (e) { return res.status(400).send('Invalid JSON'); }
+
+  const dbW = require('./db/database');
+  const billingMod = require('./routes/billing');
+  const now = new Date();
+
+  try {
+    const parsed = polar.parseEvent(event);
+
+    if (parsed.action === 'ignore') {
+      // Evento no relevante — solo log y 200 OK
+      console.log(`[Polar] event ignored: ${event.type}`);
+      return res.json({ received: true });
+    }
+
+    if (parsed.action === 'activate') {
+      await billingMod.activateSubscription(parsed.userId, parsed.plan, 'polar', parsed.extra || {});
+
+      // Email de bienvenida (mismo flow que LS)
+      try {
+        const user = await dbW.findOne(dbW.users, { _id: parsed.userId });
+        if (user?.email) {
+          const { sendEmail } = require('./services/email');
+          const { subscriptionActivatedEmail } = require('./services/emailTemplates');
+          const tpl = subscriptionActivatedEmail({ name: user.name, email: user.email, plan: parsed.plan });
+          sendEmail({ to: user.email, subject: tpl.subject, html: tpl.html, userId: user._id, tag: 'subscription_activated' }).catch(() => null);
+        }
+      } catch (e) { console.warn('Polar activation email skip:', e.message); }
+    }
+
+    if (parsed.action === 'cancel') {
+      await dbW.update(dbW.users, { _id: parsed.userId }, {
+        subscriptionStatus:  'cancelled',
+        membershipPlan:      'cancelled',
+        membershipExpiresAt: now.toISOString(),
+        ...(parsed.extra || {}),
+      });
+      console.log(`❌ Polar: suscripción ${event.type} — usuario ${parsed.userId}`);
+    }
+
+    if (parsed.action === 'renew') {
+      await billingMod.renewSubscription(parsed.userId, 'polar');
+    }
+  } catch (e) {
+    console.error('Polar webhook handler error:', e.message);
+  }
+
+  res.json({ received: true });
+});
+
 // 3. Limitar tamaño de payload (previene ataques de payload gigante)
 //    `verify` preserva el raw body en req.rawBody — necesario para validar
 //    HMAC del webhook de Meta (X-Hub-Signature-256).
@@ -663,6 +729,7 @@ app.listen(PORT, () => {
   console.log(`🔐 Auth URL           → http://localhost:${PORT}/auth/instagram`);
   console.log(`👑 Admin Panel        → http://localhost:${PORT}/admin`);
   console.log(`🛡️  Security           → Helmet + Rate Limit + XSS Protection ON`);
-  console.log(`💳 LS Webhook         → http://localhost:${PORT}/api/billing/ls-webhook`);
+  console.log(`💳 Polar Webhook      → http://localhost:${PORT}/api/billing/polar-webhook${process.env.POLAR_ENABLED === '1' ? ' (✅ activo)' : ' (⏸️ POLAR_ENABLED=1 para activar)'}`);
+  console.log(`💳 LS Webhook         → http://localhost:${PORT}/api/billing/ls-webhook (legacy, rechazado 2026-05-01)`);
   console.log(`💳 MP Webhook         → http://localhost:${PORT}/api/billing/mp-webhook\n`);
 });

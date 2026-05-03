@@ -50,7 +50,12 @@ const MP_CLP = {
   agency:  () => parseInt(process.env.MP_PRICE_AGENCY_CLP  || '450000'),
 };
 
-const PLAN_NAMES = { starter: 'Starter', pro: 'Pro', agency: 'Agency' };
+const PLAN_NAMES = { starter: 'Starter', pro: 'Pro', agency: 'Agency', founder: 'Founder' };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POLAR.SH adapter (lazy-loaded — solo se activa si POLAR_ENABLED=1)
+// ─────────────────────────────────────────────────────────────────────────────
+const polar = require('../services/polar');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared logic: activate subscription in DB
@@ -166,11 +171,25 @@ router.post('/checkout', requireAuth, async (req, res) => {
   try {
     const { plan, provider } = req.body;
 
-    if (!PLAN_NAMES[plan])             return res.status(400).json({ error: 'Plan inválido. Usa: starter, pro, agency' });
-    if (!['ls', 'mp'].includes(provider)) return res.status(400).json({ error: 'Provider inválido. Usa: ls (USD) o mp (CLP)' });
+    if (!PLAN_NAMES[plan])                            return res.status(400).json({ error: 'Plan inválido. Usa: founder, starter, pro, agency' });
+    if (!['ls', 'mp', 'polar'].includes(provider))    return res.status(400).json({ error: 'Provider inválido. Usa: polar (USD), ls (legacy), mp (CLP)' });
 
     const user   = await db.findOne(db.users, { _id: req.user.userId });
     const appUrl = process.env.APP_URL || 'http://localhost:3000';
+
+    // ── Polar.sh (procesador principal post-LS-rejection 2026-05-01) ─────────
+    if (provider === 'polar') {
+      if (!polar.isPolarEnabled()) {
+        return res.status(503).json({ error: 'Polar no está activado todavía. Configura POLAR_API_KEY + POLAR_PRODUCT_PRICE_ID + POLAR_ENABLED=1 en Railway.' });
+      }
+      const checkout = await polar.createCheckout({
+        userId: user._id,
+        email:  user.email,
+        name:   user.name,
+        appUrl,
+      });
+      return res.json({ url: checkout.url });
+    }
 
     // ── Lemon Squeezy ─────────────────────────────────────────────────────────
     if (provider === 'ls') {

@@ -70,6 +70,13 @@ const CHECKS = [
     expectStatus: 400,
   },
   {
+    name: 'Polar webhook POST sin firma → 401',
+    method: 'POST',
+    path: '/api/billing/polar-webhook',
+    body: '{"fake":1}',
+    expectStatus: 401,
+  },
+  {
     name: '/api/agents sin auth → 401',
     method: 'GET',
     path: '/api/agents?accountId=fake',
