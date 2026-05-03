@@ -38,13 +38,15 @@ function mpHeaders() {
 }
 
 const MP_PLANS = {
+  founder: () => process.env.MP_PLAN_FOUNDER,
   starter: () => process.env.MP_PLAN_STARTER,
   pro:     () => process.env.MP_PLAN_PRO,
   agency:  () => process.env.MP_PLAN_AGENCY,
 };
 
-// CLP prices (configurable via env; defaults are ~USD equivalent)
+// CLP prices (configurable via env; defaults son aprox del USD equivalente)
 const MP_CLP = {
+  founder: () => parseInt(process.env.MP_PRICE_FOUNDER_CLP || '135000'),  // ~$148 USD
   starter: () => parseInt(process.env.MP_PRICE_STARTER_CLP || '180000'),
   pro:     () => parseInt(process.env.MP_PRICE_PRO_CLP     || '270000'),
   agency:  () => parseInt(process.env.MP_PRICE_AGENCY_CLP  || '450000'),
