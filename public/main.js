@@ -80,7 +80,7 @@ function showDashboard() {
     const plan = params.get('plan') || 'plan';
     const provider = params.get('provider') || '';
     const planName = plan.charAt(0).toUpperCase() + plan.slice(1);
-    const providerLabel = provider === 'ls' ? ' (Lemon Squeezy)' : provider === 'mp' ? ' (Mercado Pago)' : '';
+    const providerLabel = provider === 'polar' ? ' (Polar)' : provider === 'mp' ? ' (Mercado Pago)' : provider === 'ls' ? ' (Lemon Squeezy)' : '';
     showToast(`🎉 ¡Suscripción activada! Bienvenido al plan ${planName}${providerLabel}`);
     window.history.replaceState({}, '', '/app');
     loadBillingStatus();
@@ -1660,14 +1660,14 @@ function switchProvider(provider) {
   document.querySelectorAll('.provider-tab').forEach(t => {
     t.classList.toggle('active', t.dataset.provider === provider);
   });
-  // Toggle panel visibility
-  const lsPanel = document.getElementById('provider-panel-ls');
-  const mpPanel = document.getElementById('provider-panel-mp');
-  if (lsPanel) lsPanel.style.display = provider === 'ls' ? '' : 'none';
-  if (mpPanel) mpPanel.style.display = provider === 'mp' ? '' : 'none';
+  // Toggle panel visibility (polar = USD, mp = CLP)
+  const polarPanel = document.getElementById('provider-panel-polar');
+  const mpPanel    = document.getElementById('provider-panel-mp');
+  if (polarPanel) polarPanel.style.display = provider === 'polar' ? '' : 'none';
+  if (mpPanel)    mpPanel.style.display    = provider === 'mp'    ? '' : 'none';
 }
 
-async function upgradePlan(plan, provider = 'ls') {
+async function upgradePlan(plan, provider = 'polar') {
   const btn = document.getElementById(`btn-plan-${provider}-${plan}`) || document.getElementById(`btn-plan-${plan}`);
   const originalText = btn ? btn.textContent : '';
   if (btn) { btn.disabled = true; btn.textContent = 'Redirigiendo...'; }
@@ -1676,7 +1676,7 @@ async function upgradePlan(plan, provider = 'ls') {
   if (data?.url) {
     window.location.href = data.url;
   } else {
-    const providerLabel = provider === 'ls' ? 'Lemon Squeezy' : 'Mercado Pago';
+    const providerLabel = provider === 'polar' ? 'el procesador internacional' : 'Mercado Pago';
     showToast(`❌ Error al crear sesión de pago. Verifica que ${providerLabel} esté configurado.`);
     if (btn) { btn.disabled = false; btn.textContent = originalText; }
   }
@@ -2734,7 +2734,7 @@ async function loadBillingPage() {
 
     const isPaid = ['starter', 'pro', 'agency'].includes(data.plan) && data.subscriptionStatus === 'active';
     const isTrial = data.plan === 'trial';
-    const providerLabel = data.provider === 'ls' ? 'Lemon Squeezy (USD)' : data.provider === 'mp' ? 'Mercado Pago (CLP)' : '—';
+    const providerLabel = data.provider === 'polar' ? 'Polar (USD)' : data.provider === 'mp' ? 'Mercado Pago (CLP)' : data.provider === 'ls' ? 'Lemon Squeezy (USD, legacy)' : '—';
 
     const renewDate = data.expiresAt ? new Date(data.expiresAt).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' }) : '—';
     const monthlyAmount = data.provider === 'mp'
@@ -2801,7 +2801,7 @@ async function loadBillingPage() {
     // Provider name en la card de info
     const providerNameEl = document.getElementById('billing-provider-name');
     if (providerNameEl) {
-      providerNameEl.textContent = data.provider === 'ls' ? 'Lemon Squeezy' : data.provider === 'mp' ? 'Mercado Pago' : 'tu proveedor';
+      providerNameEl.textContent = data.provider === 'polar' ? 'Polar' : data.provider === 'mp' ? 'Mercado Pago' : data.provider === 'ls' ? 'Lemon Squeezy' : 'tu proveedor';
     }
   } catch (e) {
     card.innerHTML = `<div style="color:#ef4444;text-align:center;padding:30px">${escHtmlSafe(e.message)}</div>`;
