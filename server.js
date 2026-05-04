@@ -590,7 +590,10 @@ app.get('*', (req, res) => {
 
 // ── PENDING SENDS WORKER ──────────────────────────────────────────────────────
 // Procesa replies pendientes cada 10s. Sobrevive reinicios de Railway.
-const { sendMessage } = require('./services/meta');
+// Channel-aware: dispatch a Instagram (graph.instagram.com) o WhatsApp Cloud API
+// (graph.facebook.com) según el campo `channel` del item.
+const { sendMessage: sendIGMessage } = require('./services/meta');
+const { sendMessage: sendWAMessage } = require('./services/whatsapp');
 const { incrementDMCount } = require('./services/limits');
 const dbW = require('./db/database');
 
@@ -603,15 +606,28 @@ async function processPendingSends() {
     for (const item of due) {
       let sentOk = false;
       try {
-        await sendMessage({
-          recipientId:  item.recipientId,
-          text:         item.text,
-          accessToken:  item.accessToken,
-          igUserId:     item.igUserId,
-          accountId:    item.accountId,
-        });
+        if (item.channel === 'whatsapp') {
+          // WhatsApp Cloud API: phoneNumberId + recipient (wa_id) + accessToken
+          await sendWAMessage({
+            phoneNumberId: item.phoneNumberId,
+            recipient:     item.recipientId,
+            text:          item.text,
+            accessToken:   item.accessToken,
+            accountId:     item.accountId,
+          });
+        } else {
+          // Default: Instagram DM (igUserId + recipientId via graph.instagram.com)
+          await sendIGMessage({
+            recipientId:  item.recipientId,
+            text:         item.text,
+            accessToken:  item.accessToken,
+            igUserId:     item.igUserId,
+            accountId:    item.accountId,
+          });
+        }
         sentOk = true;
-        console.log(`✅ [${item.agentName}] → @${item.leadUsername}: ${item.text.substring(0, 60)}...`);
+        const channelLabel = item.channel === 'whatsapp' ? '📱WSP' : '📷IG';
+        console.log(`✅ ${channelLabel} [${item.agentName}] → @${item.leadUsername}: ${item.text.substring(0, 60)}...`);
       } catch (e) {
         console.error(`❌ pendingSend error para @${item.leadUsername}:`, e.response?.data || e.message);
       }

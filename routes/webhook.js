@@ -4,6 +4,7 @@ const router  = express.Router();
 const db      = require('../db/database');
 const { generateReply, classifyLead } = require('../services/openai');
 const { sendMessage, getIGUserInfo } = require('../services/meta');
+const wa = require('../services/whatsapp');
 const { checkDMAllowance, incrementDMCount } = require('../services/limits');
 const { v4: uuidv4 } = require('uuid');
 
@@ -85,6 +86,27 @@ router.post('/', async (req, res) => {
   res.sendStatus(200); // Siempre 200 inmediato (después de validar)
   try {
     const body = req.body;
+
+    // ── BRANCH: WhatsApp Business Account ────────────────────────────────────
+    // Meta envía webhooks de WhatsApp con object='whatsapp_business_account'.
+    // Estructura: entry[].changes[].value.{metadata.phone_number_id, messages[], contacts[]}
+    if (body.object === 'whatsapp_business_account') {
+      for (const entry of body.entry || []) {
+        for (const change of entry.changes || []) {
+          if (change.field !== 'messages') continue;
+          const value = change.value || {};
+          const phoneNumberId = value.metadata?.phone_number_id;
+          if (!phoneNumberId) continue;
+          for (const msg of value.messages || []) {
+            await handleWhatsAppMessage(phoneNumberId, msg, value)
+              .catch(e => console.error('handleWhatsAppMessage error:', e));
+          }
+        }
+      }
+      return;
+    }
+
+    // ── BRANCH: Instagram ────────────────────────────────────────────────────
     if (body.object !== 'instagram') return;
 
     for (const entry of body.entry || []) {
@@ -222,6 +244,76 @@ async function handleComment(pageId, commentData) {
   });
 }
 
+// ── HANDLER: MENSAJE DE WHATSAPP ──────────────────────────────────────────────
+// Recibe mensajes entrantes de la Cloud API de WhatsApp.
+// El account se identifica por wa_phone_number_id (único por número WSP).
+// El sender se identifica por wa_id (formato sin '+', ej "5491155...").
+async function handleWhatsAppMessage(phoneNumberId, msg, value) {
+  // Por ahora solo procesamos mensajes de texto. Audio/imagen los ignoramos
+  // (capability futura: transcribir audio con Whisper).
+  if (msg.type !== 'text' || !msg.text?.body) {
+    console.log(`[wa] tipo no soportado: ${msg.type} de ${msg.from}`);
+    return;
+  }
+
+  const senderId = msg.from;
+  const text     = msg.text.body;
+  const senderName = value.contacts?.[0]?.profile?.name || senderId;
+
+  // Find account by phone_number_id
+  const account = await wa.findAccountByPhoneNumberId(phoneNumberId);
+  if (!account) {
+    console.log(`[wa] no account para phone_number_id: ${phoneNumberId}`);
+    return;
+  }
+
+  // Marcar como leído (best-effort, no bloquea)
+  if (msg.id && account.wa_access_token) {
+    wa.markAsRead({
+      phoneNumberId,
+      messageId: msg.id,
+      accessToken: account.wa_access_token,
+    }).catch(() => null);
+  }
+
+  // Bypass check (por wa_id)
+  const bypassed = await db.findOne(db.bypassed, { account_id: account._id, wa_id: senderId });
+  if (bypassed) return;
+
+  // Find enabled agent (mismo modelo que IG)
+  const agents = await db.find(db.agents, { account_id: account._id, enabled: true },
+    (a, b) => a.createdAt.localeCompare(b.createdAt));
+  const agent = agents[0];
+  if (!agent) return;
+
+  // Get or create lead — usamos `wa_id` como identificador y reutilizamos
+  // ig_user_id/ig_username para que el inbox y leads UI no necesiten cambios.
+  let lead = await db.findOne(db.leads, { account_id: account._id, wa_id: senderId });
+  if (!lead) {
+    if (!containsTrigger(text, agent)) {
+      console.log(`🔒 WSP DM ignorado (sin keyword) de ${senderId}: "${text}"`);
+      return;
+    }
+    lead = await db.insert(db.leads, {
+      account_id: account._id, agent_id: agent._id,
+      wa_id: senderId,
+      wa_name: senderName,
+      ig_user_id: senderId,        // Reutilizamos para compatibilidad con inbox actual
+      ig_username: senderName,     // Mostrado en UI
+      channel: 'whatsapp',
+      status: 'active', automation: 'automated',
+      is_bypassed: false, is_converted: false,
+      triggered_by: 'wa_dm',
+      last_message_at: new Date().toISOString()
+    });
+    console.log(`🔑 WSP bot activado para ${senderName} (${senderId})`);
+  }
+
+  if (lead.automation !== 'automated' || lead.is_bypassed) return;
+
+  await runConversation({ account, agent, lead, senderId, text });
+}
+
 // ── MOTOR PRINCIPAL: genera respuesta IA y envía DM ──────────────────────────
 async function runConversation({ account, agent, lead, senderId, text, isCommentTrigger = false }) {
   if (lead.automation !== 'automated' || lead.is_bypassed) return;
@@ -309,18 +401,26 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
   const sendAt = new Date(Date.now() + delaySeconds * 1000).toISOString();
 
   // Guardar en queue persistente — sobrevive reinicios de Railway
-  const igUserId = account.ig_platform_id || account.ig_user_id;
-  await db.insert(db.pendingSends, {
+  // Channel-aware: el worker dispatchea a Instagram o WhatsApp según `channel`.
+  const isWhatsApp = lead.channel === 'whatsapp';
+  const pendingItem = {
+    channel:      isWhatsApp ? 'whatsapp' : 'instagram',
     recipientId:  senderId,
     text:         reply,
-    accessToken:  account.access_token,
-    igUserId,
+    accessToken:  isWhatsApp ? (account.wa_access_token || account.access_token) : account.access_token,
     accountId:    account._id,     // Para incrementar contador de DMs al enviar
     sendAt,
-    leadUsername: lead.ig_username,
+    leadUsername: lead.ig_username || lead.wa_name || senderId,
     agentName:    agent.name,
-  });
-  console.log(`⏱ [${agent.name}] Reply a @${lead.ig_username} programado en ${delaySeconds}s (${sendAt})`);
+  };
+  if (isWhatsApp) {
+    pendingItem.phoneNumberId = account.wa_phone_number_id;
+  } else {
+    pendingItem.igUserId = account.ig_platform_id || account.ig_user_id;
+  }
+  await db.insert(db.pendingSends, pendingItem);
+  const channelLabel = isWhatsApp ? '📱WSP' : '📷IG';
+  console.log(`⏱ ${channelLabel} [${agent.name}] Reply a @${pendingItem.leadUsername} programado en ${delaySeconds}s (${sendAt})`);
 
   console.log(`💬 [${agent.name}] → @${lead.ig_username}: ${reply.substring(0, 80)}...`);
 
