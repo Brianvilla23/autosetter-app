@@ -157,7 +157,18 @@ router.get('/callback', async (req, res) => {
     const expiresInSec = longRes.data.expires_in || 60 * 24 * 3600;
     const tokenExpiresAt = new Date(Date.now() + expiresInSec * 1000).toISOString();
 
-    // Update or create account
+    // Update or create account.
+    // En cualquier reconexión exitosa, limpiamos needs_reauth: el cliente
+    // acaba de re-autorizar la app, así que el flag de "necesita reconectar"
+    // ya no aplica.
+    const reauthClearFields = {
+      needs_reauth:           false,
+      needs_reauth_at:        null,
+      needs_reauth_reason:    null,
+      needs_reauth_email_at:  null,
+      token_last_error:       null,
+      token_last_error_at:    null,
+    };
     if (accountId && accountId !== 'undefined') {
       // When reconnecting: preserve ig_user_id (webhook ID from entry.id).
       // Store ig_platform_id (from graph.instagram.com/me) separately — used for sending messages.
@@ -169,6 +180,7 @@ router.get('/callback', async (req, res) => {
         ig_platform_id:   igPlatformId,
         token_expires_at: tokenExpiresAt,
         token_refreshed_at: new Date().toISOString(),
+        ...reauthClearFields,
       });
     } else {
       const exists = await db.findOne(db.accounts, { ig_user_id: igIdFinal });
@@ -188,6 +200,7 @@ router.get('/callback', async (req, res) => {
           access_token:     longToken,
           token_expires_at: tokenExpiresAt,
           token_refreshed_at: new Date().toISOString(),
+          ...reauthClearFields,
         });
       }
     }

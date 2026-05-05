@@ -136,6 +136,14 @@ async function handleDM(pageId, event) {
   const account = await db.findOne(db.accounts, { ig_user_id: pageId });
   if (!account) { console.log('No account for ig_user_id:', pageId); return; }
 
+  // Si la cuenta necesita reconexión (token caducado e irrenovable), no generar
+  // respuesta — al cliente ya le mandamos email needsReauth desde metaRefresh.
+  // Generar reply quemaría OpenAI credits que no se pueden enviar.
+  if (account.needs_reauth) {
+    console.log(`🔌 DM ignorado (account needs_reauth) para @${account.ig_username || pageId}`);
+    return;
+  }
+
   // Check bypass
   const bypassed = await db.findOne(db.bypassed, { account_id: account._id, ig_user_id: senderId });
   if (bypassed) return;
@@ -186,6 +194,10 @@ async function handleComment(pageId, commentData) {
   // Find account + agent (una sola vez)
   const account = await db.findOne(db.accounts, { ig_user_id: pageId });
   if (!account) return;
+  if (account.needs_reauth) {
+    console.log(`🔌 Comment ignorado (account needs_reauth) para @${account.ig_username || pageId}`);
+    return;
+  }
   const agents = await db.find(db.agents, { account_id: account._id, enabled: true },
     (a, b) => a.createdAt.localeCompare(b.createdAt));
   const agent = agents[0];
@@ -264,6 +276,12 @@ async function handleWhatsAppMessage(phoneNumberId, msg, value) {
   const account = await wa.findAccountByPhoneNumberId(phoneNumberId);
   if (!account) {
     console.log(`[wa] no account para phone_number_id: ${phoneNumberId}`);
+    return;
+  }
+
+  // Si needs_reauth, no procesar (mismo motivo que IG).
+  if (account.needs_reauth) {
+    console.log(`🔌 WSP ignorado (account needs_reauth) para phone ${phoneNumberId}`);
     return;
   }
 
