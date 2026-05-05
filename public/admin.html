@@ -289,16 +289,17 @@
       </div>
     </div>
 
-    <!-- ── CUPONES LS (Lemon Squeezy discount codes) ── -->
+    <!-- ── CUPONES (Legacy — antes solo LS, ahora deprecado tras LS rejection 2026-05-01) ── -->
     <div id="tab-discounts" class="section">
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
-          <h3 style="margin:0">💸 Cupones de descuento</h3>
+          <h3 style="margin:0">💸 Cupones de descuento <span style="font-size:0.7rem;color:#a0a0c0;font-weight:400">(legacy)</span></h3>
           <button class="btn btn-primary" onclick="openDiscountForm()">+ Nuevo cupón</button>
         </div>
         <p style="color:#888;font-size:0.86rem;margin-bottom:14px">
-          Los cupones se crean directo en Lemon Squeezy y los clientes los pueden aplicar al checkout.
-          Para Mercado Pago no hay API equivalente — los descuentos se hacen creando un plan alternativo en su dashboard.
+          Sección legacy del procesador anterior. Cuando se active Polar y/o Mercado Pago,
+          los descuentos se gestionarán desde sus respectivos dashboards. Para Mercado Pago
+          no hay API equivalente — los descuentos se hacen creando un plan alternativo en su dashboard.
         </p>
         <div class="table-wrap">
           <table>

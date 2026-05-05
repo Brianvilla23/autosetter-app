@@ -283,6 +283,45 @@ e) Si no responden en este paso: "Oye, ¿pudiste abrirlo? Quiero asegurarme de q
 
 migrate().catch(console.error);
 
+// ── Migración 2026-05-03: resetear planes LS legacy a 'founder' demo ─────────
+// Tras el rechazo de Lemon Squeezy (2026-05-01) cualquier usuario con
+// paymentProvider='ls' tiene una suscripción que ya no es cobrable.
+// Hasta que tengamos Polar/MP activo, los pasamos a plan='founder' con
+// status='demo' para que vean el pricing nuevo y la UI no muestre $297
+// huérfanos. Cuando se conecte un procesador real, el flow normal
+// /api/billing/checkout reasigna el provider correctamente.
+async function migrateLegacyLSPlans() {
+  try {
+    const users = await db.find(db.users, {});
+    let migrated = 0;
+    for (const u of users) {
+      // Solo cuentas con LS activo. Admins/founders ya marcados como
+      // 'admin' o 'founder' los dejamos.
+      if (u.paymentProvider !== 'ls') continue;
+      if (u.membershipPlan === 'founder' || u.membershipPlan === 'admin') continue;
+      if (u.ls_migrated_to_founder_at) continue; // ya migrado
+
+      await db.update(db.users, { _id: u._id }, {
+        membershipPlan:               'founder',
+        paymentProvider:              null,
+        subscriptionStatus:           'demo',
+        ls_subscription_id_legacy:    u.ls_subscription_id || null, // preservar para auditoría
+        ls_migrated_to_founder_at:    new Date().toISOString(),
+        ls_migrated_from_plan:        u.membershipPlan,
+      });
+      migrated++;
+      console.log(`🔄 Migración post-LS-rejection: ${u.email || u._id} pasó de ${u.membershipPlan}/ls → founder/demo`);
+    }
+    if (migrated) {
+      console.log(`✅ migrateLegacyLSPlans: ${migrated} cuenta(s) migrada(s) a founder demo`);
+    }
+  } catch (e) {
+    console.error('migrateLegacyLSPlans error:', e.message);
+  }
+}
+
+migrateLegacyLSPlans().catch(console.error);
+
 // syncAccountFromEnv removed — account is properly linked via Instagram Business Login OAuth.
 // The OAuth flow in routes/auth.js stores ig_user_id, ig_platform_id and access_token in DB.
 // Using META_ACCESS_TOKEN env var with graph.facebook.com is incompatible with IGAA tokens.

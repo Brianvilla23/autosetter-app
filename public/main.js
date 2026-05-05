@@ -2702,21 +2702,28 @@ window.loadInbox = loadInbox;
 setInterval(() => { if (ACCOUNT_ID) updateInboxBadge(); }, 30000);
 
 // ── PÁGINA DE FACTURACIÓN ──────────────────────────────────────────────────
+// Plan único Founder $148 USD/mes / $135.000 CLP. Los planes legacy
+// (starter/pro/agency) se mantienen mapeados solo para clientes que
+// tengan suscripciones activas creadas antes del cambio de pricing
+// — la UI los muestra pero con su precio histórico.
 const PLAN_LABEL = {
   trial:   { name: 'Prueba gratuita', usd: 0,   clp: 0,       desc: 'Probando DMCloser' },
-  starter: { name: 'Starter',         usd: 197, clp: 180000,  desc: '500 conv/mes · 3 agentes' },
-  pro:     { name: 'Pro',             usd: 297, clp: 270000,  desc: 'Ilimitado · 3 cuentas IG' },
-  agency:  { name: 'Agency',          usd: 497, clp: 450000,  desc: '10 cuentas · white-label' },
+  founder: { name: 'Founder',         usd: 148, clp: 135000,  desc: '6.000 conv/mes · 5 asistentes · plan único' },
+  starter: { name: 'Starter (legacy)', usd: 197, clp: 180000,  desc: 'Plan histórico — 500 conv/mes · 3 asistentes' },
+  pro:     { name: 'Pro (legacy)',    usd: 297, clp: 270000,  desc: 'Plan histórico — 3 cuentas IG' },
+  agency:  { name: 'Agency (legacy)', usd: 497, clp: 450000,  desc: 'Plan histórico — 10 cuentas · white-label' },
   admin:   { name: 'Admin',           usd: 0,   clp: 0,       desc: 'Acceso total' },
+  demo:    { name: 'Demo founder',    usd: 0,   clp: 0,       desc: 'Acceso completo sin cobro mientras configuramos procesador' },
 };
 
 const STATUS_LABEL = {
   active:    { text: 'Activa',    color: '#16a34a', bg: '#dcfce7' },
   trial:     { text: 'En prueba', color: '#d97706', bg: '#fef3c7' },
-  cancelled: { text: 'Cancelada — accedés hasta el vencimiento', color: '#dc2626', bg: '#fee2e2' },
+  cancelled: { text: 'Cancelada — accedes hasta el vencimiento', color: '#dc2626', bg: '#fee2e2' },
   past_due:  { text: 'Pago pendiente', color: '#dc2626', bg: '#fee2e2' },
   paused:    { text: 'Pausada', color: '#6b7280', bg: '#f3f4f6' },
   expired:   { text: 'Expirada', color: '#dc2626', bg: '#fee2e2' },
+  demo:      { text: 'Demo founder · sin cobro', color: '#0891b2', bg: '#cffafe' },
 };
 
 async function loadBillingPage() {
