@@ -347,11 +347,11 @@ router.get('/analytics', async (req, res) => {
 
     // Funnel
     const funnel = [
-      { id: 'total',      label: 'Leads totales',      count: total },
-      { id: 'respondido', label: 'Bot respondió',      count: respondidos },
-      { id: 'calificado', label: 'Bot calificó',       count: hot + warm + cold },
-      { id: 'hot',        label: 'Lead HOT',           count: hot },
-      { id: 'convertido', label: 'Convertido',         count: converted },
+      { id: 'total',      label: 'Conversaciones totales', count: total },
+      { id: 'respondido', label: 'Asistente respondió',    count: respondidos },
+      { id: 'calificado', label: 'Asistente priorizó',     count: hot + warm + cold },
+      { id: 'hot',        label: 'Cliente prioritario',    count: hot },
+      { id: 'convertido', label: 'Convertido',             count: converted },
     ];
 
     // ── COMPARATIVA con período anterior ─────────────────────────────────

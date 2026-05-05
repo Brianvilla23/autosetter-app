@@ -91,7 +91,7 @@ async function tryDeliverMagnet({ lead, account, incomingText, recentHistory }) 
 
     // Entrega real
     if (email && magnet.delivery !== 'dm') {
-      const subject = `Acá tenés: ${magnet.title}`;
+      const subject = `Aquí tienes: ${magnet.title}`;
       const html = buildMagnetEmail(magnet, lead);
       const r = await sendEmail({
         to: email, subject, html,
@@ -114,7 +114,7 @@ async function tryDeliverMagnet({ lead, account, incomingText, recentHistory }) 
 function buildMagnetEmail(magnet, lead) {
   const name = lead.ig_username ? `@${lead.ig_username}` : 'hola';
   const ctaButton = magnet.delivery_url
-    ? `<a href="${escape(magnet.delivery_url)}" style="display:inline-block;background:#f97316;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:600;margin:20px 0">Abrir ${escape(magnet.title)}</a>`
+    ? `<a href="${escape(magnet.delivery_url)}" style="display:inline-block;background:linear-gradient(135deg,#10b981 0%,#06b6d4 100%);color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:600;margin:20px 0">Abrir ${escape(magnet.title)}</a>`
     : '';
   const body = magnet.description ? `<p style="color:#475569;line-height:1.6">${escape(magnet.description)}</p>` : '';
 
@@ -126,15 +126,15 @@ function buildMagnetEmail(magnet, lead) {
       <div style="font-size:28px;margin-bottom:16px">🧲</div>
       <h1 style="color:#0f172a;font-size:22px;margin:0 0 12px">${escape(magnet.title)}</h1>
       <p style="color:#64748b;margin:0 0 6px;font-size:14px">Hola ${escape(name)},</p>
-      <p style="color:#334155;line-height:1.6;margin:0 0 16px">Acá tenés el recurso que te prometí 👇</p>
+      <p style="color:#334155;line-height:1.6;margin:0 0 16px">Aquí tienes el recurso que te prometimos 👇</p>
       ${body}
       ${ctaButton}
       <p style="color:#94a3b8;font-size:13px;line-height:1.6;margin-top:24px">
-        Si tenés alguna duda mientras lo revisás, respondé este mail o seguí la conversación por Instagram.
+        Si tienes alguna duda mientras lo revisas, responde este mail o sigue la conversación por Instagram.
       </p>
     </div>
     <p style="color:#94a3b8;font-size:12px;text-align:center;margin-top:20px">
-      Enviado automáticamente desde DMCloser
+      Enviado desde DMCloser
     </p>
   </div>
 </body></html>`;

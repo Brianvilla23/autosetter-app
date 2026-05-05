@@ -247,7 +247,7 @@ async function notifyHotLead({ userId, leadId }) {
       <div style="font-family:system-ui,-apple-system,'Segoe UI',sans-serif;max-width:560px;margin:auto;padding:24px;background:#f8f9fb;border-radius:12px">
         <div style="background:#fff;border-radius:10px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.08)">
           <h1 style="margin:0 0 8px;color:#ef4444;font-size:22px">🔥 Lead HOT detectado</h1>
-          <p style="margin:0 0 16px;color:#666;font-size:14px">El bot clasificó a <strong>@${igUsername}</strong> como caliente. Es un buen momento para que tomes el control y cierres.</p>
+          <p style="margin:0 0 16px;color:#666;font-size:14px">El asistente identificó a <strong>@${igUsername}</strong> como cliente prioritario. Es un buen momento para que tomes el control y cierres.</p>
 
           <div style="background:#fef2f2;border-left:3px solid #ef4444;padding:12px 16px;border-radius:6px;margin-bottom:16px">
             <div style="font-size:13px;color:#888;margin-bottom:6px">Razón:</div>
