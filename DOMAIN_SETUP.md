@@ -1,4 +1,4 @@
-# 🌐 Apuntar `dmcloser.app` a Railway
+# 🌐 Apuntar `atinov.com` a Railway
 
 **Importante**: Yo (Claude) no puedo hacer esto por vos. La configuración DNS es en el **provider donde compraste el dominio** (Namecheap, GoDaddy, Google Domains, Cloudflare, etc) y solo vos tenés acceso a esa cuenta.
 
@@ -10,10 +10,10 @@ Te dejo los pasos para los providers más comunes. Es 5-10 minutos de trabajo.
 
 1. Andá a https://railway.app → tu proyecto **autosetter-app**
 2. **Settings** → tab **Networking** → **Custom Domain**
-3. Click **+ Custom Domain** → escribí `dmcloser.app` → Submit
+3. Click **+ Custom Domain** → escribí `atinov.com` → Submit
 4. Railway te da algo como: `xxx-production.up.railway.app` o un valor para CNAME
 
-5. **Repetí** para `www.dmcloser.app` (también Custom Domain).
+5. **Repetí** para `www.atinov.com` (también Custom Domain).
 
 ---
 
@@ -21,7 +21,7 @@ Te dejo los pasos para los providers más comunes. Es 5-10 minutos de trabajo.
 
 ### 🟧 Cloudflare (recomendado, gratis + más rápido)
 
-1. https://dash.cloudflare.com → tu dominio `dmcloser.app` → **DNS** → **Records**
+1. https://dash.cloudflare.com → tu dominio `atinov.com` → **DNS** → **Records**
 2. **Eliminá cualquier A record o CNAME existente para `@` y `www`** que tengas
 3. **+ Add record**:
    - **Type**: CNAME
@@ -39,7 +39,7 @@ Te dejo los pasos para los providers más comunes. Es 5-10 minutos de trabajo.
 
 ### 🟦 Namecheap
 
-1. https://ap.www.namecheap.com → **Domain List** → click en `dmcloser.app` → **Manage**
+1. https://ap.www.namecheap.com → **Domain List** → click en `atinov.com` → **Manage**
 2. Tab **Advanced DNS** → **Host Records**
 3. Eliminar URL Redirect Records y A records existentes para `@` y `www`
 4. **Add New Record**:
@@ -55,7 +55,7 @@ Te dejo los pasos para los providers más comunes. Es 5-10 minutos de trabajo.
 
 ⚠️ Namecheap a veces no permite CNAME en `@` (apex). Si te tira error:
 - Usá **ALIAS Record** en lugar de CNAME (mismo target)
-- O usá CNAME solo en `www` y un **URL Redirect** de `@` → `www.dmcloser.app`
+- O usá CNAME solo en `www` y un **URL Redirect** de `@` → `www.atinov.com`
 
 ### 🟩 GoDaddy
 
@@ -83,9 +83,9 @@ Te dejo los pasos para los providers más comunes. Es 5-10 minutos de trabajo.
 
 Después de 5-30 minutos:
 
-1. Abrí https://www.whatsmydns.net/#CNAME/dmcloser.app
+1. Abrí https://www.whatsmydns.net/#CNAME/atinov.com
 2. Debería resolver al target de Railway en la mayoría de servidores del mundo
-3. Probá https://dmcloser.app y https://www.dmcloser.app en el browser
+3. Probá https://atinov.com y https://www.atinov.com en el browser
 4. Railway → **Settings → Networking** debería mostrar ✅ verde junto a tu dominio (con SSL emitido)
 
 ---
@@ -95,11 +95,11 @@ Después de 5-30 minutos:
 Cuando el dominio funcione:
 
 1. Railway → **Variables** → editar `APP_URL`
-2. Nuevo valor: `https://dmcloser.app`
+2. Nuevo valor: `https://atinov.com`
 3. Save → redeploy automático
 
 Esto hace que:
-- Los emails de welcome / referral tengan link a `dmcloser.app/app` (no a railway.app)
+- Los emails de welcome / referral tengan link a `atinov.com/app` (no a railway.app)
 - El sitemap.xml tenga URLs correctas
 - OpenGraph image refleje la URL canónica
 
@@ -110,10 +110,10 @@ Esto hace que:
 Si no recordás, podés averiguarlo así:
 
 ```bash
-whois dmcloser.app
+whois atinov.com
 ```
 
-(o usá https://www.whois.com/whois/dmcloser.app)
+(o usá https://www.whois.com/whois/atinov.com)
 
 Te muestra el "Registrar" — ese es tu provider.
 

@@ -1,5 +1,5 @@
 /**
- * DMCloser — Default Agent Prompt Template
+ * Atinov — Default Agent Prompt Template
  *
  * Prompt base que se carga en TODO agente nuevo creado al registrarse un
  * cliente. Incluye las 9 capas que afinamos con Alejo Muñoz durante el

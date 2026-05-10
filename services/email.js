@@ -1,5 +1,5 @@
 /**
- * DMCloser — Servicio de Emails Transaccionales (Resend)
+ * Atinov — Servicio de Emails Transaccionales (Resend)
  *
  * Usa la REST API de Resend (sin dependencia extra, solo axios).
  * Si no hay RESEND_API_KEY configurada, corre en modo log-only:
@@ -15,8 +15,8 @@ const axios = require('axios');
 const db    = require('../db/database');
 
 const RESEND_API   = 'https://api.resend.com/emails';
-const FROM_DEFAULT = process.env.EMAIL_FROM || 'DMCloser <soporte@dmcloser.app>';
-const REPLY_TO     = process.env.EMAIL_REPLY_TO || 'soporte@dmcloser.app';
+const FROM_DEFAULT = process.env.EMAIL_FROM || 'Atinov <soporte@atinov.com>';
+const REPLY_TO     = process.env.EMAIL_REPLY_TO || 'soporte@atinov.com';
 
 /**
  * Envía un email. Firma:

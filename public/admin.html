@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DMCloser — Panel Admin</title>
+<title>Atinov — Panel Admin</title>
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <style>
@@ -144,7 +144,7 @@
 <!-- ── LOGIN ── -->
 <div id="loginScreen" class="login-wrap">
   <div class="login-box">
-    <h2>👑 DMCloser Admin</h2>
+    <h2>👑 Atinov Admin</h2>
     <p>Acceso restringido — solo administradores</p>
     <div class="form-group">
       <label>Email</label>
@@ -556,7 +556,7 @@
 
 <script>
 // ── State ──────────────────────────────────────────────────────────────────
-let TOKEN = localStorage.getItem('dmcloser_admin_token') || '';
+let TOKEN = localStorage.getItem('atinov_admin_token') || '';
 
 // ── Init ───────────────────────────────────────────────────────────────────
 window.onload = () => {
@@ -572,7 +572,7 @@ async function tryShowPanel() {
     loadCodes();
   } catch {
     TOKEN = '';
-    localStorage.removeItem('dmcloser_admin_token');
+    localStorage.removeItem('atinov_admin_token');
   }
 }
 
@@ -596,7 +596,7 @@ async function doLogin() {
     if (!r.ok) throw new Error(data.error || 'Error');
     if (data.user.role !== 'admin') throw new Error('No tienes permisos de administrador');
     TOKEN = data.token;
-    localStorage.setItem('dmcloser_admin_token', TOKEN);
+    localStorage.setItem('atinov_admin_token', TOKEN);
     showPanel();
     loadStats();
     loadUsers();
@@ -608,7 +608,7 @@ async function doLogin() {
 
 function logout() {
   TOKEN = '';
-  localStorage.removeItem('dmcloser_admin_token');
+  localStorage.removeItem('atinov_admin_token');
   location.reload();
 }
 
@@ -1362,9 +1362,9 @@ async function openUserDetail(id) {
 
       ${a ? `
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:#1a0f1a;padding:10px 12px;border-radius:8px;border:1px solid #5a2a4a;margin-bottom:4px">
-        <span style="font-size:0.82rem;color:#fbcfe8">🔄 Preset DMCloser:</span>
-        <button class="btn btn-sm btn-ghost" onclick="applyPresetSafe('${a.id}')" title="Agrega el preset DMCloser sin tocar lo existente (puede generar duplicados)">+ Aplicar preset</button>
-        <button class="btn btn-sm btn-danger" onclick="resetAndApplyPreset('${a.id}', '${escHtml(u.email)}')" title="BORRA agentes/knowledge/links/magnets de la cuenta y aplica el preset DMCloser limpio. Útil para cuentas con datos viejos.">⚠️ Resetear y aplicar</button>
+        <span style="font-size:0.82rem;color:#fbcfe8">🔄 Preset Atinov:</span>
+        <button class="btn btn-sm btn-ghost" onclick="applyPresetSafe('${a.id}')" title="Agrega el preset Atinov sin tocar lo existente (puede generar duplicados)">+ Aplicar preset</button>
+        <button class="btn btn-sm btn-danger" onclick="resetAndApplyPreset('${a.id}', '${escHtml(u.email)}')" title="BORRA agentes/knowledge/links/magnets de la cuenta y aplica el preset Atinov limpio. Útil para cuentas con datos viejos.">⚠️ Resetear y aplicar</button>
         <span id="presetStatus-${a.id}" style="font-size:0.78rem;color:#666;margin-left:auto"></span>
       </div>` : ''}
 
@@ -1448,7 +1448,7 @@ async function extendTrial(userId, days) {
 
 async function applyPresetSafe(accountId) {
   const statusEl = document.getElementById(`presetStatus-${accountId}`);
-  if (!confirm('Va a AGREGAR el preset DMCloser (agente "DMCloser Sales" + 4 knowledge items + 3 links + 4 lead magnets) a la cuenta. Lo existente NO se borra (puede haber duplicados). ¿Continuar?')) return;
+  if (!confirm('Va a AGREGAR el preset Atinov (agente "Atinov Sales" + 4 knowledge items + 3 links + 4 lead magnets) a la cuenta. Lo existente NO se borra (puede haber duplicados). ¿Continuar?')) return;
   if (statusEl) { statusEl.textContent = '⏳ Aplicando...'; statusEl.style.color = '#888'; }
   try {
     const r = await api('POST', '/api/admin/seed-sales-preset', { accountId });
@@ -1463,7 +1463,7 @@ async function applyPresetSafe(accountId) {
 
 async function resetAndApplyPreset(accountId, email) {
   const statusEl = document.getElementById(`presetStatus-${accountId}`);
-  const msg = `⚠️ ATENCIÓN: esto BORRA todos los agentes, knowledge, links y lead magnets de la cuenta de ${email} y aplica el preset DMCloser limpio.\n\nNO se borran los leads ni los mensajes (historia real).\n\n¿Confirmás?`;
+  const msg = `⚠️ ATENCIÓN: esto BORRA todos los agentes, knowledge, links y lead magnets de la cuenta de ${email} y aplica el preset Atinov limpio.\n\nNO se borran los leads ni los mensajes (historia real).\n\n¿Confirmás?`;
   if (!confirm(msg)) return;
   if (!confirm('Última confirmación. Esta acción no se puede deshacer. ¿Seguro?')) return;
 

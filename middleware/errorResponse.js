@@ -1,5 +1,5 @@
 /**
- * DMCloser — Error Response Middleware
+ * Atinov — Error Response Middleware
  *
  * Sanitiza errores antes de devolverlos al cliente. En producción nunca
  * exponemos `err.message` ni stack — solo "Internal error" + status code.

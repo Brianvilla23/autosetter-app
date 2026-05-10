@@ -1,5 +1,5 @@
 /**
- * DMCloser — Growth Routes
+ * Atinov — Growth Routes
  * Lead magnet links (ig.me con tracking) y export CSV.
  */
 
@@ -234,7 +234,7 @@ router.get('/export-leads', async (req, res) => {
       return s;
     }).join(',')).join('\n');
 
-    const filename = `dmcloser-leads-${new Date().toISOString().slice(0, 10)}.csv`;
+    const filename = `atinov-leads-${new Date().toISOString().slice(0, 10)}.csv`;
     res.set('Content-Type', 'text/csv; charset=utf-8');
     res.set('Content-Disposition', `attachment; filename="${filename}"`);
     // BOM para que Excel abra bien los acentos
@@ -513,7 +513,7 @@ router.get('/export-conversations', async (req, res) => {
     if (format === 'json') {
       res.setHeader('Content-Type', 'application/json');
       res.setHeader('Content-Disposition',
-        `attachment; filename="dmcloser-conversations-${exportedAt.slice(0, 10)}.json"`);
+        `attachment; filename="atinov-conversations-${exportedAt.slice(0, 10)}.json"`);
       return res.json({
         exported_at:    exportedAt,
         account_id:     accountId,
@@ -567,7 +567,7 @@ router.get('/export-conversations', async (req, res) => {
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition',
-      `attachment; filename="dmcloser-conversations-${exportedAt.slice(0, 10)}.csv"`);
+      `attachment; filename="atinov-conversations-${exportedAt.slice(0, 10)}.csv"`);
     res.send(bom + csv);
   } catch (e) {
     console.error('[export-conversations] error:', e);

@@ -1,4 +1,4 @@
-# DMCloser — Deploy a Producción
+# Atinov — Deploy a Producción
 
 Lista de pasos para que el SaaS quede listo para vender. Ordenado por prioridad: **lo crítico primero, lo nice-to-have al final**.
 
@@ -69,7 +69,7 @@ MP_PLAN_AGENCY=2c93808...
 Sin esto, los emails (welcome, alerta lead HOT, lead magnet delivery, recompensa de referido) se guardan en `db.emailLog` pero NO salen al usuario.
 
 1. https://resend.com → crear cuenta
-2. Agregar dominio (`dmcloser.app` o tu dominio)
+2. Agregar dominio (`atinov.com` o tu dominio)
 3. Configurar los DNS records (TXT, MX, DKIM) que Resend te muestra
 4. Esperar verificación (5-30 min)
 5. Crear API key
@@ -77,8 +77,8 @@ Sin esto, los emails (welcome, alerta lead HOT, lead magnet delivery, recompensa
 Variables:
 ```
 RESEND_API_KEY=re_...
-EMAIL_FROM=DMCloser <soporte@dmcloser.app>
-APP_URL=https://dmcloser.app
+EMAIL_FROM=Atinov <soporte@atinov.com>
+APP_URL=https://atinov.com
 ```
 
 ---
@@ -101,28 +101,28 @@ META_VERIFY_TOKEN=string_random_largo (mismo que pusiste en Meta)
 
 ---
 
-## 🌐 5. Dominio custom (dmcloser.app)
+## 🌐 5. Dominio custom (atinov.com)
 
 Hoy: `dmcloser-app.up.railway.app`
 
 1. Comprar el dominio (ya lo tenés según pricing)
-2. Railway → **Settings** → **Domains** → Add custom domain → `dmcloser.app`
+2. Railway → **Settings** → **Domains** → Add custom domain → `atinov.com`
 3. Apuntar el CNAME que Railway te indica desde tu DNS provider
-4. Configurar también `www.dmcloser.app` (CNAME al mismo)
+4. Configurar también `www.atinov.com` (CNAME al mismo)
 5. Esperar que SSL se provisione automáticamente
-6. Actualizar `APP_URL` en envs a `https://dmcloser.app`
+6. Actualizar `APP_URL` en envs a `https://atinov.com`
 
 ---
 
-## 🚀 6. Aplicar el preset DMCloser a tu cuenta (dogfooding)
+## 🚀 6. Aplicar el preset Atinov a tu cuenta (dogfooding)
 
-Para que el bot venda DMCloser usando DMCloser:
+Para que el bot venda Atinov usando Atinov:
 
 1. Iniciá sesión en `/admin` con tu cuenta admin
 2. Tab **Usuarios** → click en tu usuario → **Ver**
-3. Sección "🔄 Preset DMCloser"
+3. Sección "🔄 Preset Atinov"
 4. Click **⚠️ Resetear y aplicar** (doble confirm)
-5. Ahora la cuenta tiene: agente "Brian" con instrucciones Hormozi, knowledge real, 3 links DMCloser, 4 lead magnets
+5. Ahora la cuenta tiene: agente "Brian" con instrucciones Hormozi, knowledge real, 3 links Atinov, 4 lead magnets
 
 Después conectá tu Instagram Business real desde **Settings → Conectar Instagram**.
 
@@ -132,7 +132,7 @@ Después conectá tu Instagram Business real desde **Settings → Conectar Insta
 
 La landing ya tiene Plausible.io trackeo. Solo tenés que:
 
-1. https://plausible.io → registrar `dmcloser.app`
+1. https://plausible.io → registrar `atinov.com`
 2. Plausible te dará un dashboard donde ver:
    - Visitas a la landing
    - CTA clicks (con prop `position`: hero/mid/final)
@@ -145,11 +145,11 @@ Si no querés usar Plausible, borrá los 2 tags `<script>` de Plausible en `publ
 
 ## 📦 8. Resources de Lead Magnets
 
-El preset DMCloser referencia estos URLs (que NO existen):
-- `dmcloser.app/resources/guia-7-errores-dm.pdf`
-- `dmcloser.app/resources/diagnostico`
-- `dmcloser.app/resources/caso-exito-coach`
-- `dmcloser.app/resources/audio-reglas-dm.mp3`
+El preset Atinov referencia estos URLs (que NO existen):
+- `atinov.com/resources/guia-7-errores-dm.pdf`
+- `atinov.com/resources/diagnostico`
+- `atinov.com/resources/caso-exito-coach`
+- `atinov.com/resources/audio-reglas-dm.mp3`
 
 Tenés 2 opciones:
 - **Subir los archivos reales** a tu dominio (en `public/resources/` o un bucket S3)
@@ -166,7 +166,7 @@ Tenés 2 opciones:
 ```bash
 # Cron diario a las 3 AM
 0 3 * * * curl -H "Authorization: Bearer $JWT_ADMIN" \
-  https://dmcloser.app/api/admin/backup -o /backups/dmcloser-$(date +%F).json
+  https://atinov.com/api/admin/backup -o /backups/atinov-$(date +%F).json
 ```
 
 Para restaurar: `POST /api/admin/restore` con el JSON + `{ "confirm": "YES" }`.
@@ -190,7 +190,7 @@ Para restaurar: `POST /api/admin/restore` con el JSON + `{ "confirm": "YES" }`.
 - [ ] Resend con dominio verificado, email de welcome llega al inbox
 - [ ] Meta App Review aprobada, webhook recibe DMs
 - [ ] Dominio custom apuntado y SSL OK
-- [ ] Preset DMCloser aplicado a tu cuenta + IG real conectado
+- [ ] Preset Atinov aplicado a tu cuenta + IG real conectado
 - [ ] Plausible registrado y trackeando
 - [ ] Recursos de lead magnets subidos (o URLs cambiadas)
 - [ ] Backup de la DB descargado y guardado seguro

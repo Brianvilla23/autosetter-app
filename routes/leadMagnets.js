@@ -1,5 +1,5 @@
 /**
- * DMCloser — Lead Magnets
+ * Atinov — Lead Magnets
  *
  * Son "ganchos" que el bot ofrece a leads que mostraron interés pero no están
  * listos para comprar: PDF, guía, caso de éxito, audio, diagnóstico gratis, etc.

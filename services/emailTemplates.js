@@ -1,5 +1,5 @@
 /**
- * DMCloser — Templates de emails transaccionales
+ * Atinov — Templates de emails transaccionales
  *
  * HTML self-contained (inline CSS) para máxima compatibilidad con clientes
  * de correo (Gmail, Outlook, Apple Mail). Tema dark alineado con landing.
@@ -34,7 +34,7 @@ function layout({ preheader, title, body, ctaText, ctaUrl }) {
         <!-- header -->
         <tr><td style="padding:32px 36px 0;">
           <div style="display:inline-block;background:linear-gradient(135deg,#10b981 0%,#06b6d4 100%);border-radius:8px;width:36px;height:36px;text-align:center;line-height:36px;font-size:18px;vertical-align:middle;">💬</div>
-          <span style="font-weight:800;font-size:20px;color:#f0f0ff;margin-left:10px;vertical-align:middle;">DMCloser</span>
+          <span style="font-weight:800;font-size:20px;color:#f0f0ff;margin-left:10px;vertical-align:middle;">Atinov</span>
         </td></tr>
         <!-- title -->
         <tr><td style="padding:28px 36px 0;">
@@ -51,7 +51,7 @@ function layout({ preheader, title, body, ctaText, ctaUrl }) {
         </td></tr>` : ''}
         <!-- footer -->
         <tr><td style="padding:24px 36px 32px;border-top:1px solid rgba(255,255,255,.06);color:#606080;font-size:12.5px;line-height:1.6;">
-          © 2026 DMCloser — La Serena, Chile<br>
+          © 2026 Atinov — La Serena, Chile<br>
           <a href="${APP_URL}/about.html" style="color:#10b981;text-decoration:none;">Sobre nosotros</a> ·
           <a href="${APP_URL}/contact.html" style="color:#10b981;text-decoration:none;">Contacto</a> ·
           <a href="${APP_URL}/terms.html" style="color:#10b981;text-decoration:none;">Términos</a> ·
@@ -74,10 +74,10 @@ function escapeHtml(s) {
 function welcomeEmail({ name, email }) {
   const firstName = (name || email.split('@')[0]).split(' ')[0];
   return {
-    subject: '👋 Bienvenido a DMCloser — tu prueba de 3 días está activa',
+    subject: '👋 Bienvenido a Atinov — tu prueba de 3 días está activa',
     html: layout({
       preheader: 'Tu prueba gratuita de 3 días ya está activa. Conecta tu Instagram y el asistente empieza a atender tus DMs.',
-      title: `Hola ${escapeHtml(firstName)}, bienvenido a DMCloser 👋`,
+      title: `Hola ${escapeHtml(firstName)}, bienvenido a Atinov 👋`,
       body: `
         <p style="margin:0 0 14px;">Acabas de crear tu cuenta y tu <strong style="color:#f0f0ff;">prueba gratuita de 3 días</strong> está activa. Sin tarjeta, sin trampa.</p>
         <p style="margin:0 0 14px;">Para que tu asistente empiece a atender mensajes ahora mismo, hay 3 pasos rápidos (~10 minutos):</p>
@@ -106,7 +106,7 @@ function trialEndingEmail({ name, email, daysLeft }) {
       preheader: `Te quedan ${d} de prueba. Activa tu plan para no perder tus conversaciones ni el asistente que configuraste.`,
       title: `Te quedan ${d} de prueba`,
       body: `
-        <p style="margin:0 0 14px;">Hola ${escapeHtml(firstName)} — tu prueba gratuita de DMCloser vence pronto.</p>
+        <p style="margin:0 0 14px;">Hola ${escapeHtml(firstName)} — tu prueba gratuita de Atinov vence pronto.</p>
         <p style="margin:0 0 14px;">Si activas tu plan <strong style="color:#f0f0ff;">antes del vencimiento</strong>, mantienes:</p>
         <ul style="margin:0 0 14px;padding-left:22px;color:#a0a0c0;">
           <li style="margin-bottom:6px;">Tu cuenta de Instagram conectada (no hay que re-loguear)</li>
@@ -157,10 +157,10 @@ function paymentFailedEmail({ name, email }) {
   return {
     subject: '⚠️ No pudimos procesar tu pago — acción requerida',
     html: layout({
-      preheader: 'Tu próximo cobro de DMCloser falló. Actualiza tu método de pago en 7 días para evitar la suspensión.',
+      preheader: 'Tu próximo cobro de Atinov falló. Actualiza tu método de pago en 7 días para evitar la suspensión.',
       title: `${escapeHtml(firstName)}, tu pago falló`,
       body: `
-        <p style="margin:0 0 14px;">Intentamos cobrar tu suscripción de DMCloser pero el pago no se pudo procesar. Puede ser por saldo insuficiente, tarjeta vencida o un bloqueo del banco.</p>
+        <p style="margin:0 0 14px;">Intentamos cobrar tu suscripción de Atinov pero el pago no se pudo procesar. Puede ser por saldo insuficiente, tarjeta vencida o un bloqueo del banco.</p>
         <p style="margin:0 0 14px;"><strong style="color:#f0f0ff;">Qué pasa ahora:</strong></p>
         <ul style="margin:0 0 14px;padding-left:22px;color:#a0a0c0;">
           <li style="margin-bottom:6px;">Durante <strong style="color:#f0f0ff;">7 días</strong> tu asistente sigue funcionando normalmente.</li>
@@ -181,12 +181,12 @@ function paymentFailedEmail({ name, email }) {
 function trialEndedEmail({ name, email }) {
   const firstName = (name || email.split('@')[0]).split(' ')[0];
   return {
-    subject: '📭 Tu prueba de DMCloser venció — asistente en pausa',
+    subject: '📭 Tu prueba de Atinov venció — asistente en pausa',
     html: layout({
       preheader: 'Pausamos tu cuenta pero tus datos siguen intactos. Activa un plan cuando quieras y el asistente vuelve a operar.',
       title: `${escapeHtml(firstName)}, tu prueba terminó`,
       body: `
-        <p style="margin:0 0 14px;">La prueba gratuita de DMCloser llegó a su fin. El asistente quedó pausado, pero <strong style="color:#f0f0ff;">tus datos, configuración y conexión a Instagram siguen intactos</strong>.</p>
+        <p style="margin:0 0 14px;">La prueba gratuita de Atinov llegó a su fin. El asistente quedó pausado, pero <strong style="color:#f0f0ff;">tus datos, configuración y conexión a Instagram siguen intactos</strong>.</p>
         <p style="margin:0 0 14px;">Cuando quieras retomar, activas tu plan en 1 click y el asistente vuelve a operar desde donde lo dejó.</p>
         <p style="margin:0 0 14px;">¿Necesitas más tiempo para evaluarlo o tienes dudas? Responde este email y hablamos.</p>
       `,

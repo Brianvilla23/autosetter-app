@@ -1,9 +1,9 @@
 /**
- * DMCloser — Chat público de la landing
+ * Atinov — Chat público de la landing
  *
  * Endpoint sin auth para que visitantes de la landing puedan chatear con el
- * agente "DMCloser Sales" (Brian, cofundador). Demo viva del producto:
- * el bot responde dudas sobre DMCloser usando la knowledge real cargada
+ * agente "Atinov Sales" (Brian, cofundador). Demo viva del producto:
+ * el bot responde dudas sobre Atinov usando la knowledge real cargada
  * por el founder.
  *
  * Seguridad:
@@ -43,8 +43,8 @@ router.use(hourLimiter);
  */
 router.get('/agent', async (req, res) => {
   try {
-    // Buscar el primer agente con name="DMCloser Sales" — preset dogfooding
-    let agent = await db.findOne(db.agents, { name: 'DMCloser Sales', enabled: true });
+    // Buscar el primer agente con name="Atinov Sales" — preset dogfooding
+    let agent = await db.findOne(db.agents, { name: 'Atinov Sales', enabled: true });
     // Fallback: cualquier agente del owner admin
     if (!agent) {
       const adminUser = await db.findOne(db.users, { role: 'admin' });
@@ -57,14 +57,14 @@ router.get('/agent', async (req, res) => {
         configured: false,
         name: 'Brian',
         avatar: '⚡',
-        greeting: 'Hola 👋 Soy Brian, cofundador de DMCloser. ¿En qué te puedo ayudar?',
+        greeting: 'Hola 👋 Soy Brian, cofundador de Atinov. ¿En qué te puedo ayudar?',
       });
     }
     res.json({
       configured: true,
-      name: agent.name === 'DMCloser Sales' ? 'Brian' : agent.name,
+      name: agent.name === 'Atinov Sales' ? 'Brian' : agent.name,
       avatar: agent.avatar || '⚡',
-      greeting: '¡Hey! 👋 Soy el bot de DMCloser. Probame: preguntame cualquier cosa sobre cómo funciona, precios, integración. Voy a responderte exactamente como respondería al DM de un lead tuyo.',
+      greeting: '¡Hey! 👋 Soy el bot de Atinov. Probame: preguntame cualquier cosa sobre cómo funciona, precios, integración. Voy a responderte exactamente como respondería al DM de un lead tuyo.',
     });
   } catch (e) {
     res.json({ configured: false, name: 'Brian', avatar: '⚡', greeting: 'Hola 👋 ¿en qué te ayudo?' });
@@ -84,7 +84,7 @@ router.post('/', async (req, res) => {
 
     const history = Array.isArray(req.body.history) ? req.body.history.slice(-8) : [];
 
-    // Buscar el agente "DMCloser Sales" del founder admin
+    // Buscar el agente "Atinov Sales" del founder admin
     const adminUser = await db.findOne(db.users, { role: 'admin' });
     if (!adminUser?.account_id) {
       return res.json({
@@ -93,13 +93,13 @@ router.post('/', async (req, res) => {
       });
     }
 
-    let agent = await db.findOne(db.agents, { account_id: adminUser.account_id, name: 'DMCloser Sales', enabled: true });
+    let agent = await db.findOne(db.agents, { account_id: adminUser.account_id, name: 'Atinov Sales', enabled: true });
     if (!agent) {
       agent = await db.findOne(db.agents, { account_id: adminUser.account_id, enabled: true });
     }
     if (!agent) {
       return res.json({
-        reply: 'El bot demo está en mantenimiento. Probá DMCloser gratis 3 días y te respondemos personalmente cualquier duda.',
+        reply: 'El bot demo está en mantenimiento. Probá Atinov gratis 3 días y te respondemos personalmente cualquier duda.',
         configured: false,
       });
     }
@@ -133,7 +133,7 @@ router.post('/', async (req, res) => {
       newMessage: message,
       accountId: adminUser.account_id,
       apiKey,
-      extraContext: 'NOTA INTERNA: Este es el chat público de demo en la landing de DMCloser. El visitante NO está logueado. Si pregunta cómo arrancar o quiere probar, dirígilo a hacer click en "Probar gratis" en la página o registrarse en /app?register=1. No le pidas que comparta su Instagram en este chat — eso es después en el panel.',
+      extraContext: 'NOTA INTERNA: Este es el chat público de demo en la landing de Atinov. El visitante NO está logueado. Si pregunta cómo arrancar o quiere probar, dirígilo a hacer click en "Probar gratis" en la página o registrarse en /app?register=1. No le pidas que comparta su Instagram en este chat — eso es después en el panel.',
     });
 
     res.json({ reply, configured: true });

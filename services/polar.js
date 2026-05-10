@@ -22,7 +22,7 @@
 // Razón de existir: Lemon Squeezy rechazó la solicitud de tienda 2026-05-01
 // por categoría "social media automation" según los underwriters de Stripe.
 // Polar es MoR creator-friendly con review 24-48h y más permisivo en la
-// categoría. Postmortem completo en `dmcloser_lecciones.md`.
+// categoría. Postmortem completo en `atinov_lecciones.md`.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const axios  = require('axios');

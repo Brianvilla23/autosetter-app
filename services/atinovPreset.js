@@ -1,7 +1,7 @@
 /**
- * DMCloser — Sales Preset ("dogfooding")
+ * Atinov — Sales Preset ("dogfooding")
  *
- * Preset completo para que el propio bot venda DMCloser.
+ * Preset completo para que el propio bot venda Atinov.
  * Incluye:
  *  - Agente con instrucciones de closer específicas para este SaaS
  *  - Knowledge base con precios reales, features, casos de uso
@@ -12,7 +12,7 @@
  */
 
 const AGENT_INSTRUCTIONS = `1. IDENTIDAD
-Eres Brian, cofundador de DMCloser. Construiste esto porque tú mismo perdías ventas por DMs sin responder. Hablas como emprendedor real, no como corporate ni como call-center. Cero "estimado cliente" / "será un placer asistirle".
+Eres Brian, cofundador de Atinov. Construiste esto porque tú mismo perdías ventas por DMs sin responder. Hablas como emprendedor real, no como corporate ni como call-center. Cero "estimado cliente" / "será un placer asistirle".
 
 IDIOMA: español neutro latinoamericano con tuteo (tú, tienes, puedes, cuéntame). NUNCA voseo argentino (vos, tenés, querés, contame, dale, che). Tu tono debe sentirse natural en Chile, México, Colombia, España, Perú, Ecuador, Venezuela.
 
@@ -60,11 +60,11 @@ D) Si el lead manda algo largo explicando su situación:
 
 PROHIBIDO en el primer mensaje:
 × "¡Hola! ¿Cómo estás?" + oferta seguida (huele a bot).
-× Presentarte como "Soy Brian, cofundador de DMCloser" a lead frío (suena a folleto).
-× Preguntar "¿te cuento sobre DMCloser?" o "¿te gustaría saber algo específico?" (script genérico).
+× Presentarte como "Soy Brian, cofundador de Atinov" a lead frío (suena a folleto).
+× Preguntar "¿te cuento sobre Atinov?" o "¿te gustaría saber algo específico?" (script genérico).
 × Saltar al dolor de venta si el lead solo dijo "hola" — saluda primero, descubre intención después.
 
-⭐ REGLA DE PROGRESIÓN: SIEMPRE volver a la realidad y dolor del prospecto antes de hablar de DMCloser.
+⭐ REGLA DE PROGRESIÓN: SIEMPRE volver a la realidad y dolor del prospecto antes de hablar de Atinov.
 Esto NO significa hacerlo en el primer mensaje. Significa que en algún momento (mensaje 2 o 3) preguntarás por SU contexto antes de listar features.
 
 Paso 2 — DESCUBRIMIENTO
@@ -100,7 +100,7 @@ Risk reversal: "3 días gratis sin tarjeta + 7 días de garantía sin preguntas 
 Anchor de precio (siempre compáralo con la alternativa):
 - Setter humano: \\$800-1500/mes + comisiones, trabaja 8h, se enferma, renuncia
 - Tu equipo escalando manualmente: 2-3h/día perdidas por persona en DMs repetidos
-- DMCloser: desde \\$197/mes, 24/7, no se cansa, tus leads son 100% tuyos
+- Atinov: desde \\$197/mes, 24/7, no se cansa, tus leads son 100% tuyos
 
 Paso 5 — CIERRE / CAPTURA según calificación
 
@@ -128,7 +128,7 @@ NUNCA tirar el número antes de calificar. Devuelve:
 "Justo por eso tenemos un tester interno: antes de activarla en vivo, le haces 20 preguntas con tu propio caso, ajustas el tono, y tú decides cuándo se enciende. Y los HOT te llegan a ti — el bot no cierra ventas grandes solo, te las pasa."
 
 "Ya uso ManyChat / Chatfuel / Wati / otro" →
-"Esos son árboles de decisión del 2015 — tu cliente sabe que está hablando con un menú al segundo mensaje. Por eso convierten poco. DMCloser es IA conversacional real: habla como tú, responde lo que no anticipaste, califica leads. 3 días gratis y comparas tú mismo."
+"Esos son árboles de decisión del 2015 — tu cliente sabe que está hablando con un menú al segundo mensaje. Por eso convierten poco. Atinov es IA conversacional real: habla como tú, responde lo que no anticipaste, califica leads. 3 días gratis y comparas tú mismo."
 
 "Mi nicho es muy específico" →
 "Por eso justamente. Tú cargas tu info (precios, servicios, objeciones tuyas) y el bot la usa. No es un template genérico que sirve para todos y nadie."
@@ -159,8 +159,8 @@ NUNCA tirar el número antes de calificar. Devuelve:
 
 const KNOWLEDGE_ITEMS = [
   {
-    title: 'DMCloser — Servicio',
-    content: `PRODUCTO: DMCloser — SaaS de automatización de DMs de Instagram con IA conversacional.
+    title: 'Atinov — Servicio',
+    content: `PRODUCTO: Atinov — SaaS de automatización de DMs de Instagram con IA conversacional.
 
 QUÉ HACE:
 - Responde DMs de Instagram automáticamente 24/7 con IA real (GPT-4), no árbol de decisión
@@ -223,7 +223,7 @@ CÓMO PRESENTAR EL PRECIO AL LEAD (no tires el número sin calificar):
   },
   {
     title: 'Resultados típicos / casos',
-    content: `Casos comunes de clientes DMCloser:
+    content: `Casos comunes de clientes Atinov:
 
 COACH DE NEGOCIOS (nicho mentoría): De 15 a 60 leads calificados por mes, sin contratar community manager. ROI en 3 semanas.
 
@@ -259,9 +259,9 @@ QUÉ NO HACE:
 ];
 
 const LINKS = [
-  { name: 'Agendá demo de 15 min', url: 'https://calendly.com/brayanvillalobos/demo-dmcloser', description: 'Demo en vivo donde te dejamos el bot andando en tu cuenta' },
-  { name: 'Empezar prueba gratis', url: 'https://dmcloser.app/?register=1', description: '3 días gratis sin tarjeta' },
-  { name: 'Ver pricing completo', url: 'https://dmcloser.app/pricing', description: 'Planes Starter / Pro / Agency' },
+  { name: 'Agendá demo de 15 min', url: 'https://calendly.com/brayanvillalobos/demo-atinov', description: 'Demo en vivo donde te dejamos el bot andando en tu cuenta' },
+  { name: 'Empezar prueba gratis', url: 'https://atinov.com/?register=1', description: '3 días gratis sin tarjeta' },
+  { name: 'Ver pricing completo', url: 'https://atinov.com/pricing', description: 'Planes Starter / Pro / Agency' },
 ];
 
 const LEAD_MAGNETS = [
@@ -271,7 +271,7 @@ const LEAD_MAGNETS = [
     pitch: 'mirá, te mando la guía de 7 errores al vender por DM — es la que uso yo con los que están arrancando. ¿A qué mail te la paso?',
     trigger_intent: 'not_ready',
     delivery: 'email',
-    delivery_url: 'https://dmcloser.app/resources/guia-7-errores-dm.pdf',
+    delivery_url: 'https://atinov.com/resources/guia-7-errores-dm.pdf',
   },
   {
     title: 'Diagnóstico gratis de tu IG',
@@ -279,15 +279,15 @@ const LEAD_MAGNETS = [
     pitch: 'Te armo un análisis gratis de tu cuenta — me decís tu @ y te devuelvo los 3 cambios con más impacto. ¿Te sirve?',
     trigger_intent: 'diagnostic',
     delivery: 'email',
-    delivery_url: 'https://dmcloser.app/resources/diagnostico',
+    delivery_url: 'https://atinov.com/resources/diagnostico',
   },
   {
     title: 'Caso de éxito: de 10 a 80 leads/mes',
-    description: 'Breakdown completo de cómo un coach pasó de 10 a 80 leads calificados al mes con DMCloser. Incluye mensajes reales.',
+    description: 'Breakdown completo de cómo un coach pasó de 10 a 80 leads calificados al mes con Atinov. Incluye mensajes reales.',
     pitch: 'Querés ver cómo un coach similar pasó de 10 a 80 leads/mes? Te mando el breakdown con los mensajes reales. ¿A qué mail?',
     trigger_intent: 'pricing_objection',
     delivery: 'email',
-    delivery_url: 'https://dmcloser.app/resources/caso-exito-coach',
+    delivery_url: 'https://atinov.com/resources/caso-exito-coach',
   },
   {
     title: 'Audio training: 3 reglas de oro del DM',
@@ -295,20 +295,20 @@ const LEAD_MAGNETS = [
     pitch: 'Tengo un audio de 4 minutos con las 3 reglas que más mueven la aguja. ¿Te lo mando al mail o te va mejor por acá?',
     trigger_intent: 'cold_lead',
     delivery: 'email',
-    delivery_url: 'https://dmcloser.app/resources/audio-reglas-dm.mp3',
+    delivery_url: 'https://atinov.com/resources/audio-reglas-dm.mp3',
   },
 ];
 
 /**
  * Aplica el preset a una cuenta:
- *  - Crea agente "DMCloser Sales" (NO pisa los existentes)
+ *  - Crea agente "Atinov Sales" (NO pisa los existentes)
  *  - Inserta knowledge items
  *  - Inserta links
  *  - Inserta lead magnets
  *
  * Retorna el resumen de qué se creó.
  */
-async function applyDmcloserPreset(db, accountId) {
+async function applyAtinovPreset(db, accountId) {
   const { v4: uuidv4 } = require('uuid');
 
   // 1. Links primero para tener sus IDs
@@ -322,7 +322,7 @@ async function applyDmcloserPreset(db, accountId) {
   // 2. Agente con esos link_ids
   const agent = await db.insert(db.agents, {
     account_id: accountId,
-    name: 'DMCloser Sales',
+    name: 'Atinov Sales',
     avatar: '⚡',
     enabled: true,
     instructions: AGENT_INSTRUCTIONS,
@@ -372,4 +372,4 @@ async function applyDmcloserPreset(db, accountId) {
   };
 }
 
-module.exports = { applyDmcloserPreset };
+module.exports = { applyAtinovPreset };

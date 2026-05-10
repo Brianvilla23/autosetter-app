@@ -1,5 +1,5 @@
 /**
- * DMCloser — Error Tracker (sin dependencias externas)
+ * Atinov — Error Tracker (sin dependencias externas)
  *
  * Sistema homebrew para capturar errores 5xx + uncaughtException +
  * unhandledRejection. Persiste a db.errorLog (NeDB) y los expone al

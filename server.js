@@ -55,7 +55,7 @@ app.use(helmet({
   referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
 }));
 
-// 1.b Permissions-Policy: deshabilita features de browser que DMCloser no usa.
+// 1.b Permissions-Policy: deshabilita features de browser que Atinov no usa.
 // Reduce surface de ataque si alguna vulnerabilidad permitiera ejecutar scripts.
 app.use((req, res, next) => {
   res.setHeader(
@@ -740,7 +740,7 @@ setInterval(sweepTrialEmails, 6 * 60 * 60 * 1000);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`\n🚀 DMCloser running   → http://localhost:${PORT}`);
+  console.log(`\n🚀 Atinov running   → http://localhost:${PORT}`);
   console.log(`📡 Webhook URL        → http://localhost:${PORT}/webhook`);
   console.log(`🔐 Auth URL           → http://localhost:${PORT}/auth/instagram`);
   console.log(`👑 Admin Panel        → http://localhost:${PORT}/admin`);

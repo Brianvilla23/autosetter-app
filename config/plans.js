@@ -1,5 +1,5 @@
 /**
- * DMCloser — Planes y límites
+ * Atinov — Planes y límites
  *
  * Fuente única de verdad para lo que cada plan puede hacer.
  * Cambiar AQUÍ = cambia en toda la app.

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * verify-deploy.js — Chequeo automático post-deploy de DMCloser
+ * verify-deploy.js — Chequeo automático post-deploy de Atinov
  *
  * Uso:
  *   node scripts/verify-deploy.js

@@ -115,7 +115,7 @@ async function activateSubscription(userId, plan, provider, extra = {}) {
             sendEmail({
               to: referrer.email,
               subject: `🎉 +${creditDays} días gratis: tu referido se suscribió`,
-              html: `<div style="font-family:system-ui,-apple-system,sans-serif;max-width:560px;margin:auto;padding:24px"><div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:32px"><h1 style="color:#16a34a;font-size:22px;margin:0 0 12px">🎉 +${creditDays} días gratis</h1><p style="color:#475569;line-height:1.6">Buenas noticias: alguien que invitaste se suscribió a DMCloser. Como agradecimiento, te agregamos <strong>${creditDays} días extra</strong> a tu plan.</p><p style="color:#475569;line-height:1.6">Tu suscripción ahora vence el <strong>${new Date(newExp).toLocaleDateString('es-ES', { day:'2-digit', month:'long', year:'numeric' })}</strong>.</p><p style="color:#475569;line-height:1.6">Recordá: cada 5 referidos pagos = 15 días gratis. Seguí compartiendo tu link 🚀</p><a href="${process.env.APP_URL || 'https://dmcloser.app'}/app" style="display:inline-block;background:#f97316;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;margin-top:14px">Ver mi panel →</a></div></div>`,
+              html: `<div style="font-family:system-ui,-apple-system,sans-serif;max-width:560px;margin:auto;padding:24px"><div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:32px"><h1 style="color:#16a34a;font-size:22px;margin:0 0 12px">🎉 +${creditDays} días gratis</h1><p style="color:#475569;line-height:1.6">Buenas noticias: alguien que invitaste se suscribió a Atinov. Como agradecimiento, te agregamos <strong>${creditDays} días extra</strong> a tu plan.</p><p style="color:#475569;line-height:1.6">Tu suscripción ahora vence el <strong>${new Date(newExp).toLocaleDateString('es-ES', { day:'2-digit', month:'long', year:'numeric' })}</strong>.</p><p style="color:#475569;line-height:1.6">Recordá: cada 5 referidos pagos = 15 días gratis. Seguí compartiendo tu link 🚀</p><a href="${process.env.APP_URL || 'https://atinov.com'}/app" style="display:inline-block;background:#f97316;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;margin-top:14px">Ver mi panel →</a></div></div>`,
               userId: referrer._id,
               tag: 'referral_reward',
             }).catch(() => null);
@@ -237,7 +237,7 @@ router.post('/checkout', requireAuth, async (req, res) => {
         'https://api.mercadopago.com/preapproval',
         {
           preapproval_plan_id: planId,
-          reason:              `DMCloser ${PLAN_NAMES[plan]}`,
+          reason:              `Atinov ${PLAN_NAMES[plan]}`,
           payer_email:         user.email,
           back_url:            `${appUrl}/?billing=success&plan=${plan}&provider=mp`,
           external_reference:  user._id,

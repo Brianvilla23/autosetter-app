@@ -1,5 +1,5 @@
 /**
- * DMCloser — Notifications Routes
+ * Atinov — Notifications Routes
  *
  * GET  /api/notifications         → lee la config del usuario
  * PUT  /api/notifications         → guarda la config

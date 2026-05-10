@@ -1,5 +1,5 @@
 /**
- * DMCloser — Servicio de límites y uso
+ * Atinov — Servicio de límites y uso
  *
  * Centraliza:
  *   • Contador mensual de DMs enviados

@@ -1,5 +1,5 @@
 /**
- * DMCloser — Quick Replies (Plantillas de respuesta rápida)
+ * Atinov — Quick Replies (Plantillas de respuesta rápida)
  *
  * Permite al dueño guardar respuestas frecuentes ("info de envío",
  * "horarios", "link de pago") y aplicarlas con un click desde el inbox

@@ -1,5 +1,5 @@
 /**
- * DMCloser — Referrals
+ * Atinov — Referrals
  *
  * Programa de referidos: cada usuario tiene un código único (ej "MARIA-K3X9")
  * y un link de invitación. Cuando alguien se registra con ese código y luego

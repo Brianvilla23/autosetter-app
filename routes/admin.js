@@ -1,5 +1,5 @@
 /**
- * DMCloser — Admin Routes
+ * Atinov — Admin Routes
  * Gestión de usuarios, membresías y códigos de invitación.
  * Todas las rutas requieren rol admin.
  */
@@ -1030,9 +1030,9 @@ router.get('/funnel', async (req, res) => {
 /**
  * POST /api/admin/seed-sales-preset
  * Body: { accountId }
- * Instala el preset "DMCloser Sales Agent" en la cuenta indicada:
+ * Instala el preset "Atinov Sales Agent" en la cuenta indicada:
  * agente + knowledge + links + lead magnets para vender el propio SaaS.
- * Dogfooding: que el bot venda a DMCloser para demostrar que vende cualquier cosa.
+ * Dogfooding: que el bot venda a Atinov para demostrar que vende cualquier cosa.
  * NO pisa lo que ya existe — agrega encima. Si ya aplicaste antes, se duplica,
  * así que hacelo una sola vez por cuenta.
  */
@@ -1044,15 +1044,15 @@ router.post('/seed-sales-preset', async (req, res) => {
     const account = await db.findOne(db.accounts, { _id: accountId });
     if (!account) return res.status(404).json({ error: 'Cuenta no encontrada' });
 
-    // Anti-duplicado: si ya hay un agente llamado "DMCloser Sales", no volvemos a aplicar
-    const existing = await db.findOne(db.agents, { account_id: accountId, name: 'DMCloser Sales' });
+    // Anti-duplicado: si ya hay un agente llamado "Atinov Sales", no volvemos a aplicar
+    const existing = await db.findOne(db.agents, { account_id: accountId, name: 'Atinov Sales' });
     if (existing) return res.status(409).json({
       error: 'El preset ya fue aplicado a esta cuenta',
       agentId: existing._id,
     });
 
-    const { applyDmcloserPreset } = require('../services/dmcloserPreset');
-    const result = await applyDmcloserPreset(db, accountId);
+    const { applyAtinovPreset } = require('../services/atinovPreset');
+    const result = await applyAtinovPreset(db, accountId);
 
     await audit(req, 'seed_sales_preset', accountId, result);
     res.json(result);
@@ -1065,9 +1065,9 @@ router.post('/seed-sales-preset', async (req, res) => {
  *
  * Variante DESTRUCTIVA del seed-sales-preset: borra TODOS los agents,
  * knowledge, links y leadMagnets de la cuenta y luego aplica el preset
- * DMCloser limpio. Útil para cuentas que tenían datos de proyectos
+ * Atinov limpio. Útil para cuentas que tenían datos de proyectos
  * viejos (ej: la cuenta de motoniveladora) y querés dejarla 100% como
- * la cuenta de venta de DMCloser sin duplicados.
+ * la cuenta de venta de Atinov sin duplicados.
  *
  * NO toca leads ni mensajes (eso es historia de conversaciones reales).
  *
@@ -1096,8 +1096,8 @@ router.post('/reset-and-apply-preset', async (req, res) => {
     await db.remove(db.links,       { account_id: accountId });
     await db.remove(db.leadMagnets, { account_id: accountId });
 
-    const { applyDmcloserPreset } = require('../services/dmcloserPreset');
-    const result = await applyDmcloserPreset(db, accountId);
+    const { applyAtinovPreset } = require('../services/atinovPreset');
+    const result = await applyAtinovPreset(db, accountId);
 
     await audit(req, 'reset_and_apply_preset', accountId, { before, applied: result.created });
     res.json({ ok: true, removed: before, applied: result.created, agentId: result.agentId });
@@ -1216,7 +1216,7 @@ router.get('/ls-products', async (req, res) => {
  *  4. LS API responde (si está configurado)
  *  5. Meta API alcanzable
  *  6. Hay al menos 1 user admin
- *  7. Hay al menos 1 agente activo (preset DMCloser)
+ *  7. Hay al menos 1 agente activo (preset Atinov)
  *  8. Knowledge tiene contenido real (no demo)
  *  9. Hay lead magnets configurados
  * 10. Webhooks de billing reachable (LS + MP)
@@ -1267,7 +1267,7 @@ router.get('/self-test', async (req, res) => {
         status: verifiedDomains > 0 ? 'pass' : 'warn',
         message: verifiedDomains > 0
           ? `OK · ${verifiedDomains} dominio(s) verificado(s)`
-          : `Conectado pero sin dominio verificado. Verificá dmcloser.app en Resend.`,
+          : `Conectado pero sin dominio verificado. Verificá atinov.com en Resend.`,
       });
     } catch (e) {
       tests.push({ id: 'resend', name: 'Resend API', status: 'fail', message: e.response?.data?.message || e.message });
@@ -1333,13 +1333,13 @@ router.get('/self-test', async (req, res) => {
     message: adminUser ? `OK · ${adminUser.email}` : 'No hay usuario admin',
   });
 
-  // 7. Agente DMCloser Sales preset
+  // 7. Agente Atinov Sales preset
   const salesAgent = adminUser?.account_id
-    ? await db.findOne(db.agents, { account_id: adminUser.account_id, name: 'DMCloser Sales', enabled: true }).catch(() => null)
+    ? await db.findOne(db.agents, { account_id: adminUser.account_id, name: 'Atinov Sales', enabled: true }).catch(() => null)
     : null;
   tests.push({
     id: 'sales_agent',
-    name: 'Agente preset DMCloser',
+    name: 'Agente preset Atinov',
     status: salesAgent ? 'pass' : 'warn',
     message: salesAgent
       ? `OK · ${salesAgent.name} activo (${salesAgent.instructions?.length || 0} chars)`
@@ -1515,7 +1515,7 @@ router.get('/backup', async (req, res) => {
 
     const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="dmcloser-backup-${stamp}.json"`);
+    res.setHeader('Content-Disposition', `attachment; filename="atinov-backup-${stamp}.json"`);
     res.send(JSON.stringify(out, null, 2));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

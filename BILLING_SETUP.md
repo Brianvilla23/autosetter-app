@@ -1,4 +1,4 @@
-# DMCloser — Guía de configuración de pagos
+# Atinov — Guía de configuración de pagos
 
 Este documento te explica paso a paso cómo configurar los dos proveedores de pago: **Lemon Squeezy** (USD internacional) y **Mercado Pago** (CLP Chile).
 
@@ -10,7 +10,7 @@ Este documento te explica paso a paso cómo configurar los dos proveedores de pa
 1. Ve a https://app.lemonsqueezy.com/register
 2. Completa el registro (selecciona Chile como país; LS acepta sellers chilenos)
 3. Crea una Store:
-   - Name: `DMCloser`
+   - Name: `Atinov`
    - Currency: `USD`
    - Default country: `Chile`
 
@@ -19,9 +19,9 @@ En el dashboard de LS → **Products** → **New product**. Repite para cada pla
 
 | Plan    | Name                   | Price    | Billing     |
 |---------|------------------------|----------|-------------|
-| Starter | DMCloser Starter       | $197 USD | Monthly     |
-| Pro     | DMCloser Pro           | $297 USD | Monthly     |
-| Agency  | DMCloser Agency        | $497 USD | Monthly     |
+| Starter | Atinov Starter       | $197 USD | Monthly     |
+| Pro     | Atinov Pro           | $297 USD | Monthly     |
+| Agency  | Atinov Agency        | $497 USD | Monthly     |
 
 Cada producto tiene una **variant** — copia el `variant_id` desde la URL o la tabla de variants.
 
@@ -51,7 +51,7 @@ LS_VARIANT_AGENCY=333333
 1. Ve a https://www.mercadopago.cl/developers/panel
 2. Inicia sesión con tu cuenta MP Chile (o regístrate)
 3. Ve a **Tus integraciones** → **Crear aplicación**
-   - Nombre: `DMCloser`
+   - Nombre: `Atinov`
    - Tipo: `Pagos online` + `Suscripciones`
 
 ### 2. Crear los 3 preapproval plans
@@ -63,7 +63,7 @@ curl -X POST https://api.mercadopago.com/preapproval_plan \
   -H "Authorization: Bearer ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "reason": "DMCloser Starter",
+    "reason": "Atinov Starter",
     "auto_recurring": {
       "frequency": 1,
       "frequency_type": "months",

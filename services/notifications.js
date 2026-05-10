@@ -1,5 +1,5 @@
 /**
- * DMCloser — Servicio de notificaciones multi-canal
+ * Atinov — Servicio de notificaciones multi-canal
  *
  * Avisa al dueño/closer CUANDO un lead se pone 🔥 HOT — email + WhatsApp
  * + webhook. El objetivo: que el humano pueda saltar a la conversación
@@ -18,7 +18,7 @@ const axios = require('axios');
 const db    = require('../db/database');
 
 const THROTTLE_MINUTES = 30;
-const APP_URL = () => process.env.APP_URL || 'https://dmcloser.com';
+const APP_URL = () => process.env.APP_URL || 'https://atinov.com';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // EMAIL (Resend)
@@ -33,7 +33,7 @@ async function sendEmail({ to, subject, html, from }) {
     const res = await axios.post(
       'https://api.resend.com/emails',
       {
-        from:    from || process.env.RESEND_FROM || 'DMCloser <notificaciones@dmcloser.com>',
+        from:    from || process.env.RESEND_FROM || 'Atinov <notificaciones@atinov.com>',
         to:      [to],
         subject, html,
       },
@@ -57,9 +57,9 @@ async function sendEmail({ to, subject, html, from }) {
 // TELEGRAM (Bot API oficial, gratis)
 // Setup del user (una vez):
 //   1. Abrir Telegram → buscar @BotFather → /newbot → seguir instrucciones
-//   2. Copiar el token (ej: 1234567890:AAHqXxx...) → pegar en DMCloser
+//   2. Copiar el token (ej: 1234567890:AAHqXxx...) → pegar en Atinov
 //   3. Abrir el bot creado y enviarle /start
-//   4. En DMCloser clickear "Detectar chat" → queda listo
+//   4. En Atinov clickear "Detectar chat" → queda listo
 // ─────────────────────────────────────────────────────────────────────────────
 async function sendTelegram({ botToken, chatId, text }) {
   if (!botToken || !chatId) return { ok: false, reason: 'missing_config' };
@@ -115,7 +115,7 @@ async function detectTelegramChatId(botToken) {
 // Setup del user (una vez):
 //   1. Agrega a contactos +34 644 60 39 49
 //   2. Envíale: "I allow callmebot to send me messages"
-//   3. Recibe apikey numérica → la pega en DMCloser
+//   3. Recibe apikey numérica → la pega en Atinov
 // ─────────────────────────────────────────────────────────────────────────────
 async function sendWhatsApp({ phone, apikey, text }) {
   if (!phone || !apikey) return { ok: false, reason: 'Falta el número o la API key' };
@@ -227,7 +227,7 @@ async function notifyHotLead({ userId, leadId }) {
       `<code>${esc(conversationPreview)}</code>`,
       ``,
       `📲 <a href="${dmLink}">Abrir DM en Instagram</a>`,
-      `📊 <a href="${appLink}">Ver en DMCloser</a>`,
+      `📊 <a href="${appLink}">Ver en Atinov</a>`,
       ``,
       `<i>Toma el control antes que se enfríe.</i>`,
     ].join('\n');
@@ -259,10 +259,10 @@ async function notifyHotLead({ userId, leadId }) {
 
           <div style="margin-top:24px;display:flex;gap:10px;flex-wrap:wrap">
             <a href="${dmLink}" style="background:#ef4444;color:#fff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:600;font-size:14px">💬 Abrir DM en Instagram</a>
-            <a href="${appLink}" style="background:#f3f4f6;color:#111;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:600;font-size:14px">Ver en DMCloser</a>
+            <a href="${appLink}" style="background:#f3f4f6;color:#111;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:600;font-size:14px">Ver en Atinov</a>
           </div>
 
-          <p style="margin-top:22px;font-size:12px;color:#999">Puedes desactivar estas notificaciones desde Settings en DMCloser.</p>
+          <p style="margin-top:22px;font-size:12px;color:#999">Puedes desactivar estas notificaciones desde Settings en Atinov.</p>
         </div>
       </div>`;
     const r = await sendEmail({ to, subject, html });
@@ -346,7 +346,7 @@ async function sendTestNotification({ userId, channel }) {
       return { ok: false, reason: 'Telegram desactivado o sin config' };
     }
     const text = [
-      `✅ <b>Test DMCloser</b>`,
+      `✅ <b>Test Atinov</b>`,
       ``,
       `Tu Telegram está configurado correctamente.`,
       `Cuando un lead se ponga 🔥 HOT, recibirás una alerta como esta con los detalles y links directos al DM.`,
@@ -365,7 +365,7 @@ async function sendTestNotification({ userId, channel }) {
     const to = n.email_address || user.email;
     return await sendEmail({
       to,
-      subject: '✅ Test — DMCloser puede enviarte emails',
+      subject: '✅ Test — Atinov puede enviarte emails',
       html: `<div style="font-family:system-ui;padding:20px"><h2>✅ Funciona</h2><p>Esta es una prueba. Cuando un lead se ponga 🔥 HOT, recibirás un email como este con los detalles y un botón para abrir el DM al instante.</p><pre style="background:#0f172a;color:#e0e0e0;padding:12px;border-radius:6px;font-size:12px">${escapeHtml(fakePreview)}</pre></div>`,
     });
   }
@@ -377,7 +377,7 @@ async function sendTestNotification({ userId, channel }) {
     return await sendWhatsApp({
       phone:  n.whatsapp_number,
       apikey: n.whatsapp_apikey,
-      text:   '✅ *Test DMCloser*\n\nTu WhatsApp está configurado. Cuando un lead se ponga 🔥 HOT, recibirás una alerta como esta con los detalles.',
+      text:   '✅ *Test Atinov*\n\nTu WhatsApp está configurado. Cuando un lead se ponga 🔥 HOT, recibirás una alerta como esta con los detalles.',
     });
   }
 
@@ -388,7 +388,7 @@ async function sendTestNotification({ userId, channel }) {
       payload: {
         event:     'test',
         timestamp: new Date().toISOString(),
-        message:   'Test de DMCloser — si ves esto, tu webhook funciona.',
+        message:   'Test de Atinov — si ves esto, tu webhook funciona.',
       },
     });
   }

@@ -1,5 +1,5 @@
 /**
- * DMCloser — Follow-Up Automático
+ * Atinov — Follow-Up Automático
  *
  * ESTRATEGIA: el bot le escribe al lead si lleva >N horas sin responder,
  * siempre DENTRO de la ventana 24h de Instagram (requisito de la API),

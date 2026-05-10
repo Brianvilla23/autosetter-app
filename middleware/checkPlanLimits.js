@@ -1,5 +1,5 @@
 /**
- * DMCloser — Middleware de límites por plan
+ * Atinov — Middleware de límites por plan
  *
  * Genera middlewares Express que bloquean acciones que superan los límites
  * del plan del usuario. Uso:

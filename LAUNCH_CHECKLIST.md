@@ -1,4 +1,4 @@
-# 🚀 DMCloser — Checklist final para salir a vender
+# 🚀 Atinov — Checklist final para salir a vender
 
 **Estado actual** (verificado en vivo 25/04/2026):
 - ✅ Bot conversacional Hormozi funcionando
@@ -67,7 +67,7 @@ LS_VARIANT_AGENCY=1570496
 Ya tenés `RESEND_API_KEY`. Falta:
 
 ### A. Verificar dominio en Resend (5 min + espera DNS)
-1. https://resend.com → **Domains** → Add `dmcloser.app`
+1. https://resend.com → **Domains** → Add `atinov.com`
 2. Resend te muestra 4 DNS records (TXT MX DKIM SPF). Pegarlos en tu DNS provider.
 3. Click **Verify**. Si no verifica de una, esperar 5-30 min y reintentar.
 
@@ -79,12 +79,12 @@ Ya tenés `RESEND_API_KEY`. Falta:
    - Custom address: `soporte`
    - Action: Send to → tu Gmail personal
 3. Cloudflare agrega los MX records automáticamente. Verificar.
-4. Probá: enviá email a `soporte@dmcloser.app` desde tu celular. Debe llegar a tu Gmail en segundos.
+4. Probá: enviá email a `soporte@atinov.com` desde tu celular. Debe llegar a tu Gmail en segundos.
 
 ### C. Pegar en Railway:
 ```
-EMAIL_FROM=DMCloser <soporte@dmcloser.app>
-EMAIL_REPLY_TO=soporte@dmcloser.app
+EMAIL_FROM=Atinov <soporte@atinov.com>
+EMAIL_REPLY_TO=soporte@atinov.com
 ```
 
 5. Verificar: `GET /api/admin/self-test` → test `resend` debe estar **pass** con `1 dominio(s) verificado(s)`
@@ -100,15 +100,15 @@ EMAIL_REPLY_TO=soporte@dmcloser.app
 
 ---
 
-## 🔴 BLOQUEANTE 5 · Aplicar preset DMCloser (1 min)
+## 🔴 BLOQUEANTE 5 · Aplicar preset Atinov (1 min)
 
-Para que tu cuenta sea el "demo en vivo" del bot vendiendo DMCloser:
+Para que tu cuenta sea el "demo en vivo" del bot vendiendo Atinov:
 
 1. `/admin` → **Usuarios** → click en tu user → **Ver**
-2. Sección "🔄 Preset DMCloser" → **⚠️ Resetear y aplicar**
+2. Sección "🔄 Preset Atinov" → **⚠️ Resetear y aplicar**
 3. Confirmar 2 veces
 
-Ahora tu cuenta tiene: agente "Brian", knowledge real con precios, 3 links DMCloser, 4 lead magnets.
+Ahora tu cuenta tiene: agente "Brian", knowledge real con precios, 3 links Atinov, 4 lead magnets.
 
 ---
 
@@ -116,7 +116,7 @@ Ahora tu cuenta tiene: agente "Brian", knowledge real con precios, 3 links DMClo
 
 **Esto NO bloquea tus primeros 10 clientes**. Mientras esperás, agregás cada cliente como "tester" en Meta Dashboard manualmente.
 
-1. https://developers.facebook.com → tu app DMCloser → **App Review**
+1. https://developers.facebook.com → tu app Atinov → **App Review**
 2. **Permissions and Features** → solicitar:
    - `instagram_business_basic` ✅ Standard Access
    - `instagram_business_manage_messages` ✅ Standard Access
@@ -127,14 +127,14 @@ Ahora tu cuenta tiene: agente "Brian", knowledge real con precios, 3 links DMClo
 
 ---
 
-## 🟡 IMPORTANTE 7 · Apuntar dmcloser.app a Railway (10 min)
+## 🟡 IMPORTANTE 7 · Apuntar atinov.com a Railway (10 min)
 
 Sigue **DOMAIN_SETUP.md** del repo. Resumen rápido:
 
-1. Railway → Settings → Networking → **+ Custom Domain** → `dmcloser.app`
+1. Railway → Settings → Networking → **+ Custom Domain** → `atinov.com`
 2. Tu DNS provider → CNAME `@` y `www` → el target que te dio Railway
 3. Esperar 5-30 min (SSL automático)
-4. Railway → Variables → editar `APP_URL=https://dmcloser.app` → save
+4. Railway → Variables → editar `APP_URL=https://atinov.com` → save
 
 **Si me decís en qué provider compraste el dominio**, te guío clic a clic.
 
@@ -168,13 +168,13 @@ MP_PLAN_PRO=2c93808...
 MP_PLAN_AGENCY=2c93808...
 ```
 
-4. MP Dashboard → **Webhooks** → URL: `https://dmcloser.app/api/billing/mp-webhook`
+4. MP Dashboard → **Webhooks** → URL: `https://atinov.com/api/billing/mp-webhook`
 
 ---
 
 ## 🟢 NICE-TO-HAVE 10 · Resto
 
-- **Plausible**: registrar `dmcloser.app` en https://plausible.io para ver analytics reales (el tracking ya está activo)
+- **Plausible**: registrar `atinov.com` en https://plausible.io para ver analytics reales (el tracking ya está activo)
 - **Backup automático**: armá un cron que llame `GET /api/admin/backup` 1x por semana → guardá el JSON en Drive/S3
 - **Casos de éxito reales**: cuando tengas 3+ clientes, reemplazar los "casos típicos" en home.html por testimonios reales con foto
 
@@ -211,7 +211,7 @@ Si querés UI: `GET https://dmcloser-app.up.railway.app/api/admin/env-status` te
 **Estrategia para los primeros 5 clientes** (lo que más recomiendo):
 
 1. Lista mental de coaches/agencias/infoproductos que conozcas en LATAM
-2. DM personal: *"Eh, estoy lanzando DMCloser, un bot de IA para Instagram que califica leads y agenda citas solo. ¿Te bancás probarlo gratis 1 mes con descuento de fundador? Solo necesito feedback honesto."*
+2. DM personal: *"Eh, estoy lanzando Atinov, un bot de IA para Instagram que califica leads y agenda citas solo. ¿Te bancás probarlo gratis 1 mes con descuento de fundador? Solo necesito feedback honesto."*
 3. Cobrar **50% off los primeros 3 meses** ($148 USD) — el cliente arriesga poco, vos validás
 4. Activá su cuenta como **tester en Meta Dashboard** mientras esperás Review
 5. Onboarding personal de 30 min vía Zoom: les dejás todo configurado

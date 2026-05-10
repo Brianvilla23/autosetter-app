@@ -1,5 +1,5 @@
 /**
- * DMCloser — Magnet Delivery
+ * Atinov — Magnet Delivery
  *
  * Cuando el bot ofreció un lead magnet y el lead responde con un email/teléfono,
  * este servicio detecta el dato, dispara la entrega real (email con recurso),
@@ -134,7 +134,7 @@ function buildMagnetEmail(magnet, lead) {
       </p>
     </div>
     <p style="color:#94a3b8;font-size:12px;text-align:center;margin-top:20px">
-      Enviado desde DMCloser
+      Enviado desde Atinov
     </p>
   </div>
 </body></html>`;

@@ -24,8 +24,8 @@ function verifyMetaSignature(req) {
   // El raw body es preservado por el verify hook de express.json en server.js
   // (req.rawBody). Si no está, no podemos validar — fail closed.
   // ⚠️ IMPORTANTE: META_APP_ID y META_APP_SECRET deben ser los de la SUB-APP
-  // de Instagram (DMCloser-IG, ID 1666...), NO de la Meta App principal
-  // (DMCloser, ID 1313...). Meta firma webhooks de Instagram con el secret
+  // de Instagram (Atinov-IG, ID 1666...), NO de la Meta App principal
+  // (Atinov, ID 1313...). Meta firma webhooks de Instagram con el secret
   // de la Instagram Business sub-app. Buscarlo en: Meta Developers → tu app →
   // API de Instagram → Configuración con inicio de sesión → "Clave secreta
   // de la app de Instagram".

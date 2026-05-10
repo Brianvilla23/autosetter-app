@@ -1,7 +1,7 @@
 {
-  "name": "dmcloser",
+  "name": "atinov",
   "version": "1.0.0",
-  "description": "DMCloser - AI Instagram DM Sales Closer Agent",
+  "description": "Atinov - AI Instagram DM Sales Closer Agent",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

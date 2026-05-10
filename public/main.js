@@ -104,7 +104,7 @@ function renderAuthForm(mode) {
 
   if (mode === 'login') {
     box.innerHTML = `
-      <div class="auth-logo">⚡ DMCloser</div>
+      <div class="auth-logo">⚡ Atinov</div>
       <h2 class="auth-title">Iniciar sesión</h2>
       <p class="auth-sub">Accede a tu panel de control</p>
       <input class="auth-input" id="auth-email" type="email" placeholder="Email" autocomplete="email">
@@ -120,7 +120,7 @@ function renderAuthForm(mode) {
 
   } else if (mode === 'register') {
     box.innerHTML = `
-      <div class="auth-logo">⚡ DMCloser</div>
+      <div class="auth-logo">⚡ Atinov</div>
       <h2 class="auth-title">Crear cuenta gratis</h2>
       <p class="auth-sub">3 días de prueba gratuita. Sin tarjeta de crédito.</p>
       <input class="auth-input" id="auth-name" type="text" placeholder="Tu nombre" autocomplete="name">
@@ -162,7 +162,7 @@ function renderAuthForm(mode) {
   } else {
     // mode === 'setup' (first admin user)
     box.innerHTML = `
-      <div class="auth-logo">⚡ DMCloser</div>
+      <div class="auth-logo">⚡ Atinov</div>
       <h2 class="auth-title">🎉 Bienvenido</h2>
       <p class="auth-sub">Primera vez en el sistema. Crea tu cuenta de administrador.</p>
       <input class="auth-input" id="auth-name" type="text" placeholder="Tu nombre" autocomplete="name">
@@ -1842,7 +1842,7 @@ function exportLeadsCSV() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `dmcloser-leads-${new Date().toISOString().slice(0,10)}.csv`;
+    a.download = `atinov-leads-${new Date().toISOString().slice(0,10)}.csv`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -1869,7 +1869,7 @@ function exportConversationsCSV() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `dmcloser-conversations-${new Date().toISOString().slice(0,10)}.csv`;
+    a.download = `atinov-conversations-${new Date().toISOString().slice(0,10)}.csv`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -2054,7 +2054,7 @@ async function loadAnalytics() {
           const blob = await r.blob();
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
-          a.href = url; a.download = `dmcloser-leads-${new Date().toISOString().slice(0, 10)}.csv`;
+          a.href = url; a.download = `atinov-leads-${new Date().toISOString().slice(0, 10)}.csv`;
           a.click();
           URL.revokeObjectURL(url);
           showToast('✅ CSV descargado');
@@ -2079,7 +2079,7 @@ async function loadAnalytics() {
           const blob = await r.blob();
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
-          a.href = url; a.download = `dmcloser-conversations-${new Date().toISOString().slice(0, 10)}.csv`;
+          a.href = url; a.download = `atinov-conversations-${new Date().toISOString().slice(0, 10)}.csv`;
           a.click();
           URL.revokeObjectURL(url);
           showToast('💬 Conversaciones descargadas');
@@ -2707,7 +2707,7 @@ setInterval(() => { if (ACCOUNT_ID) updateInboxBadge(); }, 30000);
 // tengan suscripciones activas creadas antes del cambio de pricing
 // — la UI los muestra pero con su precio histórico.
 const PLAN_LABEL = {
-  trial:   { name: 'Prueba gratuita', usd: 0,   clp: 0,       desc: 'Probando DMCloser' },
+  trial:   { name: 'Prueba gratuita', usd: 0,   clp: 0,       desc: 'Probando Atinov' },
   founder: { name: 'Founder',         usd: 148, clp: 135000,  desc: '6.000 conv/mes · 5 asistentes · plan único' },
   starter: { name: 'Starter (legacy)', usd: 197, clp: 180000,  desc: 'Plan histórico — 500 conv/mes · 3 asistentes' },
   pro:     { name: 'Pro (legacy)',    usd: 297, clp: 270000,  desc: 'Plan histórico — 3 cuentas IG' },
@@ -2819,7 +2819,7 @@ async function openBillingPortal() {
   try {
     const r = await apiFetch('/api/billing/portal');
     if (!r || !r.url) {
-      showToast('No hay portal disponible. Contactanos en soporte@dmcloser.app');
+      showToast('No hay portal disponible. Contactanos en soporte@atinov.com');
       return;
     }
     window.open(r.url, '_blank');
@@ -2847,7 +2847,7 @@ async function loadReferralsPage() {
     document.getElementById('ref-credit-days').textContent  = (me.stats.creditDays || 0) + 'd';
 
     const shareText = encodeURIComponent(
-      `Estoy usando DMCloser para que la IA me responda los DMs de Instagram y filtre los leads. Te dejo mi link con descuento: ${me.inviteUrl}`
+      `Estoy usando Atinov para que la IA me responda los DMs de Instagram y filtre los leads. Te dejo mi link con descuento: ${me.inviteUrl}`
     );
     const shareUrl = encodeURIComponent(me.inviteUrl);
     document.getElementById('ref-share-wa').href = `https://wa.me/?text=${shareText}`;

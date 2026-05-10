@@ -1,5 +1,5 @@
 /**
- * DMCloser — Inbox unificado
+ * Atinov — Inbox unificado
  *
  * Vista tipo mensajería: lista de conversaciones con preview, badges,
  * filtros (HOT, sin leer, bypassed) y unread count.

@@ -1,5 +1,5 @@
 /**
- * DMCloser — Usage Route
+ * Atinov — Usage Route
  *
  * GET /api/usage → devuelve el uso actual + los límites del plan del usuario.
  * El frontend usa esto para la card "Uso del mes" en Dashboard.
