@@ -5,6 +5,7 @@ const db      = require('../db/database');
 const { generateReply, classifyLead } = require('../services/openai');
 const { sendMessage, getIGUserInfo } = require('../services/meta');
 const wa = require('../services/whatsapp');
+const PIPE = require('../config/pipeline');
 const { checkDMAllowance, incrementDMCount } = require('../services/limits');
 const { v4: uuidv4 } = require('uuid');
 
@@ -169,7 +170,7 @@ async function handleDM(pageId, event) {
       account_id: account._id, agent_id: agent._id,
       ig_user_id: senderId, ig_username: userInfo.username || senderId,
       status: 'active', automation: 'automated',
-      is_bypassed: false, is_converted: false,
+      is_bypassed: false, is_converted: false, pipeline_stage: 'nuevo',
       triggered_by: 'dm_keyword',
       last_message_at: new Date().toISOString()
     });
@@ -231,7 +232,7 @@ async function handleComment(pageId, commentData) {
       account_id: account._id, agent_id: agent._id,
       ig_user_id: commenterIgId, ig_username: userInfo.username || commenterName,
       status: 'active', automation: 'automated',
-      is_bypassed: false, is_converted: false,
+      is_bypassed: false, is_converted: false, pipeline_stage: 'nuevo',
       triggered_by: 'comment',
       triggered_media_id: mediaId,
       last_message_at: new Date().toISOString()
@@ -320,7 +321,7 @@ async function handleWhatsAppMessage(phoneNumberId, msg, value) {
       ig_username: senderName,     // Mostrado en UI
       channel: 'whatsapp',
       status: 'active', automation: 'automated',
-      is_bypassed: false, is_converted: false,
+      is_bypassed: false, is_converted: false, pipeline_stage: 'nuevo',
       triggered_by: 'wa_dm',
       last_message_at: new Date().toISOString()
     });
@@ -449,12 +450,25 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
   classifyLead({ conversationHistory: fullHistory, accountId: account._id, apiKey }).then(async result => {
     if (!result?.qualification) return;
 
+    // Auto-progresión de etapa CRM según qualification (no degrada etapas
+    // manuales avanzadas como demo/propuesta/ganado/perdido).
+    const newStage = PIPE.autoStageFromQualification(
+      lead.pipeline_stage, result.qualification, lead.is_converted
+    );
+    const stageUpd = {};
+    if (newStage && newStage !== lead.pipeline_stage) {
+      stageUpd.pipeline_stage = newStage;
+      stageUpd.stage_changed_at = new Date().toISOString();
+    }
+
     await db.update(db.leads, { _id: lead._id }, {
       qualification: result.qualification,
       qualification_reason: result.reason,
-      qualification_updated_at: new Date().toISOString()
+      qualification_updated_at: new Date().toISOString(),
+      ...stageUpd,
     }).catch(e => console.error('classifyLead update error:', e));
-    console.log(`🎯 [@${lead.ig_username}] → ${result.qualification.toUpperCase()}: ${result.reason}`);
+    const stageLog = stageUpd.pipeline_stage ? ` · etapa→${stageUpd.pipeline_stage}` : '';
+    console.log(`🎯 [@${lead.ig_username}] → ${result.qualification.toUpperCase()}: ${result.reason}${stageLog}`);
 
     // ── Disparar notificación si transicionó a HOT ───────────────────────────
     if (result.qualification === 'hot' && prevQualification !== 'hot') {

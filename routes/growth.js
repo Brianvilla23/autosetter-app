@@ -7,6 +7,7 @@ const express = require('express');
 const router  = express.Router();
 const db      = require('../db/database');
 const { enforceMaxMagnets } = require('../middleware/checkPlanLimits');
+const PIPE    = require('../config/pipeline');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MAGNET LINKS — URLs ig.me con tracking
@@ -573,6 +574,116 @@ router.get('/export-conversations', async (req, res) => {
     console.error('[export-conversations] error:', e);
     res.status(500).json({ error: e.message });
   }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EXPORT CSV "CRM-ready" — 1 fila por lead, estructura importable
+// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * GET /api/growth/export-crm?accountId=X
+ *
+ * CSV con 1 fila por lead y columnas en orden CRM estándar. Headers en
+ * español por ahora (se internacionalizan después). La ESTRUCTURA (1 fila
+ * = 1 contacto, columnas de pipeline/valor/etiquetas/fechas) es la que
+ * HubSpot, Pipedrive, Airtable, Notion importan sin armar mapeo a mano.
+ */
+router.get('/export-crm', async (req, res) => {
+  try {
+    const { accountId } = req.query;
+    if (!accountId) return res.status(400).json({ error: 'accountId requerido' });
+    if (accountId !== req.user.accountId) return res.status(403).json({ error: 'Prohibido' });
+
+    const leads   = await db.find(db.leads,   { account_id: accountId });
+    const agents  = await db.find(db.agents,  { account_id: accountId });
+    const allMsgs = await db.find(db.messages, {});
+    const agentById = Object.fromEntries(agents.map(a => [a._id, a.name]));
+
+    const msgsByLead = {};
+    for (const m of allMsgs) {
+      if (!m.lead_id) continue;
+      (msgsByLead[m.lead_id] = msgsByLead[m.lead_id] || []).push(m);
+    }
+
+    const isoDate = (s) => s ? new Date(s).toISOString().slice(0, 10) : '';
+    const clean   = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+
+    // Orden de columnas estándar CRM (1 fila = 1 contacto)
+    const header = [
+      'Nombre',            // contact_name o @usuario
+      'Email',
+      'Telefono',
+      'Empresa',           // vacío por ahora (Instagram no lo da)
+      'Etapa',             // pipeline_stage (nombre legible)
+      'Calificacion',      // hot/warm/cold
+      'Valor',             // deal_value
+      'Moneda',            // deal_currency
+      'Origen',            // triggered_by legible
+      'Canal',             // instagram/whatsapp
+      'Etiquetas',         // tags separados por ;
+      'Fecha Creacion',
+      'Ultima Actividad',
+      'Proximo Seguimiento',
+      'Convertido',
+      'Instagram',         // @usuario
+      'URL Instagram',
+      'Agente Asignado',
+      'Notas',             // admin_notes + última nota del timeline
+    ];
+    const rows = [header];
+
+    const sourceLabel = {
+      dm_keyword: 'DM (keyword)',
+      comment:    'Comentario IG',
+      wa_dm:      'WhatsApp',
+      '':         'DM directo',
+    };
+
+    for (const l of leads) {
+      const msgs = (msgsByLead[l._id] || []).sort(
+        (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+      );
+      const lastMsgAt = msgs.length ? msgs[msgs.length - 1].createdAt : l.last_message_at;
+      const stage = l.pipeline_stage
+        || PIPE.autoStageFromQualification(null, l.qualification, l.is_converted);
+      const stageName = PIPE.STAGE_BY_ID[stage]?.name || stage || 'Nuevo';
+      const lastNote = Array.isArray(l.activity_log) && l.activity_log.length
+        ? l.activity_log[l.activity_log.length - 1].text : '';
+      const igUser = l.ig_username || '';
+
+      rows.push([
+        clean(l.contact_name || igUser || l.wa_name || ''),
+        l.email || '',
+        l.phone || '',
+        '',                                             // Empresa (futuro)
+        stageName,
+        l.qualification || 'sin_calificar',
+        l.deal_value || 0,
+        l.deal_currency || 'USD',
+        sourceLabel[l.triggered_by || ''] || (l.triggered_by || 'DM directo'),
+        l.channel || 'instagram',
+        Array.isArray(l.tags) ? l.tags.join(';') : '',
+        isoDate(msgs[0]?.createdAt || l.createdAt),
+        isoDate(lastMsgAt),
+        isoDate(l.next_followup_at),
+        l.is_converted ? 'Si' : 'No',
+        igUser,
+        igUser ? `https://instagram.com/${igUser}` : '',
+        agentById[l.agent_id] || '',
+        clean([l.admin_notes || l.notes, lastNote].filter(Boolean).join(' | ')).slice(0, 500),
+      ]);
+    }
+
+    const csv = rows.map(row => row.map(cell => {
+      const s = String(cell ?? '');
+      if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+      return s;
+    }).join(',')).join('\n');
+
+    const filename = `atinov-crm-${new Date().toISOString().slice(0, 10)}.csv`;
+    res.set('Content-Type', 'text/csv; charset=utf-8');
+    res.set('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send('﻿' + csv); // BOM para acentos en Excel
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 module.exports = router;
