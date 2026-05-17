@@ -51,6 +51,10 @@
       Leads
       <span class="nav-badge" id="leads-badge"></span>
     </a>
+    <a class="nav-item" data-section="crm">
+      <span class="nav-icon">🗂️</span>
+      CRM
+    </a>
     <a class="nav-item" data-section="analytics">
       <span class="nav-icon">📊</span>
       Analytics
@@ -355,6 +359,114 @@
           <div style="font-size:13px;margin-top:6px">Vas a poder leer el thread completo y responder vos directamente.</div>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- CRM — pipeline Kanban + vista lista ──────────────────────────────────── -->
+  <section id="section-crm" class="section">
+    <div class="page-header">
+      <div>
+        <h1>CRM</h1>
+        <p class="page-sub" id="crm-totals">Cargando pipeline…</p>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <div class="crm-viewtoggle">
+          <button class="crm-vt active" data-view="kanban" onclick="crmSwitchView('kanban')">Kanban</button>
+          <button class="crm-vt" data-view="list" onclick="crmSwitchView('list')">Lista</button>
+        </div>
+        <button class="btn-secondary" onclick="crmExport()">⬇ Exportar CSV</button>
+        <button class="btn-secondary" onclick="loadCRM()">↻ Refrescar</button>
+      </div>
+    </div>
+
+    <!-- Vista Kanban -->
+    <div id="crm-kanban" class="crm-kanban">
+      <div class="crm-loading">Cargando…</div>
+    </div>
+
+    <!-- Vista Lista -->
+    <div id="crm-list" class="crm-list" style="display:none">
+      <div class="crm-list-filters">
+        <input type="text" id="crm-list-search" placeholder="Buscar @usuario o nombre…" oninput="crmRenderList()">
+        <select id="crm-list-stage" onchange="crmRenderList()"><option value="">Todas las etapas</option></select>
+      </div>
+      <div class="table-wrap">
+        <table class="crm-table">
+          <thead><tr>
+            <th>Contacto</th><th>Etapa</th><th>Calif.</th><th>Valor</th>
+            <th>Etiquetas</th><th>Próx. seguimiento</th><th>Último msg</th><th></th>
+          </tr></thead>
+          <tbody id="crm-list-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Panel lateral detalle de lead -->
+    <div id="crm-drawer-overlay" class="crm-drawer-overlay" onclick="crmCloseDrawer(event)">
+      <aside id="crm-drawer" class="crm-drawer" onclick="event.stopPropagation()">
+        <div class="crm-drawer-head">
+          <div>
+            <h2 id="crm-d-name">—</h2>
+            <a id="crm-d-iglink" href="#" target="_blank" rel="noopener" class="crm-d-iglink"></a>
+          </div>
+          <button class="btn-ghost" onclick="crmCloseDrawer()">✕</button>
+        </div>
+        <div class="crm-drawer-body">
+          <div class="crm-field">
+            <label>Etapa</label>
+            <select id="crm-d-stage" onchange="crmUpdateField('pipeline_stage', this.value)"></select>
+          </div>
+          <div class="crm-field-row">
+            <div class="crm-field">
+              <label>Valor del deal</label>
+              <input type="number" id="crm-d-value" min="0" placeholder="0"
+                onchange="crmUpdateField('deal_value', this.value)">
+            </div>
+            <div class="crm-field" style="max-width:90px">
+              <label>Moneda</label>
+              <select id="crm-d-currency" onchange="crmUpdateField('deal_currency', this.value)">
+                <option>USD</option><option>CLP</option><option>EUR</option><option>MXN</option><option>ARS</option>
+              </select>
+            </div>
+          </div>
+          <div class="crm-field">
+            <label>Nombre de contacto</label>
+            <input type="text" id="crm-d-contact" placeholder="Nombre real"
+              onchange="crmUpdateField('contact_name', this.value)">
+          </div>
+          <div class="crm-field">
+            <label>Etiquetas (separadas por coma)</label>
+            <input type="text" id="crm-d-tags" placeholder="ecommerce, referido, urgente"
+              onchange="crmUpdateField('tags', this.value)">
+          </div>
+          <div class="crm-field">
+            <label>Próximo seguimiento</label>
+            <input type="date" id="crm-d-followup"
+              onchange="crmUpdateField('next_followup_at', this.value)">
+          </div>
+
+          <div class="crm-timeline-head">
+            <h3>Actividad</h3>
+          </div>
+          <div class="crm-addnote">
+            <select id="crm-note-type">
+              <option value="nota">Nota</option>
+              <option value="llamada">Llamada</option>
+              <option value="whatsapp">WhatsApp</option>
+              <option value="email">Email</option>
+              <option value="reunion">Reunión</option>
+            </select>
+            <input type="text" id="crm-note-text" placeholder="Agregar nota al timeline…"
+              onkeydown="if(event.key==='Enter')crmAddNote()">
+            <button class="btn-primary" onclick="crmAddNote()">+</button>
+          </div>
+          <div id="crm-timeline" class="crm-timeline"></div>
+
+          <div class="crm-drawer-foot">
+            <a id="crm-d-openconv" class="btn-secondary" href="#" onclick="crmOpenConversation()">Ver conversación completa →</a>
+          </div>
+        </div>
+      </aside>
     </div>
   </section>
 

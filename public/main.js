@@ -302,6 +302,7 @@ function loadSection(name) {
     case 'inbox':     loadInbox(); break;
     case 'analytics': loadAnalytics(); break;
     case 'leads':     loadLeads(); break;
+    case 'crm':       loadCRM(); break;
     case 'billing':   loadBillingPage(); break;
     case 'referrals': loadReferralsPage(); break;
     case 'links':     loadLinks(); break;
@@ -3096,6 +3097,213 @@ try { _safeExpose('upgradePlan', upgradePlan); } catch {}
 try { _safeExpose('switchTab', switchTab); } catch {}
 try { _safeExpose('createMagnetLink', createMagnetLink); } catch {}
 try { _safeExpose('showLeadDetail', showLeadDetail); } catch {}
+
+// ── CRM ───────────────────────────────────────────────────────────────────────
+let _crmBoard = null, _crmStages = [], _crmCurrentLeadId = null, _crmView = 'kanban', _crmDragId = null;
+
+function crmEsc(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function crmFmtVal(v,c){ if(!v) return ''; const p=c==='USD'?'US$':c==='EUR'?'€':'$'; return p+Number(v).toLocaleString('es-CL'); }
+function crmTimeAgo(s){ if(!s) return ''; const d=(Date.now()-new Date(s).getTime())/86400000; if(d<1) return 'hoy'; if(d<2) return 'ayer'; return Math.floor(d)+'d'; }
+
+async function loadCRM() {
+  if (!ACCOUNT_ID) return;
+  if (!_crmStages.length) {
+    const sc = await apiFetch('/api/leads/crm/stages');
+    _crmStages = sc?.stages || [];
+  }
+  const data = await apiFetch(`/api/leads/crm/board?accountId=${ACCOUNT_ID}`);
+  if (!data) return;
+  _crmBoard = data;
+  const t = data.totals || {};
+  const fmt = n => '$' + Number(n||0).toLocaleString('es-CL');
+  const el = document.getElementById('crm-totals');
+  if (el) el.textContent = `${t.total_leads||0} leads · Pipeline ${fmt(t.pipeline_value)} · Ganado ${fmt(t.won_value)}`;
+  crmPopulateStageSelects();
+  if (_crmView === 'kanban') crmRenderKanban(); else crmRenderList();
+}
+
+function crmSwitchView(v) {
+  _crmView = v;
+  document.querySelectorAll('.crm-vt').forEach(b => b.classList.toggle('active', b.dataset.view === v));
+  document.getElementById('crm-kanban').style.display = v === 'kanban' ? 'flex' : 'none';
+  document.getElementById('crm-list').style.display  = v === 'list'   ? 'block' : 'none';
+  if (v === 'kanban') crmRenderKanban(); else crmRenderList();
+}
+
+function crmRenderKanban() {
+  const wrap = document.getElementById('crm-kanban');
+  if (!_crmBoard) { wrap.innerHTML = '<div class="crm-loading">Sin datos</div>'; return; }
+  wrap.innerHTML = _crmBoard.board.map(col => `
+    <div class="crm-col" data-stage="${col.id}">
+      <div class="crm-col-head">
+        <div class="crm-col-title"><span class="crm-col-dot" style="background:${col.color}"></span>${crmEsc(col.name)} <span style="color:var(--text-3);font-weight:600">${col.leads.length}</span></div>
+        <div class="crm-col-meta">${col.deal_total ? crmFmtVal(col.deal_total,'USD') : '—'}</div>
+      </div>
+      <div class="crm-col-body" data-stage="${col.id}" ondragover="crmDragOver(event)" ondragleave="crmDragLeave(event)" ondrop="crmDrop(event,'${col.id}')">
+        ${col.leads.map(l => crmCard(l)).join('') || '<div style="font-size:11.5px;color:var(--text-3);text-align:center;padding:20px">vacío</div>'}
+      </div>
+    </div>`).join('');
+}
+
+function crmCard(l) {
+  const q = l.qualification;
+  const qCls = q==='hot'?'crm-q-hot':q==='warm'?'crm-q-warm':q==='cold'?'crm-q-cold':'';
+  const ch = l.channel === 'whatsapp' ? '📱' : '📷';
+  const fu = l.next_followup_at ? `<span class="crm-card-fu">⏰ ${new Date(l.next_followup_at).toLocaleDateString('es-CL',{day:'numeric',month:'short'})}</span>` : '';
+  return `<div class="crm-card" draggable="true" data-id="${l.id}" ondragstart="crmDragStart(event,'${l.id}')" ondragend="crmDragEnd(event)" onclick="crmOpenDrawer('${l.id}')">
+    <div class="crm-card-top"><span class="crm-card-name">${crmEsc(l.contact_name || '@'+l.ig_username)}</span><span class="crm-card-ch">${ch}</span></div>
+    ${l.deal_value ? `<div class="crm-card-val">${crmFmtVal(l.deal_value,l.deal_currency)}</div>` : ''}
+    ${l.tags && l.tags.length ? `<div class="crm-card-tags">${l.tags.slice(0,3).map(t=>`<span class="crm-tag">${crmEsc(t)}</span>`).join('')}</div>` : ''}
+    <div class="crm-card-meta">${q && q!=='sin_calificar' ? `<span class="crm-card-q ${qCls}">${q}</span>` : '<span></span>'}<span>${fu || crmTimeAgo(l.last_message_at)}</span></div>
+  </div>`;
+}
+
+function crmDragStart(e,id){ _crmDragId=id; e.currentTarget.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; }
+function crmDragEnd(e){ e.currentTarget.classList.remove('dragging'); }
+function crmDragOver(e){ e.preventDefault(); e.currentTarget.classList.add('dragover'); }
+function crmDragLeave(e){ e.currentTarget.classList.remove('dragover'); }
+async function crmDrop(e,stage){
+  e.preventDefault();
+  e.currentTarget.classList.remove('dragover');
+  if(!_crmDragId) return;
+  const id=_crmDragId; _crmDragId=null;
+  await apiFetch(`/api/leads/${id}`,'PATCH',{ pipeline_stage: stage });
+  showToast('✓ Etapa actualizada');
+  loadCRM();
+}
+
+function crmPopulateStageSelects() {
+  const opts = _crmStages.map(s=>`<option value="${s.id}">${crmEsc(s.name)}</option>`).join('');
+  const fSel = document.getElementById('crm-list-stage');
+  if (fSel) { const cur=fSel.value; fSel.innerHTML = '<option value="">Todas las etapas</option>' + opts; fSel.value=cur; }
+  const dSel = document.getElementById('crm-d-stage');
+  if (dSel) dSel.innerHTML = opts;
+}
+
+function crmRenderList() {
+  if (!_crmBoard) return;
+  const q = (document.getElementById('crm-list-search')?.value||'').toLowerCase().replace('@','');
+  const stg = document.getElementById('crm-list-stage')?.value||'';
+  const stageById = Object.fromEntries(_crmStages.map(s=>[s.id,s]));
+  let all = [];
+  for (const col of _crmBoard.board) for (const l of col.leads) all.push({...l, _stage:col.id});
+  all = all.filter(l => {
+    if (stg && l._stage!==stg) return false;
+    if (q && !((l.ig_username||'').toLowerCase().includes(q) || (l.contact_name||'').toLowerCase().includes(q))) return false;
+    return true;
+  });
+  const body = document.getElementById('crm-list-body');
+  body.innerHTML = all.map(l => {
+    const s = stageById[l._stage] || {name:l._stage,color:'#64748b'};
+    return `<tr onclick="crmOpenDrawer('${l.id}')">
+      <td><strong>${crmEsc(l.contact_name||'@'+l.ig_username)}</strong></td>
+      <td><span class="crm-stage-pill" style="background:${s.color}">${crmEsc(s.name)}</span></td>
+      <td>${l.qualification&&l.qualification!=='sin_calificar'?l.qualification:'—'}</td>
+      <td>${crmFmtVal(l.deal_value,l.deal_currency)||'—'}</td>
+      <td>${(l.tags||[]).slice(0,2).map(t=>`<span class="crm-tag">${crmEsc(t)}</span>`).join(' ')||'—'}</td>
+      <td>${l.next_followup_at?new Date(l.next_followup_at).toLocaleDateString('es-CL'):'—'}</td>
+      <td style="color:var(--text-3)">${crmTimeAgo(l.last_message_at)}</td>
+      <td>›</td></tr>`;
+  }).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--text-3);padding:30px">Sin leads que coincidan</td></tr>';
+}
+
+async function crmOpenDrawer(id) {
+  _crmCurrentLeadId = id;
+  const lead = await apiFetch(`/api/leads/${id}`);
+  if (!lead) return;
+  document.getElementById('crm-d-name').textContent = lead.contact_name || '@'+lead.ig_username;
+  const igl = document.getElementById('crm-d-iglink');
+  if (lead.ig_username && lead.channel!=='whatsapp') { igl.href=`https://instagram.com/${lead.ig_username}`; igl.textContent=`@${lead.ig_username}`; }
+  else { igl.removeAttribute('href'); igl.textContent = lead.channel==='whatsapp'?'WhatsApp':''; }
+  document.getElementById('crm-d-stage').value = lead.pipeline_stage || 'nuevo';
+  document.getElementById('crm-d-value').value = lead.deal_value || '';
+  document.getElementById('crm-d-currency').value = lead.deal_currency || 'USD';
+  document.getElementById('crm-d-contact').value = lead.contact_name || '';
+  document.getElementById('crm-d-tags').value = (lead.tags||[]).join(', ');
+  document.getElementById('crm-d-followup').value = lead.next_followup_at ? lead.next_followup_at.slice(0,10) : '';
+  crmRenderTimeline(lead.activity_log||[]);
+  document.getElementById('crm-drawer-overlay').classList.add('open');
+}
+function crmCloseDrawer(){ document.getElementById('crm-drawer-overlay').classList.remove('open'); _crmCurrentLeadId=null; }
+
+async function crmUpdateField(field, value) {
+  if (!_crmCurrentLeadId) return;
+  const body = {}; body[field] = value;
+  await apiFetch(`/api/leads/${_crmCurrentLeadId}`,'PATCH',body);
+  loadCRM();
+}
+
+function crmRenderTimeline(log) {
+  const ic = {llamada:'📞',email:'✉️',nota:'📝',whatsapp:'💬',reunion:'🤝',sistema:'⚙️'};
+  const el = document.getElementById('crm-timeline');
+  if (!log || !log.length) { el.innerHTML='<div class="crm-tl-empty">Sin actividad todavía</div>'; return; }
+  el.innerHTML = log.slice().reverse().map(e => `
+    <div class="crm-tl-item">
+      <div class="crm-tl-icon">${ic[e.type]||'📝'}</div>
+      <div class="crm-tl-content">
+        <div class="crm-tl-text">${crmEsc(e.text)}</div>
+        <div class="crm-tl-meta">${new Date(e.at).toLocaleString('es-CL',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})} · ${crmEsc(e.type)}</div>
+      </div>
+      <span class="crm-tl-del" onclick="crmDelNote('${e.id}')">✕</span>
+    </div>`).join('');
+}
+async function crmAddNote() {
+  if (!_crmCurrentLeadId) return;
+  const txt = document.getElementById('crm-note-text');
+  const type = document.getElementById('crm-note-type').value;
+  if (!txt.value.trim()) return;
+  await apiFetch(`/api/leads/${_crmCurrentLeadId}/activity`,'POST',{ text:txt.value.trim(), type });
+  txt.value='';
+  const lead = await apiFetch(`/api/leads/${_crmCurrentLeadId}`);
+  if (lead) crmRenderTimeline(lead.activity_log||[]);
+}
+async function crmDelNote(entryId) {
+  if (!_crmCurrentLeadId) return;
+  await apiFetch(`/api/leads/${_crmCurrentLeadId}/activity/${entryId}`,'DELETE');
+  const lead = await apiFetch(`/api/leads/${_crmCurrentLeadId}`);
+  if (lead) crmRenderTimeline(lead.activity_log||[]);
+}
+function crmOpenConversation() {
+  if (!_crmCurrentLeadId) return false;
+  const id = _crmCurrentLeadId;
+  crmCloseDrawer();
+  const navItem = document.querySelector('.nav-item[data-section="leads"]');
+  if (navItem) navItem.click();
+  setTimeout(()=>{ if (typeof showLeadDetail==='function') showLeadDetail(id); }, 400);
+  return false;
+}
+function crmExport() {
+  if (!ACCOUNT_ID) return;
+  fetch(`/api/growth/export-crm?accountId=${ACCOUNT_ID}`, {
+    headers: { 'Authorization': `Bearer ${AUTH_TOKEN}` },
+  })
+  .then(r => { if (!r.ok) throw new Error('Error exportando'); return r.blob(); })
+  .then(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `atinov-crm-${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    showToast('📥 CSV CRM descargado — importable en Airtable/HubSpot/Pipedrive');
+  })
+  .catch(e => showToast('❌ ' + e.message));
+}
+
+try { _safeExpose('loadCRM', loadCRM); } catch {}
+try { _safeExpose('crmSwitchView', crmSwitchView); } catch {}
+try { _safeExpose('crmDragStart', crmDragStart); } catch {}
+try { _safeExpose('crmDragEnd', crmDragEnd); } catch {}
+try { _safeExpose('crmDragOver', crmDragOver); } catch {}
+try { _safeExpose('crmDragLeave', crmDragLeave); } catch {}
+try { _safeExpose('crmDrop', crmDrop); } catch {}
+try { _safeExpose('crmOpenDrawer', crmOpenDrawer); } catch {}
+try { _safeExpose('crmCloseDrawer', crmCloseDrawer); } catch {}
+try { _safeExpose('crmUpdateField', crmUpdateField); } catch {}
+try { _safeExpose('crmAddNote', crmAddNote); } catch {}
+try { _safeExpose('crmDelNote', crmDelNote); } catch {}
+try { _safeExpose('crmRenderList', crmRenderList); } catch {}
+try { _safeExpose('crmOpenConversation', crmOpenConversation); } catch {}
+try { _safeExpose('crmExport', crmExport); } catch {}
 
 // ── START ─────────────────────────────────────────────────────────────────────
 init();
