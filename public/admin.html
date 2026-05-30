@@ -185,6 +185,7 @@
       <div class="tab" onclick="switchTab('codes',this)">🎟️ Códigos</div>
       <div class="tab" onclick="switchTab('discounts',this)">💸 Cupones LS</div>
       <div class="tab" onclick="switchTab('metrics',this)">📊 Métricas</div>
+      <div class="tab" onclick="switchTab('simulator',this)">🎭 Simulador</div>
       <div class="tab" onclick="switchTab('system',this)">⚙️ Sistema</div>
     </div>
 
@@ -417,6 +418,58 @@
       </div>
     </div>
 
+    <!-- ── SIMULADOR DE CONVERSACIONES ── -->
+    <div id="tab-simulator" class="section">
+      <div class="card" style="margin-bottom:14px">
+        <h3 style="margin-top:0">🎭 Simulador de conversaciones</h3>
+        <p style="color:#888;font-size:0.86rem;margin-bottom:16px">
+          Un bot-prospecto conversa con tu agente real para que pruebes el guion sin gastar DMs reales ni arriesgar baneo de Meta. Elegí el perfil del prospecto y corré la simulación.
+        </p>
+        <div class="form-row" style="gap:12px;flex-wrap:wrap;align-items:flex-end">
+          <div class="form-group" style="flex:1;min-width:160px">
+            <label>Agente a probar</label>
+            <select id="sim-agent"></select>
+          </div>
+          <div class="form-group" style="flex:1;min-width:140px">
+            <label>Tipo de prospecto</label>
+            <select id="sim-icp"></select>
+          </div>
+          <div class="form-group" style="flex:1;min-width:130px">
+            <label>Temperatura</label>
+            <select id="sim-temp"></select>
+          </div>
+          <div class="form-group" style="flex:1;min-width:140px">
+            <label>Objeción principal</label>
+            <select id="sim-objection"></select>
+          </div>
+          <div class="form-group" style="min-width:90px">
+            <label>Turnos</label>
+            <input type="number" id="sim-turns" value="6" min="2" max="12">
+          </div>
+        </div>
+        <div class="form-row" style="gap:12px;flex-wrap:wrap;align-items:flex-end;margin-top:6px">
+          <div class="form-group" style="flex:2;min-width:240px">
+            <label>Saludo inicial (opcional — si lo dejás vacío, el prospecto abre)</label>
+            <input type="text" id="sim-opener" placeholder="ej: hola! cómo estás? 👋">
+          </div>
+          <div class="form-group" style="flex:1;min-width:160px">
+            <label>Notas extra del prospecto (opcional)</label>
+            <input type="text" id="sim-notes" placeholder="ej: vende cursos de yoga">
+          </div>
+          <button class="btn btn-primary" id="sim-run-btn" onclick="runSimulator()" style="height:42px">▶ Simular conversación</button>
+        </div>
+      </div>
+
+      <div class="card" id="sim-result-card" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+          <h3 style="margin:0">💬 Transcripción</h3>
+          <span id="sim-outcome" style="font-size:0.82rem;font-weight:700;padding:4px 12px;border-radius:14px"></span>
+        </div>
+        <div id="sim-chat" style="display:flex;flex-direction:column;gap:10px;max-width:680px"></div>
+        <div id="sim-tip" style="margin-top:16px;padding:12px 14px;background:#1a1a2e;border:1px dashed #2a2a4a;border-radius:8px;font-size:0.82rem;color:#a0a0c0"></div>
+      </div>
+    </div>
+
     <!-- ── SISTEMA ── -->
     <div id="tab-system" class="section">
       <div class="card">
@@ -636,6 +689,90 @@ function switchTab(name, el) {
   if (name === 'metrics')   loadMetrics();
   if (name === 'system')    loadSystem();
   if (name === 'discounts') loadDiscounts();
+  if (name === 'simulator') loadSimulatorOptions();
+}
+
+// ── SIMULADOR DE CONVERSACIONES ─────────────────────────────────────────────
+let _simLoaded = false;
+async function loadSimulatorOptions() {
+  if (_simLoaded) return;
+  try {
+    const o = await api('GET', '/api/admin/simulator/options');
+    const fill = (id, arr, valFn, labFn) => {
+      const sel = document.getElementById(id);
+      sel.innerHTML = arr.map(x => `<option value="${valFn(x)}">${labFn(x)}</option>`).join('');
+    };
+    fill('sim-agent', o.agents, a => a.id, a => a.name);
+    fill('sim-icp', o.icps, x => x.id, x => x.label);
+    fill('sim-temp', o.temperatures, x => x.id, x => x.label);
+    const objLabels = { precio:'Precio', tiempo:'Tiempo/setup', desconfianza:'Desconfianza', ya_tengo:'Ya tengo algo', ninguna:'Ninguna' };
+    fill('sim-objection', o.objections, x => x, x => objLabels[x] || x);
+    document.getElementById('sim-temp').value = 'tibio';
+    _simLoaded = true;
+    if (!o.agents.length) {
+      document.getElementById('sim-agent').innerHTML = '<option value="">No hay agentes — creá uno primero</option>';
+    }
+  } catch (e) {
+    alert('Error cargando opciones: ' + e.message);
+  }
+}
+
+async function runSimulator() {
+  const btn = document.getElementById('sim-run-btn');
+  const agentId = document.getElementById('sim-agent').value;
+  if (!agentId) { alert('Elegí un agente'); return; }
+  const body = {
+    agentId,
+    icp:         document.getElementById('sim-icp').value,
+    temperature: document.getElementById('sim-temp').value,
+    objection:   document.getElementById('sim-objection').value,
+    maxTurns:    parseInt(document.getElementById('sim-turns').value) || 6,
+    opener:      document.getElementById('sim-opener').value.trim() || 'lead',
+    extraNotes:  document.getElementById('sim-notes').value.trim() || undefined,
+  };
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = '⏳ Simulando…';
+  try {
+    const r = await api('POST', '/api/admin/simulator/run', body);
+    renderSimulation(r);
+  } catch (e) {
+    alert('Error: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = orig;
+  }
+}
+
+function renderSimulation(r) {
+  document.getElementById('sim-result-card').style.display = 'block';
+  const chat = document.getElementById('sim-chat');
+  const esc = s => String(s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  chat.innerHTML = r.transcript.map(m => {
+    const isAgent = m.role === 'agent';
+    const align = isAgent ? 'flex-end' : 'flex-start';
+    const bg = isAgent ? 'linear-gradient(135deg,#10b981,#06b6d4)' : '#262638';
+    const who = isAgent ? '🤖 Agente' : '👤 Prospecto';
+    return `<div style="align-self:${align};max-width:78%">
+      <div style="font-size:10px;color:#666;margin-bottom:3px;${isAgent?'text-align:right':''}">${who}</div>
+      <div style="background:${bg};color:#fff;padding:10px 14px;border-radius:14px;font-size:13.5px;line-height:1.45">${esc(m.content)}</div>
+    </div>`;
+  }).join('');
+
+  const out = document.getElementById('sim-outcome');
+  const map = {
+    cerrado:          { t:'✅ CERRÓ — aceptó la prueba', bg:'#dcfce7', c:'#16a34a' },
+    frio_o_abandono:  { t:'❄️ SE ENFRIÓ / abandonó', bg:'#fee2e2', c:'#dc2626' },
+    en_curso:         { t:'⏳ Quedó en curso (sin cierre)', bg:'#fef3c7', c:'#d97706' },
+  };
+  const o = map[r.outcome] || map.en_curso;
+  out.textContent = o.t; out.style.background = o.bg; out.style.color = o.c;
+
+  const tips = {
+    cerrado:         'El guion funcionó con este perfil. Probá con un prospecto más difícil (frío + desconfianza) para encontrar dónde se rompe.',
+    frio_o_abandono: 'El prospecto se enfrió. Revisá: ¿el agente tocó el dolor específico? ¿manejó la objeción? ¿el saludo fue muy genérico? Ajustá las instrucciones del agente y volvé a correr.',
+    en_curso:        'No hubo cierre claro en los turnos dados. Probá subir los turnos o revisá si el agente está llevando hacia el próximo paso (pedir el "sí" para la prueba).',
+  };
+  document.getElementById('sim-tip').textContent = '💡 ' + (tips[r.outcome] || tips.en_curso) +
+    `  ·  Perfil: ${r.profile.icp} / ${r.profile.temperature} / objeción ${r.profile.objection}.`;
 }
 
 // ── DISCOUNTS / CUPONES LS ──────────────────────────────────────────────────

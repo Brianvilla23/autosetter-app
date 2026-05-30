@@ -1551,4 +1551,72 @@ router.post('/restore', express.json({ limit: '50mb' }), async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SIMULADOR DE CONVERSACIONES — QA del guion del agente
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * GET /api/admin/simulator/options
+ * Devuelve los perfiles disponibles (ICP, temperaturas, objeciones) + agentes
+ * de la cuenta para poblar el formulario.
+ */
+router.get('/simulator/options', async (req, res) => {
+  try {
+    const { ICPS, TEMPERATURES, OBJECTIONS } = require('../services/conversationSimulator');
+    const accountId = req.query.accountId || req.user.accountId;
+    const agents = await db.find(db.agents, { account_id: accountId });
+    res.json({
+      icps:         Object.entries(ICPS).map(([id, v]) => ({ id, label: v.label })),
+      temperatures: Object.entries(TEMPERATURES).map(([id, v]) => ({ id, label: v.label })),
+      objections:   Object.keys(OBJECTIONS),
+      agents:       agents.map(a => ({ id: a._id, name: a.name })),
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
+ * POST /api/admin/simulator/run
+ * Body: { agentId, icp, temperature, objection, opener?, maxTurns?, extraNotes? }
+ *
+ * Corre una simulación: bot-prospecto vs agente real. Devuelve transcripción
+ * + outcome. NO toca Instagram ni crea leads — solo OpenAI.
+ */
+router.post('/simulator/run', async (req, res) => {
+  try {
+    const { agentId, icp, temperature, objection, opener, maxTurns, extraNotes } = req.body;
+    if (!agentId) return res.status(400).json({ error: 'agentId requerido' });
+
+    const agent = await db.findOne(db.agents, { _id: agentId });
+    if (!agent) return res.status(404).json({ error: 'Agente no encontrado' });
+
+    const accountId = agent.account_id;
+    // Cargar knowledge + links igual que lo hace el webhook real
+    const allKnowledge = await db.find(db.knowledge, { account_id: accountId });
+    const knowledge = allKnowledge.filter(k => k.is_main || (k.agent_ids || []).includes(agent._id));
+    const allLinks = await db.find(db.links, { account_id: accountId });
+    const links = (agent.link_ids || []).map(lid => allLinks.find(l => l._id === lid)).filter(Boolean);
+
+    const settings = await db.findOne(db.settings, { account_id: accountId });
+    const apiKey = process.env.OPENAI_API_KEY || settings?.openai_key;
+
+    const { runSimulation } = require('../services/conversationSimulator');
+    const result = await runSimulation({
+      agent, knowledge, links,
+      icp: icp || 'coach',
+      temperature: temperature || 'tibio',
+      objection: objection || 'ninguna',
+      opener: opener || 'lead',
+      maxTurns: Math.min(Math.max(parseInt(maxTurns) || 6, 2), 12),
+      extraNotes,
+      accountId, apiKey,
+    });
+
+    await audit(req, 'simulator_run', agentId, { icp, temperature, objection, outcome: result.outcome });
+    res.json(result);
+  } catch (e) {
+    console.error('simulator/run error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;
