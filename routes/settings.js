@@ -7,6 +7,45 @@ function assertOwnsAccount(req, accountId) {
   return accountId && accountId === req.user.accountId;
 }
 
+// ── Sanitización de secrets antes de mandar al frontend ──────────────────────
+// SEGURIDAD: nunca enviar tokens/keys crudos al cliente. Aunque el endpoint
+// está protegido por auth + tenant isolation, un secret que viaja al browser
+// queda en el Network tab, logs de CDN/proxy, y es robable vía XSS. El
+// frontend solo necesita saber SI existe el secret, no su valor.
+
+/** Enmascara un secret dejando ver prefijo + últimos 4 (ej "sk-pro…wXyZ"). */
+function maskSecret(s) {
+  if (!s || typeof s !== 'string') return null;
+  if (s.length <= 10) return '••••';
+  return s.slice(0, 5) + '…' + s.slice(-4);
+}
+
+/** Quita campos sensibles del account; expone solo flags de presencia. */
+function sanitizeAccount(account) {
+  if (!account) return null;
+  const {
+    access_token, wa_access_token, token_last_error, // sensibles → fuera
+    ...safe
+  } = account;
+  return {
+    ...safe,
+    id: account._id,
+    has_access_token:    !!access_token,
+    has_wa_access_token: !!wa_access_token,
+  };
+}
+
+/** Quita la openai_key cruda; expone flag + masked para mostrar en UI. */
+function sanitizeSettings(settings) {
+  if (!settings) return null;
+  const { openai_key, ...safe } = settings;
+  return {
+    ...safe,
+    has_openai_key:    !!openai_key,
+    openai_key_masked: maskSecret(openai_key),
+  };
+}
+
 router.get('/', async (req, res, next) => {
   try {
     const { accountId } = req.query;
@@ -20,7 +59,11 @@ router.get('/', async (req, res, next) => {
     const account  = await db.findOne(db.accounts, { _id: effectiveId });
     const settings = await db.findOne(db.settings, { account_id: effectiveId });
     const stats    = await buildStats(effectiveId);
-    res.json({ account: account ? { ...account, id: account._id } : null, settings, stats });
+    res.json({
+      account:  sanitizeAccount(account),
+      settings: sanitizeSettings(settings),
+      stats,
+    });
   } catch (e) { next(e); }
 });
 
@@ -39,11 +82,25 @@ router.put('/', async (req, res, next) => {
   try {
     const { accountId, openai_key } = req.body;
     if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
+
+    // SEGURIDAD: el frontend ya NO recibe la key cruda (solo masked). Por eso,
+    // si el campo llega vacío o contiene el caracter del masked (…), NO pisamos
+    // la key existente — el user simplemente no la cambió. Solo guardamos cuando
+    // viene una key NUEVA real.
+    const isMaskedOrEmpty = !openai_key || !openai_key.trim() || openai_key.includes('…');
+
     const exists = await db.findOne(db.settings, { account_id: accountId });
+    if (isMaskedOrEmpty) {
+      // No tocar la openai_key. Si no existe el doc de settings, crearlo vacío.
+      if (!exists) await db.insert(db.settings, { account_id: accountId, openai_key: '' });
+      return res.json({ ok: true, unchanged: true });
+    }
+
+    const cleanKey = openai_key.trim();
     if (exists) {
-      await db.update(db.settings, { account_id: accountId }, { openai_key, updatedAt: new Date().toISOString() });
+      await db.update(db.settings, { account_id: accountId }, { openai_key: cleanKey, updatedAt: new Date().toISOString() });
     } else {
-      await db.insert(db.settings, { account_id: accountId, openai_key });
+      await db.insert(db.settings, { account_id: accountId, openai_key: cleanKey });
     }
     res.json({ ok: true });
   } catch (e) { next(e); }

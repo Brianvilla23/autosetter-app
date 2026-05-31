@@ -570,6 +570,13 @@ app.get('/about', (req, res) => {
 app.get('/contact', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'contact.html'));
 });
+// Panel admin: sin esta ruta explícita el catch-all servía el dashboard
+// cliente (index.html) en /admin. Ahora /admin → admin.html (que tiene su
+// propio login admin). El gate real de seguridad está en /api/admin/* con
+// requireAdmin — admin.html sin auth solo muestra el login.
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
 app.get('/data-deletion', (req, res) => {
   // Meta requiere una URL de "instrucciones para eliminación de datos".
   // La privacy explica cómo pedir eliminación, así que apuntamos ahí.

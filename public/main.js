@@ -1285,7 +1285,19 @@ async function loadSettings() {
   const data = await apiFetch(`/api/settings?accountId=${ACCOUNT_ID}`);
   if (!data) return;
 
-  document.getElementById('openai-key').value = data.settings?.openai_key || '';
+  // SEGURIDAD: el backend ya no manda la openai_key cruda — solo un masked.
+  // Mostramos el masked como PLACEHOLDER (no como value) para que el user sepa
+  // que tiene una key cargada sin exponerla. Si deja el campo vacío al guardar,
+  // el backend NO pisa la key existente.
+  const keyInput = document.getElementById('openai-key');
+  if (keyInput) {
+    keyInput.value = '';
+    if (data.settings?.has_openai_key) {
+      keyInput.placeholder = `Key configurada (${data.settings.openai_key_masked || 'sk-…'}) — escribe una nueva para reemplazarla`;
+    } else {
+      keyInput.placeholder = 'sk-proj-…';
+    }
+  }
 
   // Instagram connected state
   const isConnected = data.account?.ig_user_id && data.account.ig_user_id !== 'demo_ig_id';
