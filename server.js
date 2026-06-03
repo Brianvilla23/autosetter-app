@@ -378,10 +378,22 @@ app.use('/api/user', authLimiter,    require('./routes/userAuth'));    // login 
 // ─────────────────────────────────────────────────────────────────────────────
 // MERCADO PAGO WEBHOOK (standard JSON, no raw body needed)
 // ─────────────────────────────────────────────────────────────────────────────
-app.post('/api/billing/mp-webhook', async (req, res) => {
+app.post('/api/billing/mp-webhook', webhookLimiter, async (req, res) => {
   try {
     const mpToken = process.env.MP_ACCESS_TOKEN;
     if (!mpToken) return res.status(400).json({ error: 'MP_ACCESS_TOKEN no configurado' });
+
+    // SEGURIDAD: validar firma x-signature de MP antes de procesar. Si
+    // MP_WEBHOOK_SECRET no está configurado, se omite (skipped) pero la
+    // defensa de fondo sigue siendo que re-consultamos el estado a la API
+    // de MP. Con el secret seteado, rechazamos forjados sin gastar API call.
+    const { verifyMpSignature } = require('./services/mpWebhook');
+    const sig = verifyMpSignature(req);
+    if (!sig.ok) {
+      console.error(`[mp-webhook] firma inválida: ${sig.reason}`);
+      return res.status(401).json({ error: 'invalid signature' });
+    }
+    if (sig.skipped) console.warn('[mp-webhook] MP_WEBHOOK_SECRET no configurado — firma no verificada (configurar antes de producción)');
 
     const eventType = req.body?.type || req.query?.type;
     const dataId    = req.body?.data?.id || req.query?.['data.id'];
