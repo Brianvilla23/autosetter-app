@@ -1,49 +1,15 @@
 const express = require('express');
 const router  = express.Router();
 const db      = require('../db/database');
+// Sanitización de secrets — módulo compartido + testeado (test/security.test.js).
+// SEGURIDAD: nunca enviar tokens/keys crudos al cliente. Aunque el endpoint
+// está protegido por auth + tenant isolation, un secret que viaja al browser
+// queda en el Network tab, logs de CDN/proxy, y es robable vía XSS.
+const { sanitizeAccount, sanitizeSettings } = require('../services/sanitize');
 
 // ── Tenant isolation helper ─────────────────────────────────────────────────
 function assertOwnsAccount(req, accountId) {
   return accountId && accountId === req.user.accountId;
-}
-
-// ── Sanitización de secrets antes de mandar al frontend ──────────────────────
-// SEGURIDAD: nunca enviar tokens/keys crudos al cliente. Aunque el endpoint
-// está protegido por auth + tenant isolation, un secret que viaja al browser
-// queda en el Network tab, logs de CDN/proxy, y es robable vía XSS. El
-// frontend solo necesita saber SI existe el secret, no su valor.
-
-/** Enmascara un secret dejando ver prefijo + últimos 4 (ej "sk-pro…wXyZ"). */
-function maskSecret(s) {
-  if (!s || typeof s !== 'string') return null;
-  if (s.length <= 10) return '••••';
-  return s.slice(0, 5) + '…' + s.slice(-4);
-}
-
-/** Quita campos sensibles del account; expone solo flags de presencia. */
-function sanitizeAccount(account) {
-  if (!account) return null;
-  const {
-    access_token, wa_access_token, token_last_error, // sensibles → fuera
-    ...safe
-  } = account;
-  return {
-    ...safe,
-    id: account._id,
-    has_access_token:    !!access_token,
-    has_wa_access_token: !!wa_access_token,
-  };
-}
-
-/** Quita la openai_key cruda; expone flag + masked para mostrar en UI. */
-function sanitizeSettings(settings) {
-  if (!settings) return null;
-  const { openai_key, ...safe } = settings;
-  return {
-    ...safe,
-    has_openai_key:    !!openai_key,
-    openai_key_masked: maskSecret(openai_key),
-  };
 }
 
 router.get('/', async (req, res, next) => {
