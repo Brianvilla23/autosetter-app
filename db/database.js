@@ -322,6 +322,29 @@ async function migrateLegacyLSPlans() {
 
 migrateLegacyLSPlans().catch(console.error);
 
+// ── Migración 2026-05: backfill agent.role = 'nurture' ───────────────────────
+// La separación en dos agentes (nurture/prospect) agrega el campo `role`.
+// Los agentes existentes son todos de nutrición (comportamiento actual), así
+// que les seteamos role='nurture' explícito para que la UI lo muestre bien.
+// Idempotente: solo toca agentes sin role. NO cambia comportamiento (roleOf()
+// ya trata el undefined como 'nurture').
+async function migrateAgentRoles() {
+  try {
+    const agents = await db.find(db.agents, {});
+    let migrated = 0;
+    for (const a of agents) {
+      if (a.role === 'nurture' || a.role === 'prospect') continue;
+      await db.update(db.agents, { _id: a._id }, { role: 'nurture' });
+      migrated++;
+    }
+    if (migrated) console.log(`🔄 migrateAgentRoles: ${migrated} agente(s) marcados role='nurture'`);
+  } catch (e) {
+    console.error('migrateAgentRoles error:', e.message);
+  }
+}
+
+migrateAgentRoles().catch(console.error);
+
 // syncAccountFromEnv removed — account is properly linked via Instagram Business Login OAuth.
 // The OAuth flow in routes/auth.js stores ig_user_id, ig_platform_id and access_token in DB.
 // Using META_ACCESS_TOKEN env var with graph.facebook.com is incompatible with IGAA tokens.

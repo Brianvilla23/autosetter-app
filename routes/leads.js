@@ -78,6 +78,8 @@ router.patch('/:id', async (req, res, next) => {
       automation, agent_id, is_bypassed, is_converted, status, qualification,
       // ── Campos CRM ──
       pipeline_stage, deal_value, deal_currency, tags, next_followup_at, contact_name,
+      // ── Handoff entre agentes (prospección → nutrición) ──
+      handoff_state,
     } = req.body;
     const upd = {};
     if (automation     !== undefined) upd.automation     = automation;
@@ -86,6 +88,15 @@ router.patch('/:id', async (req, res, next) => {
     if (is_converted   !== undefined) upd.is_converted   = is_converted;
     if (status         !== undefined) upd.status         = status;
     if (qualification  !== undefined) upd.qualification  = qualification;
+    // handoff_state: 'human_assisted' (humano prospecta en frío) | 'automated'
+    // (lead entró en calor → lo toma el agente nurture) | null.
+    if (handoff_state !== undefined) {
+      if (!['human_assisted', 'automated', null].includes(handoff_state)) {
+        return res.status(400).json({ error: 'handoff_state inválido' });
+      }
+      upd.handoff_state = handoff_state;
+      upd.handoff_at = new Date().toISOString();
+    }
 
     // ── Campos CRM con validación ──
     if (pipeline_stage !== undefined) {

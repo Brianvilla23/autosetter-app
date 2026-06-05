@@ -6,6 +6,7 @@ const { generateReply, classifyLead } = require('../services/openai');
 const { sendMessage, getIGUserInfo } = require('../services/meta');
 const wa = require('../services/whatsapp');
 const PIPE = require('../config/pipeline');
+const { selectAgent } = require('../services/agents');
 const { checkDMAllowance, incrementDMCount } = require('../services/limits');
 const { v4: uuidv4 } = require('uuid');
 
@@ -149,14 +150,17 @@ async function handleDM(pageId, event) {
   const bypassed = await db.findOne(db.bypassed, { account_id: account._id, ig_user_id: senderId });
   if (bypassed) return;
 
-  // Find enabled agent
-  const agents = await db.find(db.agents, { account_id: account._id, enabled: true },
-    (a, b) => a.createdAt.localeCompare(b.createdAt));
-  const agent = agents[0];
-  if (!agent) return;
-
-  // Get or create lead
+  // Buscar lead existente PRIMERO para que selectAgent respete handoff_state.
   let lead = await db.findOne(db.leads, { account_id: account._id, ig_user_id: senderId });
+
+  // Seleccionar agente. nurture → responde auto; prospect / human_assisted → NO.
+  const sel = await selectAgent(account, lead);
+  const agent = sel.agent;
+  if (!agent) return;
+  if (!sel.canAuto) {
+    console.log(`⏸️  DM no auto-respondido (${sel.reason}) — @${lead?.ig_username || senderId}. Lo maneja el humano.`);
+    return;
+  }
 
   if (!lead) {
     // ── KEYWORD GATE: Si es el primer mensaje, verificar keywords del agente ──
@@ -199,12 +203,14 @@ async function handleComment(pageId, commentData) {
     console.log(`🔌 Comment ignorado (account needs_reauth) para @${account.ig_username || pageId}`);
     return;
   }
-  const agents = await db.find(db.agents, { account_id: account._id, enabled: true },
-    (a, b) => a.createdAt.localeCompare(b.createdAt));
-  const agent = agents[0];
+  // Seleccionar agente (nurture → auto). Para comentarios no hay lead aún,
+  // así que selectAgent decide solo por rol; prospect no auto-responde.
+  const sel = await selectAgent(account, null);
+  const agent = sel.agent;
 
-  if (!commenterIgId || !agent || !containsTrigger(commentText, agent)) {
-    if (commenterIgId) console.log(`💬 Comentario ignorado (sin keyword): "${commentText}"`);
+  if (!commenterIgId || !agent || !sel.canAuto || !containsTrigger(commentText, agent)) {
+    if (commenterIgId && agent && !sel.canAuto) console.log(`⏸️  Comentario no auto-respondido (${sel.reason}).`);
+    else if (commenterIgId) console.log(`💬 Comentario ignorado (sin keyword): "${commentText}"`);
     return;
   }
 
@@ -299,15 +305,18 @@ async function handleWhatsAppMessage(phoneNumberId, msg, value) {
   const bypassed = await db.findOne(db.bypassed, { account_id: account._id, wa_id: senderId });
   if (bypassed) return;
 
-  // Find enabled agent (mismo modelo que IG)
-  const agents = await db.find(db.agents, { account_id: account._id, enabled: true },
-    (a, b) => a.createdAt.localeCompare(b.createdAt));
-  const agent = agents[0];
-  if (!agent) return;
-
-  // Get or create lead — usamos `wa_id` como identificador y reutilizamos
-  // ig_user_id/ig_username para que el inbox y leads UI no necesiten cambios.
+  // Buscar lead existente primero (mismo modelo que IG) para respetar handoff.
   let lead = await db.findOne(db.leads, { account_id: account._id, wa_id: senderId });
+
+  // Seleccionar agente (nurture → auto; prospect / human_assisted → NO).
+  const sel = await selectAgent(account, lead);
+  const agent = sel.agent;
+  if (!agent) return;
+  if (!sel.canAuto) {
+    console.log(`⏸️  WSP no auto-respondido (${sel.reason}) — ${lead?.wa_name || senderId}. Lo maneja el humano.`);
+    return;
+  }
+
   if (!lead) {
     if (!containsTrigger(text, agent)) {
       console.log(`🔒 WSP DM ignorado (sin keyword) de ${senderId}: "${text}"`);

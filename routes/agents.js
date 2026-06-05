@@ -3,6 +3,7 @@ const router  = express.Router();
 const db      = require('../db/database');
 const { v4: uuidv4 } = require('uuid');
 const { enforceMaxAgents, enforceFollowupFeature } = require('../middleware/checkPlanLimits');
+const { isValidRole, roleOf } = require('../config/agentRoles');
 
 // ── Tenant isolation helper ─────────────────────────────────────────────────
 // Verifica que el accountId del request matchee con el del JWT del usuario.
@@ -55,9 +56,14 @@ router.get('/:id', async (req, res, next) => {
 // POST create agent
 router.post('/', enforceMaxAgents, async (req, res, next) => {
   try {
-    const { accountId, name, avatar = '🤖', instructions = '' } = req.body;
+    const { accountId, name, avatar = '🤖', instructions = '', role } = req.body;
     if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
-    const agent = await db.insert(db.agents, { account_id: accountId, name, avatar, instructions, enabled: true, link_ids: [] });
+    // role: 'nurture' (default, comportamiento actual) o 'prospect' (asistente humano).
+    const agentRole = isValidRole(role) ? role : 'nurture';
+    const agent = await db.insert(db.agents, {
+      account_id: accountId, name, avatar, instructions, role: agentRole,
+      enabled: true, link_ids: [],
+    });
     res.json({ ...agent, id: agent._id });
   } catch (e) { next(e); }
 });
@@ -69,9 +75,10 @@ router.put('/:id', enforceFollowupFeature, async (req, res, next) => {
     if (!owned) return;
     const {
       name, avatar, instructions, enabled, trigger_keywords, delay_min, delay_max,
-      followup_enabled, followup_delay_hours,
+      followup_enabled, followup_delay_hours, role,
     } = req.body;
     const upd = { name, avatar, instructions, enabled, trigger_keywords, delay_min, delay_max };
+    if (isValidRole(role)) upd.role = role;
     if (typeof followup_enabled === 'boolean') upd.followup_enabled = followup_enabled;
     if (followup_delay_hours !== undefined) {
       const h = Math.max(1, Math.min(23, Number(followup_delay_hours) || 3));
@@ -162,6 +169,36 @@ router.post('/:id/test', async (req, res, next) => {
     const classification = await classifyLead({ conversationHistory: fullHistory, accountId }).catch(() => null);
 
     res.json({ reply, classification });
+  } catch (e) { next(e); }
+});
+
+// ── POST /:id/prospect-draft — genera un borrador para prospección en frío ───
+// El agente role='prospect' NO envía: solo redacta para que el humano revise.
+// Body: { accountId, mode: 'opener'|'reply', lastLeadMessage?, history?, leadInfo? }
+router.post('/:id/prospect-draft', async (req, res, next) => {
+  try {
+    const { accountId, mode = 'reply', lastLeadMessage = '', history = [], leadInfo } = req.body;
+    if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
+    const owned = await loadOwnedAgent(req, res);
+    if (!owned) return;
+
+    // Solo agentes de prospección generan drafts (un nurture no tiene sentido acá).
+    if (roleOf(owned) !== 'prospect') {
+      return res.status(400).json({ error: 'Este agente no es de prospección. Cambiá su rol a "prospect" o usá /test.' });
+    }
+
+    const knowledgeDocs = await db.find(db.knowledge, { account_id: accountId });
+    const knowledge = knowledgeDocs.filter(k => k.is_main || (k.agent_ids || []).includes(req.params.id));
+
+    const settings = await db.findOne(db.settings, { account_id: accountId });
+    const apiKey = process.env.OPENAI_API_KEY || settings?.openai_key;
+
+    const { generateProspectDraft } = require('../services/agents/prospectAgent');
+    const result = await generateProspectDraft({
+      agent: owned, knowledge, mode,
+      lastLeadMessage, conversationHistory: history, leadInfo, apiKey,
+    });
+    res.json(result); // { draft, ready_for_handoff }
   } catch (e) { next(e); }
 });
 
