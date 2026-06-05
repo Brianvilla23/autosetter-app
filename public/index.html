@@ -1198,6 +1198,16 @@
       <label>Avatar (emoji)</label>
       <input type="text" id="new-agent-avatar" placeholder="👩" class="form-input" style="width:80px">
     </div>
+    <div class="form-row">
+      <label>Tipo de agente</label>
+      <select id="new-agent-role" class="form-input" onchange="updateAgentRoleHint()">
+        <option value="nurture">Nutrición / Closer — responde automático a quien ya escribió</option>
+        <option value="prospect">Prospección — asiste al humano (no envía en frío)</option>
+      </select>
+      <p id="agent-role-hint" style="font-size:12px;color:var(--text-3);margin-top:6px;line-height:1.5">
+        Atiende automáticamente a leads que ya escribieron, comentaron o dieron un trigger. Califica, nutre y agenda. Compatible con políticas de Meta.
+      </p>
+    </div>
     <div class="form-actions">
       <button class="btn-ghost" id="btn-cancel-agent-modal">Cancelar</button>
       <button class="btn-primary" id="btn-save-new-agent">Crear</button>

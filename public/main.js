@@ -500,10 +500,14 @@ async function loadAgents() {
     const tab = document.createElement('div');
     tab.className = 'agent-tab' + (currentAgent?.id === agent.id ? ' selected' : '');
     tab.dataset.id = agent.id;
+    const isProspect = agent.role === 'prospect';
+    const roleBadge = isProspect
+      ? '<span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;background:rgba(6,182,212,.15);color:#0891b2;padding:1px 6px;border-radius:8px;margin-left:6px">Prospección</span>'
+      : '<span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;background:rgba(16,185,129,.15);color:#059669;padding:1px 6px;border-radius:8px;margin-left:6px">Nutrición</span>';
     tab.innerHTML = `
       <span class="agent-tab-avatar">${agent.avatar}</span>
       <div class="agent-tab-info">
-        <div class="agent-tab-name">${agent.name}</div>
+        <div class="agent-tab-name">${agent.name}${roleBadge}</div>
         <div class="agent-tab-status ${agent.enabled ? 'on' : ''}">${agent.enabled ? '● Activo' : '○ Inactivo'}</div>
       </div>
     `;
@@ -828,8 +832,9 @@ function openAgentModal() {
   document.getElementById('btn-save-new-agent').onclick = async () => {
     const name   = document.getElementById('new-agent-name').value.trim();
     const avatar = document.getElementById('new-agent-avatar').value.trim() || '🤖';
+    const role   = document.getElementById('new-agent-role')?.value || 'nurture';
     if (!name) return;
-    const agent = await apiFetch('/api/agents', 'POST', { accountId: ACCOUNT_ID, name, avatar });
+    const agent = await apiFetch('/api/agents', 'POST', { accountId: ACCOUNT_ID, name, avatar, role });
     document.getElementById('agent-modal').style.display = 'none';
     document.getElementById('new-agent-name').value = '';
     currentAgent = null;
@@ -837,6 +842,17 @@ function openAgentModal() {
     if (agent) selectAgent(agent.id);
   };
 }
+
+// Hint dinámico según el tipo de agente elegido en el modal de creación.
+function updateAgentRoleHint() {
+  const role = document.getElementById('new-agent-role')?.value;
+  const hint = document.getElementById('agent-role-hint');
+  if (!hint) return;
+  hint.textContent = role === 'prospect'
+    ? 'NO envía mensajes en frío. Redacta aperturas y respuestas sugeridas para que tú las revises y envíes manualmente (cumple políticas de Meta). Prepara el handoff cuando el lead entra en calor.'
+    : 'Atiende automáticamente a leads que ya escribieron, comentaron o dieron un trigger. Califica, nutre y agenda. Compatible con políticas de Meta.';
+}
+try { _safeExpose('updateAgentRoleHint', updateAgentRoleHint); } catch {}
 
 // ── KNOWLEDGE ─────────────────────────────────────────────────────────────────
 async function loadKnowledge() {
