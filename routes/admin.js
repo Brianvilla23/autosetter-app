@@ -1619,4 +1619,69 @@ router.post('/simulator/run', async (req, res) => {
   }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// RAG — status + backfill (Tarea 2)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** GET /api/admin/rag/status — ¿está configurado? cuántos chunks/insights? */
+router.get('/rag/status', async (req, res) => {
+  try {
+    const { isEnabled, getClient } = require('../services/rag/supabase');
+    if (!isEnabled()) {
+      return res.json({ enabled: false, reason: 'SUPABASE_URL / SUPABASE_SERVICE_KEY no configurados' });
+    }
+    const client = getClient();
+    if (!client) return res.json({ enabled: false, reason: 'cliente no inicializó' });
+
+    const [chunks, insights, scores] = await Promise.all([
+      client.from('conversation_chunks').select('id', { count: 'exact', head: true }),
+      client.from('conversation_insights').select('id', { count: 'exact', head: true }),
+      client.from('lead_scores').select('lead_id', { count: 'exact', head: true }),
+    ]);
+    res.json({
+      enabled: true,
+      chunks:   chunks.count   ?? 0,
+      insights: insights.count ?? 0,
+      scores:   scores.count   ?? 0,
+      embed_model: process.env.OPENAI_EMBED_MODEL || 'text-embedding-3-small',
+    });
+  } catch (e) {
+    res.status(500).json({ enabled: false, error: e.message });
+  }
+});
+
+/**
+ * POST /api/admin/rag/backfill  Body: { accountId, limit? }
+ * Ingesta a la memoria RAG las conversaciones cerradas (ganado/perdido) que
+ * todavía no estén indexadas. Útil para cargar el histórico (ej: el beta).
+ */
+router.post('/rag/backfill', async (req, res) => {
+  try {
+    const { isEnabled } = require('../services/rag/supabase');
+    if (!isEnabled()) return res.status(400).json({ error: 'RAG no configurado (faltan SUPABASE_* envs)' });
+
+    const { accountId, limit = 100 } = req.body;
+    if (!accountId) return res.status(400).json({ error: 'accountId requerido' });
+
+    const { ingestLead } = require('../services/rag/ingest');
+    const settings = await db.findOne(db.settings, { account_id: accountId });
+    const apiKey = process.env.OPENAI_API_KEY || settings?.openai_key;
+
+    // Leads cerrados de la cuenta
+    const leads = await db.find(db.leads, { account_id: accountId });
+    const closed = leads.filter(l => l.pipeline_stage === 'ganado' || l.pipeline_stage === 'perdido' || l.is_converted)
+      .slice(0, Math.min(parseInt(limit) || 100, 500));
+
+    let ingested = 0, skipped = 0;
+    for (const lead of closed) {
+      const r = await ingestLead(lead, apiKey);
+      if (r?.ok) ingested++; else skipped++;
+    }
+    await audit(req, 'rag_backfill', accountId, { ingested, skipped, total: closed.length });
+    res.json({ ok: true, ingested, skipped, total: closed.length });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;

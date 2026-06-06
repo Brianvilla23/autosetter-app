@@ -130,6 +130,21 @@ router.patch('/:id', async (req, res, next) => {
 
     await db.update(db.leads, { _id: req.params.id }, upd);
     const lead = await db.findOne(db.leads, { _id: req.params.id });
+
+    // ── RAG: cuando una conversación se cierra (ganado/perdido), ingestar a la
+    // memoria semántica (aprendizaje continuo). Async, best-effort: si el RAG
+    // no está configurado o falla, no afecta la respuesta.
+    if (upd.pipeline_stage === 'ganado' || upd.pipeline_stage === 'perdido') {
+      try {
+        const { ingestLead } = require('../services/rag/ingest');
+        const settings = await db.findOne(db.settings, { account_id: lead.account_id });
+        const apiKey = process.env.OPENAI_API_KEY || settings?.openai_key;
+        ingestLead(lead, apiKey)
+          .then(r => { if (r?.ok) console.log(`🧠 RAG ingest: lead ${lead._id.slice(0,8)} (${r.outcome}, ${r.insights} insights)`); })
+          .catch(() => {});
+      } catch (e) { /* RAG opcional */ }
+    }
+
     res.json({ ...lead, id: lead._id });
   } catch (e) { next(e); }
 });

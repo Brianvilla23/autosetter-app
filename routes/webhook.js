@@ -403,7 +403,18 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
   const baseContext = isCommentTrigger
     ? `NOTA: Este usuario comentó "info" en uno de tus posts. Inicia la conversación presentándote y preguntando cómo puedes ayudarle.`
     : null;
-  const extraContext = [baseContext, magnetContext].filter(Boolean).join('\n\n') || null;
+
+  // ── RAG: few-shot dinámico (memoria de conversaciones anteriores) ────────
+  // Inyecta ejemplos/insights relevantes del mismo cliente. Si el RAG no está
+  // configurado (sin SUPABASE_URL), retrieveContext devuelve null → el agente
+  // responde exactamente como hoy. Best-effort, nunca bloquea la respuesta.
+  let ragContext = null;
+  try {
+    const { retrieveContext } = require('../services/rag/retrieve');
+    ragContext = await retrieveContext({ accountId: account._id, message: text, apiKey });
+  } catch (e) { /* RAG opcional — si falla, seguimos sin él */ }
+
+  const extraContext = [baseContext, magnetContext, ragContext].filter(Boolean).join('\n\n') || null;
 
   const reply = await generateReply({
     agent, knowledge, links,
