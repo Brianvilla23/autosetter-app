@@ -1667,18 +1667,31 @@ router.post('/rag/backfill', async (req, res) => {
     const settings = await db.findOne(db.settings, { account_id: accountId });
     const apiKey = process.env.OPENAI_API_KEY || settings?.openai_key;
 
-    // Leads cerrados de la cuenta
+    // `mode`: 'closed' (solo ganado/perdido) o 'all' (todas las conversaciones
+    // con suficientes mensajes — útil para cargar el histórico del beta que
+    // todavía no está clasificado en el pipeline). Default 'all' para backfill.
+    const mode = req.body.mode || 'all';
+
+    // Contar mensajes por lead para filtrar conversaciones reales (≥2 msgs).
+    const allMsgs = await db.find(db.messages, {});
+    const msgCount = {};
+    for (const m of allMsgs) { if (m.lead_id) msgCount[m.lead_id] = (msgCount[m.lead_id] || 0) + 1; }
+
     const leads = await db.find(db.leads, { account_id: accountId });
-    const closed = leads.filter(l => l.pipeline_stage === 'ganado' || l.pipeline_stage === 'perdido' || l.is_converted)
+    const target = leads
+      .filter(l => {
+        if (mode === 'closed') return l.pipeline_stage === 'ganado' || l.pipeline_stage === 'perdido' || l.is_converted;
+        return (msgCount[l._id] || 0) >= 2; // 'all': cualquier conversación real
+      })
       .slice(0, Math.min(parseInt(limit) || 100, 500));
 
     let ingested = 0, skipped = 0;
-    for (const lead of closed) {
+    for (const lead of target) {
       const r = await ingestLead(lead, apiKey);
       if (r?.ok) ingested++; else skipped++;
     }
-    await audit(req, 'rag_backfill', accountId, { ingested, skipped, total: closed.length });
-    res.json({ ok: true, ingested, skipped, total: closed.length });
+    await audit(req, 'rag_backfill', accountId, { mode, ingested, skipped, total: target.length });
+    res.json({ ok: true, mode, ingested, skipped, total: target.length });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
