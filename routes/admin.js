@@ -1697,4 +1697,56 @@ router.post('/rag/backfill', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/admin/rag/test?accountId=X&q=mensaje
+ * Diagnóstico: muestra (1) una muestra de lo que el agente APRENDIÓ de tus
+ * conversaciones, agrupado por tipo, y (2) qué memoria RECUPERA para el
+ * mensaje `q` (el few-shot dinámico que se inyectaría al responder).
+ * Solo lectura — no modifica nada.
+ */
+router.get('/rag/test', async (req, res) => {
+  try {
+    const { isEnabled, getClient } = require('../services/rag/supabase');
+    if (!isEnabled()) return res.status(400).json({ error: 'RAG no configurado' });
+    const client = getClient();
+    if (!client) return res.status(400).json({ error: 'cliente no inicializó' });
+
+    const { accountId, q } = req.query;
+    if (!accountId) return res.status(400).json({ error: 'accountId requerido' });
+
+    // 1) Muestra de insights aprendidos, agrupados por kind
+    const { data: insights } = await client
+      .from('conversation_insights')
+      .select('kind, text, outcome, weight')
+      .eq('account_id', accountId)
+      .limit(200);
+
+    const learned = {};
+    for (const i of (insights || [])) {
+      (learned[i.kind] = learned[i.kind] || []).push(i.text);
+    }
+    const sample = {};
+    for (const k of Object.keys(learned)) sample[k] = learned[k].slice(0, 4);
+
+    // 2) Retrieval para el mensaje de prueba (few-shot dinámico)
+    let retrieved = null;
+    if (q) {
+      const settings = await db.findOne(db.settings, { account_id: accountId });
+      const apiKey = process.env.OPENAI_API_KEY || settings?.openai_key;
+      const { retrieveContext } = require('../services/rag/retrieve');
+      retrieved = await retrieveContext({ accountId, message: q, apiKey, limit: 4 });
+    }
+
+    res.json({
+      enabled: true,
+      total_insights: (insights || []).length,
+      learned_sample: sample,
+      query: q || null,
+      retrieved_context: retrieved || (q ? '(nada suficientemente parecido)' : '(pasá ?q=mensaje para probar el retrieval)'),
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;
