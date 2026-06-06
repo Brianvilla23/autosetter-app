@@ -321,6 +321,35 @@ router.post('/clear-all', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// ── Bandeja unificada (Tarea 3) ──────────────────────────────────────────────
+// GET /api/leads/merge/suggestions?accountId — candidatos a fusionar (IG+WSP)
+router.get('/merge/suggestions', async (req, res, next) => {
+  try {
+    const { accountId } = req.query;
+    if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
+    const { suggestMerges } = require('../services/channels/unify');
+    const suggestions = await suggestMerges(accountId);
+    res.json({ suggestions });
+  } catch (e) { next(e); }
+});
+
+// POST /api/leads/:id/merge  Body: { accountId, secondaryId }
+// Fusiona secondaryId dentro de :id (primario). Un lead, un hilo, multi-canal.
+router.post('/:id/merge', async (req, res, next) => {
+  try {
+    const { accountId, secondaryId } = req.body;
+    if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
+    if (!secondaryId) return res.status(400).json({ error: 'secondaryId requerido' });
+    const { mergeLeads } = require('../services/channels/unify');
+    const r = await mergeLeads(accountId, req.params.id, secondaryId);
+    if (!r.ok) {
+      const code = r.error === 'forbidden' ? 403 : r.error === 'not_found' ? 404 : 400;
+      return res.status(code).json({ error: r.error });
+    }
+    res.json({ ok: true, lead: { ...r.primary, id: r.primary._id } });
+  } catch (e) { next(e); }
+});
+
 // ── GET /api/leads/crm/stages — config de etapas del pipeline ────────────────
 // El frontend lo usa para renderizar columnas Kanban + dropdowns.
 router.get('/crm/stages', (req, res) => {

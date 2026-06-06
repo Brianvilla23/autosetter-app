@@ -1365,6 +1365,38 @@ async function loadSettings() {
     showToast('✅ Cuenta actualizada manualmente');
   });
 
+  // ── WhatsApp Business (Tarea 3) ───────────────────────────────────────────
+  const waConnected = !!(data.account?.wa_phone_number_id);
+  const waConnEl = document.getElementById('wa-connected');
+  const waNotEl  = document.getElementById('wa-not-connected');
+  if (waConnEl) waConnEl.style.display = waConnected ? '' : 'none';
+  if (waNotEl)  waNotEl.style.display  = waConnected ? 'none' : '';
+  if (waConnected) {
+    const n = document.getElementById('wa-connected-number');
+    if (n) n.textContent = 'Phone Number ID: ' + data.account.wa_phone_number_id;
+    const biz = document.getElementById('wa-business-account-id');
+    if (biz) biz.value = data.account.wa_business_account_id || '';
+  }
+
+  document.getElementById('btn-save-wa')?.addEventListener('click', async () => {
+    const wa_phone_number_id     = document.getElementById('wa-phone-number-id')?.value.trim();
+    const wa_business_account_id = document.getElementById('wa-business-account-id')?.value.trim();
+    const wa_access_token        = document.getElementById('wa-access-token')?.value.trim();
+    if (!wa_phone_number_id || !wa_access_token) {
+      showToast('⚠️ Falta Phone Number ID o Access Token'); return;
+    }
+    const r = await apiFetch('/api/settings/whatsapp', 'PUT', {
+      accountId: ACCOUNT_ID, wa_phone_number_id, wa_business_account_id, wa_access_token
+    });
+    if (r?.ok) { loadSettings(); showToast('✅ WhatsApp conectado'); }
+  });
+
+  document.getElementById('btn-disconnect-wa')?.addEventListener('click', async () => {
+    if (!confirm('¿Desconectar WhatsApp? El agente dejará de atender ese canal.')) return;
+    const r = await apiFetch(`/api/settings/whatsapp?accountId=${ACCOUNT_ID}`, 'DELETE');
+    if (r?.ok) { loadSettings(); showToast('WhatsApp desconectado'); }
+  });
+
   // ── Notificaciones ────────────────────────────────────────────────────────
   await loadNotifications();
 }

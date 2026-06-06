@@ -81,6 +81,39 @@ router.put('/account', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// ── WhatsApp Cloud API — conectar / desconectar número ───────────────────────
+// PUT body: { accountId, wa_phone_number_id, wa_business_account_id, wa_access_token }
+// El cliente pega los 3 datos de su WABA (de Meta Business → API Setup).
+// El wa_access_token NO se devuelve nunca al frontend (sanitizeAccount lo oculta).
+router.put('/whatsapp', async (req, res, next) => {
+  try {
+    const { accountId, wa_phone_number_id, wa_business_account_id, wa_access_token } = req.body;
+    if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
+
+    const upd = {};
+    if (wa_phone_number_id !== undefined)    upd.wa_phone_number_id    = String(wa_phone_number_id || '').trim();
+    if (wa_business_account_id !== undefined) upd.wa_business_account_id = String(wa_business_account_id || '').trim();
+    // El token solo se pisa si viene uno nuevo real (no el masked).
+    if (wa_access_token && !wa_access_token.includes('…')) {
+      upd.wa_access_token = String(wa_access_token).trim();
+    }
+    await db.update(db.accounts, { _id: accountId }, upd);
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+
+// DELETE — desconectar WhatsApp (limpia los campos wa_*)
+router.delete('/whatsapp', async (req, res, next) => {
+  try {
+    const { accountId } = req.query;
+    if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
+    await db.update(db.accounts, { _id: accountId }, {
+      wa_phone_number_id: null, wa_business_account_id: null, wa_access_token: null,
+    });
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+
 // ── ONBOARDING STATUS ───────────────────────────────────────────────────────
 // Devuelve el estado real del onboarding del usuario (qué pasos completó y cuál sigue).
 // Se usa para renderizar el checklist dinámico del home del dashboard.
