@@ -1729,12 +1729,22 @@ router.get('/rag/test', async (req, res) => {
     for (const k of Object.keys(learned)) sample[k] = learned[k].slice(0, 4);
 
     // 2) Retrieval para el mensaje de prueba (few-shot dinámico)
-    let retrieved = null;
+    let retrieved = null, rawMatches = null;
     if (q) {
       const settings = await db.findOne(db.settings, { account_id: accountId });
       const apiKey = process.env.OPENAI_API_KEY || settings?.openai_key;
       const { retrieveContext } = require('../services/rag/retrieve');
       retrieved = await retrieveContext({ accountId, message: q, apiKey, limit: 4 });
+
+      // Debug: similitudes crudas (sin filtro de umbral) para calibrar
+      const { embed } = require('../services/rag/supabase');
+      const vec = await embed(q, apiKey);
+      if (vec) {
+        const { data } = await client.rpc('match_insights', {
+          p_account_id: accountId, p_embedding: vec, p_kind: null, p_limit: 5,
+        });
+        rawMatches = (data || []).map(m => ({ similarity: +(m.similarity || 0).toFixed(3), kind: m.kind, text: m.text }));
+      }
     }
 
     res.json({
@@ -1742,7 +1752,9 @@ router.get('/rag/test', async (req, res) => {
       total_insights: (insights || []).length,
       learned_sample: sample,
       query: q || null,
-      retrieved_context: retrieved || (q ? '(nada suficientemente parecido)' : '(pasá ?q=mensaje para probar el retrieval)'),
+      min_similarity: parseFloat(process.env.RAG_MIN_SIMILARITY || '0.35'),
+      raw_matches: rawMatches,
+      retrieved_context: retrieved || (q ? '(nada sobre el umbral)' : '(pasá ?q=mensaje para probar el retrieval)'),
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
