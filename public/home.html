@@ -1175,9 +1175,19 @@
     sendBtn.disabled = true;
     showTyping();
     try {
+      // visitorId persistente: permite que el agente recuerde la conversación
+      // y la recolecte como lead en el CRM del founder (canal 'landing').
+      let visitorId = null;
+      try {
+        visitorId = localStorage.getItem('atinov_visitor');
+        if (!visitorId) {
+          visitorId = 'v-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+          localStorage.setItem('atinov_visitor', visitorId);
+        }
+      } catch {}
       const r = await fetch('/api/public/chat', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message, history }),
+        body: JSON.stringify({ message, history, visitorId }),
       }).then(r => r.json());
       hideTyping();
       const reply = r.reply || 'No pude responder ahora. Prueba registrarte gratis para usar el asistente completo.';
