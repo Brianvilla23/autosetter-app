@@ -358,16 +358,28 @@ async function loadIntelligence() {
   renderList('intel-list-perdidas',   d.motivos_perdida, 'Sin pérdidas registradas — buena señal.');
   renderList('intel-list-funciona',   d.funciona,        'Acumulando ejemplos de lo que funciona…');
 
-  // Huecos de conocimiento: el agente pide que le enseñen
+  // Huecos de conocimiento: el agente pide que le enseñen.
+  // UX: panel INLINE que se expande bajo cada pregunta (nada de prompt()
+  // nativo del navegador, que mostraba el dominio y se veía mal).
   const gapsCard = document.getElementById('intel-gaps-card');
   const gapsList = document.getElementById('intel-list-huecos');
   const huecos = d.huecos || [];
   if (huecos.length) {
     gapsCard.style.display = '';
     gapsList.innerHTML = huecos.map((h, idx) => `
-      <div style="display:flex;gap:12px;align-items:center;justify-content:space-between;background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px">
-        <div style="font-size:13.5px;line-height:1.5">${escHtml(h.text)} ${h.count > 1 ? `<span style="color:#059669;font-weight:700;font-size:12px">×${h.count}</span>` : ''}</div>
-        <button class="btn-primary" style="padding:7px 14px;font-size:13px;flex-shrink:0" onclick="teachAgent(${idx})">Enseñarle</button>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden">
+        <div style="display:flex;gap:12px;align-items:center;justify-content:space-between;padding:12px 14px">
+          <div style="font-size:13.5px;line-height:1.5">${escHtml(h.text)} ${h.count > 1 ? `<span style="color:#b45309;font-weight:700;font-size:12px">×${h.count}</span>` : ''}</div>
+          <button class="btn-primary" style="padding:7px 14px;font-size:13px;flex-shrink:0" onclick="toggleTeachPanel(${idx})">Enseñarle</button>
+        </div>
+        <div id="gap-panel-${idx}" style="display:none;border-top:1px solid var(--border);background:var(--surface-2);padding:14px">
+          <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px">Escribí la respuesta — tu agente la usa desde la próxima conversación:</label>
+          <textarea id="gap-answer-${idx}" class="form-input" rows="3" placeholder="Ej: El primer paso es conectar tu Instagram desde Ajustes, toma 5 minutos…" style="width:100%;resize:vertical;font-family:inherit;font-size:13.5px"></textarea>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button class="btn-primary" style="padding:8px 18px;font-size:13px" onclick="teachAgent(${idx})">Guardar respuesta</button>
+            <button class="btn-ghost" style="padding:8px 14px;font-size:13px" onclick="toggleTeachPanel(${idx}, true)">Cancelar</button>
+          </div>
+        </div>
       </div>`).join('');
     window._intelGaps = huecos;
   } else {
@@ -376,22 +388,96 @@ async function loadIntelligence() {
 }
 window.loadIntelligence = loadIntelligence;
 
-// "Enseñarle": el dueño escribe la respuesta → va a la base de conocimiento
-// del agente y el hueco se marca como resuelto.
+// Expande/colapsa el panel inline de enseñanza (cierra los demás al abrir uno).
+function toggleTeachPanel(idx, forceClose) {
+  const panel = document.getElementById(`gap-panel-${idx}`);
+  if (!panel) return;
+  const isOpen = panel.style.display !== 'none';
+  (window._intelGaps || []).forEach((_, i) => {
+    const p = document.getElementById(`gap-panel-${i}`);
+    if (p && i !== idx) p.style.display = 'none';
+  });
+  panel.style.display = (isOpen || forceClose) ? 'none' : '';
+  if (!isOpen && !forceClose) {
+    setTimeout(() => document.getElementById(`gap-answer-${idx}`)?.focus(), 50);
+  }
+}
+window.toggleTeachPanel = toggleTeachPanel;
+
+// "Enseñarle": guarda la respuesta en la base de conocimiento del agente
+// y marca el hueco como resuelto.
 async function teachAgent(idx) {
   const gap = (window._intelGaps || [])[idx];
   if (!gap) return;
-  const answer = prompt(`Tu agente no supo responder:\n\n"${gap.text}"\n\nEscribí la respuesta correcta (la va a usar desde la próxima conversación):`);
-  if (!answer || !answer.trim()) return;
+  const answer = document.getElementById(`gap-answer-${idx}`)?.value;
+  if (!answer || !answer.trim()) { showToast('⚠️ Escribí la respuesta primero'); return; }
   const r = await apiFetch('/api/intelligence/teach', 'POST', {
     accountId: ACCOUNT_ID, gapText: gap.text, answer: answer.trim(),
   });
   if (r?.ok) {
-    showToast('🎓 Listo — tu agente ya lo sabe');
+    showToast('✅ Listo — tu agente ya lo sabe');
     loadIntelligence();
   }
 }
 window.teachAgent = teachAgent;
+
+// ── APARIENCIA (tema personalizable por el cliente) ──────────────────────────
+// El cliente elige acento + fondo en Ajustes. Se guarda en localStorage con
+// los valores YA resueltos para que el script del <head> lo aplique antes del
+// primer render (sin parpadeo). Solo afecta a este navegador.
+const ATINOV_THEMES = {
+  esmeralda: { label: 'Esmeralda', accent: '#059669', dark: '#047857', bg: '#ecfdf5', brand: '#10b981', brand2: '#34d399', brandBg: 'rgba(16,185,129,.08)', grad: 'linear-gradient(135deg,#10b981 0%,#06b6d4 100%)' },
+  azul:      { label: 'Azul',      accent: '#2563eb', dark: '#1d4ed8', bg: '#eff6ff', brand: '#3b82f6', brand2: '#60a5fa', brandBg: 'rgba(59,130,246,.08)',  grad: 'linear-gradient(135deg,#3b82f6 0%,#06b6d4 100%)' },
+  violeta:   { label: 'Violeta',   accent: '#7c3aed', dark: '#6d28d9', bg: '#f5f3ff', brand: '#8b5cf6', brand2: '#a78bfa', brandBg: 'rgba(139,92,246,.08)',  grad: 'linear-gradient(135deg,#8b5cf6 0%,#ec4899 100%)' },
+  naranja:   { label: 'Naranja',   accent: '#ea580c', dark: '#c2410c', bg: '#fff7ed', brand: '#f97316', brand2: '#fb923c', brandBg: 'rgba(249,115,22,.08)',  grad: 'linear-gradient(135deg,#f97316 0%,#f43f5e 100%)' },
+  rosa:      { label: 'Rosa',      accent: '#db2777', dark: '#be185d', bg: '#fdf2f8', brand: '#ec4899', brand2: '#f472b6', brandBg: 'rgba(236,72,153,.08)',  grad: 'linear-gradient(135deg,#ec4899 0%,#8b5cf6 100%)' },
+  slate:     { label: 'Sobrio',    accent: '#334155', dark: '#1e293b', bg: '#f1f5f9', brand: '#475569', brand2: '#64748b', brandBg: 'rgba(71,85,105,.08)',   grad: 'linear-gradient(135deg,#475569 0%,#334155 100%)' },
+};
+const ATINOV_BGS = {
+  claro:   { label: 'Claro',   color: '#f7f8fa', image: '' },
+  calido:  { label: 'Cálido',  color: '#faf9f7', image: '' },
+  azulado: { label: 'Azulado', color: '#f3f5f9', image: '' },
+  puntos:  { label: 'Puntos',  color: '#f7f8fa', image: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22'%3E%3Ccircle cx='1.5' cy='1.5' r='1.1' fill='%23d9dee6'/%3E%3C/svg%3E")` },
+};
+
+function getThemePref() {
+  try { return JSON.parse(localStorage.getItem('atinov_theme') || 'null') || {}; } catch { return {}; }
+}
+
+function setTheme(accentKey, bgKey) {
+  const pref = getThemePref();
+  const a = ATINOV_THEMES[accentKey || pref.accentKey] ? (accentKey || pref.accentKey) : 'esmeralda';
+  const b = ATINOV_BGS[bgKey || pref.bgKey] ? (bgKey || pref.bgKey) : 'claro';
+  const t = ATINOV_THEMES[a], g = ATINOV_BGS[b];
+  const vars = {
+    '--accent': t.accent, '--accent-dark': t.dark, '--accent-bg': t.bg,
+    '--orange': t.brand, '--orange-2': t.brand2, '--orange-bg': t.brandBg,
+    '--grad': t.grad, '--bg': g.color,
+  };
+  const r = document.documentElement;
+  for (const k of Object.keys(vars)) r.style.setProperty(k, vars[k]);
+  document.body.style.backgroundImage = g.image || '';
+  localStorage.setItem('atinov_theme', JSON.stringify({ accentKey: a, bgKey: b, vars, bodyImage: g.image || '' }));
+  renderThemeSwatches();
+}
+window.setTheme = setTheme;
+
+function renderThemeSwatches() {
+  const pref = getThemePref();
+  const activeA = pref.accentKey || 'esmeralda';
+  const activeB = pref.bgKey || 'claro';
+  const sw = document.getElementById('theme-swatches');
+  if (sw) {
+    sw.innerHTML = Object.entries(ATINOV_THEMES).map(([key, t]) => `
+      <button onclick="setTheme('${key}', null)" title="${t.label}" style="width:38px;height:38px;border-radius:50%;cursor:pointer;background:${t.grad};border:none;outline:${key === activeA ? '3px solid ' + t.accent : '1px solid var(--border)'};outline-offset:2px;transition:transform .12s" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform=''"></button>`).join('');
+  }
+  const bw = document.getElementById('bg-swatches');
+  if (bw) {
+    bw.innerHTML = Object.entries(ATINOV_BGS).map(([key, g]) => `
+      <button onclick="setTheme(null, '${key}')" title="${g.label}" style="width:58px;height:38px;border-radius:9px;cursor:pointer;background:${g.color} ${g.image ? g.image : ''};border:1px solid var(--border);outline:${key === activeB ? '3px solid var(--accent)' : 'none'};outline-offset:2px;font-size:10px;color:var(--text-3)">${g.label}</button>`).join('');
+  }
+}
+window.renderThemeSwatches = renderThemeSwatches;
 
 // ── HOME ─────────────────────────────────────────────────────────────────────
 async function loadHome() {
@@ -1379,6 +1465,7 @@ async function deleteLinkInBuilder(id) {
 // ── SETTINGS ─────────────────────────────────────────────────────────────────
 async function loadSettings() {
   if (!ACCOUNT_ID) return;
+  renderThemeSwatches(); // Apariencia: paletas + fondos
   const data = await apiFetch(`/api/settings?accountId=${ACCOUNT_ID}`);
   if (!data) return;
 
