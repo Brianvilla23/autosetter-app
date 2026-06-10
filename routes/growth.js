@@ -147,10 +147,27 @@ router.get('/export-leads', async (req, res) => {
       return x.length > n ? x.slice(0, n - 1) + '…' : x;
     };
 
-    // 30 columnas — info completa para análisis en Excel/Sheets/CRM
+    // Score de cierre (RAG) — un solo fetch, graceful si está apagado
+    const scoreByLead = {};
+    try {
+      const { isEnabled, getClient } = require('../services/rag/supabase');
+      if (isEnabled()) {
+        const client = getClient();
+        if (client) {
+          const { data } = await client.from('lead_scores')
+            .select('lead_id, score').eq('account_id', accountId).limit(2000);
+          for (const r of (data || [])) scoreByLead[r.lead_id] = Math.round(r.score);
+        }
+      }
+    } catch (e) { /* RAG opcional */ }
+
+    // Columnas — info completa para análisis en Excel/Sheets/CRM externo
     const rows = [[
       'fecha_primer_contacto', 'hora_primer_contacto',
       'ig_username', 'ig_link', 'ig_user_id',
+      'canal', 'nombre_contacto',
+      'etapa_pipeline', 'valor_negocio', 'moneda', 'tags',
+      'score_cierre', 'proximo_followup',
       'agente_asignado', 'estado', 'automatizacion',
       'calificacion', 'razon_calificacion',
       'es_caliente', 'es_tibio', 'es_frio',
@@ -199,6 +216,14 @@ router.get('/export-leads', async (req, res) => {
         igUser,
         igUser ? `https://instagram.com/${igUser}` : '',
         l.ig_user_id || '',
+        l.channel || 'instagram',
+        l.contact_name || '',
+        l.pipeline_stage || 'nuevo',
+        l.deal_value || '',
+        l.deal_currency || '',
+        (l.tags || []).join(' | '),
+        scoreByLead[l._id] ?? '',
+        isoDate(l.next_followup_at),
         agentById[l.agent_id] || '',
         l.status || '',
         l.automation || 'automated',

@@ -1109,9 +1109,9 @@ async function fetchLeads(silent = false) {
   const data = await apiFetch(`/api/leads?accountId=${ACCOUNT_ID}&search=${search}&status=${status}&automation=${automation}&qualification=${qualification}&limit=20`);
   document.getElementById('refresh-indicator').textContent = `Actualizado ${new Date().toLocaleTimeString()}`;
 
-  // Update badge
+  // Update badge (el nav item Leads ya no existe — guard por si vuelve)
   const badge = document.getElementById('leads-badge');
-  if (data?.total) { badge.textContent = data.total; badge.classList.add('show'); }
+  if (badge && data?.total) { badge.textContent = data.total; badge.classList.add('show'); }
 
   const tbody = document.getElementById('leads-list');
   if (!data?.leads?.length) {
@@ -3430,8 +3430,9 @@ function crmOpenConversation() {
   if (!_crmCurrentLeadId) return false;
   const id = _crmCurrentLeadId;
   crmCloseDrawer();
-  const navItem = document.querySelector('.nav-item[data-section="leads"]');
-  if (navItem) navItem.click();
+  // La sección Leads ya no está en el menú (la cubre el CRM), pero sigue
+  // existiendo para esta vista de detalle: navegamos directo por código.
+  loadSection('leads');
   setTimeout(()=>{ if (typeof showLeadDetail==='function') showLeadDetail(id); }, 400);
   return false;
 }
