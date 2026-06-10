@@ -128,25 +128,31 @@ function renderAuthForm(mode) {
       <input class="auth-input" id="auth-password" type="password" placeholder="Contraseña (mín. 6 caracteres)" autocomplete="new-password">
       <input class="auth-input" id="auth-password2" type="password" placeholder="Confirmar contraseña" autocomplete="new-password">
 
-      <!-- Sección: personalización del bot (opcional pero recomendada) -->
-      <div style="margin:14px 0 6px 0;padding:14px;background:linear-gradient(135deg,rgba(255,107,53,0.08),rgba(255,107,53,0.02));border:1px solid rgba(255,107,53,0.25);border-radius:10px">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-          <span style="font-size:18px">✨</span>
-          <strong style="font-size:13.5px;color:var(--orange)">Personaliza tu bot en 1 minuto</strong>
-          <span style="font-size:11px;color:var(--text-3,#888);margin-left:auto">opcional</span>
+      <!-- Personalización del agente: colapsada para no asustar con 9 campos.
+           Quien quiere la configura; quien no, registra en 4 campos. -->
+      <details style="margin:14px 0 6px 0;background:linear-gradient(135deg,rgba(16,185,129,0.08),rgba(6,182,212,0.03));border:1px solid rgba(16,185,129,0.3);border-radius:10px;overflow:hidden">
+        <summary style="cursor:pointer;padding:13px 14px;display:flex;align-items:center;gap:8px;list-style:none">
+          <span style="font-size:17px">✨</span>
+          <strong style="font-size:13.5px;color:#34d399">Personalizá tu agente en 1 minuto</strong>
+          <span style="font-size:11px;color:var(--text-3,#888);margin-left:auto">opcional ▾</span>
+        </summary>
+        <div style="padding:0 14px 14px">
+          <p style="font-size:12px;color:var(--text-3,#888);margin:0 0 10px 0;line-height:1.4">
+            Contanos de tu negocio y tu asistente arranca configurado. Si lo dejás vacío, lo editás después.
+          </p>
+          <input class="auth-input" id="biz-nicho" type="text" placeholder="Tu nicho (ej: coach de menopausia, inmobiliaria CDMX)" style="margin-bottom:8px">
+          <input class="auth-input" id="biz-servicio" type="text" placeholder="Servicio principal (ej: mentoría 1-on-1 12 semanas)" style="margin-bottom:8px">
+          <input class="auth-input" id="biz-precio" type="text" placeholder="Precio o rango (ej: $500-$1500 USD)" style="margin-bottom:8px">
+          <input class="auth-input" id="biz-cliente-ideal" type="text" placeholder="Cliente ideal (ej: mujeres 40-55 con perimenopausia)" style="margin-bottom:8px">
+          <input class="auth-input" id="biz-link-agenda" type="url" placeholder="Tu link de agenda/Calendly/WhatsApp (opcional)">
         </div>
-        <p style="font-size:12px;color:var(--text-3,#888);margin:0 0 10px 0;line-height:1.4">
-          Cuéntanos sobre tu negocio para configurar tu asistente IA automáticamente. Si lo dejas vacío, lo editas después en el dashboard.
-        </p>
-        <input class="auth-input" id="biz-nicho" type="text" placeholder="Tu nicho (ej: coach de menopausia, inmobiliaria CDMX)" style="margin-bottom:8px">
-        <input class="auth-input" id="biz-servicio" type="text" placeholder="Servicio principal (ej: mentoría 1-on-1 12 semanas)" style="margin-bottom:8px">
-        <input class="auth-input" id="biz-precio" type="text" placeholder="Precio o rango (ej: $500-$1500 USD)" style="margin-bottom:8px">
-        <input class="auth-input" id="biz-cliente-ideal" type="text" placeholder="Cliente ideal (ej: mujeres 40-55 con perimenopausia)" style="margin-bottom:8px">
-        <input class="auth-input" id="biz-link-agenda" type="url" placeholder="Tu link de agenda/Calendly/WhatsApp (opcional)">
-      </div>
+      </details>
 
       <div id="auth-error" class="auth-error" style="display:none"></div>
       <button class="btn-primary auth-btn" id="auth-submit">Crear cuenta y comenzar →</button>
+      <div style="display:flex;justify-content:center;gap:14px;flex-wrap:wrap;margin-top:12px;font-size:11.5px;color:var(--text-3,#888)">
+        <span>✓ Sin tarjeta</span><span>✓ 3 días gratis</span><span>✓ Cancelás cuando quieras</span>
+      </div>
       <p class="auth-legal" style="font-size:12px;color:var(--text-3,#888);text-align:center;margin-top:12px;line-height:1.5">
         Al crear la cuenta aceptás nuestros
         <a href="/terms.html" target="_blank" style="color:var(--orange)">Términos</a>
