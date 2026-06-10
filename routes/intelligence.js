@@ -85,11 +85,78 @@ router.get('/', async (req, res, next) => {
       },
       objeciones:      aggregate(by('objecion')),
       motivos_perdida: aggregate(by('motivo_perdida')),
+      huecos:          aggregate(by('hueco_conocimiento'), 8),
       funciona: aggregate([
         ...by('msg_efectivo').map(r => ({ ...r, _label: 'mensaje' })),
         ...by('pregunta_calificadora').map(r => ({ ...r, _label: 'pregunta' })),
       ]),
     });
+  } catch (e) { next(e); }
+});
+
+// GET /api/intelligence/scores?accountId — mapa lead_id → score (0..100)
+// Lo consume el CRM para ordenar el pipeline por probabilidad de cierre.
+// Si el RAG está apagado devuelve {} y el CRM se ve como siempre.
+router.get('/scores', async (req, res, next) => {
+  try {
+    const { accountId } = req.query;
+    if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
+
+    const { isEnabled, getClient } = require('../services/rag/supabase');
+    if (!isEnabled()) return res.json({ scores: {} });
+    const client = getClient();
+    if (!client) return res.json({ scores: {} });
+
+    const { data } = await client
+      .from('lead_scores')
+      .select('lead_id, score')
+      .eq('account_id', accountId)
+      .limit(2000);
+    const scores = {};
+    for (const r of (data || [])) scores[r.lead_id] = Math.round(r.score);
+    res.json({ scores });
+  } catch (e) { next(e); }
+});
+
+// POST /api/intelligence/teach
+// Body: { accountId, gapText, answer }
+// "Enseñarle al agente": crea una entrada en la base de conocimiento con la
+// respuesta del dueño y marca el hueco como resuelto (borra esos insights).
+router.post('/teach', async (req, res, next) => {
+  try {
+    const { accountId, gapText, answer } = req.body;
+    if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
+    if (!gapText || !answer || !String(answer).trim()) {
+      return res.status(400).json({ error: 'gapText y answer son requeridos' });
+    }
+
+    const db = require('../db/database');
+    const title = String(gapText).slice(0, 120);
+    const entry = await db.insert(db.knowledge, {
+      account_id: accountId,
+      title,
+      content: String(answer).trim().slice(0, 4000),
+      is_main: false,
+      agent_ids: [], // disponible para todos los agentes de la cuenta
+      source: 'inteligencia_hueco',
+    });
+
+    // Resolver el hueco: borrar los insights de ese texto (el conocimiento ya existe)
+    const { isEnabled, getClient } = require('../services/rag/supabase');
+    if (isEnabled()) {
+      const client = getClient();
+      if (client) {
+        const { data: matches } = await client
+          .from('conversation_insights')
+          .select('id, text')
+          .eq('account_id', accountId)
+          .eq('kind', 'hueco_conocimiento');
+        const ids = (matches || []).filter(m => norm(m.text) === norm(gapText)).map(m => m.id);
+        if (ids.length) await client.from('conversation_insights').delete().in('id', ids);
+      }
+    }
+
+    res.json({ ok: true, knowledge: { ...entry, id: entry._id } });
   } catch (e) { next(e); }
 });
 

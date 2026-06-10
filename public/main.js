@@ -357,8 +357,41 @@ async function loadIntelligence() {
   renderList('intel-list-objeciones', d.objeciones,      'Sin objeciones detectadas todavía.');
   renderList('intel-list-perdidas',   d.motivos_perdida, 'Sin pérdidas registradas — buena señal.');
   renderList('intel-list-funciona',   d.funciona,        'Acumulando ejemplos de lo que funciona…');
+
+  // Huecos de conocimiento: el agente pide que le enseñen
+  const gapsCard = document.getElementById('intel-gaps-card');
+  const gapsList = document.getElementById('intel-list-huecos');
+  const huecos = d.huecos || [];
+  if (huecos.length) {
+    gapsCard.style.display = '';
+    gapsList.innerHTML = huecos.map((h, idx) => `
+      <div style="display:flex;gap:12px;align-items:center;justify-content:space-between;background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px">
+        <div style="font-size:13.5px;line-height:1.5">${escHtml(h.text)} ${h.count > 1 ? `<span style="color:#059669;font-weight:700;font-size:12px">×${h.count}</span>` : ''}</div>
+        <button class="btn-primary" style="padding:7px 14px;font-size:13px;flex-shrink:0" onclick="teachAgent(${idx})">Enseñarle</button>
+      </div>`).join('');
+    window._intelGaps = huecos;
+  } else {
+    gapsCard.style.display = 'none';
+  }
 }
 window.loadIntelligence = loadIntelligence;
+
+// "Enseñarle": el dueño escribe la respuesta → va a la base de conocimiento
+// del agente y el hueco se marca como resuelto.
+async function teachAgent(idx) {
+  const gap = (window._intelGaps || [])[idx];
+  if (!gap) return;
+  const answer = prompt(`Tu agente no supo responder:\n\n"${gap.text}"\n\nEscribí la respuesta correcta (la va a usar desde la próxima conversación):`);
+  if (!answer || !answer.trim()) return;
+  const r = await apiFetch('/api/intelligence/teach', 'POST', {
+    accountId: ACCOUNT_ID, gapText: gap.text, answer: answer.trim(),
+  });
+  if (r?.ok) {
+    showToast('🎓 Listo — tu agente ya lo sabe');
+    loadIntelligence();
+  }
+}
+window.teachAgent = teachAgent;
 
 // ── HOME ─────────────────────────────────────────────────────────────────────
 async function loadHome() {
@@ -3219,9 +3252,15 @@ async function loadCRM() {
     const sc = await apiFetch('/api/leads/crm/stages');
     _crmStages = sc?.stages || [];
   }
-  const data = await apiFetch(`/api/leads/crm/board?accountId=${ACCOUNT_ID}`);
+  // Board + scores de cierre (RAG) en paralelo. Si el RAG está apagado,
+  // scores viene vacío y el CRM se ve exactamente como siempre.
+  const [data, sc] = await Promise.all([
+    apiFetch(`/api/leads/crm/board?accountId=${ACCOUNT_ID}`),
+    apiFetch(`/api/intelligence/scores?accountId=${ACCOUNT_ID}`).catch(() => null),
+  ]);
   if (!data) return;
   _crmBoard = data;
+  window._crmScores = (sc && sc.scores) || {};
   const t = data.totals || {};
   const fmt = n => '$' + Number(n||0).toLocaleString('es-CL');
   const el = document.getElementById('crm-totals');
@@ -3248,9 +3287,25 @@ function crmRenderKanban() {
         <div class="crm-col-meta">${col.deal_total ? crmFmtVal(col.deal_total,'USD') : '—'}</div>
       </div>
       <div class="crm-col-body" data-stage="${col.id}" ondragover="crmDragOver(event)" ondragleave="crmDragLeave(event)" ondrop="crmDrop(event,'${col.id}')">
-        ${col.leads.map(l => crmCard(l)).join('') || '<div style="font-size:11.5px;color:var(--text-3);text-align:center;padding:20px">vacío</div>'}
+        ${crmSortByScore(col.leads).map(l => crmCard(l)).join('') || '<div style="font-size:11.5px;color:var(--text-3);text-align:center;padding:20px">vacío</div>'}
       </div>
     </div>`).join('');
+}
+
+// Ordena leads por score de cierre (RAG) desc; sin score van al final en su orden.
+function crmSortByScore(leads) {
+  const s = window._crmScores || {};
+  if (!Object.keys(s).length) return leads;
+  return leads.slice().sort((a, b) => (s[b.id] ?? -1) - (s[a.id] ?? -1));
+}
+
+// Badge de probabilidad de cierre (0..100) calculada por el RAG.
+function crmScoreBadge(leadId) {
+  const s = (window._crmScores || {})[leadId];
+  if (s === undefined) return '';
+  const color = s >= 70 ? '#ef4444' : s >= 40 ? '#f59e0b' : '#94a3b8';
+  const icon  = s >= 70 ? '🔥' : '';
+  return `<span title="Probabilidad de cierre (calculada por tu agente)" style="font-size:11px;font-weight:800;color:${color};background:${color}1a;padding:1px 7px;border-radius:9px;flex-shrink:0">${icon}${s}</span>`;
 }
 
 function crmCard(l) {
@@ -3259,7 +3314,7 @@ function crmCard(l) {
   const ch = l.channel === 'whatsapp' ? '📱' : '📷';
   const fu = l.next_followup_at ? `<span class="crm-card-fu">⏰ ${new Date(l.next_followup_at).toLocaleDateString('es-CL',{day:'numeric',month:'short'})}</span>` : '';
   return `<div class="crm-card" draggable="true" data-id="${l.id}" ondragstart="crmDragStart(event,'${l.id}')" ondragend="crmDragEnd(event)" onclick="crmOpenDrawer('${l.id}')">
-    <div class="crm-card-top"><span class="crm-card-name">${crmEsc(l.contact_name || '@'+l.ig_username)}</span><span class="crm-card-ch">${ch}</span></div>
+    <div class="crm-card-top"><span class="crm-card-name">${crmEsc(l.contact_name || '@'+l.ig_username)}</span><span style="display:flex;gap:5px;align-items:center">${crmScoreBadge(l.id)}<span class="crm-card-ch">${ch}</span></span></div>
     ${l.deal_value ? `<div class="crm-card-val">${crmFmtVal(l.deal_value,l.deal_currency)}</div>` : ''}
     ${l.tags && l.tags.length ? `<div class="crm-card-tags">${l.tags.slice(0,3).map(t=>`<span class="crm-tag">${crmEsc(t)}</span>`).join('')}</div>` : ''}
     <div class="crm-card-meta">${q && q!=='sin_calificar' ? `<span class="crm-card-q ${qCls}">${q}</span>` : '<span></span>'}<span>${fu || crmTimeAgo(l.last_message_at)}</span></div>

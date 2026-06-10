@@ -1685,13 +1685,35 @@ router.post('/rag/backfill', async (req, res) => {
       })
       .slice(0, Math.min(parseInt(limit) || 100, 500));
 
-    let ingested = 0, skipped = 0;
+    const { scoreLead } = require('../services/rag/score');
+    let ingested = 0, skipped = 0, scored = 0;
     for (const lead of target) {
       const r = await ingestLead(lead, apiKey);
       if (r?.ok) ingested++; else skipped++;
+      const s = await scoreLead(lead, apiKey).catch(() => null);
+      if (s) scored++;
     }
-    await audit(req, 'rag_backfill', accountId, { mode, ingested, skipped, total: target.length });
-    res.json({ ok: true, mode, ingested, skipped, total: target.length });
+    await audit(req, 'rag_backfill', accountId, { mode, ingested, skipped, scored, total: target.length });
+    res.json({ ok: true, mode, ingested, skipped, scored, total: target.length });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * POST /api/admin/weekly-report/send  Body: { accountId }
+ * Dispara el reporte semanal YA para una cuenta (ignora día/hora e
+ * idempotencia). Para probar/demo sin esperar al lunes.
+ */
+router.post('/weekly-report/send', async (req, res) => {
+  try {
+    const { accountId } = req.body;
+    if (!accountId) return res.status(400).json({ error: 'accountId requerido' });
+    const { sweepWeeklyReports, buildWeeklyStats } = require('../services/weeklyReport');
+    const stats = await buildWeeklyStats(accountId);
+    const r = await sweepWeeklyReports({ force: true, onlyAccountId: accountId });
+    await audit(req, 'weekly_report_send', accountId, { ...r });
+    res.json({ ok: true, ...r, stats });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

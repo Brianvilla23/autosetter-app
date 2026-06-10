@@ -47,12 +47,14 @@ async function retrieveContext({ accountId, message, apiKey, limit = 3 }) {
       msg_efectivo:          'MENSAJE QUE FUNCIONÓ',
       motivo_perdida:        'MOTIVO DE PÉRDIDA (evitá esto)',
     };
+    // hueco_conocimiento NO se inyecta: es información para el dueño (panel
+    // Inteligencia), no le sirve al agente para responder mejor.
     // Umbral configurable. text-embedding-3-small da similitudes cosine más
     // bajas que otros modelos: frases relacionadas suelen caer en 0.35-0.6.
     // 0.7 era demasiado estricto (no recuperaba nada). Default 0.35.
     const minSim = parseFloat(process.env.RAG_MIN_SIMILARITY || '0.35');
     const lines = insights
-      .filter(i => i.similarity > minSim)
+      .filter(i => i.similarity > minSim && i.kind !== 'hueco_conocimiento')
       .map(i => `• [${kindLabel[i.kind] || i.kind}${i.outcome ? `, ${i.outcome}` : ''}] ${i.text}`);
 
     if (!lines.length) return null;

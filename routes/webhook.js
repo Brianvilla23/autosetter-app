@@ -428,6 +428,13 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
   // Guardar respuesta del agente
   await db.insert(db.messages, { lead_id: lead._id, role: 'agent', content: reply });
 
+  // ── RAG: actualizar score de cierre del lead (async, best-effort) ─────────
+  // No bloquea la respuesta; si el RAG está apagado, scoreLead devuelve null.
+  try {
+    const { scoreLead } = require('../services/rag/score');
+    scoreLead(lead, apiKey).catch(() => {});
+  } catch (e) { /* RAG opcional */ }
+
   // Calcular delay humanizador (5-15s default, configurable por agente)
   // Bajamos default de 30-90s a 5-15s tras feedback: setters/closers necesitan
   // respuesta rápida para no perder leads HOT. 5-15s sigue siendo "humano-like"

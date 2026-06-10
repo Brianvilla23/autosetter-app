@@ -758,6 +758,14 @@ async function sweepTrialEmails() {
 setTimeout(() => sweepTrialEmails(), 60_000);
 setInterval(sweepTrialEmails, 6 * 60 * 60 * 1000);
 
+// ── WEEKLY REPORT WORKER ──────────────────────────────────────────────────────
+// Cada hora chequea; solo manda lunes ≥11 UTC (≈8am Chile), una vez por semana
+// por user (flag weeklyReportSentAt). "Tu agente esta semana" con stats + RAG.
+setInterval(() => {
+  require('./services/weeklyReport').sweepWeeklyReports()
+    .catch(e => console.error('weeklyReport sweep:', e.message));
+}, 60 * 60 * 1000);
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`\n🚀 Atinov running   → http://localhost:${PORT}`);

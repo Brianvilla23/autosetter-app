@@ -39,8 +39,9 @@ Devolvé SOLO un array JSON (sin texto extra) de objetos { "kind": "...", "text"
 - "pregunta_calificadora": una pregunta del agente que ayudó a calificar
 - "msg_efectivo": un mensaje del agente que generó respuesta o avance
 - "motivo_perdida": si el lead se perdió, por qué
+- "hueco_conocimiento": una pregunta o duda del LEAD que el agente NO pudo responder bien (respondió vago, evasivo, dijo que no sabía, o le faltaba la información). Formulalo como la pregunta que el dueño del negocio debería responder, ej: "¿Cuánto demora el envío a regiones?"
 
-Máximo 5 items. Cada "text" en español, conciso (1-2 oraciones). Si no hay nada relevante, devolvé [].`;
+Máximo 6 items. Cada "text" en español, conciso (1-2 oraciones). Si no hay nada relevante, devolvé [].`;
 
   try {
     const client = new OpenAI({ apiKey: key });
@@ -56,10 +57,10 @@ Máximo 5 items. Cada "text" en español, conciso (1-2 oraciones). Si no hay nad
     const raw = (res.choices[0].message.content || '').trim();
     const json = raw.replace(/^```json?/i, '').replace(/```$/, '').trim();
     const parsed = JSON.parse(json);
-    const valid = ['objecion', 'pregunta_calificadora', 'msg_efectivo', 'motivo_perdida'];
+    const valid = ['objecion', 'pregunta_calificadora', 'msg_efectivo', 'motivo_perdida', 'hueco_conocimiento'];
     return (Array.isArray(parsed) ? parsed : [])
       .filter(i => i && valid.includes(i.kind) && i.text)
-      .slice(0, 5);
+      .slice(0, 6);
   } catch (e) {
     console.warn('[rag] extractInsights skip:', e.message);
     return [];

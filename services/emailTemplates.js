@@ -219,6 +219,52 @@ function needsReauthEmail({ name, email }) {
   };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 7. WEEKLY REPORT — "Tu agente esta semana" (lunes)
+// ─────────────────────────────────────────────────────────────────────────────
+function weeklyReportEmail({ name, email, stats }) {
+  const firstName = (name || email.split('@')[0]).split(' ')[0];
+  const s = stats || {};
+  const statRow = (label, value, color) => `
+    <td align="center" style="padding:14px 6px;background:#0a0a12;border-radius:10px;">
+      <div style="font-size:24px;font-weight:800;color:${color || '#f0f0ff'};">${value}</div>
+      <div style="font-size:11.5px;color:#a0a0c0;margin-top:2px;">${label}</div>
+    </td>`;
+
+  const learnedBits = [];
+  if (s.top_objecion) {
+    learnedBits.push(`<p style="margin:0 0 10px;">🛡️ <strong style="color:#f0f0ff;">Objeción más común:</strong> "${escapeHtml(s.top_objecion)}"</p>`);
+  }
+  if (s.top_perdida) {
+    learnedBits.push(`<p style="margin:0 0 10px;">📉 <strong style="color:#f0f0ff;">Por qué no te compran:</strong> "${escapeHtml(s.top_perdida)}"</p>`);
+  }
+  if (s.huecos > 0) {
+    learnedBits.push(`<p style="margin:0 0 10px;">🎓 <strong style="color:#f0f0ff;">Tu agente necesita aprender ${s.huecos} cosa${s.huecos > 1 ? 's' : ''}</strong> — entrá al panel Inteligencia y enseñale en un click.</p>`);
+  }
+
+  return {
+    subject: `🧠 Tu agente esta semana: ${s.conversaciones || 0} conversaciones, ${s.hot || 0} leads calientes`,
+    html: layout({
+      preheader: `Resumen semanal de tu agente: ${s.conversaciones || 0} conversaciones atendidas, ${s.nuevos || 0} leads nuevos, ${s.hot || 0} calientes esperándote.`,
+      title: `${escapeHtml(firstName)}, esto hizo tu agente esta semana`,
+      body: `
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="6" style="margin:0 0 18px;">
+          <tr>
+            ${statRow('Conversaciones', s.conversaciones || 0)}
+            ${statRow('Leads nuevos', s.nuevos || 0)}
+            ${statRow('Calientes 🔥', s.hot || 0, '#ef4444')}
+            ${statRow('Ganados', s.ganados || 0, '#10b981')}
+          </tr>
+        </table>
+        ${learnedBits.length ? `<p style="margin:0 0 10px;font-weight:700;color:#f0f0ff;">Lo que aprendió de tu mercado:</p>${learnedBits.join('')}` : ''}
+        ${s.hot > 0 ? `<p style="margin:14px 0 0;">Tenés <strong style="color:#ef4444;">${s.hot} lead${s.hot > 1 ? 's' : ''} caliente${s.hot > 1 ? 's' : ''}</strong> en el CRM esperando que los contactes. No los dejes enfriar.</p>` : ''}
+      `,
+      ctaText: 'Ver el panel Inteligencia →',
+      ctaUrl: `${APP_URL}/app`,
+    }),
+  };
+}
+
 module.exports = {
   welcomeEmail,
   trialEndingEmail,
@@ -226,4 +272,5 @@ module.exports = {
   paymentFailedEmail,
   trialEndedEmail,
   needsReauthEmail,
+  weeklyReportEmail,
 };
