@@ -301,6 +301,7 @@ function loadSection(name) {
     case 'knowledge': loadKnowledge(); break;
     case 'inbox':     loadInbox(); break;
     case 'analytics': loadAnalytics(); break;
+    case 'intelligence': loadIntelligence(); break;
     case 'leads':     loadLeads(); break;
     case 'crm':       loadCRM(); break;
     case 'billing':   loadBillingPage(); break;
@@ -311,6 +312,53 @@ function loadSection(name) {
     case 'settings':  loadSettings(); break;
   }
 }
+
+// ── INTELIGENCIA ─────────────────────────────────────────────────────────────
+// Lo que el agente aprendió de las conversaciones (RAG): objeciones, motivos
+// de pérdida, mensajes que funcionan. Empty-state si el RAG no tiene datos.
+async function loadIntelligence() {
+  if (!ACCOUNT_ID) return;
+  const d = await apiFetch(`/api/intelligence?accountId=${ACCOUNT_ID}`);
+  if (!d) return;
+
+  const empty = document.getElementById('intel-empty');
+  const grid  = document.getElementById('intel-grid');
+  const hasData = d.enabled && d.stats && d.stats.insights > 0;
+
+  document.getElementById('intel-conversaciones').textContent = hasData ? d.stats.conversaciones : '—';
+  document.getElementById('intel-insights').textContent       = hasData ? d.stats.insights : '—';
+  document.getElementById('intel-objeciones').textContent     = hasData ? d.stats.objeciones : '—';
+  document.getElementById('intel-perdidas').textContent       = hasData ? d.stats.perdidas : '—';
+
+  if (!hasData) {
+    empty.style.display = '';
+    grid.style.display  = 'none';
+    return;
+  }
+  empty.style.display = 'none';
+  grid.style.display  = 'grid';
+
+  const badge = (count) => count > 1
+    ? `<span style="flex-shrink:0;background:rgba(16,185,129,.12);color:#059669;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px">×${count}</span>`
+    : '';
+  const renderList = (elId, items, emptyMsg) => {
+    const el = document.getElementById(elId);
+    if (!items || !items.length) {
+      el.innerHTML = `<div style="font-size:13px;color:var(--text-3);padding:8px 0">${emptyMsg}</div>`;
+      return;
+    }
+    el.innerHTML = items.map(i => `
+      <div style="display:flex;gap:10px;align-items:flex-start;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)">
+        <div style="font-size:13.5px;line-height:1.5;color:var(--text-1)">${escHtml(i.text)}</div>
+        ${badge(i.count)}
+      </div>`).join('');
+  };
+
+  renderList('intel-list-objeciones', d.objeciones,      'Sin objeciones detectadas todavía.');
+  renderList('intel-list-perdidas',   d.motivos_perdida, 'Sin pérdidas registradas — buena señal.');
+  renderList('intel-list-funciona',   d.funciona,        'Acumulando ejemplos de lo que funciona…');
+}
+window.loadIntelligence = loadIntelligence;
 
 // ── HOME ─────────────────────────────────────────────────────────────────────
 async function loadHome() {

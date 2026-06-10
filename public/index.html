@@ -59,6 +59,10 @@
       <span class="nav-icon">📊</span>
       Analytics
     </a>
+    <a class="nav-item" data-section="intelligence">
+      <span class="nav-icon">🧠</span>
+      Inteligencia
+    </a>
     <a class="nav-item" data-section="links">
       <span class="nav-icon"><svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clip-rule="evenodd"/></svg></span>
       Links
@@ -935,6 +939,51 @@
       </p>
       <div style="font-size:13px;color:var(--text-3);line-height:1.6">
         <strong>¿Necesitás ayuda?</strong> Escribinos a <a href="mailto:soporte@atinov.com" style="color:var(--orange)">soporte@atinov.com</a> y te respondemos en menos de 24h hábiles. Garantía de reembolso de 7 días en el primer pago, sin preguntas.
+      </div>
+    </div>
+  </section>
+
+  <!-- INTELIGENCIA ──────────────────────────────────────────────────────────── -->
+  <section id="section-intelligence" class="section">
+    <div class="page-header">
+      <div>
+        <h1>🧠 Inteligencia</h1>
+        <p>Lo que tu agente aprendió de tus conversaciones — incluso de las que no cerraron. Tu mercado te está hablando.</p>
+      </div>
+      <button class="btn-ghost" onclick="loadIntelligence()" title="Refrescar" style="padding:7px 12px">↻</button>
+    </div>
+
+    <!-- KPIs -->
+    <div class="stats-grid" style="margin-bottom:18px">
+      <div class="stat-card"><div class="stat-icon">💬</div><div><div class="stat-val" id="intel-conversaciones">—</div><div class="stat-label">Conversaciones aprendidas</div></div></div>
+      <div class="stat-card"><div class="stat-icon">🧩</div><div><div class="stat-val" id="intel-insights">—</div><div class="stat-label">Aprendizajes extraídos</div></div></div>
+      <div class="stat-card"><div class="stat-icon">🛡️</div><div><div class="stat-val" id="intel-objeciones" style="color:#f59e0b">—</div><div class="stat-label">Objeciones detectadas</div></div></div>
+      <div class="stat-card"><div class="stat-icon">📉</div><div><div class="stat-val" id="intel-perdidas" style="color:#ef4444">—</div><div class="stat-label">Motivos de pérdida</div></div></div>
+    </div>
+
+    <!-- Empty state (RAG sin datos o apagado) -->
+    <div id="intel-empty" style="display:none;background:#fff;border:1px dashed var(--border);border-radius:14px;padding:40px;text-align:center">
+      <div style="font-size:40px;margin-bottom:10px">🌱</div>
+      <div style="font-weight:700;margin-bottom:6px">Tu agente todavía está aprendiendo</div>
+      <div style="font-size:13.5px;color:var(--text-2);max-width:480px;margin:0 auto">A medida que el agente conversa con tus leads, acá vas a ver las objeciones más comunes, por qué algunos no compran y qué mensajes funcionan mejor. Cada conversación —cierre o no— suma inteligencia.</div>
+    </div>
+
+    <!-- Columnas de insights -->
+    <div id="intel-grid" style="display:none;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px">
+      <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px">
+        <div style="font-weight:800;margin-bottom:4px">🛡️ Objeciones más comunes</div>
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:12px">Lo que frena a tus leads. Prepará respuestas para estas.</div>
+        <div id="intel-list-objeciones"></div>
+      </div>
+      <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px">
+        <div style="font-weight:800;margin-bottom:4px">📉 Por qué no te compran</div>
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:12px">Motivos reales de pérdida. Acá está la mejora de tu oferta.</div>
+        <div id="intel-list-perdidas"></div>
+      </div>
+      <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px">
+        <div style="font-weight:800;margin-bottom:4px">✨ Lo que está funcionando</div>
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:12px">Mensajes y preguntas que generan avance. Tu agente ya los usa como guía.</div>
+        <div id="intel-list-funciona"></div>
       </div>
     </div>
   </section>
