@@ -6,6 +6,9 @@
   <title>Atinov — Asistente de inbox para Instagram Business</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -21,28 +24,28 @@
 <!-- ── SIDEBAR ────────────────────────────────────────────────────────────── -->
 <aside class="sidebar">
   <div class="sidebar-logo">
-    <div class="logo-icon">⚡</div>
+    <div class="logo-icon"><svg viewBox="0 0 20 20" width="18" height="18" fill="#fff"><path d="M11.983 1.907a.75.75 0 00-1.292-.657l-8.5 9.5A.75.75 0 002.75 12h6.572l-1.305 6.093a.75.75 0 001.292.657l8.5-9.5A.75.75 0 0017.25 8h-6.572l1.305-6.093z"/></svg></div>
     <div>
       <div class="logo-name">Atinov</div>
-      <div class="logo-sub">Instagram AI Bot</div>
+      <div class="logo-sub">Ventas con IA</div>
     </div>
   </div>
 
   <nav class="sidebar-nav">
     <a class="nav-item active" data-section="home">
       <span class="nav-icon"><svg viewBox="0 0 20 20"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/></svg></span>
-      Home
+      Inicio
     </a>
     <a class="nav-item" data-section="agents">
-      <span class="nav-icon"><svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9 3a1 1 0 012 0v5.5a.5.5 0 001 0V4a1 1 0 112 0v4.5a.5.5 0 001 0V6a1 1 0 112 0v5a7 7 0 11-14 0V9a1 1 0 012 0v2.5a.5.5 0 001 0V4a1 1 0 012 0v4.5a.5.5 0 001 0V3z" clip-rule="evenodd"/></svg></span>
-      Agents
+      <span class="nav-icon"><svg viewBox="0 0 20 20"><path d="M15.98 1.804a1 1 0 00-1.96 0l-.24 1.192a1 1 0 01-.784.785l-1.192.238a1 1 0 000 1.962l1.192.238a1 1 0 01.785.785l.238 1.192a1 1 0 001.962 0l.238-1.192a1 1 0 01.785-.785l1.192-.238a1 1 0 000-1.962l-1.192-.238a1 1 0 01-.785-.785l-.238-1.192zM6.949 5.684a1 1 0 00-1.898 0l-.683 2.051a1 1 0 01-.633.633l-2.051.683a1 1 0 000 1.898l2.051.684a1 1 0 01.633.632l.683 2.051a1 1 0 001.898 0l.683-2.051a1 1 0 01.633-.633l2.051-.683a1 1 0 000-1.898l-2.051-.683a1 1 0 01-.633-.633L6.95 5.684zM13.949 13.684a1 1 0 00-1.898 0l-.184.551a1 1 0 01-.632.633l-.551.183a1 1 0 000 1.898l.551.183a1 1 0 01.633.633l.183.551a1 1 0 001.898 0l.184-.551a1 1 0 01.632-.633l.551-.183a1 1 0 000-1.898l-.551-.184a1 1 0 01-.633-.632l-.183-.551z"/></svg></span>
+      Agentes
     </a>
     <a class="nav-item" data-section="knowledge">
       <span class="nav-icon"><svg viewBox="0 0 20 20"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z"/></svg></span>
-      Knowledge
+      Conocimiento
     </a>
     <a class="nav-item" data-section="inbox">
-      <span class="nav-icon">💬</span>
+      <span class="nav-icon"><svg viewBox="0 0 20 20"><path d="M10 3c-4.31 0-8 3.033-8 7 0 2.024.978 3.825 2.499 5.085a3.478 3.478 0 01-.522 1.756.75.75 0 00.584 1.143 5.976 5.976 0 003.936-1.108c.487.082.99.124 1.503.124 4.31 0 8-3.033 8-7s-3.69-7-8-7z"/></svg></span>
       Inbox
       <span class="nav-badge" id="inbox-badge" style="display:none;background:var(--orange);color:#fff;border-radius:10px;padding:2px 7px;font-size:11px;font-weight:700;margin-left:auto"></span>
     </a>
@@ -50,15 +53,15 @@
          (vista lista + kanban + export). El section sigue accesible
          programáticamente vía crmOpenConversation. -->
     <a class="nav-item" data-section="crm">
-      <span class="nav-icon">🗂️</span>
+      <span class="nav-icon"><svg viewBox="0 0 20 20"><path d="M14 17h2.75A1.75 1.75 0 0018.5 15.25V4.75A1.75 1.75 0 0016.75 3H14v14zM12.5 3h-5v14h5V3zM3.25 3H6v14H3.25a1.75 1.75 0 01-1.75-1.75V4.75c0-.966.784-1.75 1.75-1.75z"/></svg></span>
       CRM
     </a>
     <a class="nav-item" data-section="analytics">
-      <span class="nav-icon">📊</span>
+      <span class="nav-icon"><svg viewBox="0 0 20 20"><path d="M15.5 2A1.5 1.5 0 0014 3.5v13a1.5 1.5 0 001.5 1.5h1a1.5 1.5 0 001.5-1.5v-13A1.5 1.5 0 0016.5 2h-1zM9.5 6A1.5 1.5 0 008 7.5v9A1.5 1.5 0 009.5 18h1a1.5 1.5 0 001.5-1.5v-9A1.5 1.5 0 0010.5 6h-1zM3.5 10A1.5 1.5 0 002 11.5v5A1.5 1.5 0 003.5 18h1A1.5 1.5 0 006 16.5v-5A1.5 1.5 0 004.5 10h-1z"/></svg></span>
       Analytics
     </a>
     <a class="nav-item" data-section="intelligence">
-      <span class="nav-icon">🧠</span>
+      <span class="nav-icon"><svg viewBox="0 0 20 20"><path d="M10 1a6 6 0 00-3.815 10.631C7.237 12.5 8 13.443 8 14.456v.644a.75.75 0 00.572.729 6.016 6.016 0 002.856 0A.75.75 0 0012 15.1v-.644c0-1.013.762-1.957 1.815-2.825A6 6 0 0010 1zM8.863 17.414a.75.75 0 00-.226 1.483 9.066 9.066 0 002.726 0 .75.75 0 00-.226-1.483 7.553 7.553 0 01-2.274 0z"/></svg></span>
       Inteligencia
     </a>
     <a class="nav-item" data-section="links">
@@ -66,14 +69,14 @@
       Links
     </a>
     <a class="nav-item" data-section="magnets">
-      <span class="nav-icon">🧲</span>
+      <span class="nav-icon"><svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-11.25a.75.75 0 00-1.5 0v4.59L7.3 9.24a.75.75 0 00-1.1 1.02l3.25 3.5a.75.75 0 001.1 0l3.25-3.5a.75.75 0 10-1.1-1.02l-1.95 2.1V6.75z" clip-rule="evenodd"/></svg></span>
       Lead Magnets
     </a>
     <!-- "Growth" y "Referidos" retirados del menú (2026-06-09): Growth
          duplicaba Lead Magnets + export (ya en CRM/Analytics); Referidos
          se reactiva cuando haya 5+ clientes. APIs y secciones intactas. -->
     <a class="nav-item" data-section="billing">
-      <span class="nav-icon">💳</span>
+      <span class="nav-icon"><svg viewBox="0 0 20 20"><path d="M2.5 4A1.5 1.5 0 001 5.5V6h18v-.5A1.5 1.5 0 0017.5 4h-15zM19 8.5H1v6A1.5 1.5 0 002.5 16h15a1.5 1.5 0 001.5-1.5v-6zM3 13.25a.75.75 0 01.75-.75h1.5a.75.75 0 010 1.5h-1.5a.75.75 0 01-.75-.75zM7.25 12.5a.75.75 0 000 1.5h3.5a.75.75 0 000-1.5h-3.5z"/></svg></span>
       Facturación
     </a>
     <a class="nav-item" data-section="settings">
@@ -106,34 +109,34 @@
   <section id="section-home" class="section active">
     <div class="page-header">
       <div>
-        <h1>Dashboard</h1>
+        <h1>Inicio</h1>
         <p>Bienvenido a tu panel de control de Atinov</p>
       </div>
     </div>
     <div class="stats-grid" id="home-stats">
       <div class="stat-card">
-        <div class="stat-icon">🤖</div>
+        <div class="stat-icon" style="color:#059669;background:#ecfdf5"><svg viewBox="0 0 20 20"><path d="M15.98 1.804a1 1 0 00-1.96 0l-.24 1.192a1 1 0 01-.784.785l-1.192.238a1 1 0 000 1.962l1.192.238a1 1 0 01.785.785l.238 1.192a1 1 0 001.962 0l.238-1.192a1 1 0 01.785-.785l1.192-.238a1 1 0 000-1.962l-1.192-.238a1 1 0 01-.785-.785l-.238-1.192zM6.949 5.684a1 1 0 00-1.898 0l-.683 2.051a1 1 0 01-.633.633l-2.051.683a1 1 0 000 1.898l2.051.684a1 1 0 01.633.632l.683 2.051a1 1 0 001.898 0l.683-2.051a1 1 0 01.633-.633l2.051-.683a1 1 0 000-1.898l-2.051-.683a1 1 0 01-.633-.633L6.95 5.684zM13.949 13.684a1 1 0 00-1.898 0l-.184.551a1 1 0 01-.632.633l-.551.183a1 1 0 000 1.898l.551.183a1 1 0 01.633.633l.183.551a1 1 0 001.898 0l.184-.551a1 1 0 01.632-.633l.551-.183a1 1 0 000-1.898l-.551-.184a1 1 0 01-.633-.632l-.183-.551z"/></svg></div>
         <div>
           <div class="stat-val" id="stat-agents">—</div>
           <div class="stat-label">Agentes activos</div>
         </div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon">👥</div>
+        <div class="stat-icon" style="color:#1d4ed8;background:#eff6ff"><svg viewBox="0 0 20 20"><path d="M7 8a3 3 0 100-6 3 3 0 000 6zM14.5 9a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM1.615 16.428a1.224 1.224 0 01-.569-1.175 6.002 6.002 0 0111.908 0c.058.467-.172.92-.57 1.174A9.953 9.953 0 017 18a9.953 9.953 0 01-5.385-1.572zM14.5 16h-.106c.07-.297.088-.611.048-.933a7.47 7.47 0 00-1.588-3.755 4.502 4.502 0 015.874 2.636.818.818 0 01-.36.98A7.465 7.465 0 0114.5 16z"/></svg></div>
         <div>
           <div class="stat-val" id="stat-leads">—</div>
           <div class="stat-label">Leads totales</div>
         </div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon">✅</div>
+        <div class="stat-icon" style="color:#059669;background:#ecfdf5"><svg viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z"/></svg></div>
         <div>
           <div class="stat-val" id="stat-converted">—</div>
           <div class="stat-label">Conversaciones exitosas</div>
         </div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon">🔗</div>
+        <div class="stat-icon" style="color:#475569;background:#f1f5f9"><svg viewBox="0 0 20 20"><path d="M12.232 4.232a2.5 2.5 0 013.536 3.536l-1.225 1.224a.75.75 0 001.061 1.06l1.224-1.224a4 4 0 00-5.656-5.656l-3 3a4 4 0 00.225 5.865.75.75 0 00.977-1.138 2.5 2.5 0 01-.142-3.667l3-3zM11.603 7.963a.75.75 0 00-.977 1.138 2.5 2.5 0 01.142 3.667l-3 3a2.5 2.5 0 01-3.536-3.536l1.225-1.224a.75.75 0 00-1.061-1.06l-1.224 1.224a4 4 0 105.656 5.656l3-3a4 4 0 00-.225-5.865z"/></svg></div>
         <div>
           <div class="stat-val" id="stat-links">—</div>
           <div class="stat-label">Links disponibles</div>
@@ -244,7 +247,7 @@
   <section id="section-agents" class="section">
     <div class="page-header">
       <div>
-        <h1>Virtual Agents</h1>
+        <h1>Agentes</h1>
         <p>Crea y gestiona los agentes IA que responden conversaciones de Instagram</p>
       </div>
       <button class="btn-primary" id="btn-create-agent">+ Crear agente</button>
@@ -286,7 +289,7 @@
   <section id="section-knowledge" class="section">
     <div class="page-header">
       <div>
-        <h1>Knowledge Base</h1>
+        <h1>Base de conocimiento</h1>
         <p>Centraliza el conocimiento del negocio para que todos los agentes respondan con contexto</p>
       </div>
       <button class="btn-primary" id="btn-add-knowledge">+ Nueva entrada</button>
@@ -324,7 +327,7 @@
   <section id="section-inbox" class="section">
     <div class="page-header">
       <div>
-        <h1>💬 Inbox</h1>
+        <h1>Inbox</h1>
         <p>Todas las conversaciones del bot. Tomá el control cuando necesites cerrar vos.</p>
       </div>
       <button class="btn-ghost" onclick="loadInbox()" title="Refrescar" style="padding:8px 14px">↻</button>
@@ -371,7 +374,7 @@
           <button class="crm-vt active" data-view="kanban" onclick="crmSwitchView('kanban')">Kanban</button>
           <button class="crm-vt" data-view="list" onclick="crmSwitchView('list')">Lista</button>
         </div>
-        <button class="btn-secondary" onclick="crmExport()">⬇ Exportar CSV</button>
+        <button class="btn-primary" onclick="crmExport()" title="Excel multi-hoja: Resumen + Leads + Conversaciones. Abre perfecto con doble click.">Exportar Excel</button>
         <button class="btn-secondary" onclick="loadCRM()">↻ Refrescar</button>
       </div>
     </div>
@@ -471,7 +474,7 @@
   <section id="section-analytics" class="section">
     <div class="page-header">
       <div>
-        <h1>📊 Analytics</h1>
+        <h1>Analytics</h1>
         <p>Métricas detalladas de tu bot: performance, conversión y comportamiento de leads.</p>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
@@ -482,16 +485,16 @@
           <option value="365">Último año</option>
         </select>
         <button class="btn-ghost" onclick="loadAnalytics()" title="Refrescar" style="padding:7px 12px">↻</button>
-        <a href="#" id="btn-export-csv" class="btn-primary" style="padding:7px 14px;text-decoration:none;font-size:13px">📥 Exportar CSV</a>
+        <a href="#" id="btn-export-csv" class="btn-ghost" style="padding:7px 14px;text-decoration:none;font-size:13px" title="CSV con headers estándar para importar a HubSpot, Pipedrive o Airtable">CSV (importar a otro CRM)</a>
       </div>
     </div>
 
     <!-- KPIs principales -->
     <div id="analytics-kpis" class="stats-grid" style="margin-bottom:18px">
-      <div class="stat-card"><div class="stat-icon">👥</div><div><div class="stat-val" id="kpi-total">—</div><div class="stat-label">Leads totales</div></div></div>
-      <div class="stat-card"><div class="stat-icon">🔥</div><div><div class="stat-val" id="kpi-hot" style="color:#ef4444">—</div><div class="stat-label">Leads HOT</div></div></div>
-      <div class="stat-card"><div class="stat-icon">✅</div><div><div class="stat-val" id="kpi-converted" style="color:#22c55e">—</div><div class="stat-label">Convertidos</div></div></div>
-      <div class="stat-card"><div class="stat-icon">⚡</div><div><div class="stat-val" id="kpi-resp">—</div><div class="stat-label">Respuesta promedio</div></div></div>
+      <div class="stat-card"><div class="stat-icon" style="color:#1d4ed8;background:#eff6ff"><svg viewBox="0 0 20 20"><path d="M7 8a3 3 0 100-6 3 3 0 000 6zM14.5 9a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM1.615 16.428a1.224 1.224 0 01-.569-1.175 6.002 6.002 0 0111.908 0c.058.467-.172.92-.57 1.174A9.953 9.953 0 017 18a9.953 9.953 0 01-5.385-1.572zM14.5 16h-.106c.07-.297.088-.611.048-.933a7.47 7.47 0 00-1.588-3.755 4.502 4.502 0 015.874 2.636.818.818 0 01-.36.98A7.465 7.465 0 0114.5 16z"/></svg></div><div><div class="stat-val" id="kpi-total">—</div><div class="stat-label">Leads totales</div></div></div>
+      <div class="stat-card"><div class="stat-icon" style="color:#dc2626;background:#fef2f2"><svg viewBox="0 0 20 20"><path d="M13.5 4.938a7 7 0 11-9.006 1.737c.202-.257.59-.218.793.039.278.352.594.672.943.954.332.269.786-.049.773-.476a5.977 5.977 0 01.572-2.759 6.026 6.026 0 012.486-2.665c.247-.14.55-.016.677.238A6.967 6.967 0 0013.5 4.938zM14 12a4 4 0 01-4 4c-1.913 0-3.52-1.398-3.91-3.182-.093-.429.44-.643.814-.413a4.043 4.043 0 001.601.564c.303.038.531-.24.51-.544a5.975 5.975 0 011.315-4.192.447.447 0 01.431-.16A4.001 4.001 0 0114 12z"/></svg></div><div><div class="stat-val" id="kpi-hot" style="color:#ef4444">—</div><div class="stat-label">Leads HOT</div></div></div>
+      <div class="stat-card"><div class="stat-icon" style="color:#059669;background:#ecfdf5"><svg viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z"/></svg></div><div><div class="stat-val" id="kpi-converted" style="color:#22c55e">—</div><div class="stat-label">Convertidos</div></div></div>
+      <div class="stat-card"><div class="stat-icon" style="color:#b45309;background:#fffbeb"><svg viewBox="0 0 20 20"><path d="M11.983 1.907a.75.75 0 00-1.292-.657l-8.5 9.5A.75.75 0 002.75 12h6.572l-1.305 6.093a.75.75 0 001.292.657l8.5-9.5A.75.75 0 0017.25 8h-6.572l1.305-6.093z"/></svg></div><div><div class="stat-val" id="kpi-resp">—</div><div class="stat-label">Respuesta promedio</div></div></div>
     </div>
 
     <!-- Conversion stats -->
@@ -670,7 +673,7 @@
   <section id="section-links" class="section">
     <div class="page-header">
       <div>
-        <h1>Resource Links</h1>
+        <h1>Links de recursos</h1>
         <p>Organiza los links que los agentes pueden compartir en las conversaciones</p>
       </div>
       <button class="btn-primary" id="btn-add-link">+ Nuevo link</button>
@@ -705,7 +708,7 @@
   <section id="section-magnets" class="section">
     <div class="page-header">
       <div>
-        <h1>Lead Magnets 🧲</h1>
+        <h1>Lead Magnets</h1>
         <p>Ganchos de valor que el bot ofrece para capturar leads que no están listos para comprar</p>
       </div>
       <button class="btn-primary" onclick="openMagnetForm()">+ Nuevo magnet</button>
@@ -857,7 +860,7 @@
   <section id="section-referrals" class="section">
     <div class="page-header">
       <div>
-        <h1>🎁 Invitá amigos, ganá días gratis</h1>
+        <h1>Invitá amigos, ganá días gratis</h1>
         <p>Por cada amigo que se suscriba con tu link, te regalamos <strong>3 días gratis</strong>. <strong>5 referidos = 15 días</strong>, 10 = un mes completo. Sin tope.</p>
       </div>
     </div>
@@ -908,7 +911,7 @@
   <section id="section-billing" class="section">
     <div class="page-header">
       <div>
-        <h1>💳 Facturación</h1>
+        <h1>Facturación</h1>
         <p>Gestioná tu plan, cambialo o cancelá la suscripción.</p>
       </div>
     </div>
@@ -940,7 +943,7 @@
   <section id="section-intelligence" class="section">
     <div class="page-header">
       <div>
-        <h1>🧠 Inteligencia</h1>
+        <h1>Inteligencia</h1>
         <p>Lo que tu agente aprendió de tus conversaciones — incluso de las que no cerraron. Tu mercado te está hablando.</p>
       </div>
       <button class="btn-ghost" onclick="loadIntelligence()" title="Refrescar" style="padding:7px 12px">↻</button>
@@ -948,10 +951,10 @@
 
     <!-- KPIs -->
     <div class="stats-grid" style="margin-bottom:18px">
-      <div class="stat-card"><div class="stat-icon">💬</div><div><div class="stat-val" id="intel-conversaciones">—</div><div class="stat-label">Conversaciones aprendidas</div></div></div>
-      <div class="stat-card"><div class="stat-icon">🧩</div><div><div class="stat-val" id="intel-insights">—</div><div class="stat-label">Aprendizajes extraídos</div></div></div>
-      <div class="stat-card"><div class="stat-icon">🛡️</div><div><div class="stat-val" id="intel-objeciones" style="color:#f59e0b">—</div><div class="stat-label">Objeciones detectadas</div></div></div>
-      <div class="stat-card"><div class="stat-icon">📉</div><div><div class="stat-val" id="intel-perdidas" style="color:#ef4444">—</div><div class="stat-label">Motivos de pérdida</div></div></div>
+      <div class="stat-card"><div class="stat-icon" style="color:#059669;background:#ecfdf5"><svg viewBox="0 0 20 20"><path d="M10 3c-4.31 0-8 3.033-8 7 0 2.024.978 3.825 2.499 5.085a3.478 3.478 0 01-.522 1.756.75.75 0 00.584 1.143 5.976 5.976 0 003.936-1.108c.487.082.99.124 1.503.124 4.31 0 8-3.033 8-7s-3.69-7-8-7z"/></svg></div><div><div class="stat-val" id="intel-conversaciones">—</div><div class="stat-label">Conversaciones aprendidas</div></div></div>
+      <div class="stat-card"><div class="stat-icon" style="color:#0e7490;background:#ecfeff"><svg viewBox="0 0 20 20"><path d="M10 1a6 6 0 00-3.815 10.631C7.237 12.5 8 13.443 8 14.456v.644a.75.75 0 00.572.729 6.016 6.016 0 002.856 0A.75.75 0 0012 15.1v-.644c0-1.013.762-1.957 1.815-2.825A6 6 0 0010 1zM8.863 17.414a.75.75 0 00-.226 1.483 9.066 9.066 0 002.726 0 .75.75 0 00-.226-1.483 7.553 7.553 0 01-2.274 0z"/></svg></div><div><div class="stat-val" id="intel-insights">—</div><div class="stat-label">Aprendizajes extraídos</div></div></div>
+      <div class="stat-card"><div class="stat-icon" style="color:#b45309;background:#fffbeb"><svg viewBox="0 0 20 20"><path d="M9.661 2.237a.531.531 0 01.678 0 11.947 11.947 0 007.078 2.749.5.5 0 01.479.425c.069.52.104 1.05.104 1.59 0 5.162-3.26 9.563-7.834 11.256a.48.48 0 01-.332 0C5.26 16.564 2 12.163 2 7c0-.538.035-1.069.104-1.589a.5.5 0 01.48-.425 11.947 11.947 0 007.077-2.75zm4.196 5.954a.75.75 0 00-1.214-.882l-2.483 3.415-1.13-1.13a.75.75 0 00-1.06 1.061l1.75 1.75a.75.75 0 001.137-.089l3-4.125z"/></svg></div><div><div class="stat-val" id="intel-objeciones" style="color:#f59e0b">—</div><div class="stat-label">Objeciones detectadas</div></div></div>
+      <div class="stat-card"><div class="stat-icon" style="color:#dc2626;background:#fef2f2"><svg viewBox="0 0 20 20"><path d="M1.22 5.222a.75.75 0 011.06 0L7 9.942l3.768-3.769a.75.75 0 011.113.058 20.908 20.908 0 013.813 7.254l1.574-2.727a.75.75 0 011.3.75l-2.475 4.286a.75.75 0 01-1.025.275l-4.287-2.475a.75.75 0 01.75-1.3l2.71 1.565a19.422 19.422 0 00-3.013-6.024L7.53 11.533a.75.75 0 01-1.06 0l-5.25-5.25a.75.75 0 010-1.061z"/></svg></div><div><div class="stat-val" id="intel-perdidas" style="color:#ef4444">—</div><div class="stat-label">Motivos de pérdida</div></div></div>
     </div>
 
     <!-- Huecos de conocimiento: el agente pide que le enseñen -->
@@ -995,7 +998,7 @@
   <section id="section-settings" class="section">
     <div class="page-header">
       <div>
-        <h1>Settings</h1>
+        <h1>Ajustes</h1>
         <p>Configura tu cuenta de Instagram y las integraciones de IA</p>
       </div>
     </div>

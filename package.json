@@ -21,6 +21,7 @@
     "jsonwebtoken": "^9.0.3",
     "openai": "^4.28.4",
     "uuid": "^9.0.1",
+    "write-excel-file": "^4.1.1",
     "xss": "^1.0.15"
   },
   "devDependencies": {

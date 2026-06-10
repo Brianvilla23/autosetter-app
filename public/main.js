@@ -3438,17 +3438,19 @@ function crmOpenConversation() {
 }
 function crmExport() {
   if (!ACCOUNT_ID) return;
-  fetch(`/api/growth/export-crm?accountId=${ACCOUNT_ID}`, {
+  // Excel nativo multi-hoja: abre perfecto con doble click en Excel es-CL
+  // (un CSV con comas se abriría todo en una columna por el separador regional).
+  fetch(`/api/growth/export-xlsx?accountId=${ACCOUNT_ID}`, {
     headers: { 'Authorization': `Bearer ${AUTH_TOKEN}` },
   })
   .then(r => { if (!r.ok) throw new Error('Error exportando'); return r.blob(); })
   .then(blob => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = `atinov-crm-${new Date().toISOString().slice(0,10)}.csv`;
+    a.href = url; a.download = `atinov-leads-${new Date().toISOString().slice(0,10)}.xlsx`;
     document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(url);
-    showToast('📥 CSV CRM descargado — importable en Airtable/HubSpot/Pipedrive');
+    showToast('✅ Excel descargado — Resumen + Leads + Conversaciones');
   })
   .catch(e => showToast('❌ ' + e.message));
 }

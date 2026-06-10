@@ -16,18 +16,18 @@
   --grad-soft: linear-gradient(135deg, rgba(16,185,129,.12) 0%, rgba(6,182,212,.08) 100%);
 
   /* ── Sidebar */
-  --sidebar-bg:      #0f172a;
-  --sidebar-border:  rgba(255,255,255,.07);
-  --sidebar-text:    #94a3b8;
-  --sidebar-active-bg: rgba(16,185,129,.15);
-  --sidebar-hover-bg:  rgba(255,255,255,.05);
+  --sidebar-bg:      #ffffff;
+  --sidebar-border:  #eceef2;
+  --sidebar-text:    #5d6b82;
+  --sidebar-active-bg: #ecfdf5;
+  --sidebar-hover-bg:  #f4f6f8;
   --sidebar-w: 240px;
 
   /* ── Content */
-  --bg:       #f1f5f9;
+  --bg:       #f7f8fa;
   --surface:  #ffffff;
   --surface-2:#f8fafc;
-  --border:   #e2e8f0;
+  --border:   #e7eaee;
   --border-2: #f1f5f9;
 
   /* ── Text */
@@ -44,8 +44,8 @@
   --radius:    14px;
   --radius-sm: 8px;
   --radius-xs: 6px;
-  --shadow-sm: 0 1px 2px rgba(0,0,0,.05);
-  --shadow:    0 1px 3px rgba(0,0,0,.04), 0 6px 20px rgba(0,0,0,.06);
+  --shadow-sm: 0 1px 2px rgba(16,24,40,.04);
+  --shadow:    0 1px 2px rgba(16,24,40,.04), 0 8px 24px rgba(16,24,40,.05);
   --shadow-md: 0 4px 8px rgba(0,0,0,.06), 0 20px 48px rgba(0,0,0,.10);
   --shadow-lg: 0 8px 16px rgba(0,0,0,.08), 0 32px 64px rgba(0,0,0,.14);
 }
@@ -92,12 +92,12 @@ body { display: flex; }
   display: flex; align-items: center; justify-content: center;
   font-size: 17px;
   flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(16,185,129,.4);
+  box-shadow: 0 3px 10px rgba(16,185,129,.28);
 }
 .logo-name {
   font-weight: 700;
   font-size: 15px;
-  color: #f1f5f9;
+  color: var(--text-1);
   letter-spacing: -.3px;
 }
 .logo-sub {
@@ -132,13 +132,13 @@ body { display: flex; }
 }
 .nav-item:hover {
   background: var(--sidebar-hover-bg);
-  color: #e2e8f0;
+  color: #101828;
 }
 .nav-item.active {
   background: var(--sidebar-active-bg);
-  color: #6ee7b7;
+  color: #047857;
 }
-.nav-item.active .nav-icon { color: #34d399; }
+.nav-item.active .nav-icon { color: #059669; }
 
 .nav-icon {
   width: 18px; height: 18px;
@@ -180,7 +180,7 @@ body { display: flex; }
   box-shadow: 0 0 0 2px rgba(16,185,129,.25);
   flex-shrink: 0;
 }
-#sidebar-user-name { font-weight: 600; font-size: 12px; color: #cbd5e1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#sidebar-user-name { font-weight: 600; font-size: 12px; color: #344054; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #sidebar-username  { font-size: 11px; color: var(--sidebar-text); }
 
 .btn-icon {
@@ -216,17 +216,17 @@ body { display: flex; }
   gap: 16px;
 }
 .page-header h1 {
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 700;
   color: var(--text-1);
-  letter-spacing: -.4px;
+  letter-spacing: -.5px;
   margin-bottom: 3px;
 }
 .page-header p { color: var(--text-2); font-size: 13.5px; line-height: 1.5; }
 
 /* ══ BUTTONS ══════════════════════════════════════════════════════════════════ */
 .btn-primary {
-  background: var(--grad);
+  background: #059669;
   color: white;
   border: none;
   padding: 9px 20px;
@@ -237,12 +237,12 @@ body { display: flex; }
   transition: opacity .15s, transform .1s, box-shadow .15s;
   white-space: nowrap;
   letter-spacing: .01em;
-  box-shadow: 0 2px 8px rgba(16,185,129,.3);
+  box-shadow: 0 1px 2px rgba(16,24,40,.06);
 }
 .btn-primary:hover {
-  opacity: .9;
+  background: #047857;
   transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(16,185,129,.4);
+  box-shadow: 0 4px 12px rgba(5,150,105,.25);
 }
 .btn-primary:active { transform: translateY(0); }
 
@@ -296,13 +296,15 @@ body { display: flex; }
   transform: translateY(-2px);
 }
 .stat-icon {
-  width: 48px; height: 48px;
-  background: var(--grad-soft);
+  width: 44px; height: 44px;
+  background: #ecfdf5;
+  color: #059669;
   border-radius: 12px;
   display: flex; align-items: center; justify-content: center;
   font-size: 20px;
   flex-shrink: 0;
 }
+.stat-icon svg { width: 20px; height: 20px; fill: currentColor; }
 .stat-val   { font-size: 28px; font-weight: 800; color: var(--text-1); letter-spacing: -.5px; line-height: 1; }
 .stat-label { color: var(--text-3); font-size: 12px; font-weight: 500; margin-top: 3px; }
 

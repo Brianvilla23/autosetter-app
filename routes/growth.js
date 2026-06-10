@@ -254,7 +254,11 @@ router.get('/export-leads', async (req, res) => {
     }
 
     const csv = rows.map(row => row.map(cell => {
-      const s = String(cell ?? '');
+      let s = String(cell ?? '');
+      // Defensa CSV-injection (OWASP): '=' y '@' al inicio se interpretan como
+      // fórmula al abrir en Excel — se neutralizan con apóstrofe. (+ y - se
+      // dejan: teléfonos E.164 y números negativos legítimos.)
+      if (/^[=@]/.test(s)) s = "'" + s;
       // Escapar comillas y envolver si contiene separador/nueva línea/comillas
       if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
       return s;
@@ -266,6 +270,172 @@ router.get('/export-leads', async (req, res) => {
     // BOM para que Excel abra bien los acentos
     res.send('\uFEFF' + csv);
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EXPORT XLSX — la planilla "buena" (multi-hoja, abre perfecto en Excel es-CL)
+// ─────────────────────────────────────────────────────────────────────────────
+// Por qué XLSX: Excel en español usa PUNTO Y COMA como separador, así que un
+// CSV con comas se abre todo en una columna ("el desastre"). El XLSX nativo
+// no tiene delimitador, conserva acentos, teléfonos con + y fechas reales.
+// El CSV queda como formato de IMPORT a otros CRM (HubSpot/Pipedrive/Airtable).
+//
+// Hojas: Resumen (mini-dashboard) · Leads (accionable) · Conversaciones · Léeme
+
+/** GET /api/growth/export-xlsx?accountId=X */
+router.get('/export-xlsx', async (req, res) => {
+  try {
+    const { accountId } = req.query;
+    if (!accountId) return res.status(400).json({ error: 'accountId requerido' });
+    if (accountId !== req.user.accountId) return res.status(403).json({ error: 'Prohibido' });
+
+    const writeXlsxFile = require('write-excel-file/node');
+
+    const leads   = await db.find(db.leads,    { account_id: accountId });
+    const allMsgs = await db.find(db.messages, {});
+    const msgsByLead = {};
+    for (const m of allMsgs) {
+      if (!m.lead_id) continue;
+      (msgsByLead[m.lead_id] = msgsByLead[m.lead_id] || []).push(m);
+    }
+    for (const id of Object.keys(msgsByLead)) {
+      msgsByLead[id].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    }
+
+    // Scores del RAG (graceful si está apagado)
+    const scoreByLead = {};
+    try {
+      const { isEnabled, getClient } = require('../services/rag/supabase');
+      if (isEnabled()) {
+        const client = getClient();
+        if (client) {
+          const { data } = await client.from('lead_scores')
+            .select('lead_id, score').eq('account_id', accountId).limit(2000);
+          for (const r of (data || [])) scoreByLead[r.lead_id] = Math.round(r.score);
+        }
+      }
+    } catch (e) { /* RAG opcional */ }
+
+    const CALIF  = { hot: 'Caliente', warm: 'Tibio', cold: 'Frío' };
+    const ETAPA  = { nuevo: 'Nuevo', contactado: 'Contactado', calificado: 'Calificado', demo: 'Demo / Llamada', propuesta: 'Propuesta', ganado: 'Ganado', perdido: 'Perdido' };
+    const QUIEN  = { user: 'Lead', agent: 'Agente IA', manual: 'Humano' };
+    const trunc  = (s, n) => { const x = String(s || '').replace(/\s+/g, ' ').trim(); return x.length > n ? x.slice(0, n - 1) + '…' : x; };
+    const fecha  = (s) => s ? new Date(s) : null;
+
+    // Header con estilo (verde Atinov suave)
+    const H = (value) => ({ value, fontWeight: 'bold', backgroundColor: '#ECFDF5', color: '#065F46' });
+
+    // ── Hoja 1: Resumen ──────────────────────────────────────────────────────
+    const hot   = leads.filter(l => l.qualification === 'hot').length;
+    const warm  = leads.filter(l => l.qualification === 'warm').length;
+    const cold  = leads.filter(l => l.qualification === 'cold').length;
+    const conv  = leads.filter(l => l.is_converted).length;
+    const pipeVal = leads.filter(l => l.pipeline_stage !== 'perdido')
+      .reduce((s, l) => s + (Number(l.deal_value) || 0), 0);
+    const porEtapa = Object.entries(ETAPA).map(([id, label]) =>
+      [{ value: label }, { value: leads.filter(l => (l.pipeline_stage || 'nuevo') === id).length, type: Number }]);
+
+    const sheetResumen = [
+      [H('Reporte de leads — Atinov'), H('')],
+      [{ value: 'Fecha de exportación' }, { value: new Date(), type: Date, format: 'dd/mm/yyyy hh:mm' }],
+      [{ value: 'Total de leads' },       { value: leads.length, type: Number }],
+      [{ value: 'Calientes' },            { value: hot,  type: Number }],
+      [{ value: 'Tibios' },               { value: warm, type: Number }],
+      [{ value: 'Fríos' },                { value: cold, type: Number }],
+      [{ value: 'Convertidos' },          { value: conv, type: Number }],
+      [{ value: 'Valor del pipeline' },   { value: pipeVal, type: Number, format: '#,##0' }],
+      [{ value: '' }, { value: '' }],
+      [H('Leads por etapa'), H('Cantidad')],
+      ...porEtapa,
+    ];
+
+    // ── Hoja 2: Leads (orden por accionabilidad) ─────────────────────────────
+    const headerLeads = [
+      H('Nombre'), H('Usuario Instagram'), H('Teléfono'), H('Email'),
+      H('Calificación'), H('Score de cierre'), H('Etapa'), H('Valor estimado'), H('Moneda'),
+      H('Próximo seguimiento'), H('Último mensaje (fecha)'), H('Último mensaje (texto)'),
+      H('Tags'), H('Canal'), H('Fecha primer contacto'), H('Mensajes'), H('Convertido'), H('Link Instagram'),
+    ];
+    // Calientes y mayor score primero — la fila 2 es el lead a llamar YA
+    const ordenCalif = { hot: 0, warm: 1, cold: 2 };
+    const leadsOrdenados = leads.slice().sort((a, b) =>
+      (ordenCalif[a.qualification] ?? 3) - (ordenCalif[b.qualification] ?? 3) ||
+      (scoreByLead[b._id] ?? -1) - (scoreByLead[a._id] ?? -1));
+
+    const filasLeads = leadsOrdenados.map(l => {
+      const msgs = msgsByLead[l._id] || [];
+      const lastMsg = msgs[msgs.length - 1];
+      return [
+        { value: l.contact_name || '' },
+        { value: l.ig_username ? '@' + l.ig_username : '' },
+        { value: String(l.phone || ''), type: String },
+        { value: l.email || '' },
+        { value: CALIF[l.qualification] || 'Sin calificar' },
+        scoreByLead[l._id] !== undefined ? { value: scoreByLead[l._id], type: Number } : { value: '' },
+        { value: ETAPA[l.pipeline_stage] || 'Nuevo' },
+        l.deal_value ? { value: Number(l.deal_value), type: Number, format: '#,##0' } : { value: '' },
+        { value: l.deal_currency || '' },
+        fecha(l.next_followup_at) ? { value: fecha(l.next_followup_at), type: Date, format: 'dd/mm/yyyy' } : { value: '' },
+        fecha(l.last_message_at) ? { value: fecha(l.last_message_at), type: Date, format: 'dd/mm/yyyy hh:mm' } : { value: '' },
+        { value: trunc(lastMsg?.content, 120), wrap: true },
+        { value: (l.tags || []).join('; ') },
+        { value: l.channel === 'whatsapp' ? 'WhatsApp' : 'Instagram DM' },
+        fecha(l.createdAt) ? { value: fecha(l.createdAt), type: Date, format: 'dd/mm/yyyy' } : { value: '' },
+        { value: msgs.length, type: Number },
+        { value: l.is_converted ? 'Sí' : 'No' },
+        { value: l.ig_username ? `https://instagram.com/${l.ig_username}` : '' },
+      ];
+    });
+    const sheetLeads = [headerLeads, ...filasLeads];
+
+    // ── Hoja 3: Conversaciones (1 fila por mensaje) ──────────────────────────
+    const headerConv = [H('Usuario Instagram'), H('Fecha y hora'), H('Quién'), H('Mensaje')];
+    const filasConv = [];
+    for (const l of leadsOrdenados) {
+      for (const m of (msgsByLead[l._id] || [])) {
+        filasConv.push([
+          { value: l.ig_username ? '@' + l.ig_username : (l.contact_name || '') },
+          fecha(m.createdAt) ? { value: fecha(m.createdAt), type: Date, format: 'dd/mm/yyyy hh:mm' } : { value: '' },
+          { value: QUIEN[m.role] || m.role },
+          { value: trunc(m.content, 500), wrap: true },
+        ]);
+      }
+    }
+    const sheetConv = [headerConv, ...filasConv];
+
+    // ── Hoja 4: Léeme ────────────────────────────────────────────────────────
+    const sheetLeeme = [
+      [H('Columna'), H('Qué significa')],
+      [{ value: 'Calificación' }, { value: 'Caliente = listo para comprar · Tibio = interesado · Frío = sin interés todavía. La asigna el agente IA según la conversación.', wrap: true }],
+      [{ value: 'Score de cierre' }, { value: '0 a 100. Probabilidad de cierre calculada comparando la conversación con tus ventas anteriores. Más alto = contactar primero.', wrap: true }],
+      [{ value: 'Etapa' }, { value: 'Posición en tu pipeline (CRM de Atinov): Nuevo → Contactado → Calificado → Demo → Propuesta → Ganado/Perdido.', wrap: true }],
+      [{ value: 'Tags' }, { value: 'Etiquetas separadas por punto y coma.', wrap: true }],
+      [{ value: '' }, { value: '' }],
+      [H('¿Importar a otro CRM?'), H('')],
+      [{ value: 'HubSpot / Pipedrive / Airtable' }, { value: 'Usá el botón "CSV (importar a otro CRM)" en Atinov — ese archivo tiene los nombres de columna que esos sistemas reconocen.', wrap: true }],
+      [{ value: 'Soporte' }, { value: 'soporte@atinov.com' }],
+    ];
+
+    const workbook = await writeXlsxFile([
+      { name: 'Resumen', data: sheetResumen, stickyRowsCount: 1,
+        columns: [{ width: 26 }, { width: 22 }] },
+      { name: 'Leads', data: sheetLeads, stickyRowsCount: 1,
+        columns: [{ width: 18 }, { width: 20 }, { width: 16 }, { width: 24 }, { width: 12 }, { width: 13 }, { width: 14 }, { width: 13 }, { width: 8 }, { width: 17 }, { width: 17 }, { width: 44 }, { width: 18 }, { width: 13 }, { width: 17 }, { width: 9 }, { width: 10 }, { width: 32 }] },
+      { name: 'Conversaciones', data: sheetConv, stickyRowsCount: 1,
+        columns: [{ width: 20 }, { width: 17 }, { width: 10 }, { width: 70 }] },
+      { name: 'Léeme', data: sheetLeeme, stickyRowsCount: 1,
+        columns: [{ width: 26 }, { width: 80 }] },
+    ]);
+    const buffer = await workbook.toBuffer();
+
+    const filename = `atinov-leads-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    res.set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.set('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(buffer);
+  } catch (e) {
+    console.error('export-xlsx:', e.message);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
