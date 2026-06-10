@@ -1,833 +1,558 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Atinov — Asistente de inbox para Instagram Business</title>
-  <meta name="description" content="Software de atención al cliente para Instagram Business. Asistente con IA que sugiere respuestas con tu tono, prioriza consultas urgentes y unifica tu inbox para que no pierdas mensajes importantes.">
-  <meta name="keywords" content="atención al cliente Instagram, software inbox Instagram, asistente IA Instagram, gestión DMs Instagram, customer service Instagram, soporte clientes Instagram">
-  <meta name="author" content="Atinov">
-  <meta name="robots" content="index, follow">
-  <meta name="theme-color" content="#10b981">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Atinov — Tu inbox de Instagram se atiende solo</title>
+  <meta name="description" content="Atinov responde tus DMs de Instagram con IA entrenada en tu negocio, califica a cada persona y te avisa cuándo entrar a cerrar. API oficial de Meta. Prueba gratis 3 días.">
   <link rel="canonical" href="https://atinov.com/">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
 
-  <!-- TODO: cuando puedas, generá un og-cover.png de 1200x630 con tu branding
-       (ej: en Canva o Figma) y reemplazá las URLs /icon-1024.png abajo por
-       /og-cover.png. Mientras, usamos el icon como fallback (queda chico
-       pero al menos no se rompe la preview en WhatsApp/LinkedIn/Twitter). -->
-  <!-- Open Graph / Facebook / WhatsApp / LinkedIn -->
+  <!-- Open Graph -->
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://atinov.com/">
-  <meta property="og:title" content="Atinov — Asistente de inbox para Instagram Business">
-  <meta property="og:description" content="Tu inbox de Instagram organizado. Asistente con IA que sugiere respuestas, prioriza consultas urgentes y centraliza la conversación con tus clientes.">
+  <meta property="og:title" content="Atinov — Tu inbox de Instagram se atiende solo">
+  <meta property="og:description" content="IA que responde tus DMs con tu información, califica leads y aprende de cada conversación. Prueba gratis 3 días, sin tarjeta.">
   <meta property="og:image" content="https://atinov.com/icon-1024.png">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="Atinov — Asistente de inbox para Instagram">
-  <meta property="og:site_name" content="Atinov">
   <meta property="og:locale" content="es_LA">
-  <meta property="og:locale:alternate" content="es_AR">
-  <meta property="og:locale:alternate" content="es_MX">
-  <meta property="og:locale:alternate" content="es_CL">
-  <meta property="og:locale:alternate" content="es_ES">
-
-  <!-- Twitter Card -->
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:url" content="https://atinov.com/">
-  <meta name="twitter:title" content="Atinov — Asistente de inbox para Instagram Business">
-  <meta name="twitter:description" content="Tu inbox de Instagram organizado. Asistente con IA que sugiere respuestas, prioriza consultas urgentes y centraliza la conversación con tus clientes.">
-  <meta name="twitter:image" content="https://atinov.com/icon-1024.png">
-  <meta name="twitter:image:alt" content="Atinov — Asistente de inbox para Instagram">
-
-  <!-- Iconos -->
-  <link rel="icon" href="/icon.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="/icon-1024.png">
-
-  <!-- JSON-LD: Organization + SoftwareApplication para que Google entienda qué somos -->
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    "name": "Atinov",
-    "applicationCategory": "BusinessApplication",
-    "operatingSystem": "Web",
-    "description": "Software de atención al cliente para Instagram Business. Asistente con IA que sugiere respuestas a mensajes de clientes, prioriza consultas urgentes y unifica el inbox del equipo de atención.",
-    "url": "https://atinov.com/",
-    "offers": [
-      { "@type": "Offer", "name": "Founder", "price": "148", "priceCurrency": "USD" }
-    ],
-    "aggregateRating": {
-      "@type": "AggregateRating",
-      "ratingValue": "4.9",
-      "reviewCount": "12",
-      "bestRating": "5",
-      "worstRating": "1"
-    },
-    "publisher": {
-      "@type": "Organization",
-      "name": "Atinov",
-      "url": "https://atinov.com/",
-      "logo": "https://atinov.com/icon-1024.png"
-    }
-  }
-  </script>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-  <!-- Plausible Analytics (privacy-first, sin cookies, no necesita banner GDPR).
-       Cuando configures el dominio real (atinov.com) en Plausible, cambiá
-       data-domain por el dominio que apuntes. Mientras tanto se queda en railway
-       y registra las visitas igual. Para desactivar: borrá el script. -->
+  <!-- Plausible Analytics -->
   <script defer data-domain="atinov.com" src="https://plausible.io/js/script.outbound-links.js"></script>
   <script>
-    // Helper para custom events. Lo usamos abajo en los CTAs para trackear
-    // qué tanto convierten el hero, el cta del medio y el final.
     window.plausible = window.plausible || function(){ (window.plausible.q = window.plausible.q || []).push(arguments) };
   </script>
 
   <style>
+    /* ══════════════════════════════════════════════════════════════════
+       Sistema visual v2 — blueprint ManyChat (2026-06-10):
+       base blanca + texto casi negro + UN solo color de acción (esmeralda
+       plano), display font grande, bordes negros y sombra dura sutil,
+       iconos SVG de un solo set, CERO gradientes, CERO emojis como UI.
+       ══════════════════════════════════════════════════════════════════ */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --orange: #10b981;
-      --grad: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
-      --bg: #0a0a12;
-      --surface: #111120;
-      --card: #16162a;
-      --border: rgba(255,255,255,.08);
-      --text-1: #f0f0ff;
-      --text-2: #a0a0c0;
-      --text-3: #606080;
+      --ink:      #131414;   /* texto principal, bordes */
+      --ink-2:    #4b5256;   /* texto secundario */
+      --ink-3:    #8a9196;   /* hints */
+      --paper:    #ffffff;
+      --paper-2:  #f6f6f3;   /* secciones alternas, off-white cálido */
+      --action:   #10b981;   /* ÚNICO color de acción */
+      --action-d: #0c8f64;
+      --action-bg:#e7f8f1;
+      --danger:   #e24b4a;
+      --border:   #131414;
+      --radius:   16px;
+      --shadow-hard: 4px 4px 0 var(--ink);
     }
-    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text-1); min-height: 100vh; overflow-x: hidden; }
-    a { color: inherit; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--paper);
+      color: var(--ink);
+      font-size: 16.5px;
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+    section { padding: 96px 0; }
+    .display { font-family: 'Space Grotesk', 'Inter', sans-serif; letter-spacing: -.02em; }
+
+    h1 { font-size: clamp(2.6rem, 6vw, 4.4rem); font-weight: 700; line-height: 1.04; }
+    h2 { font-size: clamp(2rem, 4.2vw, 3rem); font-weight: 700; line-height: 1.1; margin-bottom: 14px; }
+    h3 { font-size: 1.25rem; font-weight: 700; }
+    .lead { color: var(--ink-2); font-size: 1.15rem; max-width: 620px; }
+    .kicker { display: inline-block; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--action-d); margin-bottom: 14px; }
+
+    /* Botones: píldora, color plano, sombra dura */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 15px 30px; border-radius: 999px;
+      font-size: 16px; font-weight: 700; text-decoration: none; cursor: pointer;
+      border: 1.5px solid var(--ink);
+      transition: transform .12s, box-shadow .12s;
+    }
+    .btn-action { background: var(--action); color: var(--ink); box-shadow: var(--shadow-hard); }
+    .btn-action:hover { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--ink); }
+    .btn-action:active { transform: translate(0,0); box-shadow: 2px 2px 0 var(--ink); }
+    .btn-ghost { background: transparent; color: var(--ink); border-color: #d7d9d6; }
+    .btn-ghost:hover { border-color: var(--ink); }
+    .btn-sm { padding: 11px 22px; font-size: 14.5px; }
+    .under-cta { font-size: 13.5px; color: var(--ink-3); margin-top: 14px; }
 
     /* ── NAV ── */
-    nav { max-width: 1180px; margin: 0 auto; padding: 22px 28px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: rgba(10,10,18,.85); backdrop-filter: blur(12px); z-index: 50; }
-    .nav-logo { font-size: 1.25rem; font-weight: 800; display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text-1); }
-    .nav-logo-icon { width: 32px; height: 32px; background: var(--grad); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
-    .nav-links { display: flex; gap: 30px; align-items: center; }
-    .nav-links a { text-decoration: none; color: var(--text-2); font-size: 14px; font-weight: 500; transition: color .15s; }
-    .nav-links a:hover { color: var(--text-1); }
-    .nav-actions { display: flex; gap: 12px; align-items: center; }
-    .btn { display: inline-flex; align-items: center; justify-content: center; padding: 10px 22px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all .15s; border: none; text-decoration: none; }
-    .btn-outline { background: transparent; border: 1.5px solid var(--border); color: var(--text-2); }
-    .btn-outline:hover { border-color: var(--orange); color: var(--orange); }
-    .btn-grad { background: var(--grad); color: #fff; box-shadow: 0 4px 16px rgba(16,185,129,.35); }
-    .btn-grad:hover { opacity: .92; transform: translateY(-1px); }
-    .btn-lg { padding: 14px 30px; font-size: 15px; }
+    nav {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(255,255,255,.92); backdrop-filter: blur(8px);
+      border-bottom: 1.5px solid #ececea;
+    }
+    .nav-in { max-width: 1120px; margin: 0 auto; padding: 16px 24px; display: flex; align-items: center; gap: 34px; }
+    .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); font-family: 'Space Grotesk'; font-weight: 700; font-size: 1.3rem; }
+    .logo-mark { width: 34px; height: 34px; border-radius: 10px; background: var(--action); border: 1.5px solid var(--ink); display: flex; align-items: center; justify-content: center; }
+    .nav-links { display: flex; gap: 26px; margin-left: 8px; }
+    .nav-links a { text-decoration: none; color: var(--ink-2); font-size: 15px; font-weight: 500; }
+    .nav-links a:hover { color: var(--ink); }
+    .nav-right { margin-left: auto; display: flex; align-items: center; gap: 18px; }
+    .nav-right .login { text-decoration: none; color: var(--ink); font-weight: 600; font-size: 15px; }
 
     /* ── HERO ── */
-    .hero-wrap { position: relative; overflow: hidden; }
-    .hero-glow { position: absolute; top: -200px; left: 50%; transform: translateX(-50%); width: 900px; height: 900px; background: radial-gradient(circle, rgba(16,185,129,.18) 0%, rgba(16,185,129,0) 60%); pointer-events: none; z-index: 0; }
-    .hero { position: relative; text-align: center; padding: 80px 28px 40px; max-width: 860px; margin: 0 auto; z-index: 1; }
-    .hero-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(16,185,129,.12); border: 1px solid rgba(16,185,129,.3); color: var(--orange); padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; margin-bottom: 28px; }
-    .hero h1 { font-size: clamp(2.4rem, 5.5vw, 3.8rem); font-weight: 900; line-height: 1.08; margin-bottom: 24px; letter-spacing: -.02em; }
-    .hero h1 span { background: var(--grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-    .hero p.lead { font-size: 1.15rem; color: var(--text-2); line-height: 1.6; max-width: 640px; margin: 0 auto 36px; }
-    .hero-cta { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
-    .hero-sub { font-size: 12.5px; color: var(--text-3); margin-top: 16px; }
-    .hero-sub strong { color: var(--text-2); }
+    .hero { padding: 84px 0 90px; }
+    .hero-grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: 56px; align-items: center; }
+    .hero h1 .mark { background: var(--action); padding: 0 .12em; border-radius: 8px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+    .hero .lead { margin: 24px 0 32px; }
 
-    /* ── CONVO MOCKUP ── */
-    .mockup-wrap { max-width: 460px; margin: 60px auto 0; padding: 0 20px; position: relative; z-index: 1; }
-    .mockup { background: var(--card); border: 1px solid var(--border); border-radius: 22px; overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,.6), 0 0 0 1px rgba(16,185,129,.08); }
-    .mockup-header { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--border); background: rgba(0,0,0,.2); }
-    .mockup-avatar { width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, #34d399, #06b6d4); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 800; color: #fff; }
-    .mockup-user { font-size: 14px; font-weight: 700; }
-    .mockup-status { font-size: 11px; color: #22c55e; display: flex; align-items: center; gap: 5px; }
-    .mockup-status::before { content: ''; width: 6px; height: 6px; background: #22c55e; border-radius: 50%; }
-    .mockup-body { padding: 18px; display: flex; flex-direction: column; gap: 10px; min-height: 320px; }
-    .msg { max-width: 78%; padding: 10px 14px; border-radius: 18px; font-size: 13.5px; line-height: 1.45; }
-    .msg.in { background: #262638; color: var(--text-1); align-self: flex-start; border-bottom-left-radius: 6px; }
-    .msg.out { background: var(--grad); color: #fff; align-self: flex-end; border-bottom-right-radius: 6px; }
-    .msg-meta { font-size: 10.5px; color: var(--text-3); margin-top: 2px; }
-    .msg.out + .msg-meta { align-self: flex-end; }
-    .typing { display: inline-flex; gap: 4px; padding: 10px 14px; background: #262638; border-radius: 18px; align-self: flex-start; }
-    .typing span { width: 7px; height: 7px; background: var(--text-3); border-radius: 50%; animation: typing 1.2s infinite; }
-    .typing span:nth-child(2) { animation-delay: .2s; }
-    .typing span:nth-child(3) { animation-delay: .4s; }
-    @keyframes typing { 0%, 60%, 100% { opacity: .3; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-4px); } }
-    .hot-badge { position: absolute; top: -12px; right: 30px; background: linear-gradient(135deg, #f97316, #ef4444); color: #fff; font-size: 11px; font-weight: 800; padding: 6px 14px; border-radius: 20px; box-shadow: 0 4px 16px rgba(249,115,22,.4); letter-spacing: .06em; text-transform: uppercase; }
-
-    /* ── SOCIAL PROOF ── */
-    .proof { max-width: 1100px; margin: 90px auto 0; padding: 0 28px; text-align: center; }
-    .proof-label { font-size: 12px; color: var(--text-3); text-transform: uppercase; letter-spacing: .12em; font-weight: 700; margin-bottom: 24px; }
-    .proof-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; margin-bottom: 32px; }
-    .proof-stat { background: var(--surface); padding: 28px 16px; }
-    .proof-num { font-size: 2rem; font-weight: 900; background: var(--grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-
-    /* Trusted stack — logos de tecnologías que dan credibilidad */
-    .trusted-stack { padding: 30px 0 10px; border-top: 1px solid var(--border); }
-    .ts-label { font-size: 11.5px; color: var(--text-3); letter-spacing: .14em; text-transform: uppercase; margin-bottom: 18px; font-weight: 600; }
-    .ts-logos { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
-    .ts-logo {
-      display: inline-flex; align-items: center; gap: 7px;
-      padding: 9px 16px; background: rgba(255,255,255,.03); border: 1px solid var(--border);
-      border-radius: 30px; font-size: 13px; color: var(--text-2);
-      transition: all .2s;
+    /* Mockup del producto (recreación CSS fiel del panel real) */
+    .shot {
+      background: var(--paper); border: 1.5px solid var(--ink); border-radius: var(--radius);
+      box-shadow: 8px 8px 0 var(--ink); overflow: hidden;
     }
-    .ts-logo:hover { background: rgba(16,185,129,.06); border-color: rgba(16,185,129,.3); transform: translateY(-2px); }
-    .ts-logo span { font-size: 16px; }
-    .ts-logo strong { color: var(--text-1); font-weight: 700; }
-    .proof-lbl { font-size: 12.5px; color: var(--text-3); margin-top: 4px; }
+    .shot-bar { display: flex; gap: 6px; padding: 12px 16px; border-bottom: 1.5px solid #ececea; }
+    .shot-bar i { width: 10px; height: 10px; border-radius: 50%; background: #e3e5e2; }
+    .shot-body { padding: 18px; }
+    .dm { display: flex; gap: 10px; margin-bottom: 12px; }
+    .dm-av { width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12.5px; border: 1.5px solid var(--ink); }
+    .dm-bubble { padding: 10px 14px; border-radius: 14px; font-size: 14px; line-height: 1.5; max-width: 85%; }
+    .dm-in .dm-av { background: #f0e9ff; }
+    .dm-in .dm-bubble { background: var(--paper-2); border: 1.5px solid #ececea; }
+    .dm-out { flex-direction: row-reverse; }
+    .dm-out .dm-av { background: var(--action); }
+    .dm-out .dm-bubble { background: var(--action-bg); border: 1.5px solid var(--action); }
+    .shot-score {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: 8px; padding: 12px 14px; border: 1.5px solid var(--ink); border-radius: 12px; background: var(--paper);
+    }
+    .score-badge { font-weight: 800; font-size: 14px; background: var(--action); border: 1.5px solid var(--ink); border-radius: 999px; padding: 3px 12px; }
 
-    /* ── PROBLEM ── */
-    .problem { max-width: 1100px; margin: 100px auto 0; padding: 0 28px; }
-    .section-title { text-align: center; margin-bottom: 60px; }
-    .section-title .eyebrow { font-size: 12px; color: var(--orange); text-transform: uppercase; letter-spacing: .12em; font-weight: 700; margin-bottom: 14px; }
-    .section-title h2 { font-size: clamp(1.8rem, 3.5vw, 2.4rem); font-weight: 800; margin-bottom: 14px; letter-spacing: -.01em; }
-    .section-title p { color: var(--text-2); font-size: 15px; max-width: 580px; margin: 0 auto; line-height: 1.6; }
-    .problem-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
-    .pain { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 32px 26px; }
-    .pain-icon { width: 44px; height: 44px; border-radius: 11px; background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.25); display: flex; align-items: center; justify-content: center; font-size: 22px; margin-bottom: 18px; }
-    .pain h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 10px; }
-    .pain p { color: var(--text-2); font-size: 13.5px; line-height: 1.6; }
+    /* ── TRUST BAR ── */
+    .trust { background: var(--paper-2); border-top: 1.5px solid #ececea; border-bottom: 1.5px solid #ececea; padding: 26px 0; }
+    .trust-row { display: flex; flex-wrap: wrap; gap: 18px 44px; justify-content: center; align-items: center; }
+    .trust-item { display: flex; align-items: center; gap: 9px; color: var(--ink-2); font-size: 14px; font-weight: 600; }
+    .trust-item svg { width: 17px; height: 17px; fill: var(--action-d); flex-shrink: 0; }
 
-    /* ── HOW IT WORKS ── */
-    .how { max-width: 1100px; margin: 110px auto 0; padding: 0 28px; }
-    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
-    .step { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 32px 28px; position: relative; overflow: hidden; }
-    .step::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--grad); }
-    .step-num { font-size: 12px; font-weight: 800; color: var(--orange); letter-spacing: .12em; margin-bottom: 14px; }
-    .step h3 { font-size: 1.15rem; font-weight: 700; margin-bottom: 12px; }
-    .step p { color: var(--text-2); font-size: 13.5px; line-height: 1.65; }
-    .step-chip { display: inline-block; margin-top: 16px; padding: 5px 12px; background: rgba(16,185,129,.12); border: 1px solid rgba(16,185,129,.25); border-radius: 20px; font-size: 11.5px; color: var(--orange); font-weight: 600; }
+    /* ── DEMO VIVO ── */
+    .live-box {
+      border: 1.5px solid var(--ink); border-radius: 20px; box-shadow: var(--shadow-hard);
+      background: var(--action-bg); padding: 44px; display: grid; grid-template-columns: 1.2fr .8fr; gap: 40px; align-items: center;
+    }
+    .pulse-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--action-d); margin-right: 8px; animation: pulse 1.6s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: .35 } }
 
-    /* ── FEATURES ── */
-    .features { max-width: 1180px; margin: 110px auto 0; padding: 0 28px; }
-    .feat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-    .feat { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 26px 22px; transition: all .2s; }
-    .feat:hover { border-color: rgba(16,185,129,.3); transform: translateY(-3px); box-shadow: 0 12px 40px rgba(0,0,0,.3); }
-    .feat-icon { width: 40px; height: 40px; border-radius: 10px; background: rgba(16,185,129,.12); display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 14px; }
-    .feat h3 { font-size: .98rem; font-weight: 700; margin-bottom: 8px; }
-    .feat p { color: var(--text-2); font-size: 13px; line-height: 1.55; }
+    /* ── BEFORE / AFTER ── */
+    .ba-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-top: 40px; }
+    .ba-col { border: 1.5px solid var(--ink); border-radius: var(--radius); padding: 30px; background: var(--paper); }
+    .ba-col.bad { border-color: #e3b3b3; }
+    .ba-col.good { box-shadow: var(--shadow-hard); }
+    .ba-tag { display: inline-block; font-size: 12.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; padding: 4px 12px; border-radius: 999px; border: 1.5px solid var(--ink); margin-bottom: 18px; }
+    .ba-col.bad .ba-tag { background: #fbeaea; border-color: #e3b3b3; color: #a13c3c; }
+    .ba-col.good .ba-tag { background: var(--action); }
+    .ba-col ul { list-style: none; }
+    .ba-col li { display: flex; gap: 11px; padding: 9px 0; font-size: 15.5px; color: var(--ink-2); align-items: flex-start; }
+    .ba-col li svg { width: 18px; height: 18px; flex-shrink: 0; margin-top: 3px; }
+    .ba-col.bad li svg { fill: #c96a6a; }
+    .ba-col.good li svg { fill: var(--action-d); }
+    .ba-col.good li { color: var(--ink); font-weight: 500; }
 
-    /* ── COMPARISON ── */
-    .compare { max-width: 960px; margin: 110px auto 0; padding: 0 28px; }
-    .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-    .compare-col { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 32px 28px; }
-    .compare-col.good { background: linear-gradient(160deg, rgba(16,185,129,.12) 0%, rgba(6,182,212,.07) 100%); border-color: rgba(16,185,129,.4); }
-    .compare-title { font-size: 1.1rem; font-weight: 800; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
-    .compare-title .em { font-size: 22px; }
-    .compare-list { list-style: none; display: flex; flex-direction: column; gap: 14px; }
-    .compare-list li { display: flex; gap: 12px; align-items: flex-start; font-size: 14px; color: var(--text-2); line-height: 1.5; }
-    .compare-list li .dot { flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; margin-top: 2px; }
-    .compare-col .dot { background: rgba(239,68,68,.15); color: #ef4444; }
-    .compare-col.good .dot { background: rgba(34,197,94,.18); color: #22c55e; }
+    /* ── DIFERENCIADORES ── */
+    .diff { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; margin-top: 64px; }
+    .diff:first-of-type { margin-top: 48px; }
+    .diff h3 { font-size: 1.7rem; margin-bottom: 12px; font-family: 'Space Grotesk'; }
+    .diff p { color: var(--ink-2); font-size: 1.05rem; }
+    .diff .num { font-family: 'Space Grotesk'; font-weight: 700; font-size: 14px; color: var(--action-d); margin-bottom: 8px; }
+    .mini-shot { border: 1.5px solid var(--ink); border-radius: 14px; background: var(--paper); box-shadow: var(--shadow-hard); padding: 18px; }
+    .mini-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 11px 13px; border: 1.5px solid #ececea; border-radius: 10px; margin-bottom: 9px; font-size: 14px; background: var(--paper); }
+    .mini-row:last-child { margin-bottom: 0; }
+    .mini-chip { font-size: 12px; font-weight: 800; border: 1.5px solid var(--ink); border-radius: 999px; padding: 2px 10px; flex-shrink: 0; }
+    .mini-btn { font-size: 12.5px; font-weight: 700; background: var(--action); border: 1.5px solid var(--ink); border-radius: 999px; padding: 4px 13px; flex-shrink: 0; }
+    .mini-title { font-weight: 700; font-size: 13.5px; margin-bottom: 11px; }
 
-    /* ── USE CASES (prueba social honesta) ── */
-    .usecases { max-width: 1180px; margin: 110px auto 0; padding: 0 28px; }
-    .uc-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 22px; }
-    .uc-card { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 30px 26px; position: relative; overflow: hidden; transition: all .2s; }
-    .uc-card:hover { border-color: rgba(16,185,129,.35); transform: translateY(-3px); box-shadow: 0 14px 40px rgba(0,0,0,.32); }
-    .uc-tag { display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--orange); background: rgba(16,185,129,.12); border: 1px solid rgba(16,185,129,.25); padding: 4px 10px; border-radius: 16px; margin-bottom: 14px; }
-    .uc-card h3 { font-size: 1.15rem; font-weight: 800; margin-bottom: 12px; letter-spacing: -.01em; }
-    .uc-flow { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 18px 0 16px; padding: 14px; background: rgba(0,0,0,.25); border-radius: 12px; border: 1px solid rgba(255,255,255,.04); }
-    .uc-flow > div { font-size: 12px; line-height: 1.5; }
-    .uc-flow .label { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-3); margin-bottom: 6px; }
-    .uc-flow .before strong { color: #ef4444; }
-    .uc-flow .after strong { color: #22c55e; }
-    .uc-metric { display: flex; align-items: baseline; gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
-    .uc-metric .num { font-size: 1.6rem; font-weight: 900; color: var(--orange); letter-spacing: -.02em; }
-    .uc-metric .lbl { font-size: 12.5px; color: var(--text-2); }
-    .uc-disclaimer { text-align: center; margin-top: 36px; font-size: 12px; color: var(--text-3); max-width: 640px; margin-left: auto; margin-right: auto; line-height: 1.6; padding: 14px 18px; background: rgba(255,255,255,.02); border: 1px dashed var(--border); border-radius: 10px; }
-    .trust-bar { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; margin-top: 50px; }
-    .trust-chip { display: flex; align-items: center; gap: 8px; padding: 10px 18px; background: rgba(255,255,255,.03); border: 1px solid var(--border); border-radius: 30px; font-size: 13px; color: var(--text-2); }
-    .trust-chip .e { font-size: 16px; }
-    @media (max-width: 880px) { .uc-grid { grid-template-columns: 1fr; } }
+    /* ── 3 PASOS ── */
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; margin-top: 48px; }
+    .step { border: 1.5px solid var(--ink); border-radius: var(--radius); padding: 30px; background: var(--paper); }
+    .step .n { font-family: 'Space Grotesk'; font-size: 3rem; font-weight: 700; color: var(--action-d); line-height: 1; margin-bottom: 14px; }
+    .step h3 { margin-bottom: 8px; }
+    .step p { color: var(--ink-2); font-size: 15px; }
+    .step .t { display: inline-block; margin-top: 12px; font-size: 12.5px; font-weight: 700; background: var(--paper-2); border: 1.5px solid #ececea; border-radius: 999px; padding: 3px 11px; color: var(--ink-2); }
 
-    /* ── PRICING SECTION (inline en home) ── */
-    .pricing-section { max-width: 1180px; margin: 110px auto 0; padding: 0 28px; }
-    .pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; align-items: stretch; }
+    /* ── PRICING ── */
     .price-card {
-      background: var(--card); border: 1px solid var(--border); border-radius: 22px;
-      padding: 36px 28px; display: flex; flex-direction: column; position: relative;
-      transition: all .25s;
+      max-width: 660px; margin: 48px auto 0; border: 1.5px solid var(--ink); border-radius: 22px;
+      background: var(--paper); box-shadow: 8px 8px 0 var(--ink); padding: 44px; text-align: left; position: relative;
     }
-    .price-card:hover { border-color: rgba(16,185,129,.35); transform: translateY(-3px); }
-    .price-card.featured {
-      background: linear-gradient(160deg, rgba(16,185,129,.18) 0%, rgba(6,182,212,.10) 100%);
-      border-color: rgba(16,185,129,.5);
-      transform: scale(1.03);
-      box-shadow: 0 24px 60px -20px rgba(16,185,129,.4);
-    }
-    .price-card.featured:hover { transform: scale(1.03) translateY(-3px); }
-    .price-badge {
-      position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
-      background: var(--grad); color: #fff; font-size: 11px; font-weight: 700;
-      letter-spacing: .12em; text-transform: uppercase; padding: 6px 16px; border-radius: 20px;
-      box-shadow: 0 8px 24px -6px rgba(16,185,129,.6);
-    }
-    .price-name { font-size: 13px; font-weight: 800; color: var(--orange); letter-spacing: .14em; text-transform: uppercase; margin-bottom: 8px; }
-    .price-amount { font-size: 2.4rem; font-weight: 900; color: var(--text-1); line-height: 1; letter-spacing: -.02em; }
-    .price-amount small { font-size: 14px; color: var(--text-3); font-weight: 500; margin-left: 4px; }
-    .price-tagline { color: var(--text-2); font-size: 13.5px; line-height: 1.55; margin: 14px 0 22px; min-height: 50px; }
-    .price-cta {
-      display: block; text-align: center; padding: 13px 22px; border-radius: 10px;
-      font-weight: 700; font-size: 14px; text-decoration: none; transition: all .15s;
-      margin-bottom: 22px;
-    }
-    .price-cta-grad { background: var(--grad); color: #fff; }
-    .price-cta-grad:hover { box-shadow: 0 12px 32px -10px rgba(16,185,129,.6); }
-    .price-cta-outline { background: transparent; color: var(--text-1); border: 1px solid var(--border); }
-    .price-cta-outline:hover { border-color: var(--orange); color: var(--orange); }
-    .price-features { list-style: none; display: flex; flex-direction: column; gap: 10px; flex: 1; }
-    .price-features li { display: flex; align-items: flex-start; gap: 9px; font-size: 13px; color: var(--text-2); }
-    .price-features li .check { flex-shrink: 0; width: 16px; height: 16px; border-radius: 50%; background: rgba(16,185,129,.18); display: flex; align-items: center; justify-content: center; font-size: 9px; color: var(--orange); margin-top: 2px; }
-    .price-features li.locked { color: rgba(255,255,255,.32); font-style: italic; }
-    .price-features li.locked .check { background: rgba(255,255,255,.05); }
-    .price-features li strong { color: var(--text-1); }
-    .price-overage { padding-top: 12px; border-top: 1px dashed rgba(16,185,129,.25); margin-top: 6px; font-size: 12.5px; color: var(--text-2); }
-    .price-overage strong { color: #22c55e; }
-    .price-foot { text-align: center; margin-top: 30px; font-size: 13.5px; color: var(--text-2); }
-    .price-foot a { color: var(--orange); text-decoration: none; font-weight: 600; }
-    @media (max-width: 880px) {
-      .pricing-grid { grid-template-columns: 1fr; }
-      .price-card.featured { transform: none; }
-      .price-card.featured:hover { transform: translateY(-3px); }
-    }
-
-    /* ── TRIAL CTA ── */
-    .cta-section { max-width: 760px; margin: 120px auto 0; padding: 0 28px; }
-    .cta-box { background: linear-gradient(135deg, rgba(16,185,129,.15) 0%, rgba(6,182,212,.08) 100%); border: 1px solid rgba(16,185,129,.3); border-radius: 22px; padding: 60px 44px; text-align: center; }
-    .cta-box h2 { font-size: clamp(1.8rem, 3.5vw, 2.2rem); font-weight: 800; margin-bottom: 14px; letter-spacing: -.01em; }
-    .cta-box p { color: var(--text-2); font-size: 15px; margin-bottom: 32px; line-height: 1.6; }
-    .cta-foot { font-size: 12.5px; color: var(--text-3); margin-top: 16px; }
+    .price-flag { position: absolute; top: -16px; left: 40px; background: var(--action); border: 1.5px solid var(--ink); border-radius: 999px; font-size: 12.5px; font-weight: 800; padding: 5px 16px; text-transform: uppercase; letter-spacing: .05em; }
+    .price-num { font-family: 'Space Grotesk'; font-size: 3.6rem; font-weight: 700; line-height: 1; }
+    .price-num small { font-size: 1.1rem; color: var(--ink-2); font-weight: 600; }
+    .anchor-line { color: var(--ink-2); font-size: 14.5px; margin-top: 6px; }
+    .anchor-line s { color: var(--ink-3); }
+    .price-list { list-style: none; margin: 26px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 9px 22px; }
+    .price-list li { display: flex; gap: 9px; font-size: 14.5px; align-items: flex-start; }
+    .price-list svg { width: 17px; height: 17px; fill: var(--action-d); flex-shrink: 0; margin-top: 3px; }
+    .guarantee { display: flex; gap: 12px; align-items: center; background: var(--paper-2); border: 1.5px solid #ececea; border-radius: 12px; padding: 14px 18px; font-size: 14px; color: var(--ink-2); margin-top: 22px; }
+    .guarantee svg { width: 22px; height: 22px; fill: var(--action-d); flex-shrink: 0; }
 
     /* ── FAQ ── */
-    .faq-section { max-width: 720px; margin: 110px auto 0; padding: 0 28px; }
-    .faq-item { border-bottom: 1px solid var(--border); padding: 22px 0; }
-    .faq-q { font-weight: 700; font-size: 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-    .faq-q span { color: var(--orange); font-size: 18px; transition: transform .2s; }
-    .faq-a { color: var(--text-2); font-size: 14px; line-height: 1.7; margin-top: 12px; display: none; }
-    .faq-item.open .faq-q span { transform: rotate(45deg); }
-    .faq-item.open .faq-a { display: block; }
+    .faq { max-width: 720px; margin: 44px auto 0; }
+    .faq details { border: 1.5px solid var(--ink); border-radius: 14px; background: var(--paper); margin-bottom: 12px; overflow: hidden; }
+    .faq summary { cursor: pointer; padding: 19px 22px; font-weight: 700; font-size: 16px; list-style: none; display: flex; justify-content: space-between; align-items: center; }
+    .faq summary::-webkit-details-marker { display: none; }
+    .faq summary::after { content: '+'; font-family: 'Space Grotesk'; font-size: 1.5rem; font-weight: 600; color: var(--action-d); }
+    .faq details[open] summary::after { content: '–'; }
+    .faq .a { padding: 0 22px 20px; color: var(--ink-2); font-size: 15px; }
+
+    /* ── CTA FINAL ── */
+    .final { text-align: center; }
+    .final h2 { max-width: 700px; margin: 0 auto 14px; }
+    .final .lead { margin: 0 auto 32px; }
 
     /* ── FOOTER ── */
-    footer { border-top: 1px solid var(--border); padding: 40px 28px 28px; text-align: center; color: var(--text-3); font-size: 13px; margin-top: 100px; }
-    footer .foot-links { display: flex; gap: 22px; justify-content: center; margin-bottom: 18px; flex-wrap: wrap; }
-    footer .foot-links a { color: var(--text-2); text-decoration: none; font-size: 13.5px; transition: color .15s; }
-    footer .foot-links a:hover { color: var(--orange); }
-    footer .foot-copy { color: var(--text-3); font-size: 12.5px; }
+    footer { background: var(--ink); color: #cfd4d2; padding: 54px 0 34px; }
+    .foot-grid { display: flex; flex-wrap: wrap; gap: 40px 80px; justify-content: space-between; }
+    .foot-brand { font-family: 'Space Grotesk'; font-weight: 700; font-size: 1.25rem; color: #fff; display: flex; align-items: center; gap: 10px; }
+    .foot-col { display: flex; flex-direction: column; gap: 9px; font-size: 14px; }
+    .foot-col strong { color: #fff; font-size: 13px; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 4px; }
+    .foot-col a { color: #cfd4d2; text-decoration: none; }
+    .foot-col a:hover { color: #fff; }
+    .foot-base { border-top: 1px solid rgba(255,255,255,.14); margin-top: 40px; padding-top: 22px; font-size: 13px; color: #9aa19e; display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; }
 
-    @media (max-width: 900px) {
-      .problem-grid, .steps, .feat-grid, .compare-grid, .proof-stats { grid-template-columns: 1fr; }
-      .hero { padding: 60px 20px 30px; }
+    .alt { background: var(--paper-2); }
+    .center { text-align: center; }
+    .center .lead { margin-left: auto; margin-right: auto; }
+
+    @media (max-width: 880px) {
+      section { padding: 64px 0; }
+      .hero { padding: 48px 0 64px; }
+      .hero-grid, .live-box, .diff, .ba-grid { grid-template-columns: 1fr; }
+      .steps { grid-template-columns: 1fr; }
+      .price-list { grid-template-columns: 1fr; }
       .nav-links { display: none; }
-      .cta-box { padding: 42px 24px; }
+      .diff.flip .diff-visual { order: -1; }
+      .shot { box-shadow: 5px 5px 0 var(--ink); }
     }
   </style>
 </head>
 <body>
 
-<!-- NAV -->
+<!-- ── NAV ─────────────────────────────────────────────────────────────── -->
 <nav>
-  <a href="/" class="nav-logo">
-    <div class="nav-logo-icon">⚡</div>
-    Atinov
-  </a>
-  <div class="nav-links">
-    <a href="#como-funciona">Cómo funciona</a>
-    <a href="#features">Features</a>
-    <a href="#casos">Casos</a>
-    <a href="#pricing">Planes</a>
-    <a href="/about.html">Nosotros</a>
-    <a href="/contact.html">Contacto</a>
-  </div>
-  <div class="nav-actions">
-    <a href="/app" class="btn btn-outline">Iniciar sesión</a>
-    <a href="/app?register=1" class="btn btn-grad">Probar gratis</a>
+  <div class="nav-in">
+    <a class="logo" href="/">
+      <span class="logo-mark"><svg viewBox="0 0 20 20" width="17" height="17" fill="#131414"><path d="M11.983 1.907a.75.75 0 00-1.292-.657l-8.5 9.5A.75.75 0 002.75 12h6.572l-1.305 6.093a.75.75 0 001.292.657l8.5-9.5A.75.75 0 0017.25 8h-6.572l1.305-6.093z"/></svg></span>
+      Atinov
+    </a>
+    <div class="nav-links">
+      <a href="#producto">Producto</a>
+      <a href="#como-funciona">Cómo funciona</a>
+      <a href="#precio">Precio</a>
+      <a href="#faq">FAQ</a>
+    </div>
+    <div class="nav-right">
+      <a class="login" href="/app">Iniciar sesión</a>
+      <a class="btn btn-action btn-sm" href="/app?register=1">Empezar ahora</a>
+    </div>
   </div>
 </nav>
 
-<!-- HERO -->
-<div class="hero-wrap">
-  <div class="hero-glow"></div>
-  <section class="hero">
-    <div class="hero-badge">🚀 Prueba gratis 3 días · sin tarjeta</div>
-    <h1>Tu inbox de Instagram está lleno de personas que necesitaban una respuesta rápida — y <span>ya compraron en otro lado</span></h1>
-    <p class="lead">Atinov es un asistente de inbox con IA que atiende lo repetitivo, prioriza quién viene en modo curiosidad versus quién viene listo para comprar, y te alerta a Telegram solo cuando hay intención real. Sin contratar más equipo de atención.</p>
-    <div class="hero-cta">
-      <a href="/app?register=1" class="btn btn-grad btn-lg">Empezar prueba gratis →</a>
-      <a href="#como-funciona" class="btn btn-outline btn-lg">Ver cómo funciona</a>
+<!-- ── 1. HERO ─────────────────────────────────────────────────────────── -->
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <h1 class="display">Tu inbox de Instagram <span class="mark">se atiende solo.</span></h1>
+      <p class="lead">Atinov responde tus DMs con IA entrenada en tu negocio, califica a cada persona y te avisa cuándo entrar a cerrar. Tú solo hablas con quien está listo para comprar.</p>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">
+        <a class="btn btn-action" href="/app?register=1">Empezar ahora</a>
+        <a class="btn btn-ghost" href="#demo">Verlo en vivo ↓</a>
+      </div>
+      <p class="under-cta">3 días gratis · Sin tarjeta · Setup en 10 minutos</p>
     </div>
-    <div class="hero-sub"><strong>Setup en 10 minutos</strong> · Compatible con Instagram Business · Español nativo</div>
-  </section>
 
-  <!-- Conversation mockup — animado en vivo (los mensajes aparecen progresivamente) -->
-  <div class="mockup-wrap">
-    <div class="hot-badge" id="hero-hot-badge" style="opacity:0;transform:scale(.5);transition:all .5s">🔥 Cliente prioritario</div>
-    <div class="mockup">
-      <div class="mockup-header">
-        <div class="mockup-avatar">M</div>
-        <div style="flex:1">
-          <div class="mockup-user">@maria_fitness</div>
-          <div class="mockup-status" id="hero-mockup-status">Respondiendo…</div>
+    <!-- Recreación fiel del producto: DM real + score (sin stock, sin 3D) -->
+    <div class="shot" aria-hidden="true">
+      <div class="shot-bar"><i></i><i></i><i></i></div>
+      <div class="shot-body">
+        <div class="dm dm-in">
+          <div class="dm-av">MJ</div>
+          <div class="dm-bubble">Hola! ¿Me cuentas precios y si tienen hora para esta semana? 🙏</div>
+        </div>
+        <div class="dm dm-out">
+          <div class="dm-av"><svg viewBox="0 0 20 20" width="15" height="15" fill="#131414"><path d="M11.983 1.907a.75.75 0 00-1.292-.657l-8.5 9.5A.75.75 0 002.75 12h6.572l-1.305 6.093a.75.75 0 001.292.657l8.5-9.5A.75.75 0 0017.25 8h-6.572l1.305-6.093z"/></svg></div>
+          <div class="dm-bubble">¡Hola María José! La sesión inicial cuesta $45.000 e incluye evaluación completa. Tengo jueves 16:00 o viernes 11:30 — ¿cuál te acomoda? Te dejo el link para reservar 👇</div>
+        </div>
+        <div class="shot-score">
+          <span style="font-size:13.5px;font-weight:600">@mariajose.cl · respondido en 4 seg</span>
+          <span class="score-badge">Score 87</span>
         </div>
       </div>
-      <div class="mockup-body" id="hero-chat-body">
-        <!-- Los mensajes se insertan dinámicamente con animación typing -->
-      </div>
-      </div>
     </div>
+  </div>
+</header>
+
+<!-- ── 2. TRUST BAR ────────────────────────────────────────────────────── -->
+<div class="trust">
+  <div class="wrap trust-row">
+    <span class="trust-item"><svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd"/></svg>API oficial de Instagram (Meta)</span>
+    <span class="trust-item"><svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd"/></svg>Tus datos cifrados, en tu cuenta</span>
+    <span class="trust-item"><svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9.661 2.237a.531.531 0 01.678 0 11.947 11.947 0 007.078 2.749.5.5 0 01.479.425c.069.52.104 1.05.104 1.59 0 5.162-3.26 9.563-7.834 11.256a.48.48 0 01-.332 0C5.26 16.564 2 12.163 2 7c0-.538.035-1.069.104-1.589a.5.5 0 01.48-.425 11.947 11.947 0 007.077-2.75z" clip-rule="evenodd"/></svg>Cumple las políticas de Meta</span>
+    <span class="trust-item"><svg viewBox="0 0 20 20"><path d="M10 3c-4.31 0-8 3.033-8 7 0 2.024.978 3.825 2.499 5.085a3.478 3.478 0 01-.522 1.756.75.75 0 00.584 1.143 5.976 5.976 0 003.936-1.108c.487.082.99.124 1.503.124 4.31 0 8-3.033 8-7s-3.69-7-8-7z"/></svg>Soporte directo en español</span>
   </div>
 </div>
 
-<!-- SOCIAL PROOF -->
-<section class="proof">
-  <div class="proof-label">Diseñado para negocios que atienden clientes por Instagram</div>
-  <div class="proof-stats">
-    <div class="proof-stat"><div class="proof-num">24/7</div><div class="proof-lbl">Disponibilidad del asistente</div></div>
-    <div class="proof-stat"><div class="proof-num">&lt;90s</div><div class="proof-lbl">Tiempo de primera respuesta</div></div>
-    <div class="proof-stat"><div class="proof-num">3x</div><div class="proof-lbl">Más consultas atendidas</div></div>
-    <div class="proof-stat"><div class="proof-num">0</div><div class="proof-lbl">Mensajes ignorados</div></div>
-  </div>
-
-  <!-- Trusted stack: tecnologías reales que usamos. Da confianza técnica. -->
-  <div class="trusted-stack">
-    <div class="ts-label">Construido sobre tecnología confiable:</div>
-    <div class="ts-logos">
-      <div class="ts-logo"><span>🧠</span> <strong>OpenAI</strong> GPT-4o</div>
-      <div class="ts-logo"><span>📸</span> <strong>Meta API</strong> oficial</div>
-      <div class="ts-logo"><span>🛡️</span> <strong>Railway</strong> · datos privados</div>
-      <div class="ts-logo"><span>📧</span> <strong>Resend</strong></div>
+<!-- ── 3. DEMO EN VIVO ─────────────────────────────────────────────────── -->
+<section id="demo">
+  <div class="wrap">
+    <div class="live-box">
+      <div>
+        <span class="kicker"><span class="pulse-dot"></span>En vivo en esta página</span>
+        <h2 class="display">No te lo contamos.<br>Pruébalo ahora mismo.</h2>
+        <p class="lead" style="margin-bottom:28px">El botón de chat de esta página <strong>es Atinov de verdad</strong> — el mismo agente que atendería tu Instagram, respondiendo con nuestra información real. Pregúntale el precio, cómo funciona o si sirve para tu rubro.</p>
+        <button class="btn btn-action" onclick="document.getElementById('dmc-chat-fab')?.click(); try{plausible('Demo Open Click')}catch(e){}">Abrir el demo</button>
+      </div>
+      <div class="shot" style="box-shadow:6px 6px 0 var(--ink)">
+        <div class="shot-bar"><i></i><i></i><i></i></div>
+        <div class="shot-body">
+          <div class="dm dm-in"><div class="dm-av">TÚ</div><div class="dm-bubble">¿Y esto sirve para una tienda de ropa?</div></div>
+          <div class="dm dm-out"><div class="dm-av"><svg viewBox="0 0 20 20" width="15" height="15" fill="#131414"><path d="M11.983 1.907a.75.75 0 00-1.292-.657l-8.5 9.5A.75.75 0 002.75 12h6.572l-1.305 6.093a.75.75 0 001.292.657l8.5-9.5A.75.75 0 0017.25 8h-6.572l1.305-6.093z"/></svg></div><div class="dm-bubble">Total. Cargas tu catálogo (tallas, precios, envíos) y respondo cada DM con esa info al instante…</div></div>
+        </div>
+      </div>
     </div>
   </div>
 </section>
 
-<!-- PROBLEM -->
-<section class="problem">
-  <div class="section-title">
-    <div class="eyebrow">El problema</div>
-    <h2>Hoy tu inbox de Instagram se ve así</h2>
-    <p>Si atiendes clientes por DM, probablemente ya viviste esto:</p>
-  </div>
-  <div class="problem-grid">
-    <div class="pain">
-      <div class="pain-icon">⏱️</div>
-      <h3>Tu cliente espera demasiado</h3>
-      <p>Alguien pregunta por tu producto a las 11 PM, le contestas a las 9 AM. Cuando respondes, ya compró en otro lado o perdió el interés.</p>
-    </div>
-    <div class="pain">
-      <div class="pain-icon">💸</div>
-      <h3>Contratar más equipo cuesta caro</h3>
-      <p>$600–$1.500 USD al mes por persona, más capacitación. Y aun así, en horarios pico o de noche, los mensajes siguen acumulándose sin respuesta.</p>
-    </div>
-    <div class="pain">
-      <div class="pain-icon">🎯</div>
-      <h3>Mezclas curiosos con clientes reales</h3>
-      <p>200 conversaciones nuevas por semana, y entre ellas hay 5 personas listas para comprar. El problema es que no las distingues a tiempo y se te pierden.</p>
-    </div>
-  </div>
-</section>
-
-<!-- HOW IT WORKS -->
-<section class="how" id="como-funciona">
-  <div class="section-title">
-    <div class="eyebrow">Cómo funciona</div>
-    <h2>En 10 minutos tienes tu inbox organizado</h2>
-    <p>Conectas tu Instagram Business, configuras el asistente con la información de tu negocio, y listo.</p>
-  </div>
-  <div class="steps">
-    <div class="step">
-      <div class="step-num">PASO 01</div>
-      <h3>Conecta tu Instagram</h3>
-      <p>OAuth oficial de Meta. Un click y Atinov queda autorizado para asistirte con tu inbox. No se guarda tu contraseña — solo el permiso de Meta.</p>
-      <span class="step-chip">✓ Instagram Business</span>
-    </div>
-    <div class="step">
-      <div class="step-num">PASO 02</div>
-      <h3>Carga la información de tu negocio</h3>
-      <p>Subes tu Knowledge Base: qué vendes, precios, preguntas frecuentes, tono de voz, link de reserva. El asistente la usa para responder con tu información, en tu tono.</p>
-      <span class="step-chip">✓ Sin código</span>
-    </div>
-    <div class="step">
-      <div class="step-num">PASO 03</div>
-      <h3>Recibe alertas de clientes prioritarios</h3>
-      <p>Cuando alguien dice "lo quiero" o "cuándo podemos hablar", Atinov te alerta a Telegram o email. Tú entras a cerrar — la conversación ya está caliente y lista.</p>
-      <span class="step-chip">✓ Telegram + Email</span>
+<!-- ── 4. BEFORE / AFTER ───────────────────────────────────────────────── -->
+<section class="alt">
+  <div class="wrap center">
+    <span class="kicker">El problema</span>
+    <h2 class="display">Tu inbox: antes y después</h2>
+    <p class="lead">Si vendes por DM, la izquierda te va a doler. La derecha es lo que configura Atinov en 10 minutos.</p>
+    <div class="ba-grid" style="text-align:left">
+      <div class="ba-col bad">
+        <span class="ba-tag">Hoy</span>
+        <ul>
+          <li><svg viewBox="0 0 20 20"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"/></svg>Respondes lo mismo 40 veces al día, a mano</li>
+          <li><svg viewBox="0 0 20 20"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"/></svg>El comprador de las 11 PM se enfría hasta las 9 AM</li>
+          <li><svg viewBox="0 0 20 20"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"/></svg>Los curiosos entierran a quien viene con la tarjeta en la mano</li>
+          <li><svg viewBox="0 0 20 20"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"/></svg>No sabes por qué los que preguntan no terminan comprando</li>
+        </ul>
+      </div>
+      <div class="ba-col good">
+        <span class="ba-tag">Con Atinov</span>
+        <ul>
+          <li><svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/></svg>Preguntas frecuentes resueltas al instante, con tus precios y tu tono</li>
+          <li><svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/></svg>Cada persona atendida en segundos, 24/7</li>
+          <li><svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/></svg>Cada conversación con score de cierre: sabes a quién llamar primero</li>
+          <li><svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/></svg>Las que no compran te dicen por qué — y mejoras tu oferta</li>
+        </ul>
+      </div>
     </div>
   </div>
 </section>
 
-<!-- SECRET OF BIG ACCOUNTS — insight: las cuentas grandes parecen "siempre disponibles" porque tienen un sistema atrás -->
-<section class="how" id="el-secreto" style="margin-top:110px">
-  <div class="section-title">
-    <div class="eyebrow">El secreto que no cuentan</div>
-    <h2>Los influencers que parecen "siempre disponibles" no están ahí.<br><span style="background:linear-gradient(135deg,#10b981 0%,#06b6d4 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Tienen un sistema.</span></h2>
-    <p>Detrás de cada cuenta de 100K+ followers que responde rápido hay un equipo de atención, respuestas prearmadas y escalamiento al fundador solo cuando hay intención real de comprar. Atinov pone ese mismo sistema en tu negocio — sin contratar equipo de $1.000 USD por mes.</p>
+<!-- ── 5. DIFERENCIADORES ──────────────────────────────────────────────── -->
+<section id="producto">
+  <div class="wrap">
+    <div class="center">
+      <span class="kicker">Lo que ningún bot hace</span>
+      <h2 class="display">Los bots responden.<br>Atinov aprende.</h2>
+      <p class="lead">Cada conversación — incluso las que no terminan en venta — se convierte en inteligencia para tu negocio.</p>
+    </div>
+
+    <div class="diff">
+      <div>
+        <div class="num">01</div>
+        <h3>Corrígelo una vez. Responde como tú para siempre.</h3>
+        <p>Cuando el agente no sabe algo, no inventa: te trae la pregunta. Escribes la respuesta una vez y la usa en todas las conversaciones siguientes. A la semana, responde como tu mejor vendedor.</p>
+      </div>
+      <div class="diff-visual">
+        <div class="mini-shot">
+          <div class="mini-title">Tu agente necesita aprender esto</div>
+          <div class="mini-row"><span>¿Hacen envíos a regiones?</span><span class="mini-btn">Enseñarle</span></div>
+          <div class="mini-row"><span>¿Tienen convenio con isapres?</span><span class="mini-btn">Enseñarle</span></div>
+          <div class="mini-row" style="background:var(--action-bg);border-color:var(--action)"><span>¿Cuánto dura cada sesión?</span><span style="font-size:12.5px;font-weight:700;color:var(--action-d)">Aprendido ✓</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="diff flip">
+      <div class="diff-visual">
+        <div class="mini-shot">
+          <div class="mini-title">Por qué no te compran — últimos 30 días</div>
+          <div class="mini-row"><span>"Lo encuentro caro"</span><span class="mini-chip">×9</span></div>
+          <div class="mini-row"><span>"Lo converso con mi pareja"</span><span class="mini-chip">×6</span></div>
+          <div class="mini-row"><span>"No tengo tiempo este mes"</span><span class="mini-chip">×4</span></div>
+        </div>
+      </div>
+      <div>
+        <div class="num">02</div>
+        <h3>Sabes exactamente por qué NO te compran.</h3>
+        <p>Atinov detecta y agrupa las objeciones reales de tus conversaciones: qué frena a tu cliente, qué pregunta nadie le responde, qué le falta a tu oferta. Esa información hoy se te pierde en el inbox.</p>
+      </div>
+    </div>
+
+    <div class="diff">
+      <div>
+        <div class="num">03</div>
+        <h3>Tu CRM se ordena solo, por probabilidad de compra.</h3>
+        <p>Cada lead se compara contra tus ventas reales y recibe un score de 0 a 100. Abres el panel y la fila de arriba es la persona que está a punto de comprar. Cero adivinanza.</p>
+      </div>
+      <div class="diff-visual">
+        <div class="mini-shot">
+          <div class="mini-title">Pipeline — ordenado por score</div>
+          <div class="mini-row"><span>@constanza.brows</span><span class="mini-chip" style="background:var(--action)">87</span></div>
+          <div class="mini-row"><span>@imports.felipe</span><span class="mini-chip" style="background:#ffe8a3">64</span></div>
+          <div class="mini-row"><span>@valeria.yoga</span><span class="mini-chip" style="background:#eee">31</span></div>
+        </div>
+      </div>
+    </div>
   </div>
-  <div class="compare-grid">
-    <div class="compare-col">
-      <div class="compare-title"><span class="em">👤</span> Equipo de atención humano</div>
-      <ul class="compare-list">
-        <li><span class="dot">✗</span> $600–$1.500 USD/mes por persona</li>
-        <li><span class="dot">✗</span> Trabaja 8h al día, no 24/7</li>
-        <li><span class="dot">✗</span> Tarda semanas en aprender tu negocio</li>
-        <li><span class="dot">✗</span> Renuncia, se enferma, pide vacaciones</li>
+</section>
+
+<!-- ── 6. CÓMO FUNCIONA ────────────────────────────────────────────────── -->
+<section class="alt" id="como-funciona">
+  <div class="wrap center">
+    <span class="kicker">Cómo funciona</span>
+    <h2 class="display">Funcionando en 3 pasos</h2>
+    <p class="lead">Sin código, sin flujos que armar, sin curva de aprendizaje.</p>
+    <div class="steps" style="text-align:left">
+      <div class="step">
+        <div class="n">01</div>
+        <h3>Conecta tu Instagram</h3>
+        <p>Con el login oficial de Meta. Un clic, sin compartir tu contraseña con nadie.</p>
+        <span class="t">2 minutos</span>
+      </div>
+      <div class="step">
+        <div class="n">02</div>
+        <h3>Enséñale tu negocio</h3>
+        <p>Pega tus precios, preguntas frecuentes y tono. El agente sigue aprendiendo solo con cada conversación.</p>
+        <span class="t">8 minutos</span>
+      </div>
+      <div class="step">
+        <div class="n">03</div>
+        <h3>Entra solo a cerrar</h3>
+        <p>El agente atiende y califica 24/7. Te avisa por Telegram o email cuando alguien está listo para comprar.</p>
+        <span class="t">Desde el día 1</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── 7. PRICING ──────────────────────────────────────────────────────── -->
+<section id="precio">
+  <div class="wrap center">
+    <span class="kicker">Precio</span>
+    <h2 class="display">Un solo plan. 20 cupos fundadores.</h2>
+    <p class="lead">Precio congelado de por vida para los primeros 20 negocios que confíen. Después, sube.</p>
+
+    <div class="price-card">
+      <span class="price-flag">Plan fundador · 50% off</span>
+      <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+        <span class="price-num">$148 <small>USD/mes</small></span>
+        <span class="anchor-line">o $135.000 CLP · <s>$296 precio público</s></span>
+      </div>
+      <p class="anchor-line" style="margin-top:10px">Referencia honesta: un setter humano part-time cuesta $600+ USD/mes — y no trabaja de madrugada.</p>
+      <ul class="price-list">
+        <li><svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/></svg>6.000 conversaciones al mes</li>
+        <li><svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/></svg>Hasta 5 agentes con tonos distintos</li>
+        <li><svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/></svg>Agente que aprende + panel de inteligencia</li>
+        <li><svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/></svg>Score de cierre + CRM completo</li>
+        <li><svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/></svg>Alertas de leads calientes a Telegram/email</li>
+        <li><svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/></svg>Export a Excel + acompañamiento en el setup</li>
       </ul>
-    </div>
-    <div class="compare-col good">
-      <div class="compare-title"><span class="em">⚡</span> Atinov</div>
-      <ul class="compare-list">
-        <li><span class="dot">✓</span> $148 USD/mes (plan fundador, 20 cupos)</li>
-        <li><span class="dot">✓</span> Disponible 24/7, sin pausas</li>
-        <li><span class="dot">✓</span> Aprende tu negocio en 10 minutos</li>
-        <li><span class="dot">✓</span> Nunca se va, escala con tu volumen</li>
-      </ul>
+      <a class="btn btn-action" href="/app?register=1" style="width:100%">Empezar ahora</a>
+      <div class="guarantee">
+        <svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9.661 2.237a.531.531 0 01.678 0 11.947 11.947 0 007.078 2.749.5.5 0 01.479.425c.069.52.104 1.05.104 1.59 0 5.162-3.26 9.563-7.834 11.256a.48.48 0 01-.332 0C5.26 16.564 2 12.163 2 7c0-.538.035-1.069.104-1.589a.5.5 0 01.48-.425 11.947 11.947 0 007.077-2.75zm4.196 5.954a.75.75 0 00-1.214-.882l-2.483 3.415-1.13-1.13a.75.75 0 00-1.06 1.061l1.75 1.75a.75.75 0 001.137-.089l3-4.125z" clip-rule="evenodd"/></svg>
+        <span><strong>3 días de prueba gratis sin tarjeta</strong> + garantía de reembolso de 7 días en el primer pago, sin preguntas. El riesgo lo tomamos nosotros.</span>
+      </div>
     </div>
   </div>
 </section>
 
-<!-- FEATURES -->
-<section class="features" id="features">
-  <div class="section-title">
-    <div class="eyebrow">Features</div>
-    <h2>Todo lo que necesitas para no perder un cliente</h2>
-    <p>Sin contratar más equipo. Sin código. Sin curva de aprendizaje.</p>
-  </div>
-  <div class="feat-grid">
-    <div class="feat">
-      <div class="feat-icon">🔥</div>
-      <h3>Priorización HOT / WARM / COLD</h3>
-      <p>GPT-4o analiza cada conversación en tiempo real. Ves directo qué clientes necesitan atención inmediata.</p>
-    </div>
-    <div class="feat">
-      <div class="feat-icon">🧠</div>
-      <h3>Asistentes personalizados</h3>
-      <p>Configura asistentes con diferentes tonos y áreas (ventas, soporte, postventa). Respuestas naturales con tu estilo, no genéricas.</p>
-    </div>
-    <div class="feat">
-      <div class="feat-icon">📚</div>
-      <h3>Knowledge Base propia</h3>
-      <p>Pega tu información: precios, FAQs, políticas, links. El asistente responde con tus datos exactos — no inventa, no improvisa.</p>
-    </div>
-    <div class="feat">
-      <div class="feat-icon">🔗</div>
-      <h3>Links smart con tracking</h3>
-      <p>Links del tipo <code>/go/mi-link</code> que abren chat preconfigurado. Registras clicks, origen y conversiones.</p>
-    </div>
-    <div class="feat">
-      <div class="feat-icon">🔔</div>
-      <h3>Alertas multi-canal</h3>
-      <p>Notificaciones de clientes prioritarios por Telegram, email o webhook. Tú entras al cierre cuando hay intención real.</p>
-    </div>
-    <div class="feat">
-      <div class="feat-icon">🔁</div>
-      <h3>Recordatorios de seguimiento</h3>
-      <p>El asistente te recuerda retomar conversaciones inactivas con sugerencias de mensaje. Ningún cliente se queda sin respuesta por olvido.</p>
-    </div>
-    <div class="feat">
-      <div class="feat-icon">📊</div>
-      <h3>Dashboard + export Excel</h3>
-      <p>Ves todo tu pipeline, filtras por prioridad y exportas un Excel multi-hoja (resumen, leads con score, conversaciones) que abre perfecto — o CSV para importar a otro CRM.</p>
-    </div>
-    <div class="feat">
-      <div class="feat-icon">🌎</div>
-      <h3>Español nativo + multi-idioma</h3>
-      <p>Responde en el mismo idioma del cliente. Entrenado para tono LATAM natural, no el traducido genérico.</p>
-    </div>
-    <div class="feat">
-      <div class="feat-icon">🛡️</div>
-      <h3>Seguridad nivel producción</h3>
-      <p>JWT + rate limiting + CSP + sanitización XSS. Tus datos en volumen privado, no en la nube compartida.</p>
+<!-- ── 8. FAQ ──────────────────────────────────────────────────────────── -->
+<section class="alt" id="faq">
+  <div class="wrap center">
+    <span class="kicker">FAQ</span>
+    <h2 class="display">Las dudas que nos preguntan antes de empezar</h2>
+    <div class="faq" style="text-align:left">
+      <details>
+        <summary>¿Me pueden banear el Instagram por usar esto?</summary>
+        <div class="a">No. Atinov funciona sobre la <strong>API oficial de Instagram de Meta</strong>, con login OAuth autorizado por ti — no es scraping ni automatización pirata. Además, por diseño Atinov no envía mensajes en frío: solo responde a personas que te escribieron primero, exactamente lo que las políticas de Meta permiten.</div>
+      </details>
+      <details>
+        <summary>¿No va a sonar a robot?</summary>
+        <div class="a">Responde con tu información, tu tono y tus palabras — y aprende de cada corrección que le haces. Pruébalo tú mismo en el chat de esta página: ese es el mismo agente, configurado con nuestra info real.</div>
+      </details>
+      <details>
+        <summary>¿Necesito saber programar o armar flujos?</summary>
+        <div class="a">No. No hay flujos, ni diagramas, ni código. Pegas la información de tu negocio (precios, FAQ, links) y el agente razona las respuestas — no sigue un guion rígido.</div>
+      </details>
+      <details>
+        <summary>¿Qué pasa con mis datos y los de mis clientes?</summary>
+        <div class="a">Tus conversaciones viven en tu cuenta, cifradas, en infraestructura privada. No se comparten con terceros ni se usan para entrenar modelos públicos. Puedes exportar todo a Excel o borrar tu cuenta cuando quieras.</div>
+      </details>
+      <details>
+        <summary>¿Por qué no veo testimonios de clientes?</summary>
+        <div class="a">Porque lanzamos en 2026 y todavía no vamos a inventar reseñas — eso te diría más de nosotros que cualquier testimonio. Por eso el precio fundador (50% off congelado), la prueba gratis y la garantía de reembolso: preferimos que el producto te convenza en vivo. Cuando los primeros 20 fundadores tengan resultados medidos, los vas a ver aquí con nombre y apellido.</div>
+      </details>
     </div>
   </div>
 </section>
 
-<!-- INTELIGENCIA — el diferenciador real: aprende aunque no compren -->
-<section class="how" id="inteligencia" style="margin-top:110px">
-  <div class="section-title">
-    <div class="eyebrow">Lo que ningún bot hace</div>
-    <h2>Los bots responden. <span style="background:linear-gradient(135deg,#10b981 0%,#06b6d4 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Atinov aprende.</span></h2>
-    <p>Cada conversación — incluso las que <strong>no</strong> terminan en venta — se convierte en inteligencia para tu negocio.</p>
-  </div>
-  <div class="feat-grid" style="max-width:1000px">
-    <div class="feat">
-      <div class="feat-icon">🛡️</div>
-      <h3>Tus objeciones más comunes</h3>
-      <p>"Es caro", "lo consulto con mi socia", "no es el momento". Atinov las detecta, las agrupa y las cuenta — sabés exactamente qué frena tus ventas.</p>
-    </div>
-    <div class="feat">
-      <div class="feat-icon">📉</div>
-      <h3>Por qué NO te compran</h3>
-      <p>Los motivos reales de pérdida, extraídos de cada conversación que se enfría. La mejora de tu oferta está escrita ahí, y nadie más te la muestra.</p>
-    </div>
-    <div class="feat">
-      <div class="feat-icon">🎓</div>
-      <h3>Tu agente pide que le enseñes</h3>
-      <p>Detecta las preguntas que no supo responder y te las trae. Escribís la respuesta una vez, y la usa en todas las conversaciones siguientes.</p>
-    </div>
-    <div class="feat">
-      <div class="feat-icon">🔥</div>
-      <h3>Score de cierre 0–100</h3>
-      <p>Compara cada lead nuevo contra tus ventas reales y ordena tu CRM por probabilidad de cierre. Abrís el panel y sabés a quién contactar primero.</p>
-    </div>
-  </div>
-  <p style="text-align:center;margin:42px auto 0;max-width:560px;padding:0 28px;color:var(--text-2);font-size:15.5px;line-height:1.7">
-    Ninguna conversación se desperdicia: <strong style="color:var(--text-1)">las que no cierran te enseñan por qué.</strong><br>
-    Es la diferencia entre un bot que contesta y un empleado que entiende tu mercado.
-  </p>
-</section>
-
-<!--
-  ═══════════════════════════════════════════════════════════════════════
-  CASOS DE USO TÍPICOS — REEMPLAZAR cuando tengas testimonios REALES
-  ═══════════════════════════════════════════════════════════════════════
-  Estos son escenarios típicos del tipo de negocio target, NO testimonios
-  fabricados de personas que no existen (eso sería ilegal y rompe confianza).
-  Cuando tengas 3+ clientes reales con resultados, reemplazá cada uc-card
-  con: foto/avatar real, nombre y @, cargo/empresa, métrica concreta del
-  cliente, y cita literal del cliente entre comillas. Borrá el uc-tag
-  "Caso típico" y poné su nombre.
-  ═══════════════════════════════════════════════════════════════════════
--->
-<section class="usecases" id="casos">
-  <div class="section-title">
-    <div class="eyebrow">Casos de uso</div>
-    <h2>Para quién es Atinov</h2>
-    <p>Cuatro escenarios típicos de cómo distintos negocios usan Atinov para no perder clientes en su inbox de Instagram.</p>
-  </div>
-  <div class="uc-grid">
-
-    <!-- ÁNGULO A: COACH / MENTOR DE CAUSA HUMANA -->
-    <div class="uc-card">
-      <span class="uc-tag">💜 Coach / Mentor de causa humana</span>
-      <h3>Honra tu tiempo y tu causa</h3>
-      <div class="uc-flow">
-        <div class="before">
-          <div class="label">Antes</div>
-          <strong>3-4 horas/día</strong> respondiendo a personas con dudas similares. Tu causa requiere tu tiempo, pero tu inbox lo absorbe.
-        </div>
-        <div class="after">
-          <div class="label">Con Atinov</div>
-          <strong>El asistente atiende</strong> a quien viene en modo curiosidad — sin perder calidez — y prioriza a quien viene realmente lista para trabajar contigo.
-        </div>
-      </div>
-      <p style="font-size:13.5px;color:var(--text-2);line-height:1.65">
-        Mientras estás en sesión con tus clientas, el asistente atiende preguntas frecuentes con tu Knowledge Base y comparte materiales (PDF/audio) cuando aplica. Tu único trabajo: entrar a cerrar a las que ya están listas.
-      </p>
-      <div class="uc-metric">
-        <span class="num">10×</span>
-        <span class="lbl">conversaciones atendidas sin perder calidez</span>
-      </div>
-    </div>
-
-    <!-- ÁNGULO B: SETTERS / CLOSERS / AGENCIAS -->
-    <div class="uc-card">
-      <span class="uc-tag">📈 Setters / Closers / Agencias</span>
-      <h3>Tu equipo cierra, el asistente filtra</h3>
-      <div class="uc-flow">
-        <div class="before">
-          <div class="label">Antes</div>
-          <strong>Tus closers</strong> perdían 60% del día respondiendo "info" y descartando curiosos a mano.
-        </div>
-        <div class="after">
-          <div class="label">Con Atinov</div>
-          <strong>El asistente precalifica</strong> con HOT/WARM/COLD y solo deriva al equipo cuando hay intención real.
-        </div>
-      </div>
-      <p style="font-size:13.5px;color:var(--text-2);line-height:1.65">
-        Configuras el asistente con tu pitch y objeciones. Atiende consultas iniciales 24/7, prioriza con HOT/WARM/COLD y deriva al equipo solo cuando se necesita una llamada humana.
-      </p>
-      <div class="uc-metric">
-        <span class="num">3×</span>
-        <span class="lbl">conversión DM → llamada agendada</span>
-      </div>
-    </div>
-
-    <!-- ÁNGULO C: E-COMMERCE / TIENDAS -->
-    <div class="uc-card">
-      <span class="uc-tag">🛒 E-commerce / Tiendas</span>
-      <h3>Responde antes que la competencia</h3>
-      <div class="uc-flow">
-        <div class="before">
-          <div class="label">Antes</div>
-          <strong>El cliente pregunta</strong> tallas, stock, envío... y si no contestas en 5 min, compra en otro lado.
-        </div>
-        <div class="after">
-          <div class="label">Con Atinov</div>
-          <strong>Respuesta en segundos</strong> con el link de checkout. El asistente conoce tu catálogo y políticas de envío.
-        </div>
-      </div>
-      <p style="font-size:13.5px;color:var(--text-2);line-height:1.65">
-        Cargas precios, tallas, políticas de envío en la Knowledge Base. El asistente responde con tu información exacta y comparte el link de pago en el momento. Cero clientes perdidos por demora.
-      </p>
-      <div class="uc-metric">
-        <span class="num">+40%</span>
-        <span class="lbl">DM → checkout en negocios típicos</span>
-      </div>
-    </div>
-
-    <!-- ÁNGULO D: INMOBILIARIAS / REAL ESTATE -->
-    <div class="uc-card">
-      <span class="uc-tag">🏠 Inmobiliarias / Real Estate</span>
-      <h3>Filtra consultas reales del ruido</h3>
-      <div class="uc-flow">
-        <div class="before">
-          <div class="label">Antes</div>
-          <strong>50 DMs por anuncio</strong>, la mayoría preguntando solo el precio. Los compradores reales se enfrían esperando respuesta.
-        </div>
-        <div class="after">
-          <div class="label">Con Atinov</div>
-          <strong>El asistente envía precio</strong>, ficha y disponibilidad al instante, y prioriza a quien pregunta por visita o financiamiento.
-        </div>
-      </div>
-      <p style="font-size:13.5px;color:var(--text-2);line-height:1.65">
-        Cargas la ficha completa de cada propiedad (precio, m², ubicación, condiciones). El asistente responde consultas frecuentes 24/7 y te alerta cuando alguien pregunta por visita o tiene capacidad de compra real.
-      </p>
-      <div class="uc-metric">
-        <span class="num">5×</span>
-        <span class="lbl">visitas agendadas vs. inbox manual</span>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- Trust bar: tipos de negocio que pueden usarlo -->
-  <div class="trust-bar">
-    <div class="trust-chip"><span class="e">🎯</span> Coaches</div>
-    <div class="trust-chip"><span class="e">📈</span> Agencias</div>
-    <div class="trust-chip"><span class="e">🎓</span> Infoproductos</div>
-    <div class="trust-chip"><span class="e">🛒</span> E-commerce</div>
-    <div class="trust-chip"><span class="e">💪</span> Fitness</div>
-    <div class="trust-chip"><span class="e">💄</span> Estética</div>
-    <div class="trust-chip"><span class="e">🏠</span> Real estate</div>
-    <div class="trust-chip"><span class="e">🍝</span> Gastronomía</div>
-  </div>
-
-  <!-- Disclaimer honesto: somos un proyecto nuevo, los números son estimados típicos -->
-  <p class="uc-disclaimer">
-    Las métricas son <strong>estimaciones típicas</strong> en negocios que usan asistentes de inbox para Instagram. Los resultados reales dependen del volumen de mensajes, tipo de negocio y configuración del asistente. <strong>Atinov está abriendo cohorte de fundadores</strong>: si entras ahora, tienes acompañamiento directo del equipo durante el setup.
-  </p>
-</section>
-
-<!-- PRICING — plan único de fundadores -->
-<section class="pricing-section" id="pricing">
-  <div class="section-title">
-    <div class="eyebrow">Plan único de fundadores</div>
-    <h2>Un solo plan. 20 cupos. Para los primeros que confían.</h2>
-    <p>3 días de prueba gratis sin tarjeta. Conecta tu Instagram, configura tu asistente y ves tus propios números. Si no te suma, no pagas.</p>
-  </div>
-
-  <div class="pricing-grid" style="max-width:540px;margin:0 auto;grid-template-columns:1fr">
-
-    <!-- FOUNDER (único) -->
-    <div class="price-card featured">
-      <div class="price-badge">⭐ 50% off precio público</div>
-      <div class="price-name">Founder</div>
-      <div class="price-amount">$148 <small>USD/mes</small></div>
-      <div class="price-tagline">Plan único de fundadores. 20 cupos disponibles. Acceso a todo lo que vayamos lanzando, sin pagar más.</div>
-      <a href="/app?register=1" class="price-cta price-cta-grad">Empezar prueba gratis →</a>
-      <ul class="price-features">
-        <li><span class="check">✓</span> <strong>6.000 conversaciones/mes</strong></li>
-        <li><span class="check">✓</span> 1 cuenta de Instagram</li>
-        <li><span class="check">✓</span> Hasta 5 asistentes IA</li>
-        <li><span class="check">✓</span> Knowledge Base + Inbox unificado</li>
-        <li><span class="check">✓</span> Priorización HOT/WARM/COLD</li>
-        <li><span class="check">✓</span> Recordatorios de seguimiento</li>
-        <li><span class="check">✓</span> Materiales descargables (10)</li>
-        <li><span class="check">✓</span> Webhook + integración CRM</li>
-        <li><span class="check">✓</span> Acompañamiento directo en setup</li>
-        <li><span class="check">✓</span> Acceso a futuras features sin pagar más</li>
-        <div class="price-overage">＋ DM extra: <strong>$0.025 USD</strong> c/u (sólo si te pasas)</div>
-      </ul>
-    </div>
-
-  </div>
-
-  <div class="price-foot">
-    💳 Pagos seguros en USD · Acepta Visa, Mastercard, Amex y PayPal<br>
-    🛡️ Garantía de reembolso 7 días sin preguntas · <a href="/pricing.html">Ver detalle completo del plan →</a>
+<!-- ── 9. CTA FINAL ────────────────────────────────────────────────────── -->
+<section class="final">
+  <div class="wrap">
+    <h2 class="display">Tu próximo cliente ya te escribió.<br><span style="background:var(--action);padding:0 .12em;border-radius:8px">Que no se enfríe.</span></h2>
+    <p class="lead">Conecta tu Instagram, enséñale tu negocio y mira tus propios números en 3 días. Si no te suma, no pagas nada.</p>
+    <a class="btn btn-action" href="/app?register=1">Empezar ahora</a>
+    <p class="under-cta">Sin tarjeta · Cancelas cuando quieras · Soporte en español</p>
   </div>
 </section>
 
-<!-- CTA — PRÓXIMO PASO de Alejo -->
-<section class="cta-section">
-  <div class="cta-box">
-    <h2>Pruébalo 3 días gratis</h2>
-    <p>Conectas tu Instagram, configuras tu primer asistente con tu información y ves tus propios números en el dashboard. Si no te suma, no pagas nada.</p>
-    <a href="/app?register=1" class="btn btn-grad btn-lg">Crear cuenta gratis →</a>
-    <div class="cta-foot">✅ Sin tarjeta de crédito · ✅ Cancelas cuando quieras · ✅ Soporte en español</div>
-  </div>
-</section>
-
-<!-- FAQ -->
-<section class="faq-section" id="faq">
-  <div class="section-title">
-    <div class="eyebrow">Preguntas frecuentes</div>
-    <h2>Dudas antes de empezar</h2>
-  </div>
-  <div class="faq-item">
-    <div class="faq-q">¿Necesito saber programar? <span>+</span></div>
-    <div class="faq-a">No. Todo se configura desde el panel — cargas tu información, conectas Instagram y listo. Si puedes usar WhatsApp Business, puedes usar Atinov.</div>
-  </div>
-  <div class="faq-item">
-    <div class="faq-q">¿El asistente suena natural? ¿Es compatible con Instagram? <span>+</span></div>
-    <div class="faq-a">Sí. Usa GPT-4o con prompts diseñados para sonar natural, responde con delays variables que simulan escritura humana, y replica tu tono e idioma. Funciona sobre la API oficial de Meta para Instagram Business — totalmente dentro de los términos de la plataforma.</div>
-  </div>
-  <div class="faq-item">
-    <div class="faq-q">¿Qué necesito para empezar? <span>+</span></div>
-    <div class="faq-a">Una cuenta de Instagram Business o Creator (gratis en la app de Instagram), una cuenta de OpenAI con API key (para el motor de IA del asistente), y 10 minutos para configurar tu primer asistente.</div>
-  </div>
-  <div class="faq-item">
-    <div class="faq-q">¿Cuántas conversaciones puedo manejar al mes? <span>+</span></div>
-    <div class="faq-a">El plan Founder incluye <strong>6.000 conversaciones/mes</strong>. Si te pasas, se cobran $0.025 USD por mensaje extra — sin sorpresas, todo facturado a fin de mes. Ver <a href="/pricing.html" style="color:var(--orange)">la página de precios completa</a>.</div>
-  </div>
-  <div class="faq-item">
-    <div class="faq-q">¿Qué pasa cuando termina la prueba de 3 días? <span>+</span></div>
-    <div class="faq-a">Al día 3 te pedimos que actives la suscripción. Si no lo haces, el asistente queda pausado pero tus datos y configuración intactos. Puedes volver cuando quieras.</div>
-  </div>
-  <div class="faq-item">
-    <div class="faq-q">¿Puedo cancelar cuando quiera? <span>+</span></div>
-    <div class="faq-a">Sí. Cancelas desde el panel de tu cuenta con un click. No hay permanencia, no hay letra chica.</div>
-  </div>
-  <div class="faq-item">
-    <div class="faq-q">¿Qué métodos de pago aceptan? <span>+</span></div>
-    <div class="faq-a">Pagos seguros en USD con tarjeta internacional: Visa, Mastercard, Amex y PayPal. Próximamente sumamos Mercado Pago para Chile y LATAM (CLP, ARS, MXN, BRL).</div>
-  </div>
-</section>
-
-<!-- FOOTER -->
+<!-- ── 10. FOOTER ──────────────────────────────────────────────────────── -->
 <footer>
-  <div class="foot-links">
-    <a href="/pricing.html">Precios</a>
-    <a href="/about.html">Sobre nosotros</a>
-    <a href="/contact.html">Contacto</a>
-    <a href="/app">Iniciar sesión</a>
-    <a href="/app?register=1">Crear cuenta</a>
-    <a href="/terms.html">Términos</a>
-    <a href="/privacy.html">Privacidad</a>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <div class="foot-brand">
+          <span class="logo-mark" style="border-color:rgba(255,255,255,.3)"><svg viewBox="0 0 20 20" width="17" height="17" fill="#131414"><path d="M11.983 1.907a.75.75 0 00-1.292-.657l-8.5 9.5A.75.75 0 002.75 12h6.572l-1.305 6.093a.75.75 0 001.292.657l8.5-9.5A.75.75 0 0017.25 8h-6.572l1.305-6.093z"/></svg></span>
+          Atinov
+        </div>
+        <p style="font-size:13.5px;color:#9aa19e;margin-top:10px;max-width:260px">El agente de IA que atiende tu inbox de Instagram y aprende de cada conversación.</p>
+      </div>
+      <div class="foot-col">
+        <strong>Producto</strong>
+        <a href="#producto">Qué hace</a>
+        <a href="#como-funciona">Cómo funciona</a>
+        <a href="/pricing.html">Precio en detalle</a>
+        <a href="/app">Iniciar sesión</a>
+      </div>
+      <div class="foot-col">
+        <strong>Empresa</strong>
+        <a href="/about.html">Sobre nosotros</a>
+        <a href="/contact.html">Contacto</a>
+        <a href="mailto:soporte@atinov.com">soporte@atinov.com</a>
+      </div>
+      <div class="foot-col">
+        <strong>Legal</strong>
+        <a href="/terms.html">Términos</a>
+        <a href="/privacy.html">Privacidad</a>
+      </div>
+    </div>
+    <div class="foot-base">
+      <span>© 2026 Atinov · La Serena, Chile</span>
+      <span>Construido sobre la API oficial de Instagram de Meta</span>
+    </div>
   </div>
-  <div class="foot-copy">© 2026 Atinov · Asistente de inbox para Instagram Business · La Serena, Chile</div>
 </footer>
 
 <script>
-  // Si ya está logueado, llevarlo directo al dashboard
-  try {
-    if (localStorage.getItem('autosetter_token')) {
-      // permitir override con ?stay=1 para inspeccionar landing
-      if (!new URLSearchParams(location.search).has('stay')) {
-        window.location.replace('/app');
-      }
-    }
-  } catch {}
-
-  // FAQ accordion
-  document.querySelectorAll('.faq-q').forEach(q => {
-    q.addEventListener('click', () => q.closest('.faq-item').classList.toggle('open'));
-  });
-
-  // Capturar referral code de la URL si está presente, persistirlo y trackear click
+  // Referral: capturar ?ref=CODIGO, persistir y trackear (igual que v1)
   (() => {
     const refCode = new URLSearchParams(location.search).get('ref');
     if (refCode) {
       try {
         sessionStorage.setItem('ref_code', refCode);
-        localStorage.setItem('ref_code', refCode); // sobrevive cierres de pestaña
+        localStorage.setItem('ref_code', refCode);
       } catch {}
-      // Trackear click (best-effort, no bloqueante)
       fetch('/api/referrals/track-click', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -836,132 +561,15 @@
     }
   })();
 
-  // Register/trial CTAs — guardar auth_mode=register y redirigir al app
+  // CTAs de registro: setear auth_mode y trackear posición
   document.querySelectorAll('a[href="/app?register=1"]').forEach((a, i) => {
     a.addEventListener('click', (e) => {
       e.preventDefault();
       try { sessionStorage.setItem('auth_mode', 'register'); } catch {}
-      // Trackear qué CTA disparó: hero, mid o final (segun orden en el DOM)
-      try { window.plausible('CTA Register Click', { props: { position: i === 0 ? 'nav' : (i === 1 ? 'hero' : (i === 2 ? 'cta-mid' : 'cta-final')) } }); } catch {}
+      try { window.plausible('CTA Register Click', { props: { position: ['nav', 'hero', 'pricing', 'final'][i] || 'extra' } }); } catch {}
       window.location.href = '/app';
     });
   });
-
-  // Trackear scroll-depth para entender dónde se cae la gente
-  let maxScroll = 0;
-  let trackedDepths = new Set();
-  window.addEventListener('scroll', () => {
-    const scrollPct = Math.round((window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100);
-    maxScroll = Math.max(maxScroll, scrollPct);
-    [25, 50, 75, 100].forEach(d => {
-      if (maxScroll >= d && !trackedDepths.has(d)) {
-        trackedDepths.add(d);
-        try { window.plausible('Scroll Depth', { props: { depth: d + '%' } }); } catch {}
-      }
-    });
-  }, { passive: true });
-
-  // Smooth scroll para anchors
-  document.querySelectorAll('a[href^="#"]').forEach(a => {
-    a.addEventListener('click', (e) => {
-      const id = a.getAttribute('href').slice(1);
-      const el = document.getElementById(id);
-      if (el) { e.preventDefault(); el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
-    });
-  });
-
-  // ── Hero mockup ANIMADO — el chat se construye solo en loop ────────────
-  // Da sensación de "demo en vivo" al visitante. Si scrolleó lejos, pausamos.
-  (function () {
-    const body  = document.getElementById('hero-chat-body');
-    const status= document.getElementById('hero-mockup-status');
-    const hotBadge = document.getElementById('hero-hot-badge');
-    if (!body) return;
-
-    const SCRIPT = [
-      { who: 'in',  text: 'Hola! Vi tu post del programa, ¿tienen cupos?', delayBefore: 800 },
-      { who: 'typing', who2: 'out', delayBefore: 1100 },
-      { who: 'out', text: '¡Hey! 😊 Sí, 3 cupos este mes. Cuéntame qué quieres lograr con la mentoría.', delayBefore: 1500 },
-      { who: 'in',  text: 'Escalar mi negocio a 10k/mes. ¿Cuánto sale?', delayBefore: 2200 },
-      { who: 'typing', who2: 'out', delayBefore: 1100 },
-      { who: 'out', text: 'Antes del precio: ¿cuánto ticket promedio manejas hoy?', delayBefore: 1700 },
-      { who: 'in',  text: '$300-500 por cliente. Es coaching 1 a 1.', delayBefore: 2400 },
-      { who: 'typing', who2: 'out', delayBefore: 1100 },
-      { who: 'hotbadge', delayBefore: 600 },
-      { who: 'out', text: 'Buenísimo 🔥 Con ese ticket, te conviene la mentoría Pro. Te paso el link de agenda para que conversemos 15 min. ¿Te sirve?', delayBefore: 1800 },
-      { who: 'reset', delayBefore: 4000 },
-    ];
-
-    let cancelled = false;
-    let idx = 0;
-
-    function appendMsg(who, text) {
-      const div = document.createElement('div');
-      div.className = 'msg ' + who;
-      div.textContent = text;
-      div.style.opacity = '0';
-      div.style.transform = 'translateY(8px)';
-      div.style.transition = 'all .35s';
-      body.appendChild(div);
-      requestAnimationFrame(() => { div.style.opacity = '1'; div.style.transform = 'translateY(0)'; });
-      body.scrollTop = body.scrollHeight;
-      return div;
-    }
-
-    function appendTyping(side) {
-      const div = document.createElement('div');
-      div.className = 'typing';
-      div.dataset.typing = '1';
-      const bg = side === 'out' ? 'var(--grad)' : 'rgba(255,255,255,.06)';
-      div.style.cssText = 'align-self:' + (side === 'out' ? 'flex-end' : 'flex-start') + ';background:' + bg;
-      const dotColor = side === 'out' ? '#fff' : '#94a3b8';
-      div.innerHTML = `<span style="background:${dotColor}"></span><span style="background:${dotColor}"></span><span style="background:${dotColor}"></span>`;
-      body.appendChild(div);
-      body.scrollTop = body.scrollHeight;
-      return div;
-    }
-
-    function removeTypings() {
-      body.querySelectorAll('[data-typing]').forEach(el => el.remove());
-    }
-
-    function reset() {
-      body.innerHTML = '';
-      hotBadge.style.opacity = '0';
-      hotBadge.style.transform = 'scale(.5)';
-      idx = 0;
-    }
-
-    async function step() {
-      if (cancelled) return;
-      const s = SCRIPT[idx % SCRIPT.length];
-      idx++;
-      await new Promise(r => setTimeout(r, s.delayBefore));
-      if (cancelled) return;
-
-      if (s.who === 'reset') {
-        reset();
-      } else if (s.who === 'typing') {
-        appendTyping(s.who2);
-      } else if (s.who === 'hotbadge') {
-        hotBadge.style.opacity = '1';
-        hotBadge.style.transform = 'scale(1)';
-      } else {
-        removeTypings();
-        appendMsg(s.who, s.text);
-      }
-      step();
-    }
-
-    // Pausar animación si el mockup no está visible (ahorrar CPU)
-    const io = new IntersectionObserver(entries => {
-      entries.forEach(e => {
-        cancelled = !e.isIntersecting;
-        if (e.isIntersecting && idx === 0) step();
-      });
-    }, { threshold: 0.1 });
-    io.observe(body);
-  })();
 </script>
 
 <!-- ═════════════════════════════════════════════════════════════════════
