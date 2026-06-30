@@ -59,7 +59,14 @@ function containsTrigger(text, agent) {
 // ── VERIFY (Meta GET) ─────────────────────────────────────────────────────────
 router.get('/', (req, res) => {
   const { 'hub.mode': mode, 'hub.verify_token': token, 'hub.challenge': challenge } = req.query;
-  if (mode === 'subscribe' && token === (process.env.META_VERIFY_TOKEN || 'mi_token_secreto_webhook')) {
+  // Token canónico (env, branded) + legacy de la suscripción Meta ya existente.
+  // El legacy se acepta para NO romper el webhook vivo al rebrandinguear el
+  // token; se puede quitar una vez que Meta apunte al token nuevo.
+  const validTokens = [
+    process.env.META_VERIFY_TOKEN || 'mi_token_secreto_webhook',
+    'autosetter_webhook_2024', // legacy — suscripción Instagram ya verificada
+  ];
+  if (mode === 'subscribe' && validTokens.includes(token)) {
     console.log('✅ Webhook verified by Meta');
     return res.status(200).send(challenge);
   }
