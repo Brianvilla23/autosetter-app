@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Concepto 2: "atinar" = dar en el blanco. Anillo-objetivo esmeralda + check blanco. Fondo carbón #131414 (paleta landing v2). -->
+  <rect width="1024" height="1024" rx="220" fill="#131414"/>
+  <circle cx="512" cy="512" r="290" fill="none" stroke="#10b981" stroke-width="64"/>
+  <path d="M 380 520 L 480 625 L 665 405" fill="none" stroke="#ffffff" stroke-width="72" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

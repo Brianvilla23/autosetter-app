@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Concepto 1: burbuja de chat (inbox) + A de Atinov. Fondo esmeralda plano, sin gradientes. -->
+  <rect width="1024" height="1024" rx="220" fill="#10b981"/>
+  <rect x="180" y="180" width="664" height="560" rx="140" fill="#ffffff"/>
+  <path d="M 320 720 L 320 880 L 470 730 Z" fill="#ffffff"/>
+  <path d="M 400 630 L 512 330 L 624 630" fill="none" stroke="#059669" stroke-width="58" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 450 535 L 574 535" stroke="#059669" stroke-width="58" stroke-linecap="round"/>
+</svg>

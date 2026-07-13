@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="360" viewBox="0 0 1400 360">
+  <!-- Concepto 4: lockup horizontal = icono "atinar" + wordmark. Para nav de landing y firma de email. -->
+  <rect x="40" y="40" width="280" height="280" rx="64" fill="#131414"/>
+  <circle cx="180" cy="180" r="82" fill="none" stroke="#10b981" stroke-width="19"/>
+  <path d="M 142 182 L 171 212 L 224 149" fill="none" stroke="#ffffff" stroke-width="21" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="380" y="255" font-family="'Space Grotesk','Segoe UI',Arial,sans-serif" font-size="200" font-weight="700" letter-spacing="-6" fill="#131414">atin<tspan fill="#10b981">o</tspan>v</text>
+</svg>

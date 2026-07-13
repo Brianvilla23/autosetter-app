@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="320" viewBox="0 0 1200 320">
+  <!-- Concepto 3: wordmark minúsculas con la "o" en esmeralda (el punto donde "atinas"). Tipografía objetivo: Space Grotesk 700 (fallback Arial). -->
+  <text x="70" y="225" font-family="'Space Grotesk','Segoe UI',Arial,sans-serif" font-size="210" font-weight="700" letter-spacing="-6" fill="#131414">atin<tspan fill="#10b981">o</tspan>v</text>
+</svg>
