@@ -15,9 +15,20 @@ const { v4: uuidv4 } = require('uuid');
 // usando el APP_SECRET sobre el raw body. Sin esta validación, cualquier
 // atacante puede inyectar mensajes falsos y dispararle DMs reales a leads.
 function verifyMetaSignature(req) {
-  const secret = process.env.META_APP_SECRET;
-  if (!secret) {
-    console.error('[webhook] META_APP_SECRET no configurado — rechazando');
+  // Meta firma cada canal con el APP_SECRET del app que lo emite. En este
+  // proyecto conviven DOS apps bajo el mismo webhook:
+  //   • Instagram → SUB-APP de Instagram (Atinov-IG, ID 1666...) → META_APP_SECRET
+  //   • WhatsApp  → Meta App principal   (Atinov,    ID 1313...) → META_APP_SECRET_WA
+  // Por eso validamos contra AMBOS secrets y aceptamos si CUALQUIERA calza.
+  // (Instagram: Meta Developers → API de Instagram → Configuración con inicio
+  //  de sesión → "Clave secreta de la app de Instagram". WhatsApp: Configuración
+  //  de la app → Básica → "Clave secreta de la app".)
+  const secrets = [
+    process.env.META_APP_SECRET,     // Instagram sub-app (1666)
+    process.env.META_APP_SECRET_WA,  // Meta App principal (1313) — WhatsApp
+  ].filter(Boolean);
+  if (!secrets.length) {
+    console.error('[webhook] ningún META_APP_SECRET configurado — rechazando');
     return false;
   }
   const signature = req.headers['x-hub-signature-256'];
@@ -25,24 +36,20 @@ function verifyMetaSignature(req) {
 
   // El raw body es preservado por el verify hook de express.json en server.js
   // (req.rawBody). Si no está, no podemos validar — fail closed.
-  // ⚠️ IMPORTANTE: META_APP_ID y META_APP_SECRET deben ser los de la SUB-APP
-  // de Instagram (Atinov-IG, ID 1666...), NO de la Meta App principal
-  // (Atinov, ID 1313...). Meta firma webhooks de Instagram con el secret
-  // de la Instagram Business sub-app. Buscarlo en: Meta Developers → tu app →
-  // API de Instagram → Configuración con inicio de sesión → "Clave secreta
-  // de la app de Instagram".
   const raw = req.rawBody;
   if (!raw) return false;
 
-  const expected = 'sha256=' + crypto.createHmac('sha256', secret).update(raw).digest('hex');
   const sigBuf = Buffer.from(signature);
-  const expBuf = Buffer.from(expected);
-  if (sigBuf.length !== expBuf.length) return false;
-  try {
-    return crypto.timingSafeEqual(sigBuf, expBuf);
-  } catch {
-    return false;
-  }
+  return secrets.some((secret) => {
+    const expected = 'sha256=' + crypto.createHmac('sha256', secret).update(raw).digest('hex');
+    const expBuf = Buffer.from(expected);
+    if (sigBuf.length !== expBuf.length) return false;
+    try {
+      return crypto.timingSafeEqual(sigBuf, expBuf);
+    } catch {
+      return false;
+    }
+  });
 }
 
 // Verificar si el texto contiene alguno de los keywords del agente
