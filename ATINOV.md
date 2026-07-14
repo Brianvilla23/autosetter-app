@@ -106,6 +106,7 @@
 - Chat de landing capturando leads
 - Redes sociales creadas (IG/FB/LinkedIn)
 - Logo e identidad visual definitivos + assets generados
+- **WhatsApp end-to-end VERIFICADO** (2026-07-14) con el número de PRUEBA de Meta: el agente recibe, procesa, crea lead y responde por WhatsApp igual que en Instagram. Se arreglaron 3 bugs de plataforma (WABA sin suscribir, firma 401 por doble app de Meta → validar ambos secrets, `needs_reauth` de IG bloqueaba WA). Limitación del número de prueba: solo responde a 5 números pre-autorizados (NO es bug — desaparece con número de producción).
 
 **En curso**:
 - **Landing v3** (`public/home-v3.html`): rediseño completo con la identidad negro/Cinzel/filete — pendiente aprobación del founder para reemplazar a `home.html` (+ swap de favicon y og-cover)
@@ -118,7 +119,10 @@
 5. 🟡 Knowledge Base del agente demo tiene precios viejos ($197 → real $148/135k).
 6. 🟡 Verificar estado "Verified" de atinov.com en Resend (destraba reporte semanal).
 7. 🟡 Redes: subir fotos, GBP, reservar handles, primer post, "Acerca de" LinkedIn.
-8. 🟢 Futuro: WABA (SIM + alta WhatsApp), Polar.sh, SpA + App Review Meta, comprar atinov.app, Loom v2, anuncio + 20 testers.
+8. 🟠 **WhatsApp a PRODUCCIÓN** (2 fases):
+   - **Fase A — número propio de Atinov** (rápido, quita el límite de 5): comprar SIM/número NUEVO dedicado (nunca usado en la app de WhatsApp; capaz de recibir SMS/llamada para el código; evitar VoIP gratis que Meta rechaza; NO el personal). En Meta → WhatsApp → Paso 2 "Registra tu número" → verificar código → nombre visible. En Atinov: cambiar el `wa_phone_number_id` de prueba por el real + token permanente (System User, no el de 24h). Con un número real registrado, responder a inbound (ventana 24h) funciona para CUALQUIERA, sin lista blanca, aun antes de App Review.
+   - **Fase B — autoservicio de clientes (Embedded Signup)**: Business Verification de Atinov + App Review (advanced access whatsapp_business_management/messaging) + Tech Provider + construir botón "Conectar WhatsApp" (Facebook JS SDK + endpoint token-exchange). Después de esto, cada cliente conecta su WhatsApp solo en ~2 min (popup Meta, sin pasos técnicos, WABA auto-suscrita, token auto-gestionado). El backend ya está listo (webhook dual-secret, envío, campos por-cuenta, refresh). El flujo manual de hoy (Explorador API, suscribir WABA, pegar token) NO lo hace ningún cliente.
+9. 🟢 Futuro: Polar.sh, SpA, comprar atinov.app, Loom v2, anuncio + 20 testers.
 
 ## 8. Reglas y lecciones permanentes del proyecto
 
