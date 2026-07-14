@@ -300,9 +300,12 @@ async function handleWhatsAppMessage(phoneNumberId, msg, value) {
     return;
   }
 
-  // Si needs_reauth, no procesar (mismo motivo que IG).
-  if (account.needs_reauth) {
-    console.log(`🔌 WSP ignorado (account needs_reauth) para phone ${phoneNumberId}`);
+  // WhatsApp usa su PROPIO token (wa_access_token), independiente del token de
+  // Instagram. Por eso NO lo bloqueamos por needs_reauth (esa bandera es sobre
+  // el token de IG expirado, que no afecta a WhatsApp). Solo saltamos si no hay
+  // token de WhatsApp con el cual responder.
+  if (!account.wa_access_token) {
+    console.log(`🔌 WSP ignorado (sin wa_access_token) para phone ${phoneNumberId}`);
     return;
   }
 
