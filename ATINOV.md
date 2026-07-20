@@ -112,17 +112,18 @@
 - **Landing v3** (`public/home-v3.html`): rediseño completo con la identidad negro/Cinzel/filete — pendiente aprobación del founder para reemplazar a `home.html` (+ swap de favicon y og-cover)
 
 **Bloqueadores / pendientes priorizados**:
-1. 🔴 **Mercado Pago**: crear app en developers MP, cargar `MP_ACCESS_TOKEN`, crear preapproval_plan Founder $135.000 CLP + webhook. Sin esto no se puede cobrar.
-2. 🔴 **Bugs reportados por el founder en la app** (lista pendiente de detallar) + auditoría con `scripts/verify-deploy.js` y logs Railway.
-3. 🟠 **Rediseño del dashboard** a la identidad nueva + mejoras de estructura/UX.
-4. 🟠 Confirmar webhook Meta con DM de prueba → renombrar subdominio Railway `dmcloser-app` → `atinov-app` → revisar OAuth redirect (`https://atinov.com/auth/callback` en Meta App).
-5. 🟡 Knowledge Base del agente demo tiene precios viejos ($197 → real $148/135k).
-6. 🟡 Verificar estado "Verified" de atinov.com en Resend (destraba reporte semanal).
-7. 🟡 Redes: subir fotos, GBP, reservar handles, primer post, "Acerca de" LinkedIn.
-8. 🟠 **WhatsApp a PRODUCCIÓN** (2 fases):
-   - **Fase A — número propio de Atinov** (rápido, quita el límite de 5): comprar SIM/número NUEVO dedicado (nunca usado en la app de WhatsApp; capaz de recibir SMS/llamada para el código; evitar VoIP gratis que Meta rechaza; NO el personal). En Meta → WhatsApp → Paso 2 "Registra tu número" → verificar código → nombre visible. En Atinov: cambiar el `wa_phone_number_id` de prueba por el real + token permanente (System User, no el de 24h). Con un número real registrado, responder a inbound (ventana 24h) funciona para CUALQUIERA, sin lista blanca, aun antes de App Review.
-   - **Fase B — autoservicio de clientes (Embedded Signup)**: Business Verification de Atinov + App Review (advanced access whatsapp_business_management/messaging) + Tech Provider + construir botón "Conectar WhatsApp" (Facebook JS SDK + endpoint token-exchange). Después de esto, cada cliente conecta su WhatsApp solo en ~2 min (popup Meta, sin pasos técnicos, WABA auto-suscrita, token auto-gestionado). El backend ya está listo (webhook dual-secret, envío, campos por-cuenta, refresh). El flujo manual de hoy (Explorador API, suscribir WABA, pegar token) NO lo hace ningún cliente.
-9. 🟢 Futuro: Polar.sh, SpA, comprar atinov.app, Loom v2, anuncio + 20 testers.
+1. 🔴 **WhatsApp producción — falta el último paso**: número real **+56 9 8566 6043** ya comprado, registrado y verificado en Meta (WABA `1741819660068502`, Phone Number ID `1251424908052492`), token PERMANENTE ya generado (System User "AtinovServer", caducidad Nunca). **Falta pegarlo en Atinov** (Ajustes → WhatsApp Business, requiere login del founder — Claude no tiene credenciales) y probar que un número no-autorizado le escriba y el agente responda. Detalle completo en memoria del proyecto.
+2. 🔴 **Instagram con token vencido** (`needs_reauth=true`). Fix es autoservicio: Atinov → Ajustes → Instagram → botón conectar/reconectar → autorizar de nuevo con Facebook. Sin esto el agente de Instagram no responde.
+3. 🟠 **Messenger — decisión de alcance pendiente**: cero código existente (a diferencia de WhatsApp). Requiere construir handler webhook + servicio de envío + UI desde cero. Se le preguntó al founder cómo proceder (cerrar sin Messenger / construir ahora / solo infra mínima) y la conversación se cortó sin respuesta — **retomar esa pregunta antes de tocar código de Messenger**.
+4. 🔴 **Mercado Pago**: crear app en developers MP, cargar `MP_ACCESS_TOKEN`, crear preapproval_plan Founder $135.000 CLP + webhook. Sin esto no se puede cobrar.
+5. 🔴 **Bugs reportados por el founder en la app** (lista pendiente de detallar) + auditoría con `scripts/verify-deploy.js` y logs Railway.
+6. 🟠 **Rediseño del dashboard** a la identidad nueva + mejoras de estructura/UX.
+7. 🟠 Renombrar subdominio Railway `dmcloser-app` → `atinov-app` (webhook ya confirmado en atinov.com) → revisar OAuth redirect (`https://atinov.com/auth/callback` en Meta App).
+8. 🟡 Knowledge Base del agente demo tiene precios viejos ($197 → real $148/135k).
+9. 🟡 Verificar estado "Verified" de atinov.com en Resend (destraba reporte semanal).
+10. 🟡 Redes: subir fotos, GBP, reservar handles, primer post, "Acerca de" LinkedIn.
+11. 🟠 **WhatsApp Fase B — autoservicio de clientes (Embedded Signup)**: Business Verification de Atinov + App Review (advanced access whatsapp_business_management/messaging) + Tech Provider + botón "Conectar WhatsApp" (Facebook JS SDK + endpoint token-exchange). El backend ya está listo (webhook dual-secret, envío, campos por-cuenta, refresh).
+12. 🟢 Futuro: Polar.sh, SpA, comprar atinov.app, Loom v2, anuncio + 20 testers.
 
 ## 8. Reglas y lecciones permanentes del proyecto
 
