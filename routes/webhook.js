@@ -439,7 +439,10 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
     newMessage: text,
     accountId: account._id,
     apiKey,
-    extraContext
+    extraContext,
+    qualification: lead.qualification || null,
+    leadPhone:     lead.wa_id || null,
+    leadChannel:   lead.channel || (lead.wa_id ? 'whatsapp' : 'instagram'),
   });
 
   // Guardar respuesta del agente

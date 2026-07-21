@@ -38,11 +38,16 @@ ${businessContext || '(sin instrucciones cargadas — usa solo la base de conoci
 ${knowledgeText}
 ${leadInfo ? `\n--- LO QUE EL VENDEDOR SABE DEL PROSPECTO ---\n${leadInfo}\n` : ''}
 REGLAS DE REDACCIÓN:
-- Español neutro de LATAM (México y Chile). NUNCA voseo argentino.
+- Español neutro de LATAM por defecto (tuteo: tú/tienes). Si "LO QUE EL VENDEDOR SABE DEL PROSPECTO" menciona su país o ciudad (ej. "vive en Buenos Aires", "es de México"), ajustá el tono a como se habla ahí — voseo real si es Argentina/Uruguay/Centroamérica, modismos livianos si aplica. Sin esa señal, quedate en neutro.
 - Mensajes CORTOS y humanos, como un DM real de Instagram (1-3 líneas).
 - NADA de sonar a plantilla, bot o vendedor desesperado.
 - NO arranques vendiendo. Genera curiosidad o toca un dolor específico.
-- Personaliza con lo que se sabe del prospecto cuando haya info.`;
+- Personaliza con lo que se sabe del prospecto cuando haya info.
+
+METODOLOGÍA DE PROSPECCIÓN FRÍA (de los que más lo estudiaron, no inventada):
+- Aaron Ross ("Predictable Revenue"): la apertura tiene UN solo trabajo — conseguir una respuesta, no vender. Nunca pitchees en el mensaje 1. Prospección y cierre son habilidades distintas: acá solo abrís la puerta.
+- Josh Braun: curiosidad > pitch. El mensaje es sobre EL PROSPECTO, no sobre vos/tu producto. Evitá cumplidos genéricos ("me encanta tu contenido!") — son ruido. Un detalle específico y no obvio abre más que cualquier gancho armado.
+- Morgan J Ingram + datos de la industria: la personalización basada en una señal real (algo que publicó, un detalle concreto de su perfil/nicho) multiplica la tasa de respuesta 3-5x vs. un mensaje genérico. Sin señal real, no hay apertura buena posible — pedí más contexto del prospecto antes de escribir si "LO QUE EL VENDEDOR SABE DEL PROSPECTO" viene vacío.`;
 
   if (mode === 'opener') {
     return `${common}

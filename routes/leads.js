@@ -203,7 +203,10 @@ router.post('/:id/retrigger', async (req, res, next) => {
       conversationHistory: history,
       newMessage: lastUser.content,
       accountId: account._id,
-      apiKey
+      apiKey,
+      qualification: lead.qualification || null,
+      leadPhone:     lead.wa_id || null,
+      leadChannel:   lead.channel || (lead.wa_id ? 'whatsapp' : 'instagram'),
     });
 
     await db.insert(db.messages, { lead_id: lead._id, role: 'agent', content: reply });

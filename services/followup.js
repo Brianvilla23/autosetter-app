@@ -187,6 +187,9 @@ async function processFollowUps() {
         accountId: account._id,
         apiKey,
         extraContext: followupHint,
+        qualification: lead.qualification || null,
+        leadPhone:     lead.wa_id || null,
+        leadChannel:   lead.channel || (lead.wa_id ? 'whatsapp' : 'instagram'),
       });
 
       // Guardar el mensaje como 'agent' (marcado como followup)
