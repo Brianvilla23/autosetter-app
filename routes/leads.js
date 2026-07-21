@@ -145,6 +145,26 @@ router.patch('/:id', async (req, res, next) => {
       } catch (e) { /* RAG opcional */ }
     }
 
+    // ── Resumen automático: avisar al dueño cuando el lead se gana o pierde.
+    // Solo en transición real (no en PATCHes redundantes al mismo stage).
+    if (
+      (upd.pipeline_stage === 'ganado' || upd.pipeline_stage === 'perdido') &&
+      owned.pipeline_stage !== upd.pipeline_stage
+    ) {
+      try {
+        const { notifyLeadEvent } = require('../services/notifications');
+        const owner = await db.findOne(db.users, { account_id: lead.account_id });
+        if (owner) {
+          notifyLeadEvent({ userId: owner._id, leadId: lead._id, event: upd.pipeline_stage })
+            .then(r => {
+              const ok = (r.sent || []).filter(s => s.ok).map(s => s.channel).join(', ');
+              if (ok) console.log(`📋 Resumen ${upd.pipeline_stage} enviado a ${owner.email} (${ok}) para @${lead.ig_username || lead.wa_name}`);
+            })
+            .catch(() => {});
+        }
+      } catch (e) { /* notificación opcional */ }
+    }
+
     res.json({ ...lead, id: lead._id });
   } catch (e) { next(e); }
 });

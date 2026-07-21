@@ -532,6 +532,19 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
         }
       } catch (e) { console.error('notifyHotLead error:', e.message); }
     }
+
+    // ── Resumen automático si transicionó a TIBIO (warm) ─────────────────────
+    if (result.qualification === 'warm' && prevQualification !== 'warm') {
+      try {
+        const { notifyLeadEvent } = require('../services/notifications');
+        const owner = await db.findOne(db.users, { account_id: account._id });
+        if (owner) {
+          const r = await notifyLeadEvent({ userId: owner._id, leadId: lead._id, event: 'tibio' });
+          const channels = (r.sent || []).filter(s => s.ok).map(s => s.channel).join(', ');
+          if (channels) console.log(`🌤️ Resumen TIBIO enviado a ${owner.email} (${channels}) para @${lead.ig_username}`);
+        }
+      } catch (e) { console.error('notifyLeadEvent(tibio) error:', e.message); }
+    }
   }).catch(e => console.error('classifyLead error:', e));
 }
 
