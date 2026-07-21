@@ -4,3 +4,5 @@ db/data/
 *.log
 .DS_Store
 Thumbs.db
+
+graphify-out/
