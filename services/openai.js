@@ -44,6 +44,21 @@ const NEGOTIATION_PATTERNS = [
   /\b(descuento|rebaja|más barato|mas barato|oferta|promoción|promocion)\b/i,
   /\b(cuotas|mensualidad|financ|en partes|a plazos)\b/i,
   /\b(primero probar|muestra|demo|prueba gratis|trial)\b/i,
+  /\b(último precio|ultimo precio|conversable|te ofrezco|te doy|permuta|parte de pago)\b/i,
+];
+
+/**
+ * Momentos donde equivocarse es CARO en cualquier vertical: piden datos
+ * personales/documentos, proponen arreglos de pago raros, o hay señales de
+ * suplantación. Escalan solos al modelo de razonamiento (score 3 = threshold),
+ * porque son justo donde un modelo rápido improvisa y filtra o promete de más.
+ */
+const HIGH_RISK_PATTERNS = [
+  /\b(rut|carnet|c(é|e)dula|patente|padr(ó|o)n|cav|autofact|documentos?|papeles)\b/i,
+  // Raíces, no palabras completas: el comprador conjuga ("transfiere", "guardas").
+  /\b(se(ñ|n)a|abono|adelanto|dep(ó|o)sit|transf(er|ier)|vale vista|efectivo)/i,
+  /\b(datos bancarios|n(ú|u)mero de cuenta|a qu(é|e) cuenta|ya te (transf|depos|pagu))/i,
+  /\b(otro n(ú|u)mero|otra cuenta|me habl(ó|o) alguien|reserv|apart|guard)/i,
 ];
 
 function detectComplexity({ newMessage, conversationHistory }) {
@@ -73,6 +88,14 @@ function detectComplexity({ newMessage, conversationHistory }) {
   if (text.length > 250) {
     score += 2;
     reasons.push('mensaje extenso');
+  }
+
+  // Señal 4.b: pide documentos/datos personales, propone un arreglo de pago o
+  // huele a suplantación. Vale por sí sola: acá una respuesta improvisada filtra
+  // datos, promete algo imposible o valida una estafa.
+  if (HIGH_RISK_PATTERNS.some(p => p.test(text))) {
+    score += 3;
+    reasons.push('datos/pago sensible');
   }
 
   // Señal 5: conversación avanzada — más en juego

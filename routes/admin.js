@@ -8,6 +8,7 @@ const express = require('express');
 const router  = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const db      = require('../db/database');
+const { knowledgeForAgent } = require('../services/agents/knowledge');
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -1060,6 +1061,37 @@ router.post('/seed-sales-preset', async (req, res) => {
 });
 
 /**
+ * POST /api/admin/seed-vendedor-vehiculos
+ * Body: { accountId }
+ * Instala el preset "Vendedor Vehículos" (piloto venta auto + camioneta):
+ * agente nurture con channels:['whatsapp'] + 5 entradas de knowledge.
+ * El agente queda DESACTIVADO: se enciende desde el panel cuando las fichas
+ * estén llenas y el número de producción de WhatsApp esté conectado.
+ * NO pisa lo existente y es idempotente (409 si ya se aplicó).
+ */
+router.post('/seed-vendedor-vehiculos', async (req, res) => {
+  try {
+    const { accountId } = req.body;
+    if (!accountId) return res.status(400).json({ error: 'accountId requerido' });
+
+    const account = await db.findOne(db.accounts, { _id: accountId });
+    if (!account) return res.status(404).json({ error: 'Cuenta no encontrada' });
+
+    const existing = await db.findOne(db.agents, { account_id: accountId, name: 'Vendedor Vehículos' });
+    if (existing) return res.status(409).json({
+      error: 'El preset de vehículos ya fue aplicado a esta cuenta',
+      agentId: existing._id,
+    });
+
+    const { applyVendedorVehiculosPreset } = require('../services/vendedorVehiculosPreset');
+    const result = await applyVendedorVehiculosPreset(db, accountId);
+
+    await audit(req, 'seed_vendedor_vehiculos', accountId, result);
+    res.json(result);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
  * POST /api/admin/reset-and-apply-preset
  * Body: { accountId, confirm: 'YES' }
  *
@@ -1592,7 +1624,7 @@ router.post('/simulator/run', async (req, res) => {
     const accountId = agent.account_id;
     // Cargar knowledge + links igual que lo hace el webhook real
     const allKnowledge = await db.find(db.knowledge, { account_id: accountId });
-    const knowledge = allKnowledge.filter(k => k.is_main || (k.agent_ids || []).includes(agent._id));
+    const knowledge = knowledgeForAgent(allKnowledge, agent);
     const allLinks = await db.find(db.links, { account_id: accountId });
     const links = (agent.link_ids || []).map(lid => allLinks.find(l => l._id === lid)).filter(Boolean);
 

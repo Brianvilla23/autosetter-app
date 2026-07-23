@@ -3,6 +3,7 @@ const router  = express.Router();
 const db      = require('../db/database');
 const { v4: uuidv4 } = require('uuid');
 const PIPE    = require('../config/pipeline');
+const { knowledgeForAgent } = require('../services/agents/knowledge');
 
 // ── Tenant isolation helper ─────────────────────────────────────────────────
 function assertOwnsAccount(req, accountId) {
@@ -190,7 +191,7 @@ router.post('/:id/retrigger', async (req, res, next) => {
     const { sendMessage }   = require('../services/meta');
 
     const allKnowledge = await db.find(db.knowledge, { account_id: account._id });
-    const knowledge    = allKnowledge.filter(k => k.is_main || (k.agent_ids || []).includes(agent._id));
+    const knowledge    = knowledgeForAgent(allKnowledge, agent);
     const allLinks     = await db.find(db.links, { account_id: account._id });
     const links        = (agent.link_ids || []).map(lid => allLinks.find(l => l._id === lid)).filter(Boolean);
     const settings     = await db.findOne(db.settings, { account_id: account._id });

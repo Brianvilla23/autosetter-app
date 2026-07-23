@@ -677,10 +677,16 @@ async function loadAgents() {
     const roleBadge = isProspect
       ? '<span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;background:rgba(6,182,212,.15);color:#0891b2;padding:1px 6px;border-radius:8px;margin-left:6px">Prospección</span>'
       : '<span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;background:rgba(16,185,129,.15);color:#059669;padding:1px 6px;border-radius:8px;margin-left:6px">Nutrición</span>';
+    // Canal explícito = este agente se queda con ese canal. Sin badge = atiende
+    // cualquier canal que nadie más reclame.
+    const chanLabel = { instagram: 'Instagram', whatsapp: 'WhatsApp' };
+    const chanBadge = (agent.channels || []).map(c =>
+      `<span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;background:rgba(99,102,241,.15);color:#4f46e5;padding:1px 6px;border-radius:8px;margin-left:4px">${chanLabel[c] || c}</span>`
+    ).join('');
     tab.innerHTML = `
       <span class="agent-tab-avatar">${agent.avatar}</span>
       <div class="agent-tab-info">
-        <div class="agent-tab-name">${agent.name}${roleBadge}</div>
+        <div class="agent-tab-name">${agent.name}${roleBadge}${chanBadge}</div>
         <div class="agent-tab-status ${agent.enabled ? 'on' : ''}">${agent.enabled ? '● Activo' : '○ Inactivo'}</div>
       </div>
     `;
@@ -751,6 +757,29 @@ async function renderAgentBuilder(agentId) {
           <small style="color:#666;font-size:0.72rem;display:block;margin-top:6px">
             Dejar vacío = el bot responde a <strong style="color:#a5a5c8">cualquier mensaje</strong>.
             Con keywords = solo se activa cuando el DM o comentario contiene una de estas palabras.
+          </small>
+        </div>
+
+        <div style="margin-top:16px;padding:14px;background:#0f0f1a;border:1px solid #2a2a4a;border-radius:8px">
+          <label style="font-size:0.78rem;color:#a5a5c8;font-weight:600;display:block;margin-bottom:8px">
+            📡 Canales que atiende este agente
+          </label>
+          <div style="display:flex;gap:18px">
+            <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:0.85rem;color:#e0e0e0">
+              <input type="checkbox" class="agent-channel-check" value="instagram"
+                ${(agentData.channels || []).includes('instagram') ? 'checked' : ''}
+                style="width:15px;height:15px;accent-color:#7c5cbf"> Instagram
+            </label>
+            <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:0.85rem;color:#e0e0e0">
+              <input type="checkbox" class="agent-channel-check" value="whatsapp"
+                ${(agentData.channels || []).includes('whatsapp') ? 'checked' : ''}
+                style="width:15px;height:15px;accent-color:#7c5cbf"> WhatsApp
+            </label>
+          </div>
+          <small style="color:#666;font-size:0.72rem;display:block;margin-top:6px">
+            Sin marcar = atiende <strong style="color:#a5a5c8">todos los canales</strong> donde ningún otro agente
+            tenga el canal marcado. Si marcas un canal, este agente <strong style="color:#a5a5c8">gana ese canal</strong>
+            aunque exista otro agente activo sin canales.
           </small>
         </div>
 
@@ -864,16 +893,18 @@ async function renderAgentBuilder(agentId) {
     const trigger_keywords = document.getElementById('agent-trigger-keywords').value.trim();
     const delay_min        = parseInt(document.getElementById('agent-delay-min').value);
     const delay_max        = parseInt(document.getElementById('agent-delay-max').value);
+    const channels         = [...document.querySelectorAll('.agent-channel-check:checked')].map(c => c.value);
     await apiFetch(`/api/agents/${agentId}`, 'PUT', {
       name: currentAgent.name, avatar: currentAgent.avatar,
       instructions, enabled: currentAgent.enabled, trigger_keywords,
-      delay_min, delay_max
+      delay_min, delay_max, channels
     });
     showToast('✅ Configuración guardada');
     currentAgent.instructions     = instructions;
     currentAgent.trigger_keywords = trigger_keywords;
     currentAgent.delay_min        = delay_min;
     currentAgent.delay_max        = delay_max;
+    currentAgent.channels         = channels;
   };
 
   // Save links (assign/unassign checkboxes)

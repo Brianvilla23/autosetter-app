@@ -17,6 +17,7 @@ const express = require('express');
 const router  = express.Router();
 const db      = require('../db/database');
 const rateLimit = require('express-rate-limit');
+const { knowledgeForAgent } = require('../services/agents/knowledge');
 
 // Rate limit estricto: 10/min y 30/h por IP
 const minuteLimiter = rateLimit({
@@ -124,7 +125,7 @@ router.post('/', async (req, res) => {
 
     // Cargar knowledge + links del agente
     const allKnowledge = await db.find(db.knowledge, { account_id: adminUser.account_id });
-    const knowledge    = allKnowledge.filter(k => k.is_main || (k.agent_ids || []).includes(agent._id));
+    const knowledge    = knowledgeForAgent(allKnowledge, agent);
     const allLinks     = await db.find(db.links, { account_id: adminUser.account_id });
     const links        = (agent.link_ids || []).map(lid => allLinks.find(l => l._id === lid)).filter(Boolean);
 

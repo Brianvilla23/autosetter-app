@@ -4,6 +4,14 @@ const db      = require('../db/database');
 const { v4: uuidv4 } = require('uuid');
 const { enforceMaxAgents, enforceFollowupFeature } = require('../middleware/checkPlanLimits');
 const { isValidRole, roleOf } = require('../config/agentRoles');
+const { AGENT_CHANNELS } = require('../services/agents');
+const { knowledgeForAgent } = require('../services/agents/knowledge');
+
+// channels: [] o undefined = catch-all (todos los canales). Solo valores conocidos.
+function sanitizeChannels(raw) {
+  if (!Array.isArray(raw)) return undefined;
+  return raw.filter(c => AGENT_CHANNELS.includes(c));
+}
 
 // ── Tenant isolation helper ─────────────────────────────────────────────────
 // Verifica que el accountId del request matchee con el del JWT del usuario.
@@ -56,13 +64,14 @@ router.get('/:id', async (req, res, next) => {
 // POST create agent
 router.post('/', enforceMaxAgents, async (req, res, next) => {
   try {
-    const { accountId, name, avatar = '🤖', instructions = '', role } = req.body;
+    const { accountId, name, avatar = '🤖', instructions = '', role, channels } = req.body;
     if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
     // role: 'nurture' (default, comportamiento actual) o 'prospect' (asistente humano).
     const agentRole = isValidRole(role) ? role : 'nurture';
     const agent = await db.insert(db.agents, {
       account_id: accountId, name, avatar, instructions, role: agentRole,
       enabled: true, link_ids: [],
+      channels: sanitizeChannels(channels) || [],
     });
     res.json({ ...agent, id: agent._id });
   } catch (e) { next(e); }
@@ -75,10 +84,12 @@ router.put('/:id', enforceFollowupFeature, async (req, res, next) => {
     if (!owned) return;
     const {
       name, avatar, instructions, enabled, trigger_keywords, delay_min, delay_max,
-      followup_enabled, followup_delay_hours, role,
+      followup_enabled, followup_delay_hours, role, channels,
     } = req.body;
     const upd = { name, avatar, instructions, enabled, trigger_keywords, delay_min, delay_max };
     if (isValidRole(role)) upd.role = role;
+    const ch = sanitizeChannels(channels);
+    if (ch !== undefined) upd.channels = ch;
     if (typeof followup_enabled === 'boolean') upd.followup_enabled = followup_enabled;
     if (followup_delay_hours !== undefined) {
       const h = Math.max(1, Math.min(23, Number(followup_delay_hours) || 3));
@@ -157,7 +168,7 @@ router.post('/:id/test', async (req, res, next) => {
     if (!owned) return;
 
     const knowledgeDocs = await db.find(db.knowledge, { account_id: accountId });
-    const knowledge = knowledgeDocs.filter(k => k.is_main || (k.agent_ids || []).includes(req.params.id));
+    const knowledge = knowledgeForAgent(knowledgeDocs, owned);
     const allLinks = await db.find(db.links, { account_id: accountId });
     const links = (owned.link_ids || []).map(lid => allLinks.find(l => l._id === lid)).filter(Boolean);
 
@@ -188,7 +199,7 @@ router.post('/:id/prospect-draft', async (req, res, next) => {
     }
 
     const knowledgeDocs = await db.find(db.knowledge, { account_id: accountId });
-    const knowledge = knowledgeDocs.filter(k => k.is_main || (k.agent_ids || []).includes(req.params.id));
+    const knowledge = knowledgeForAgent(knowledgeDocs, owned);
 
     const settings = await db.findOne(db.settings, { account_id: accountId });
     const apiKey = process.env.OPENAI_API_KEY || settings?.openai_key;
