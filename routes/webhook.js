@@ -5,8 +5,10 @@ const db      = require('../db/database');
 const { generateReply, classifyLead } = require('../services/openai');
 const { sendMessage, getIGUserInfo } = require('../services/meta');
 const wa = require('../services/whatsapp');
+const msgr = require('../services/messenger');
 const PIPE = require('../config/pipeline');
 const { selectAgent } = require('../services/agents');
+const { knowledgeForAgent } = require('../services/agents/knowledge');
 const { checkDMAllowance, incrementDMCount } = require('../services/limits');
 const { v4: uuidv4 } = require('uuid');
 
@@ -122,6 +124,21 @@ router.post('/', async (req, res) => {
       return;
     }
 
+    // ── BRANCH: Messenger (Página de Facebook / Marketplace) ─────────────────
+    // Meta envía webhooks de Messenger con object='page'. Estructura idéntica a
+    // Instagram: entry[].messaging[].{sender.id (PSID), message.text}. El account
+    // se resuelve por entry.id (page_id). Sirve para consultas de Marketplace que
+    // llegan a la Página → Atinov saluda, califica y deriva el prospecto a WhatsApp.
+    if (body.object === 'page') {
+      for (const entry of body.entry || []) {
+        const pageId = entry.id;
+        for (const event of entry.messaging || []) {
+          await handleMessengerMessage(pageId, event).catch(e => console.error('handleMessengerMessage error:', e));
+        }
+      }
+      return;
+    }
+
     // ── BRANCH: Instagram ────────────────────────────────────────────────────
     if (body.object !== 'instagram') return;
 
@@ -168,7 +185,7 @@ async function handleDM(pageId, event) {
   let lead = await db.findOne(db.leads, { account_id: account._id, ig_user_id: senderId });
 
   // Seleccionar agente. nurture → responde auto; prospect / human_assisted → NO.
-  const sel = await selectAgent(account, lead);
+  const sel = await selectAgent(account, lead, 'instagram');
   const agent = sel.agent;
   if (!agent) return;
   if (!sel.canAuto) {
@@ -219,7 +236,7 @@ async function handleComment(pageId, commentData) {
   }
   // Seleccionar agente (nurture → auto). Para comentarios no hay lead aún,
   // así que selectAgent decide solo por rol; prospect no auto-responde.
-  const sel = await selectAgent(account, null);
+  const sel = await selectAgent(account, null, 'instagram');
   const agent = sel.agent;
 
   if (!commenterIgId || !agent || !sel.canAuto || !containsTrigger(commentText, agent)) {
@@ -326,7 +343,7 @@ async function handleWhatsAppMessage(phoneNumberId, msg, value) {
   let lead = await db.findOne(db.leads, { account_id: account._id, wa_id: senderId });
 
   // Seleccionar agente (nurture → auto; prospect / human_assisted → NO).
-  const sel = await selectAgent(account, lead);
+  const sel = await selectAgent(account, lead, 'whatsapp');
   const agent = sel.agent;
   if (!agent) return;
   if (!sel.canAuto) {
@@ -352,6 +369,74 @@ async function handleWhatsAppMessage(phoneNumberId, msg, value) {
       last_message_at: new Date().toISOString()
     });
     console.log(`🔑 WSP bot activado para ${senderName} (${senderId})`);
+  }
+
+  if (lead.automation !== 'automated' || lead.is_bypassed) return;
+
+  await runConversation({ account, agent, lead, senderId, text });
+}
+
+// ── HANDLER: MENSAJE DE MESSENGER (Página de Facebook / Marketplace) ─────────
+// El account se identifica por fb_page_id (único por Página). El sender es el
+// PSID (Page-Scoped ID). Mismo modelo que WhatsApp: un canal más que alimenta
+// el mismo CRM. La derivación a WhatsApp la maneja el prompt (ver runConversation).
+async function handleMessengerMessage(pageId, event) {
+  const senderId = event.sender?.id;
+  const text     = event.message?.text;
+  // Ignorar echos (mensajes que envía la propia Página) y eventos sin texto
+  // (delivery/read/reactions).
+  if (!senderId || !text || event.message?.is_echo) return;
+
+  const account = await msgr.findAccountByPageId(pageId);
+  if (!account) { console.log(`[fb] no account para page_id: ${pageId}`); return; }
+
+  // Messenger usa el Page Access Token (fb_page_token), independiente de IG/WSP.
+  if (!account.fb_page_token) {
+    console.log(`🔌 FB ignorado (sin fb_page_token) para page ${pageId}`);
+    return;
+  }
+
+  // Marcar visto (best-effort, no bloquea)
+  msgr.sendAction({ pageId, recipient: senderId, action: 'mark_seen', accessToken: account.fb_page_token })
+    .catch(() => null);
+
+  const bypassed = await db.findOne(db.bypassed, { account_id: account._id, fb_psid: senderId });
+  if (bypassed) return;
+
+  let lead = await db.findOne(db.leads, { account_id: account._id, fb_psid: senderId });
+
+  const sel = await selectAgent(account, lead, 'messenger');
+  const agent = sel.agent;
+  if (!agent) return;
+  if (!sel.canAuto) {
+    console.log(`⏸️  FB no auto-respondido (${sel.reason}) — PSID ${senderId}. Lo maneja el humano.`);
+    return;
+  }
+
+  if (!lead) {
+    if (!containsTrigger(text, agent)) {
+      console.log(`🔒 FB DM ignorado (sin keyword) de ${senderId}: "${text}"`);
+      return;
+    }
+    // Nombre real del sender (best-effort; si falla, mostramos el PSID)
+    let name = senderId;
+    try {
+      const prof = await msgr.getUserProfile({ psid: senderId, accessToken: account.fb_page_token });
+      if (prof?.first_name) name = [prof.first_name, prof.last_name].filter(Boolean).join(' ');
+    } catch { /* best-effort */ }
+    lead = await db.insert(db.leads, {
+      account_id: account._id, agent_id: agent._id,
+      fb_psid: senderId,
+      fb_page_id: String(pageId),
+      ig_user_id: senderId,        // compat con inbox actual
+      ig_username: name,           // mostrado en UI
+      channel: 'messenger',
+      status: 'active', automation: 'automated',
+      is_bypassed: false, is_converted: false, pipeline_stage: 'nuevo',
+      triggered_by: 'fb_dm',
+      last_message_at: new Date().toISOString()
+    });
+    console.log(`🔑 FB bot activado para ${name} (PSID ${senderId})`);
   }
 
   if (lead.automation !== 'automated' || lead.is_bypassed) return;
@@ -390,7 +475,7 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
   const history    = await db.find(db.messages, { lead_id: lead._id },
     (a, b) => new Date(a.createdAt) - new Date(b.createdAt));
   const allKnowledge = await db.find(db.knowledge, { account_id: account._id });
-  const knowledge    = allKnowledge.filter(k => k.is_main || (k.agent_ids || []).includes(agent._id));
+  const knowledge    = knowledgeForAgent(allKnowledge, agent);
   const allLinks     = await db.find(db.links, { account_id: account._id });
   const links        = (agent.link_ids || []).map(lid => allLinks.find(l => l._id === lid)).filter(Boolean);
 
@@ -431,7 +516,18 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
     ragContext = await retrieveContext({ accountId: account._id, message: text, apiKey });
   } catch (e) { /* RAG opcional — si falla, seguimos sin él */ }
 
-  const extraContext = [baseContext, magnetContext, ragContext].filter(Boolean).join('\n\n') || null;
+  // ── Messenger (Marketplace): calificar y derivar a WhatsApp ──────────────
+  // En este canal el objetivo NO es cerrar, es filtrar: saludar, calificar el
+  // interés y, si el lead es un prospecto real, invitarlo a seguir por WhatsApp
+  // (donde vive el hub de venta). Los curiosos sin intención se atienden con
+  // calidez pero sin insistir.
+  let messengerHandoff = null;
+  if (lead.channel === 'messenger') {
+    const waHint = account.wa_display_number ? ` (escribime al ${account.wa_display_number})` : '';
+    messengerHandoff = `CANAL MESSENGER / MARKETPLACE. Tu trabajo acá es SALUDAR y CALIFICAR, no cerrar la venta. Descubrí si hay intención real (pregunta precio, disponibilidad para ver el producto, forma de pago, o señales claras de compra). Si el lead es un prospecto real, invitalo a seguir la conversación por WhatsApp${waHint} para coordinar los detalles/la visita — ahí se cierra. Si solo está curioseando, respondé cálido y breve, sin empujar. Nunca copies datos sensibles ni cierres el trato en este canal.`;
+  }
+
+  const extraContext = [baseContext, messengerHandoff, magnetContext, ragContext].filter(Boolean).join('\n\n') || null;
 
   const reply = await generateReply({
     agent, knowledge, links,
@@ -467,25 +563,31 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
   const sendAt = new Date(Date.now() + delaySeconds * 1000).toISOString();
 
   // Guardar en queue persistente — sobrevive reinicios de Railway
-  // Channel-aware: el worker dispatchea a Instagram o WhatsApp según `channel`.
-  const isWhatsApp = lead.channel === 'whatsapp';
+  // Channel-aware: el worker dispatchea a Instagram, WhatsApp o Messenger según `channel`.
+  const ch = lead.channel === 'whatsapp' ? 'whatsapp'
+           : lead.channel === 'messenger' ? 'messenger'
+           : 'instagram';
   const pendingItem = {
-    channel:      isWhatsApp ? 'whatsapp' : 'instagram',
+    channel:      ch,
     recipientId:  senderId,
     text:         reply,
-    accessToken:  isWhatsApp ? (account.wa_access_token || account.access_token) : account.access_token,
+    accessToken:  ch === 'whatsapp'  ? (account.wa_access_token || account.access_token)
+                : ch === 'messenger' ? account.fb_page_token
+                : account.access_token,
     accountId:    account._id,     // Para incrementar contador de DMs al enviar
     sendAt,
     leadUsername: lead.ig_username || lead.wa_name || senderId,
     agentName:    agent.name,
   };
-  if (isWhatsApp) {
+  if (ch === 'whatsapp') {
     pendingItem.phoneNumberId = account.wa_phone_number_id;
+  } else if (ch === 'messenger') {
+    pendingItem.pageId = account.fb_page_id;
   } else {
     pendingItem.igUserId = account.ig_platform_id || account.ig_user_id;
   }
   await db.insert(db.pendingSends, pendingItem);
-  const channelLabel = isWhatsApp ? '📱WSP' : '📷IG';
+  const channelLabel = ch === 'whatsapp' ? '📱WSP' : ch === 'messenger' ? '📨FB' : '📷IG';
   console.log(`⏱ ${channelLabel} [${agent.name}] Reply a @${pendingItem.leadUsername} programado en ${delaySeconds}s (${sendAt})`);
 
   console.log(`💬 [${agent.name}] → @${lead.ig_username}: ${reply.substring(0, 80)}...`);

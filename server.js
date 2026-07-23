@@ -614,6 +614,7 @@ app.get('*', (req, res) => {
 // (graph.facebook.com) según el campo `channel` del item.
 const { sendMessage: sendIGMessage } = require('./services/meta');
 const { sendMessage: sendWAMessage } = require('./services/whatsapp');
+const { sendMessage: sendFBMessage } = require('./services/messenger');
 const { incrementDMCount } = require('./services/limits');
 const dbW = require('./db/database');
 
@@ -635,6 +636,15 @@ async function processPendingSends() {
             accessToken:   item.accessToken,
             accountId:     item.accountId,
           });
+        } else if (item.channel === 'messenger') {
+          // Messenger Send API: pageId + recipient (PSID) + Page Access Token
+          await sendFBMessage({
+            pageId:      item.pageId,
+            recipient:   item.recipientId,
+            text:        item.text,
+            accessToken: item.accessToken,
+            accountId:   item.accountId,
+          });
         } else {
           // Default: Instagram DM (igUserId + recipientId via graph.instagram.com)
           await sendIGMessage({
@@ -646,7 +656,7 @@ async function processPendingSends() {
           });
         }
         sentOk = true;
-        const channelLabel = item.channel === 'whatsapp' ? '📱WSP' : '📷IG';
+        const channelLabel = item.channel === 'whatsapp' ? '📱WSP' : item.channel === 'messenger' ? '📨FB' : '📷IG';
         console.log(`✅ ${channelLabel} [${item.agentName}] → @${item.leadUsername}: ${item.text.substring(0, 60)}...`);
       } catch (e) {
         console.error(`❌ pendingSend error para @${item.leadUsername}:`, e.response?.data || e.message);

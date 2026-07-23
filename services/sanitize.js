@@ -16,6 +16,7 @@ const SENSITIVE_ACCOUNT_FIELDS = [
   'access_token',       // token de Meta/Instagram (permite enviar DMs como el user)
   'wa_access_token',    // token de WhatsApp Cloud API
   'wa_business_token',  // por si se agrega
+  'fb_page_token',      // Page Access Token de Messenger (permite enviar como la Página)
   'token_last_error',   // puede contener fragmentos del token en el mensaje de error
 ];
 
@@ -45,6 +46,7 @@ function sanitizeAccount(account) {
   safe.id = account._id;
   safe.has_access_token    = !!account.access_token;
   safe.has_wa_access_token = !!account.wa_access_token;
+  safe.has_fb_page_token   = !!account.fb_page_token;
   return safe;
 }
 

@@ -114,6 +114,41 @@ router.delete('/whatsapp', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// ── MESSENGER (Página de Facebook / Marketplace) ────────────────────────────
+// PUT body: { accountId, fb_page_id, fb_page_token, wa_display_number }
+// El cliente pega el ID de su Página + el Page Access Token (de la Meta App,
+// caso de uso Messenger). fb_page_token NUNCA se devuelve al frontend.
+// wa_display_number es el número visible de WhatsApp al que el agente deriva
+// los prospectos calificados desde Messenger (ej. "+56 9 8566 6043").
+router.put('/messenger', async (req, res, next) => {
+  try {
+    const { accountId, fb_page_id, fb_page_token, wa_display_number } = req.body;
+    if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
+
+    const upd = {};
+    if (fb_page_id !== undefined)       upd.fb_page_id       = String(fb_page_id || '').trim();
+    if (wa_display_number !== undefined) upd.wa_display_number = String(wa_display_number || '').trim();
+    // El token solo se pisa si viene uno nuevo real (no el masked).
+    if (fb_page_token && !fb_page_token.includes('…')) {
+      upd.fb_page_token = String(fb_page_token).trim();
+    }
+    await db.update(db.accounts, { _id: accountId }, upd);
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+
+// DELETE — desconectar Messenger (limpia los campos fb_*)
+router.delete('/messenger', async (req, res, next) => {
+  try {
+    const { accountId } = req.query;
+    if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
+    await db.update(db.accounts, { _id: accountId }, {
+      fb_page_id: null, fb_page_token: null,
+    });
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+
 // ── ONBOARDING STATUS ───────────────────────────────────────────────────────
 // Devuelve el estado real del onboarding del usuario (qué pasos completó y cuál sigue).
 // Se usa para renderizar el checklist dinámico del home del dashboard.
