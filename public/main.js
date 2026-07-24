@@ -1602,6 +1602,36 @@ async function loadSettings() {
     if (r?.ok) { loadSettings(); showToast('WhatsApp desconectado'); }
   });
 
+  // ── Messenger / Marketplace (Página de Facebook) ──────────────────────────
+  const fbConnected = !!(data.account?.fb_page_id && data.account?.has_fb_page_token);
+  const fbConnEl = document.getElementById('fb-connected');
+  const fbNotEl  = document.getElementById('fb-not-connected');
+  if (fbConnEl) fbConnEl.style.display = fbConnected ? '' : 'none';
+  if (fbNotEl)  fbNotEl.style.display  = fbConnected ? 'none' : '';
+  if (fbConnected) {
+    const n = document.getElementById('fb-connected-page');
+    if (n) n.textContent = 'Página ID: ' + data.account.fb_page_id;
+  }
+
+  document.getElementById('btn-save-fb')?.addEventListener('click', async () => {
+    const fb_page_id        = document.getElementById('fb-page-id')?.value.trim();
+    const fb_page_token     = document.getElementById('fb-page-token')?.value.trim();
+    const wa_display_number = document.getElementById('fb-wa-display-number')?.value.trim();
+    if (!fb_page_id || !fb_page_token) {
+      showToast('⚠️ Falta el ID de la Página o el Page Access Token'); return;
+    }
+    const r = await apiFetch('/api/settings/messenger', 'PUT', {
+      accountId: ACCOUNT_ID, fb_page_id, fb_page_token, wa_display_number
+    });
+    if (r?.ok) { loadSettings(); showToast('✅ Messenger conectado'); }
+  });
+
+  document.getElementById('btn-disconnect-fb')?.addEventListener('click', async () => {
+    if (!confirm('¿Desconectar Messenger? El agente dejará de atender la Página.')) return;
+    const r = await apiFetch(`/api/settings/messenger?accountId=${ACCOUNT_ID}`, 'DELETE');
+    if (r?.ok) { loadSettings(); showToast('Messenger desconectado'); }
+  });
+
   // ── Notificaciones ────────────────────────────────────────────────────────
   await loadNotifications();
 }

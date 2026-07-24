@@ -1133,6 +1133,48 @@
       </div>
 
       <div class="settings-card">
+        <h3>Messenger / Marketplace <span style="font-size:11px;background:rgba(16,185,129,.15);color:#10b981;padding:2px 8px;border-radius:6px;vertical-align:middle;margin-left:6px;">Nuevo</span></h3>
+        <p>Conecta tu Página de Facebook. Las consultas de Messenger y Marketplace se atienden, se califican y los prospectos reales se derivan a tu WhatsApp.</p>
+
+        <!-- Conectado -->
+        <div id="fb-connected" style="display:none">
+          <div class="ig-connected-box">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div style="width:40px;height:40px;border-radius:10px;background:#0084FF;display:flex;align-items:center;justify-content:center;font-size:20px">📨</div>
+              <div>
+                <div style="font-weight:700" id="fb-connected-page">Página conectada</div>
+                <div style="font-size:12px;color:var(--text-2)">Messenger activo — deriva prospectos a WhatsApp</div>
+              </div>
+            </div>
+            <button class="btn-secondary" id="btn-disconnect-fb" style="margin-top:12px">Desconectar Messenger</button>
+          </div>
+        </div>
+
+        <!-- No conectado -->
+        <div id="fb-not-connected">
+          <p style="font-size:13px;color:var(--text-2);margin-bottom:14px">
+            Pegá el ID de tu Página y el Page Access Token (Meta App → Messenger → Configuración). El token nunca se muestra de vuelta por seguridad.
+          </p>
+          <div class="form-row">
+            <label>ID de la Página de Facebook</label>
+            <input type="text" id="fb-page-id" placeholder="ID numérico de la Página" class="form-input">
+          </div>
+          <div class="form-row">
+            <label>Page Access Token (permanente)</label>
+            <input type="password" id="fb-page-token" placeholder="Token de la Página (System User)" class="form-input">
+          </div>
+          <div class="form-row">
+            <label>WhatsApp visible para derivar prospectos (opcional)</label>
+            <input type="text" id="fb-wa-display-number" placeholder="+56 9 XXXX XXXX" class="form-input">
+          </div>
+          <button class="btn-primary" id="btn-save-fb">Conectar Messenger</button>
+          <p style="font-size:12px;color:var(--text-2);margin-top:10px">
+            Requiere: <strong>Página suscrita al webhook</strong> (caso de uso Messenger en la Meta App, campo <em>messages</em>). Solo funciona con Páginas — Marketplace personal no es accesible por API.
+          </p>
+        </div>
+      </div>
+
+      <div class="settings-card">
         <h3>Webhook de Meta</h3>
         <p>Configura el webhook en tu Meta App para recibir mensajes</p>
         <div class="form-row">
