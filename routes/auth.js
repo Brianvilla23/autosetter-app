@@ -159,16 +159,18 @@ router.get('/callback', async (req, res) => {
       }
     }
 
-    // Get IG username from Instagram Platform API.
-    // OPCIONAL: con este token graph.instagram.com/me también devuelve código
-    // 100 "Unsupported request" — no bloquea el guardado; el username se
-    // completa por webhook o diagnóstico posterior. user_id ya viene del POST.
+    // Identidad de la cuenta. `v23.0/me` devuelve los DOS ids que necesitamos:
+    //   user_id → el que llega en entry.id de los webhooks (lookup de la cuenta)
+    //   id      → el app-scoped de la plataforma (para enviar mensajes)
+    // Sin la versión, /me solo devuelve el app-scoped, por eso se pide v23.0
+    // primero. Es opcional: si falla, el guardado sigue con lo que haya.
     step = 'ig_me';
     let igRes = { data: {} };
     try {
-      igRes = await axios.get('https://graph.instagram.com/me', {
-        params: { fields: 'id,username,name', access_token: longToken }
+      igRes = await axios.get('https://graph.instagram.com/v23.0/me', {
+        params: { fields: 'user_id,username,id', access_token: longToken }
       });
+      console.log(`[AUTH] ig_me OK user_id=${igRes.data.user_id} id=${igRes.data.id} username=${igRes.data.username}`);
     } catch (meErr) {
       console.warn('[AUTH] ig_me falló (no bloquea):',
         JSON.stringify(meErr.response?.data ?? meErr.message).slice(0, 300));
@@ -176,19 +178,10 @@ router.get('/callback', async (req, res) => {
     const igUsername = igRes.data.username || igId;
     step = 'guardado';
 
-    // Get the webhook-compatible ID from the Facebook Graph API.
-    // graph.facebook.com/me returns the same ID that Instagram webhooks use in entry.id,
-    // whereas graph.instagram.com/me returns a different app-scoped platform ID.
-    let igIdFinal = igRes.data.id ? String(igRes.data.id) : igId;
-    try {
-      const fbRes = await axios.get('https://graph.facebook.com/v19.0/me', {
-        params: { fields: 'id,username', access_token: longToken }
-      });
-      if (fbRes.data.id) igIdFinal = String(fbRes.data.id);
-      console.log(`[AUTH] graph.facebook.com/me id=${fbRes.data.id} | graph.instagram.com/me id=${igRes.data.id} → using ${igIdFinal}`);
-    } catch (fbErr) {
-      console.log(`[AUTH] graph.facebook.com/me failed (${fbErr.message}), using instagram id=${igIdFinal}`);
-    }
+    // ID de webhook: preferir user_id; si no vino, el user_id del token inicial.
+    // NUNCA el app-scoped (igRes.data.id) — con ese, entry.id no matchea y los
+    // DMs entrantes se pierden con "No account for ig_user_id".
+    const igIdFinal = String(igRes.data.user_id || igId || '');
 
     // Long-lived IG tokens expire 60 days after issue. Compute expiry so the
     // refresh worker knows when to rotate. `expiresInSec` viene del exchange o
@@ -208,18 +201,28 @@ router.get('/callback', async (req, res) => {
       token_last_error_at:    null,
     };
     if (accountId && accountId !== 'undefined') {
-      // When reconnecting: preserve ig_user_id (webhook ID from entry.id).
-      // Store ig_platform_id (from graph.instagram.com/me) separately — used for sending messages.
+      // Al reconectar guardamos los dos ids por separado:
+      //   ig_user_id      → lookup del webhook (entry.id)
+      //   ig_platform_id  → envío de mensajes (app-scoped)
+      // ig_user_id solo se sobrescribe si el OAuth trajo uno numérico real:
+      // así se corrigen cuentas con placeholders viejos ("demo_ig_id") sin
+      // pisar un id válido cuando la llamada a /me falla.
       const igPlatformId = igRes.data.id ? String(igRes.data.id) : null;
-      console.log(`[AUTH] accountId=${accountId} | ig_platform_id=${igPlatformId} | username=${igUsername} | token_expires=${tokenExpiresAt}`);
-      await db.update(db.accounts, { _id: accountId }, {
+      const cuenta = await db.findOne(db.accounts, { _id: accountId });
+      const cambios = {
         ig_username:      igUsername,
         access_token:     longToken,
         ig_platform_id:   igPlatformId,
         token_expires_at: tokenExpiresAt,
         token_refreshed_at: new Date().toISOString(),
         ...reauthClearFields,
-      });
+      };
+      if (/^\d+$/.test(igIdFinal) && igIdFinal !== cuenta?.ig_user_id) {
+        cambios.ig_user_id = igIdFinal;
+        console.log(`[AUTH] ig_user_id actualizado: ${cuenta?.ig_user_id ?? '(vacío)'} → ${igIdFinal}`);
+      }
+      console.log(`[AUTH] accountId=${accountId} | ig_platform_id=${igPlatformId} | username=${igUsername} | token_expires=${tokenExpiresAt}`);
+      await db.update(db.accounts, { _id: accountId }, cambios);
     } else {
       const exists = await db.findOne(db.accounts, { ig_user_id: igIdFinal });
       if (!exists) {
