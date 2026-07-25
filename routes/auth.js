@@ -159,11 +159,20 @@ router.get('/callback', async (req, res) => {
       }
     }
 
-    // Get IG username from Instagram Platform API
+    // Get IG username from Instagram Platform API.
+    // OPCIONAL: con este token graph.instagram.com/me también devuelve código
+    // 100 "Unsupported request" — no bloquea el guardado; el username se
+    // completa por webhook o diagnóstico posterior. user_id ya viene del POST.
     step = 'ig_me';
-    const igRes = await axios.get('https://graph.instagram.com/me', {
-      params: { fields: 'id,username,name', access_token: longToken }
-    });
+    let igRes = { data: {} };
+    try {
+      igRes = await axios.get('https://graph.instagram.com/me', {
+        params: { fields: 'id,username,name', access_token: longToken }
+      });
+    } catch (meErr) {
+      console.warn('[AUTH] ig_me falló (no bloquea):',
+        JSON.stringify(meErr.response?.data ?? meErr.message).slice(0, 300));
+    }
     const igUsername = igRes.data.username || igId;
     step = 'guardado';
 

@@ -713,6 +713,44 @@ router.get('/meta-tokens', async (req, res) => {
 });
 
 /**
+ * GET /api/admin/ig-diag/:accountId
+ * Diagnóstico del token IG guardado: prueba variantes de Graph API server-side
+ * y devuelve SOLO los resultados/errores (nunca el token). Para depurar el
+ * "Unsupported request" código 100 de Business Login.
+ */
+router.get('/ig-diag/:accountId', async (req, res) => {
+  try {
+    const account = await db.findOne(db.accounts, { _id: req.params.accountId });
+    if (!account) return res.status(404).json({ error: 'Account not found' });
+    if (!account.access_token) return res.status(400).json({ error: 'Account sin token' });
+
+    const axios = require('axios');
+    const t = account.access_token;
+    const pruebas = {
+      token_shape: { prefix: t.slice(0, 4), length: t.length },
+      ig_user_id: account.ig_user_id || null,
+      ig_platform_id: account.ig_platform_id || null,
+    };
+    const llamadas = {
+      'graph.ig /me':               { url: 'https://graph.instagram.com/me', params: { fields: 'id,username', access_token: t } },
+      'graph.ig /v23.0/me':         { url: 'https://graph.instagram.com/v23.0/me', params: { fields: 'user_id,username', access_token: t } },
+      'graph.ig /me sin fields':    { url: 'https://graph.instagram.com/me', params: { access_token: t } },
+      'graph.fb /v19.0/me':         { url: 'https://graph.facebook.com/v19.0/me', params: { fields: 'id', access_token: t } },
+      'graph.ig debug_token':       { url: 'https://graph.instagram.com/debug_token', params: { input_token: t, access_token: t } },
+    };
+    for (const [tag, cfg] of Object.entries(llamadas)) {
+      try {
+        const r = await axios.get(cfg.url, { params: cfg.params, timeout: 10000 });
+        pruebas[tag] = { ok: true, data: r.data };
+      } catch (err) {
+        pruebas[tag] = { ok: false, status: err.response?.status ?? null, error: err.response?.data ?? err.message };
+      }
+    }
+    res.json(pruebas);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
  * POST /api/admin/meta-tokens/:accountId/refresh
  * Fuerza un refresh inmediato del token de una cuenta.
  */
