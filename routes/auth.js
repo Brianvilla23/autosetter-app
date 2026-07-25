@@ -107,10 +107,14 @@ router.get('/callback', async (req, res) => {
   }
   const accountId = entry.accountId;
 
+  // `step` identifica qué llamada a Meta falló — viaja en el redirect de error
+  // para diagnosticar sin acceso a logs del servidor.
+  let step = 'inicio';
   try {
     const redirectUri = `${process.env.APP_URL || `http://localhost:${process.env.PORT || 3000}`}/auth/callback`;
 
     // Exchange code for short-lived token via Instagram API
+    step = 'short_token';
     const tokenRes = await axios.post('https://api.instagram.com/oauth/access_token', new URLSearchParams({
       client_id:     APP_ID,
       client_secret: APP_SECRET,
@@ -118,10 +122,14 @@ router.get('/callback', async (req, res) => {
       redirect_uri:  redirectUri,
       code
     }));
-    const shortToken = tokenRes.data.access_token;
-    const igId       = String(tokenRes.data.user_id);
+    // Business Login puede devolver {access_token, user_id} plano o {data:[{...}]}
+    const tokenData  = Array.isArray(tokenRes.data?.data) ? tokenRes.data.data[0] : tokenRes.data;
+    const shortToken = tokenData?.access_token;
+    const igId       = String(tokenData?.user_id ?? '');
+    if (!shortToken) throw new Error(`short_token vacío — respuesta: ${JSON.stringify(tokenRes.data).slice(0, 300)}`);
 
     // Exchange for long-lived token (60 days)
+    step = 'long_token';
     const longRes = await axios.get('https://graph.instagram.com/access_token', {
       params: {
         grant_type:    'ig_exchange_token',
@@ -130,12 +138,15 @@ router.get('/callback', async (req, res) => {
       }
     });
     const longToken = longRes.data.access_token;
+    if (!longToken) throw new Error(`long_token vacío — respuesta: ${JSON.stringify(longRes.data).slice(0, 300)}`);
 
     // Get IG username from Instagram Platform API
+    step = 'ig_me';
     const igRes = await axios.get('https://graph.instagram.com/me', {
       params: { fields: 'id,username,name', access_token: longToken }
     });
     const igUsername = igRes.data.username || igId;
+    step = 'guardado';
 
     // Get the webhook-compatible ID from the Facebook Graph API.
     // graph.facebook.com/me returns the same ID that Instagram webhooks use in entry.id,
@@ -207,8 +218,12 @@ router.get('/callback', async (req, res) => {
 
     res.redirect('/?auth=success&ig=@' + igUsername);
   } catch (e) {
-    console.error('Auth error:', e.response?.data || e.message);
-    res.redirect('/?auth=error&msg=' + encodeURIComponent(e.response?.data?.error?.message || e.message));
+    console.error(`Auth error [paso=${step}] status=${e.response?.status ?? '-'}:`,
+      JSON.stringify(e.response?.data ?? e.message).slice(0, 800));
+    const detail = e.response?.data?.error?.message      // shape Graph API
+      || e.response?.data?.error_message                 // shape api.instagram.com OAuth
+      || e.message;
+    res.redirect('/?auth=error&msg=' + encodeURIComponent(`[${step}] ${detail}`));
   }
 });
 
