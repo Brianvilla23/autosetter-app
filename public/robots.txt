@@ -1,4 +1,4 @@
-# robots.txt — DMCloser
+# robots.txt — Atinov
 
 User-agent: *
 Allow: /
@@ -17,4 +17,4 @@ Disallow: /webhook
 Disallow: /auth/
 Disallow: /go/
 
-Sitemap: https://dmcloser.app/sitemap.xml
+Sitemap: https://atinov.com/sitemap.xml

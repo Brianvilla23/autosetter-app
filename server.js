@@ -591,9 +591,10 @@ app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 app.get('/data-deletion', (req, res) => {
-  // Meta requiere una URL de "instrucciones para eliminación de datos".
-  // La privacy explica cómo pedir eliminación, así que apuntamos ahí.
-  res.sendFile(path.join(__dirname, 'public', 'privacy.html'));
+  // URL de "instrucciones para eliminación de datos" que exige Meta App Review.
+  // Página propia (antes redirigía a privacy): el revisor busca pasos concretos
+  // para pedir el borrado y para revocar el acceso desde Instagram/Facebook.
+  res.sendFile(path.join(__dirname, 'public', 'data-deletion.html'));
 });
 
 // ── 404 para rutas API inexistentes ───────────────────────────────────────────
