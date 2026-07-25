@@ -129,35 +129,35 @@ router.get('/callback', async (req, res) => {
     if (!shortToken) throw new Error(`short_token vacío — respuesta: ${JSON.stringify(tokenRes.data).slice(0, 300)}`);
 
     // Exchange for long-lived token (60 days).
-    // graph.instagram.com sin versión respondía "Unsupported request - method
-    // type: get" (IGApiException 100) con tokens de Business Login — se prueban
-    // variantes en orden y se registra cuál respondió.
+    // El intercambio ig_exchange_token responde "Unsupported request" (código
+    // 100, en GET y POST por igual) cuando el token de Business Login YA es
+    // long-lived — Meta lo entrega directo en re-autorizaciones. En ese caso
+    // se usa el token tal cual llegó y el expires_in del paso anterior.
     step = 'long_token';
-    const exchangeParams = {
-      grant_type:    'ig_exchange_token',
-      client_secret: APP_SECRET,
-      access_token:  shortToken
-    };
-    const intentos = [
-      { tag: 'GET v23.0',  fn: () => axios.get('https://graph.instagram.com/v23.0/access_token', { params: exchangeParams }) },
-      { tag: 'GET s/ver',  fn: () => axios.get('https://graph.instagram.com/access_token',       { params: exchangeParams }) },
-      { tag: 'POST s/ver', fn: () => axios.post('https://graph.instagram.com/access_token', new URLSearchParams(exchangeParams)) },
-    ];
-    let longRes = null, lastExchangeErr = null;
-    for (const intento of intentos) {
-      try {
-        longRes = await intento.fn();
-        console.log(`[AUTH] long_token OK vía ${intento.tag}`);
-        break;
-      } catch (err) {
-        lastExchangeErr = err;
-        console.warn(`[AUTH] long_token falló vía ${intento.tag}:`,
-          JSON.stringify(err.response?.data ?? err.message).slice(0, 300));
+    console.log(`[AUTH] short_token keys=${Object.keys(tokenRes.data).join(',')} expires_in=${tokenData?.expires_in ?? '-'} permissions=${tokenData?.permissions ?? '-'}`);
+    let longToken   = shortToken;
+    let expiresInSec = tokenData?.expires_in || null;
+    try {
+      const longRes = await axios.get('https://graph.instagram.com/v23.0/access_token', {
+        params: {
+          grant_type:    'ig_exchange_token',
+          client_secret: APP_SECRET,
+          access_token:  shortToken
+        }
+      });
+      if (longRes.data.access_token) {
+        longToken    = longRes.data.access_token;
+        expiresInSec = longRes.data.expires_in || expiresInSec;
+        console.log('[AUTH] long_token OK vía exchange');
+      }
+    } catch (err) {
+      const gErr = err.response?.data?.error;
+      if (gErr?.code === 100) {
+        console.log(`[AUTH] exchange no soportado (código 100) — usando token directo de Business Login. Detalle: ${gErr.message}`);
+      } else {
+        throw err;
       }
     }
-    if (!longRes) throw lastExchangeErr;
-    const longToken = longRes.data.access_token;
-    if (!longToken) throw new Error(`long_token vacío — respuesta: ${JSON.stringify(longRes.data).slice(0, 300)}`);
 
     // Get IG username from Instagram Platform API
     step = 'ig_me';
@@ -182,10 +182,9 @@ router.get('/callback', async (req, res) => {
     }
 
     // Long-lived IG tokens expire 60 days after issue. Compute expiry so the
-    // refresh worker knows when to rotate. `longRes.data.expires_in` viene en
-    // segundos — si Meta lo devuelve, lo usamos; sino default 60d.
-    const expiresInSec = longRes.data.expires_in || 60 * 24 * 3600;
-    const tokenExpiresAt = new Date(Date.now() + expiresInSec * 1000).toISOString();
+    // refresh worker knows when to rotate. `expiresInSec` viene del exchange o
+    // del token directo de Business Login; sino default 60d.
+    const tokenExpiresAt = new Date(Date.now() + (expiresInSec || 60 * 24 * 3600) * 1000).toISOString();
 
     // Update or create account.
     // En cualquier reconexión exitosa, limpiamos needs_reauth: el cliente
