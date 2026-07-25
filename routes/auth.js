@@ -128,15 +128,34 @@ router.get('/callback', async (req, res) => {
     const igId       = String(tokenData?.user_id ?? '');
     if (!shortToken) throw new Error(`short_token vacío — respuesta: ${JSON.stringify(tokenRes.data).slice(0, 300)}`);
 
-    // Exchange for long-lived token (60 days)
+    // Exchange for long-lived token (60 days).
+    // graph.instagram.com sin versión respondía "Unsupported request - method
+    // type: get" (IGApiException 100) con tokens de Business Login — se prueban
+    // variantes en orden y se registra cuál respondió.
     step = 'long_token';
-    const longRes = await axios.get('https://graph.instagram.com/access_token', {
-      params: {
-        grant_type:    'ig_exchange_token',
-        client_secret: APP_SECRET,
-        access_token:  shortToken
+    const exchangeParams = {
+      grant_type:    'ig_exchange_token',
+      client_secret: APP_SECRET,
+      access_token:  shortToken
+    };
+    const intentos = [
+      { tag: 'GET v23.0',  fn: () => axios.get('https://graph.instagram.com/v23.0/access_token', { params: exchangeParams }) },
+      { tag: 'GET s/ver',  fn: () => axios.get('https://graph.instagram.com/access_token',       { params: exchangeParams }) },
+      { tag: 'POST s/ver', fn: () => axios.post('https://graph.instagram.com/access_token', new URLSearchParams(exchangeParams)) },
+    ];
+    let longRes = null, lastExchangeErr = null;
+    for (const intento of intentos) {
+      try {
+        longRes = await intento.fn();
+        console.log(`[AUTH] long_token OK vía ${intento.tag}`);
+        break;
+      } catch (err) {
+        lastExchangeErr = err;
+        console.warn(`[AUTH] long_token falló vía ${intento.tag}:`,
+          JSON.stringify(err.response?.data ?? err.message).slice(0, 300));
       }
-    });
+    }
+    if (!longRes) throw lastExchangeErr;
     const longToken = longRes.data.access_token;
     if (!longToken) throw new Error(`long_token vacío — respuesta: ${JSON.stringify(longRes.data).slice(0, 300)}`);
 
