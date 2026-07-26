@@ -686,6 +686,51 @@ router.get('/emails', async (req, res) => {
  * Útil para monitorear salud de integraciones.
  */
 /**
+ * POST /api/admin/probar-envio-ig
+ * Intenta enviar un mensaje de prueba por Instagram probando las dos formas de
+ * identificar la cuenta (el ID del login y el del webhook) y los dos dominios
+ * de la API. Devuelve el error exacto de cada intento — así se ve cuál funciona
+ * sin esperar los reintentos con backoff. No devuelve el token.
+ * Body: { accountId, recipientId, texto }
+ */
+router.post('/probar-envio-ig', async (req, res) => {
+  try {
+    const axios = require('axios');
+    const { accountId, recipientId, texto } = req.body;
+    if (!accountId || !recipientId) return res.status(400).json({ error: 'accountId y recipientId requeridos' });
+    const cuenta = await db.findOne(db.accounts, { _id: accountId });
+    if (!cuenta) return res.status(404).json({ error: 'cuenta no encontrada' });
+
+    const token = cuenta.access_token;
+    const mensaje = { recipient: { id: recipientId }, message: { text: texto || 'prueba' } };
+    const variantes = [
+      { tag: 'graph.instagram.com + ig_platform_id', url: `https://graph.instagram.com/v21.0/${cuenta.ig_platform_id}/messages` },
+      { tag: 'graph.instagram.com + ig_user_id',     url: `https://graph.instagram.com/v21.0/${cuenta.ig_user_id}/messages` },
+      { tag: 'graph.instagram.com + me',             url: `https://graph.instagram.com/v21.0/me/messages` },
+      { tag: 'graph.facebook.com + ig_user_id',      url: `https://graph.facebook.com/v21.0/${cuenta.ig_user_id}/messages` },
+      { tag: 'graph.facebook.com + me',              url: `https://graph.facebook.com/v21.0/me/messages` },
+    ];
+
+    const resultados = [];
+    for (const v of variantes) {
+      try {
+        const r = await axios.post(v.url, mensaje, { params: { access_token: token }, timeout: 12000 });
+        resultados.push({ variante: v.tag, ok: true, respuesta: r.data });
+        break; // una que funcione alcanza
+      } catch (err) {
+        resultados.push({
+          variante: v.tag,
+          ok: false,
+          error: err.response?.data?.error?.message || err.message,
+          codigo: err.response?.data?.error?.code ?? null,
+        });
+      }
+    }
+    res.json({ ig_user_id: cuenta.ig_user_id, ig_platform_id: cuenta.ig_platform_id, resultados });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
  * GET /api/admin/send-queue
  * Respuestas del agente pendientes de enviar, con el motivo del último fallo.
  * Responde "el bot contestó pero no llegó" sin bucear en los logs del hosting.
