@@ -1,16 +1,12 @@
 <svg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'>
-  <defs>
-    <linearGradient id='fondo' x1='0%' y1='0%' x2='100%' y2='100%'>
-      <stop offset='0%' style='stop-color:#0f766e'/>
-      <stop offset='100%' style='stop-color:#065f46'/>
-    </linearGradient>
-    <linearGradient id='marca' x1='0%' y1='0%' x2='100%' y2='100%'>
-      <stop offset='0%' style='stop-color:#5eead4'/>
-      <stop offset='100%' style='stop-color:#10b981'/>
-    </linearGradient>
-  </defs>
-  <rect width='1024' height='1024' rx='224' fill='url(#fondo)'/>
-  <path d='M 300 300 h 424 a 84 84 0 0 1 84 84 v 236 a 84 84 0 0 1 -84 84 h -212 l -140 116 v -116 h -72 a 84 84 0 0 1 -84 -84 v -236 a 84 84 0 0 1 84 -84 z'
-        fill='url(#marca)'/>
-  <path d='M 548 372 L 420 536 h 78 l -42 132 L 604 504 h -78 z' fill='#065f46'/>
+  <!-- Identidad Atinov: monocromo, blanco sobre negro #0a0a0a. Cero gradientes (ver ATINOV.md).
+       Marca reducida para favicon: la A capital romana + el filete partido con rombo. -->
+  <rect width='1024' height='1024' fill='#0a0a0a'/>
+  <text x='512' y='620' font-family='Cinzel, "Times New Roman", Georgia, serif' font-size='560'
+        font-weight='500' text-anchor='middle' fill='#ffffff'>A</text>
+  <g stroke='#ffffff' stroke-width='14' fill='none'>
+    <line x1='300' y1='760' x2='452' y2='760'/>
+    <line x1='572' y1='760' x2='724' y2='760'/>
+    <rect x='484' y='732' width='56' height='56' transform='rotate(45 512 760)'/>
+  </g>
 </svg>
