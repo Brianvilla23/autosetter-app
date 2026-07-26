@@ -123,7 +123,15 @@ router.post('/', async (req, res) => {
     anotar({ canal: req.body?.object || '?', resultado: 'RECHAZADO', detalle: cual });
     return res.status(401).send('invalid signature');
   }
-  anotar({ canal: req.body?.object || '?', resultado: 'ACEPTADO' });
+  // Se anota el entry.id (el ID con el que Meta identifica la cuenta en el
+  // webhook). Instagram usa un ID distinto acá que en el login, y si no
+  // coinciden el mensaje se descarta sin dejar rastro. Anotarlo permite
+  // comparar contra el ig_user_id guardado.
+  anotar({
+    canal: req.body?.object || '?',
+    resultado: 'ACEPTADO',
+    entry_ids: (req.body?.entry || []).map(e => String(e.id)),
+  });
 
   // 2. Backpressure: si la queue está llena, rechazar antes de hacer trabajo.
   try {
@@ -198,9 +206,17 @@ async function handleDM(pageId, event) {
   const text     = event.message?.text;
   if (!senderId || !text || event.message?.is_echo) return;
 
-  // Find account
-  const account = await db.findOne(db.accounts, { ig_user_id: pageId });
-  if (!account) { console.log('No account for ig_user_id:', pageId); return; }
+  // Find account.
+  // Instagram identifica la misma cuenta con dos IDs distintos: el que llega en
+  // el webhook (entry.id) y el que devuelve el login (ig_platform_id). Se busca
+  // por ambos para que un mensaje no se pierda por esa diferencia.
+  let account = await db.findOne(db.accounts, { ig_user_id: pageId });
+  if (!account) account = await db.findOne(db.accounts, { ig_platform_id: pageId });
+  if (!account) {
+    console.log('No account for ig_user_id:', pageId);
+    anotar({ canal: 'instagram', resultado: 'SIN CUENTA', detalle: `ningún registro con id ${pageId}` });
+    return;
+  }
 
   // Si la cuenta necesita reconexión (token caducado e irrenovable), no generar
   // respuesta — al cliente ya le mandamos email needsReauth desde metaRefresh.
