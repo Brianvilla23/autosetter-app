@@ -703,11 +703,22 @@ router.get('/secrets-diag', async (req, res) => {
   ];
 
   // App IDs conocidos para probar contra cuál valida cada secret.
-  const appIds = [
+  // Los app IDs son públicos (aparecen en el OAuth), así que dejarlos acá no
+  // expone nada; sirve para diagnosticar migraciones sin configurar nada extra.
+  const appIds = [...new Set([
     ...(process.env.META_APP_ID ? [process.env.META_APP_ID] : []),
-    ...(process.env.META_APP_ID_WA ? [process.env.META_APP_ID_WA] : []),
     ...String(process.env.META_APP_IDS_CONOCIDAS || '').split(',').map(s => s.trim()).filter(Boolean),
-  ];
+    '1953717795343085', // Atinov-IG   (sub-app Instagram, NUEVA)
+    '907168025773391',  // Atinov      (app principal,     NUEVA)
+    '1666405637830256', // DMCloser-IG (sub-app Instagram, VIEJA)
+    '1313119897349816', // Atinov      (app principal,     VIEJA)
+  ])];
+  const etiquetas = {
+    '1953717795343085': 'Atinov-IG (Instagram NUEVA)',
+    '907168025773391':  'Atinov (principal NUEVA)',
+    '1666405637830256': 'DMCloser-IG (Instagram VIEJA)',
+    '1313119897349816': 'Atinov (principal VIEJA)',
+  };
 
   const salida = { META_APP_ID: process.env.META_APP_ID || null, secrets: [] };
 
@@ -720,12 +731,23 @@ router.get('/secrets-diag', async (req, res) => {
             params: { input_token: `${appId}|${c.valor}`, access_token: `${appId}|${c.valor}` },
             timeout: 10000,
           });
-          if (r.data?.data?.app_id) { item.valida_para_app = String(r.data.data.app_id); break; }
+          if (r.data?.data?.app_id) {
+            item.valida_para_app = String(r.data.data.app_id);
+            item.es_de = etiquetas[item.valida_para_app] || 'app desconocida';
+            break;
+          }
         } catch { /* ese par no es válido, seguimos probando */ }
       }
+      if (!item.valida_para_app) item.es_de = 'NINGUNA de las apps conocidas — valor inválido o mal copiado';
     }
     salida.secrets.push(item);
   }
+  // Qué debería tener cada variable, para comparar de un vistazo.
+  salida.esperado = {
+    META_APP_ID:        '1953717795343085 (Atinov-IG)',
+    META_APP_SECRET:    'secret de Atinov-IG (Instagram NUEVA)',
+    META_APP_SECRET_WA: 'secret de Atinov (principal NUEVA)',
+  };
   res.json(salida);
 });
 
