@@ -685,6 +685,50 @@ router.get('/emails', async (req, res) => {
  * Estado de todos los Meta/Instagram tokens: expira, último refresh, último error.
  * Útil para monitorear salud de integraciones.
  */
+/**
+ * GET /api/admin/secrets-diag
+ * Diagnóstico de los secrets configurados SIN exponerlos. Le pregunta a Meta a
+ * qué app pertenece cada par app_id|app_secret (el "app access token"), y así
+ * detecta secrets cruzados o de la app equivocada tras una migración.
+ * Devuelve solo: longitud, primeros 4 caracteres y el app_id que Meta reconoce.
+ */
+router.get('/secrets-diag', async (req, res) => {
+  const axios = require('axios');
+  const huella = (s) => s ? { largo: s.length, empieza: s.slice(0, 4) + '…' } : null;
+
+  // A qué app corresponde cada secret según la convención del proyecto.
+  const candidatos = [
+    { env: 'META_APP_SECRET',    valor: process.env.META_APP_SECRET,    appIdEsperada: process.env.META_APP_ID },
+    { env: 'META_APP_SECRET_WA', valor: process.env.META_APP_SECRET_WA, appIdEsperada: null },
+  ];
+
+  // App IDs conocidos para probar contra cuál valida cada secret.
+  const appIds = [
+    ...(process.env.META_APP_ID ? [process.env.META_APP_ID] : []),
+    ...(process.env.META_APP_ID_WA ? [process.env.META_APP_ID_WA] : []),
+    ...String(process.env.META_APP_IDS_CONOCIDAS || '').split(',').map(s => s.trim()).filter(Boolean),
+  ];
+
+  const salida = { META_APP_ID: process.env.META_APP_ID || null, secrets: [] };
+
+  for (const c of candidatos) {
+    const item = { variable: c.env, huella: huella(c.valor), valida_para_app: null, probado_contra: appIds };
+    if (c.valor) {
+      for (const appId of appIds) {
+        try {
+          const r = await axios.get('https://graph.facebook.com/v19.0/debug_token', {
+            params: { input_token: `${appId}|${c.valor}`, access_token: `${appId}|${c.valor}` },
+            timeout: 10000,
+          });
+          if (r.data?.data?.app_id) { item.valida_para_app = String(r.data.data.app_id); break; }
+        } catch { /* ese par no es válido, seguimos probando */ }
+      }
+    }
+    salida.secrets.push(item);
+  }
+  res.json(salida);
+});
+
 router.get('/meta-tokens', async (req, res) => {
   try {
     const accounts = await db.find(db.accounts, {});
