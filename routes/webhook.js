@@ -12,6 +12,20 @@ const { knowledgeForAgent } = require('../services/agents/knowledge');
 const { checkDMAllowance, incrementDMCount } = require('../services/limits');
 const { v4: uuidv4 } = require('uuid');
 
+// ── Bitácora en memoria de los últimos webhooks ─────────────────────────────
+// Los logs del hosting se pueden ver con retraso o paginados, lo que hace muy
+// lento diagnosticar "¿llegó o no llegó?". Esto guarda los últimos 40 eventos
+// para consultarlos al instante desde /api/admin/webhook-log. Nunca guarda el
+// contenido de los mensajes ni secretos: solo canal, resultado y hora.
+const bitacora = [];
+function anotar(evento) {
+  bitacora.push({ ...evento, hora: new Date().toISOString() });
+  if (bitacora.length > 40) bitacora.shift();
+}
+function leerBitacora() {
+  return bitacora.slice().reverse();
+}
+
 // ── Verify Meta webhook signature (HMAC-SHA256) ─────────────────────────────
 // Meta firma cada POST con header X-Hub-Signature-256 = "sha256=<hex>"
 // usando el APP_SECRET sobre el raw body. Sin esta validación, cualquier
@@ -106,8 +120,10 @@ router.post('/', async (req, res) => {
       return 'NINGÚN secret configurado calza';
     })();
     console.error(`[webhook] firma inválida — canal=${req.body?.object || '?'} | ${cual}`);
+    anotar({ canal: req.body?.object || '?', resultado: 'RECHAZADO', detalle: cual });
     return res.status(401).send('invalid signature');
   }
+  anotar({ canal: req.body?.object || '?', resultado: 'ACEPTADO' });
 
   // 2. Backpressure: si la queue está llena, rechazar antes de hacer trabajo.
   try {
@@ -671,3 +687,4 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
 }
 
 module.exports = router;
+module.exports.leerBitacora = leerBitacora;

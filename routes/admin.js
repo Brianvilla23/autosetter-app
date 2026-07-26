@@ -686,6 +686,24 @@ router.get('/emails', async (req, res) => {
  * Útil para monitorear salud de integraciones.
  */
 /**
+ * GET /api/admin/webhook-log
+ * Últimos webhooks recibidos: canal, si se aceptó o rechazó y cuándo. Sirve
+ * para responder al instante "¿el mensaje llegó?" sin depender de los logs del
+ * hosting, que se ven con retraso. No incluye contenido de mensajes.
+ */
+router.get('/webhook-log', (req, res) => {
+  try {
+    const { leerBitacora } = require('./webhook');
+    const eventos = typeof leerBitacora === 'function' ? leerBitacora() : [];
+    res.json({
+      total: eventos.length,
+      ultimo: eventos[0] || null,
+      eventos,
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
  * GET /api/admin/secrets-diag
  * Diagnóstico de los secrets configurados SIN exponerlos. Le pregunta a Meta a
  * qué app pertenece cada par app_id|app_secret (el "app access token"), y así
