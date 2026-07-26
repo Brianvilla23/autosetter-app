@@ -88,7 +88,24 @@ router.get('/', (req, res) => {
 router.post('/', async (req, res) => {
   // 1. Validar firma ANTES de procesar nada — fail closed.
   if (!verifyMetaSignature(req)) {
-    console.error('[webhook] firma inválida o ausente');
+    // Diagnóstico: sin esto no se sabe QUÉ canal está siendo rechazado ni con
+    // cuál de los secrets configurados habría validado. No imprime secretos:
+    // solo el nombre de la variable que hubiera calzado.
+    const cual = (() => {
+      const raw = req.rawBody;
+      const sig = req.headers['x-hub-signature-256'];
+      if (!raw || !sig) return 'sin firma o sin body';
+      for (const [nombre, secret] of [
+        ['META_APP_SECRET', process.env.META_APP_SECRET],
+        ['META_APP_SECRET_WA', process.env.META_APP_SECRET_WA],
+      ]) {
+        if (!secret) continue;
+        const esperado = 'sha256=' + crypto.createHmac('sha256', secret).update(raw).digest('hex');
+        if (esperado === sig) return `calzaba con ${nombre}`;
+      }
+      return 'NINGÚN secret configurado calza';
+    })();
+    console.error(`[webhook] firma inválida — canal=${req.body?.object || '?'} | ${cual}`);
     return res.status(401).send('invalid signature');
   }
 
