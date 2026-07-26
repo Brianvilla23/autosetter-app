@@ -661,6 +661,13 @@ async function processPendingSends() {
         console.log(`✅ ${channelLabel} [${item.agentName}] → @${item.leadUsername}: ${item.text.substring(0, 60)}...`);
       } catch (e) {
         console.error(`❌ pendingSend error para @${item.leadUsername}:`, e.response?.data || e.message);
+        // Guardar el motivo en el item: sin esto, un envío que falla queda como
+        // "reintentando" sin decir por qué, y hay que bucear en los logs.
+        const detalle = e.response?.data?.error?.message || e.message || 'error desconocido';
+        await dbW.update(dbW.pendingSends, { _id: item._id }, {
+          ultimoError: String(detalle).slice(0, 300),
+          ultimoErrorAt: new Date().toISOString(),
+        }).catch(() => null);
       }
 
       // Contabilizar solo envíos exitosos contra el límite del plan

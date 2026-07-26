@@ -686,6 +686,32 @@ router.get('/emails', async (req, res) => {
  * Útil para monitorear salud de integraciones.
  */
 /**
+ * GET /api/admin/send-queue
+ * Respuestas del agente pendientes de enviar, con el motivo del último fallo.
+ * Responde "el bot contestó pero no llegó" sin bucear en los logs del hosting.
+ */
+router.get('/send-queue', async (req, res) => {
+  try {
+    const pendientes = await db.find(db.pendingSends, {});
+    res.json({
+      total: pendientes.length,
+      items: pendientes.slice(0, 15).map(p => ({
+        canal:       p.channel,
+        para:        p.leadUsername,
+        intentos:    p.retries || 0,
+        ultimoError: p.ultimoError || null,
+        ultimoErrorAt: p.ultimoErrorAt || null,
+        proximoIntento: p.nextRetryAt || p.sendAt,
+        // IDs usados para enviar — sirven para detectar el ID equivocado
+        igUserId:      p.igUserId || null,
+        phoneNumberId: p.phoneNumberId || null,
+        pageId:        p.pageId || null,
+      })),
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
  * GET /api/admin/webhook-log
  * Últimos webhooks recibidos: canal, si se aceptó o rechazó y cuándo. Sirve
  * para responder al instante "¿el mensaje llegó?" sin depender de los logs del
