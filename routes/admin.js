@@ -686,6 +686,48 @@ router.get('/emails', async (req, res) => {
  * Útil para monitorear salud de integraciones.
  */
 /**
+ * POST /api/admin/suscribir-waba
+ * Suscribe la app actual a la cuenta de WhatsApp (WABA) para que Meta le envíe
+ * los mensajes. Si la app anterior se elimina, la WABA queda sin suscripción y
+ * los mensajes dejan de llegar sin ningún error visible.
+ * Body: { accountId } — usa el token de WhatsApp ya guardado en la cuenta.
+ */
+router.post('/suscribir-waba', async (req, res) => {
+  try {
+    const axios = require('axios');
+    const { accountId } = req.body;
+    const cuenta = accountId
+      ? await db.findOne(db.accounts, { _id: accountId })
+      : (await db.find(db.accounts, {})).find(a => a.wa_business_account_id || a.wa_access_token);
+    if (!cuenta) return res.status(404).json({ error: 'cuenta con WhatsApp no encontrada' });
+
+    const waba  = cuenta.wa_business_account_id;
+    const token = cuenta.wa_access_token || cuenta.access_token;
+    if (!waba)  return res.status(400).json({ error: 'la cuenta no tiene WABA ID guardado' });
+    if (!token) return res.status(400).json({ error: 'la cuenta no tiene token de WhatsApp' });
+
+    const salida = { waba_id: waba };
+    // 1) Suscribir esta app a la WABA
+    try {
+      const r = await axios.post(`https://graph.facebook.com/v21.0/${waba}/subscribed_apps`, null,
+        { params: { access_token: token }, timeout: 15000 });
+      salida.suscripcion = { ok: true, respuesta: r.data };
+    } catch (err) {
+      salida.suscripcion = { ok: false, error: err.response?.data?.error?.message || err.message };
+    }
+    // 2) Listar qué apps quedan suscritas, para confirmar
+    try {
+      const r = await axios.get(`https://graph.facebook.com/v21.0/${waba}/subscribed_apps`,
+        { params: { access_token: token }, timeout: 15000 });
+      salida.apps_suscritas = r.data?.data || [];
+    } catch (err) {
+      salida.apps_suscritas = { error: err.response?.data?.error?.message || err.message };
+    }
+    res.json(salida);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
  * POST /api/admin/probar-envio-ig
  * Intenta enviar un mensaje de prueba por Instagram probando las dos formas de
  * identificar la cuenta (el ID del login y el del webhook) y los dos dominios
