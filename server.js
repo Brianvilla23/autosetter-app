@@ -616,6 +616,7 @@ app.get('*', (req, res) => {
 const { sendMessage: sendIGMessage } = require('./services/meta');
 const { sendMessage: sendWAMessage } = require('./services/whatsapp');
 const { sendMessage: sendFBMessage } = require('./services/messenger');
+const { trySendVoiceReply }          = require('./services/audio');
 const { incrementDMCount } = require('./services/limits');
 const dbW = require('./db/database');
 
@@ -630,13 +631,21 @@ async function processPendingSends() {
       try {
         if (item.channel === 'whatsapp') {
           // WhatsApp Cloud API: phoneNumberId + recipient (wa_id) + accessToken
-          await sendWAMessage({
-            phoneNumberId: item.phoneNumberId,
-            recipient:     item.recipientId,
-            text:          item.text,
-            accessToken:   item.accessToken,
-            accountId:     item.accountId,
-          });
+          // Si el item viene marcado replyAsVoice (el lead mandó nota de voz),
+          // se intenta responder con audio; cualquier fallo degrada a texto.
+          let sentAsVoice = false;
+          if (item.replyAsVoice) {
+            sentAsVoice = await trySendVoiceReply(item);
+          }
+          if (!sentAsVoice) {
+            await sendWAMessage({
+              phoneNumberId: item.phoneNumberId,
+              recipient:     item.recipientId,
+              text:          item.text,
+              accessToken:   item.accessToken,
+              accountId:     item.accountId,
+            });
+          }
         } else if (item.channel === 'messenger') {
           // Messenger Send API: pageId + recipient (PSID) + Page Access Token
           await sendFBMessage({

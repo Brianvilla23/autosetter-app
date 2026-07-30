@@ -348,15 +348,16 @@ async function handleComment(pageId, commentData) {
 // El account se identifica por wa_phone_number_id (único por número WSP).
 // El sender se identifica por wa_id (formato sin '+', ej "5491155...").
 async function handleWhatsAppMessage(phoneNumberId, msg, value) {
-  // Por ahora solo procesamos mensajes de texto. Audio/imagen los ignoramos
-  // (capability futura: transcribir audio con Whisper).
-  if (msg.type !== 'text' || !msg.text?.body) {
+  // Se procesan texto y audio (notas de voz transcritas con Whisper).
+  // Imagen/video/documentos se ignoran por ahora.
+  const isText  = msg.type === 'text'  && !!msg.text?.body;
+  const isAudio = msg.type === 'audio' && !!msg.audio?.id;
+  if (!isText && !isAudio) {
     console.log(`[wa] tipo no soportado: ${msg.type} de ${msg.from}`);
     return;
   }
 
   const senderId = msg.from;
-  const text     = msg.text.body;
   const senderName = value.contacts?.[0]?.profile?.name || senderId;
 
   // Find account by phone_number_id
@@ -373,6 +374,39 @@ async function handleWhatsAppMessage(phoneNumberId, msg, value) {
   if (!account.wa_access_token) {
     console.log(`🔌 WSP ignorado (sin wa_access_token) para phone ${phoneNumberId}`);
     return;
+  }
+
+  // ── Nota de voz → transcripción Whisper ──────────────────────────────────
+  // La transcripción entra al pipeline como si fuera texto; el flag wasAudio
+  // hace que la respuesta salga también como nota de voz (espejo del lead).
+  let text;
+  let wasAudio = false;
+  if (isText) {
+    text = msg.text.body;
+  } else {
+    try {
+      const audioSvc = require('../services/audio');
+      const settings = await db.findOne(db.settings, { account_id: account._id });
+      const apiKey   = process.env.OPENAI_API_KEY || settings?.openai_key;
+      if (!apiKey) {
+        console.log(`[wa] audio ignorado (sin OpenAI key) de ${senderId}`);
+        return;
+      }
+      const media = await audioSvc.downloadWhatsAppMedia({
+        mediaId: msg.audio.id,
+        accessToken: account.wa_access_token,
+      });
+      text = await audioSvc.transcribeAudio({ buffer: media.buffer, apiKey });
+      if (!text) {
+        console.log(`[wa] audio de ${senderId} sin transcripción utilizable`);
+        return;
+      }
+      wasAudio = true;
+      console.log(`🎧 WSP audio transcrito de ${senderName}: "${text.slice(0, 80)}..."`);
+    } catch (e) {
+      console.error(`[wa] error transcribiendo audio de ${senderId}:`, e.message);
+      return;
+    }
   }
 
   // Marcar como leído (best-effort, no bloquea)
@@ -422,7 +456,7 @@ async function handleWhatsAppMessage(phoneNumberId, msg, value) {
 
   if (lead.automation !== 'automated' || lead.is_bypassed) return;
 
-  await runConversation({ account, agent, lead, senderId, text });
+  await runConversation({ account, agent, lead, senderId, text, wasAudio });
 }
 
 // ── HANDLER: MENSAJE DE MESSENGER (Página de Facebook / Marketplace) ─────────
@@ -494,11 +528,12 @@ async function handleMessengerMessage(pageId, event) {
 }
 
 // ── MOTOR PRINCIPAL: genera respuesta IA y envía DM ──────────────────────────
-async function runConversation({ account, agent, lead, senderId, text, isCommentTrigger = false }) {
+async function runConversation({ account, agent, lead, senderId, text, isCommentTrigger = false, wasAudio = false }) {
   if (lead.automation !== 'automated' || lead.is_bypassed) return;
 
   // Guardar mensaje entrante (no cuenta al límite: son los DMs recibidos)
-  await db.insert(db.messages, { lead_id: lead._id, role: 'user', content: text });
+  // media:'audio' marca que llegó como nota de voz y content es su transcripción.
+  await db.insert(db.messages, { lead_id: lead._id, role: 'user', content: text, ...(wasAudio ? { media: 'audio' } : {}) });
   await db.update(db.leads, { _id: lead._id }, { last_message_at: new Date().toISOString() });
 
   // ── CHECK LÍMITE DE PLAN ─────────────────────────────────────────────────
@@ -544,7 +579,7 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
       recentHistory: history,
     });
     if (delivery.delivered) {
-      magnetContext = `MAGNET ENTREGADO: Acabás de enviarle al lead "${delivery.magnet.title}" a su email (${delivery.email}). Confirmá brevemente en tu respuesta ("listo, te lo mandé al mail, revisalo cuando puedas") y seguí la conversación natural. NO pidas el email de nuevo.`;
+      magnetContext = `MAGNET ENTREGADO: Acabas de enviarle al lead "${delivery.magnet.title}" a su email (${delivery.email}). Confirma brevemente en tu respuesta ("listo, te lo mandé al mail, revísalo cuando puedas") y sigue la conversación natural. NO pidas el email de nuevo.`;
     } else if (delivery.alreadyDelivered) {
       magnetContext = `NOTA: Al lead ya le entregaste "${delivery.magnet.title}" antes. No vuelvas a ofrecerlo ni a pedirle email.`;
     }
@@ -572,11 +607,17 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
   // calidez pero sin insistir.
   let messengerHandoff = null;
   if (lead.channel === 'messenger') {
-    const waHint = account.wa_display_number ? ` (escribime al ${account.wa_display_number})` : '';
-    messengerHandoff = `CANAL MESSENGER / MARKETPLACE. Tu trabajo acá es SALUDAR y CALIFICAR, no cerrar la venta. Descubrí si hay intención real (pregunta precio, disponibilidad para ver el producto, forma de pago, o señales claras de compra). Si el lead es un prospecto real, invitalo a seguir la conversación por WhatsApp${waHint} para coordinar los detalles/la visita — ahí se cierra. Si solo está curioseando, respondé cálido y breve, sin empujar. Nunca copies datos sensibles ni cierres el trato en este canal.`;
+    const waHint = account.wa_display_number ? ` (escríbeme al ${account.wa_display_number})` : '';
+    messengerHandoff = `CANAL MESSENGER / MARKETPLACE. Tu trabajo acá es SALUDAR y CALIFICAR, no cerrar la venta. Descubre si hay intención real (pregunta precio, disponibilidad para ver el producto, forma de pago, o señales claras de compra). Si el lead es un prospecto real, invítalo a seguir la conversación por WhatsApp${waHint} para coordinar los detalles/la visita — ahí se cierra. Si solo está curioseando, responde cálido y breve, sin empujar. Nunca copies datos sensibles ni cierres el trato en este canal.`;
   }
 
-  const extraContext = [baseContext, messengerHandoff, magnetContext, ragContext].filter(Boolean).join('\n\n') || null;
+  // Si el lead habló por nota de voz, el agente debe saberlo: responde más
+  // conversacional y la respuesta saldrá también como audio (espejo).
+  const audioContext = wasAudio
+    ? 'NOTA: el lead te envió una NOTA DE VOZ — lo que lees es su transcripción. Tu respuesta se le enviará como nota de voz hablada: redacta como se habla (frases cortas, sin listas, sin emojis). Si necesitas compartir un link, inclúyelo normal y el mensaje saldrá como texto en vez de audio.'
+    : null;
+
+  const extraContext = [baseContext, messengerHandoff, magnetContext, audioContext, ragContext].filter(Boolean).join('\n\n') || null;
 
   const reply = await generateReply({
     agent, knowledge, links,
@@ -630,6 +671,12 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
   };
   if (ch === 'whatsapp') {
     pendingItem.phoneNumberId = account.wa_phone_number_id;
+    // Espejo de voz: si el lead habló, el agente responde hablando (el worker
+    // degrada a texto si el reply es muy largo, trae link o el TTS falla).
+    // Se puede apagar por agente con voice_replies: false.
+    if (wasAudio && agent.voice_replies !== false) {
+      pendingItem.replyAsVoice = true;
+    }
   } else if (ch === 'messenger') {
     pendingItem.pageId = account.fb_page_id;
   } else {
