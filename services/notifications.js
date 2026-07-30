@@ -1,14 +1,13 @@
 /**
  * Atinov — Servicio de notificaciones multi-canal
  *
- * Avisa al dueño/closer CUANDO un lead se pone 🔥 HOT — email + WhatsApp
+ * Avisa al dueño/closer CUANDO un lead se pone 🔥 HOT — email + Telegram
  * + webhook. El objetivo: que el humano pueda saltar a la conversación
  * en vivo antes de que el lead se enfríe.
  *
  * Canales:
  *  • Telegram   → Bot API oficial (gratis, setup 2 min con @BotFather) ← RECOMENDADO
  *  • Email      → Resend (https://resend.com, 3000/mes free, API simple)
- *  • WhatsApp   → CallMeBot (free, el user se auto-registra en minutos)
  *  • Webhook    → POST JSON a URL del user (Zapier/Make/n8n/Discord/Slack)
  *
  * Throttle: nunca más de una notificación por lead cada 30 minutos.
@@ -111,49 +110,6 @@ async function detectTelegramChatId(botToken) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// WHATSAPP (CallMeBot)
-// Setup del user (una vez):
-//   1. Agrega a contactos +34 644 60 39 49
-//   2. Envíale: "I allow callmebot to send me messages"
-//   3. Recibe apikey numérica → la pega en Atinov
-// ─────────────────────────────────────────────────────────────────────────────
-async function sendWhatsApp({ phone, apikey, text }) {
-  if (!phone || !apikey) return { ok: false, reason: 'Falta el número o la API key' };
-  // Apikey debe ser numérica (CallMeBot la entrega así)
-  const cleanApikey = String(apikey).replace(/[^0-9]/g, '');
-  if (!cleanApikey) return { ok: false, reason: 'API key inválida — debe ser sólo números' };
-  try {
-    // Phone DEBE estar en E.164 sin el "+" (ej: 56912345678)
-    const cleanPhone = String(phone).replace(/[^0-9]/g, '');
-    if (cleanPhone.length < 8) return { ok: false, reason: 'Número inválido — usá E.164 sin "+" (ej: 56912345678)' };
-
-    const url = 'https://api.callmebot.com/whatsapp.php';
-    const res = await axios.get(url, {
-      params: { phone: cleanPhone, apikey: cleanApikey, text },
-      timeout: 10000,
-    });
-    // CallMeBot devuelve 200 + HTML; success si contiene "Message queued"
-    const body = String(res.data || '');
-    const ok = /Message queued|Message sent/i.test(body);
-
-    // Si falló, intentamos extraer mensaje legible del HTML que devuelve
-    let reason = null;
-    if (!ok) {
-      // Pistas comunes de CallMeBot:
-      if (/APIKey is invalid/i.test(body))               reason = 'API key inválida. Repetí el setup en CallMeBot (mensaje "I allow callmebot to send me messages") y usá la API key REAL que te enviaron, no el placeholder.';
-      else if (/You need to ask for the APIKey/i.test(body)) reason = 'Todavía no completaste el setup. Mandale "I allow callmebot to send me messages" al +34 644 60 39 49 desde tu WhatsApp y esperá la respuesta con tu API key.';
-      else if (/Phone Number is not Valid/i.test(body))  reason = 'Número inválido. Usá formato E.164 sin "+" (ej: 56912345678).';
-      else if (/User is not registered/i.test(body))     reason = 'Tu número no está registrado en CallMeBot. Hacé el setup primero (paso 2 de las instrucciones).';
-      else                                                reason = 'CallMeBot rechazó el envío: ' + body.replace(/<[^>]+>/g, '').slice(0, 160).trim();
-    }
-    return { ok, response: body.slice(0, 200), reason };
-  } catch (e) {
-    console.error('CallMeBot error:', e.message);
-    return { ok: false, reason: 'Error de red llamando a CallMeBot: ' + e.message };
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // WEBHOOK genérico (Zapier, Make, n8n, Discord, Slack, etc.)
 // ─────────────────────────────────────────────────────────────────────────────
 async function sendWebhook({ url, payload }) {
@@ -182,7 +138,6 @@ async function notifyHotLead({ userId, leadId }) {
   const n = {
     email_enabled:    true,
     telegram_enabled: false,
-    whatsapp_enabled: false,
     webhook_enabled:  false,
     ...(user.notifications || {}),
   };
@@ -206,7 +161,7 @@ async function notifyHotLead({ userId, leadId }) {
 
   const igUsername = lead.ig_username;
   const conversationPreview = lastMessages.map(m =>
-    `${m.role === 'user' ? `@${igUsername}` : 'BOT'}: ${String(m.content).slice(0, 140)}`
+    `${m.role === 'user' ? `@${igUsername}` : 'ATINOV'}: ${String(m.content).slice(0, 140)}`
   ).join('\n');
 
   const dmLink = `https://www.instagram.com/direct/t/${lead.ig_user_id}/`;
@@ -267,30 +222,6 @@ async function notifyHotLead({ userId, leadId }) {
       </div>`;
     const r = await sendEmail({ to, subject, html });
     sent.push({ channel: 'email', ...r });
-  }
-
-  // ── WHATSAPP ──
-  if (n.whatsapp_enabled && n.whatsapp_number && n.whatsapp_apikey) {
-    const text = [
-      `🔥 *LEAD HOT DETECTADO*`,
-      ``,
-      `*Prospecto:* @${igUsername}`,
-      `*Razón:* ${lead.qualification_reason || 'alta probabilidad de cierre'}`,
-      ``,
-      `*Últimos mensajes:*`,
-      conversationPreview,
-      ``,
-      `📲 Abrir en IG:`,
-      dmLink,
-      ``,
-      `Toma el control antes que se enfríe.`,
-    ].join('\n');
-    const r = await sendWhatsApp({
-      phone:  n.whatsapp_number,
-      apikey: n.whatsapp_apikey,
-      text,
-    });
-    sent.push({ channel: 'whatsapp', ...r });
   }
 
   // ── WEBHOOK ──
@@ -354,7 +285,6 @@ async function notifyLeadEvent({ userId, leadId, event }) {
   const n = {
     email_enabled:    true,
     telegram_enabled: false,
-    whatsapp_enabled: false,
     webhook_enabled:  false,
     ...(user.notifications || {}),
   };
@@ -374,7 +304,7 @@ async function notifyLeadEvent({ userId, leadId, event }) {
 
   const igUsername = lead.ig_username || lead.wa_name || 'lead';
   const conversationPreview = lastMessages.map(m =>
-    `${m.role === 'user' ? `@${igUsername}` : 'BOT'}: ${String(m.content).slice(0, 140)}`
+    `${m.role === 'user' ? `@${igUsername}` : 'ATINOV'}: ${String(m.content).slice(0, 140)}`
   ).join('\n');
 
   const durationDays = lead.createdAt
@@ -435,19 +365,6 @@ async function notifyLeadEvent({ userId, leadId, event }) {
     sent.push({ channel: 'email', ...(await sendEmail({ to, subject, html })) });
   }
 
-  if (n.whatsapp_enabled && n.whatsapp_number && n.whatsapp_apikey) {
-    const text = [
-      `${copy.emoji} *${copy.label}*`,
-      ``,
-      `*Prospecto:* @${igUsername}`,
-      ...detailLines,
-      ``,
-      `*Últimos mensajes:*`,
-      conversationPreview,
-    ].join('\n');
-    sent.push({ channel: 'whatsapp', ...(await sendWhatsApp({ phone: n.whatsapp_number, apikey: n.whatsapp_apikey, text })) });
-  }
-
   if (n.webhook_enabled && n.webhook_url) {
     sent.push({ channel: 'webhook', ...(await sendWebhook({
       url: n.webhook_url,
@@ -481,7 +398,7 @@ async function sendTestNotification({ userId, channel }) {
   if (!user || !user.notifications) return { ok: false, reason: 'no config' };
   const n = user.notifications;
 
-  const fakePreview = '@juan_perez: Quiero más info del programa\nBOT: ¡Hola Juan! Cuéntame, ¿qué te trae hoy?\n@juan_perez: Tengo un negocio de coaching y quiero automatizar mis DMs';
+  const fakePreview = '@juan_perez: Quiero más info del programa\nATINOV: ¡Hola Juan! Cuéntame, ¿qué te trae hoy?\n@juan_perez: Tengo un negocio de coaching y se me escapan DMs todos los días';
 
   if (channel === 'telegram') {
     if (!n.telegram_enabled || !n.telegram_bot_token || !n.telegram_chat_id) {
@@ -512,17 +429,6 @@ async function sendTestNotification({ userId, channel }) {
     });
   }
 
-  if (channel === 'whatsapp') {
-    if (!n.whatsapp_enabled || !n.whatsapp_number || !n.whatsapp_apikey) {
-      return { ok: false, reason: 'WhatsApp desactivado o sin config' };
-    }
-    return await sendWhatsApp({
-      phone:  n.whatsapp_number,
-      apikey: n.whatsapp_apikey,
-      text:   '✅ *Test Atinov*\n\nTu WhatsApp está configurado. Cuando un lead se ponga 🔥 HOT, recibirás una alerta como esta con los detalles.',
-    });
-  }
-
   if (channel === 'webhook') {
     if (!n.webhook_enabled || !n.webhook_url) return { ok: false, reason: 'Webhook desactivado' };
     return await sendWebhook({
@@ -548,7 +454,6 @@ function escapeHtml(s) {
 
 module.exports = {
   sendEmail,
-  sendWhatsApp,
   sendWebhook,
   sendTelegram,
   detectTelegramChatId,

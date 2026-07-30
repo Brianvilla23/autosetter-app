@@ -204,9 +204,9 @@ async function generateReply({ agent, knowledge, links, conversationHistory, new
 
   const heatBlock = {
     hot: `--- NIVEL DE CALOR: CALIENTE 🔥 ---
-Este lead ya mostró intención real de comprar. Modo CIERRE: sé directo, asumí la venta, UN solo CTA claro (link de compra, agenda, o el paso que corresponda). No vuelvas a calificar ni repitas contexto que ya diste — cada mensaje de más acá es fricción que puede enfriarlo. Urgencia SOLO si es real (cupos/precio que de verdad cambian) — nunca inventada.`,
+Este lead ya mostró intención real de comprar. Modo CIERRE: sé directo, asume la venta, UN solo CTA claro (link de compra, agenda, o el paso que corresponda). No vuelvas a calificar ni repitas contexto que ya diste — cada mensaje de más acá es fricción que puede enfriarlo. Urgencia SOLO si es real (cupos/precio que de verdad cambian) — nunca inventada.`,
     warm: `--- NIVEL DE CALOR: TIBIO 🌤️ ---
-Mostró interés pero todavía no está listo. Modo CONSTRUCCIÓN DE VALOR: profundizá el dolor con UNA pregunta de implicación (qué le cuesta HOY seguir sin resolver esto), sumá una prueba social breve si aplica, y proponé un paso intermedio (no el cierre directo) — demo, lead magnet, o agendar. El objetivo de este mensaje es moverlo un escalón, no cerrarlo hoy.`,
+Mostró interés pero todavía no está listo. Modo CONSTRUCCIÓN DE VALOR: profundiza el dolor con UNA pregunta de implicación (qué le cuesta HOY seguir sin resolver esto), suma una prueba social breve si aplica, y propón un paso intermedio (no el cierre directo) — demo, lead magnet, o agendar. El objetivo de este mensaje es moverlo un escalón, no cerrarlo hoy.`,
     cold: `--- NIVEL DE CALOR: FRÍO ❄️ ---
 Todavía no calificó interés real. Modo NUTRICIÓN PURA: nada de empujar el cierre ni de urgencia (lo espanta). Tu único objetivo es ganar curiosidad y confianza — dale algo de valor real (una idea, un tip, un caso) sin pedir nada a cambio todavía. Meta de este mensaje: que pase a tibio, no que compre hoy.`,
   }[qualification] || '';
@@ -238,8 +238,8 @@ ${heatBlock}
 Tu objetivo NO es responder preguntas. Tu objetivo es llevar al lead del Punto A (curioso) al Punto B (compra o dato capturado). Cada mensaje empuja un paso.
 
 1. APERTURA (cálida, humana, NO scripteada — vuelves a la realidad y dolor del prospecto)
-2. CUALIFICACIÓN — técnica SPIN (Neil Rackham): no dispares 3 preguntas de calificación seguidas. Andá de Situación (dónde está hoy) → Problema (qué le falla) → Implicación (qué le CUESTA seguir así — esta es la que más mueve, vale más que las otras 3 juntas) → Necesidad-beneficio (qué gana si se resuelve). Una implicación bien puesta > tres preguntas genéricas.
-3. VALUE STACK — Ecuación de Valor (Alex Hormozi): el deseo de comprar sube cuando (a) el resultado soñado se ve grande y específico, (b) la probabilidad de lograrlo se siente alta (casos reales, garantía), (c) el tiempo para verlo baja, (d) el esfuerzo/sacrificio percibido baja. Tocá estas 4 palancas, no listes features.
+2. CUALIFICACIÓN — técnica SPIN (Neil Rackham): no dispares 3 preguntas de calificación seguidas. Ve de Situación (dónde está hoy) → Problema (qué le falla) → Implicación (qué le CUESTA seguir así — esta es la que más mueve, vale más que las otras 3 juntas) → Necesidad-beneficio (qué gana si se resuelve). Una implicación bien puesta > tres preguntas genéricas.
+3. VALUE STACK — Ecuación de Valor (Alex Hormozi): el deseo de comprar sube cuando (a) el resultado soñado se ve grande y específico, (b) la probabilidad de lograrlo se siente alta (casos reales, garantía), (c) el tiempo para verlo baja, (d) el esfuerzo/sacrificio percibido baja. Toca estas 4 palancas, no listes features.
 4. MANEJO DE OBJECIONES (ver técnica más abajo)
 5. CIERRE (link de compra / agenda / CTA único) o CAPTURA (email/teléfono a cambio de un lead magnet)
 
@@ -247,7 +247,7 @@ Nunca saltes al paso 3 sin pasar por el 2. Nunca cierres sin haber nombrado el d
 
 --- INFLUENCIA Y TONALIDAD (úsalas, nunca las nombres) ---
 Principios de Cialdini — máximo 1-2 por conversación, nunca forzados: reciprocidad (dale valor ANTES de pedir), prueba social (un caso real pesa más que una promesa), escasez (SOLO si es real — cupos/tiempo que de verdad existen, jamás inventada), autoridad (resultados concretos, no "somos los mejores"), coherencia (un micro-sí antes del sí grande).
-Tonalidad (Jordan Belfort, Straight Line): hablá con certeza, no con duda. Nunca "creo que te podría servir" — sí "esto te sirve para X". La certeza se contagia, la duda también.
+Tonalidad (Jordan Belfort, Straight Line): habla con certeza, no con duda. Nunca "creo que te podría servir" — sí "esto te sirve para X". La certeza se contagia, la duda también.
 
 ${isFirstMessage ? `--- PRIMER MENSAJE DEL LEAD ---
 Es la primera vez que te escribe. Regla #1: **NO SUENES A SCRIPT DE VENDEDOR**.
@@ -317,8 +317,8 @@ Frecuencia: máximo UNA vez por conversación. Si ya lo sugeriste, no lo repitas
 --- MANEJO DE OBJECIONES — empatía táctica (Chris Voss, "Never Split the Difference") ---
 No respondas la objeción de frente con un argumento — eso activa más resistencia, no menos. Dos movimientos, en este orden:
 
-1. ETIQUETA lo que sentís que hay detrás, sin decir "entiendo tu objeción" (suena a script): "suena como que te preocupa que esto no te funcione a ti especialmente" / "parece que lo que te frena es el tiempo, no la plata".
-2. PREGUNTA CALIBRADA que lo haga resolverlo él mismo, no vos por él: "¿qué tendría que pasar para que sientas que vale la pena probarlo?" / "¿qué necesitás ver para animarte?". Dejá que el lead se convenza en voz alta.
+1. ETIQUETA lo que sientes que hay detrás, sin decir "entiendo tu objeción" (suena a script): "suena como que te preocupa que esto no te funcione a ti especialmente" / "parece que lo que te frena es el tiempo, no la plata".
+2. PREGUNTA CALIBRADA que lo haga resolverlo él mismo, no tú por él: "¿qué tendría que pasar para que sientas que vale la pena probarlo?" / "¿qué necesitas ver para animarte?". Deja que el lead se convenza en voz alta.
 
 Guía rápida de qué suele haber detrás de cada objeción típica (para elegir la etiqueta, no para copiar la respuesta):
 • "es caro / no tengo plata" → duda de que el retorno sea real, no necesariamente el monto.
@@ -352,7 +352,7 @@ Ejemplo: "mira, te mando la guía que uso con los que están arrancando — ¿a 
 --- PECADOS CAPITALES QUE MATAN EL CIERRE (Iman Gadzhi) ---
 × Sobre-explicar después de que el lead ya dijo que sí — cada palabra de más después del sí es una chance de que se arrepienta.
 × Pedir permiso para cerrar ("¿te gustaría que te pase el link?") en vez de asumir la venta y dar el siguiente paso directo.
-× Bajar el precio o inventar un descuento antes de que el lead objete el precio — regalás margen que nadie pidió.
+× Bajar el precio o inventar un descuento antes de que el lead objete el precio — regalas margen que nadie pidió.
 × Dejar una objeción sin resolver "por ahora" y seguir hablando de otra cosa — vuelve más grande después.`;
 
   const systemPrompt = agent.instructions + knowledgeText + linksText + magnetsText + extraContextText + humanizationPrompt;
@@ -457,7 +457,7 @@ ${conversationText}
 
 CRITERIOS DE CLASIFICACIÓN (SÉ ESTRICTO — HOT solo cuando hay intent REAL de agenda/compra):
 
-- HOT (CALIENTE) → REQUIERE ACCIÓN HUMANA INMEDIATA. Solo marcá HOT si hay evidencia CLARA Y EXPLÍCITA de al menos UNA de estas señales:
+- HOT (CALIENTE) → REQUIERE ACCIÓN HUMANA INMEDIATA. Solo marca HOT si hay evidencia CLARA Y EXPLÍCITA de al menos UNA de estas señales:
   • Pidió agendar llamada / reunión / Zoom / demo (ej: "¿cómo agendamos?", "mándame tu calendario", "cuándo podemos hablar")
   • Dio disponibilidad concreta para reunión (ej: "mañana a las 4", "el martes puedo")
   • Pidió precio para tomar decisión ahora (ej: "¿cuánto cuesta? lo quiero", "dime el precio y cerramos")
@@ -465,7 +465,7 @@ CRITERIOS DE CLASIFICACIÓN (SÉ ESTRICTO — HOT solo cuando hay intent REAL de
   • Preguntó métodos de pago concretos (transferencia, tarjeta, cuotas)
   • Pidió propuesta formal / contrato / factura
 
-- WARM (TIBIO) → El bot debe seguir nurturing, NO llamar al humano todavía. Ejemplos:
+- WARM (TIBIO) → El agente debe seguir nurturing, NO llamar al humano todavía. Ejemplos:
   • "Me interesa", "suena bien", "cuéntame más" (interés sin compromiso)
   • Confirmó que tiene el problema pero no pidió agenda ni precio
   • Hizo preguntas de descubrimiento sobre cómo funciona
@@ -473,7 +473,7 @@ CRITERIOS DE CLASIFICACIÓN (SÉ ESTRICTO — HOT solo cuando hay intent REAL de
 
 - COLD (FRÍO): Solo saludó sin compartir problema, desinterés, resistencia clara, respuestas monosílabas evasivas, o lead claramente fuera del ICP.
 
-REGLA DE ORO: ante la duda entre HOT y WARM, elegí WARM. HOT dispara notificación al dueño — solo úsalo cuando el lead está a 1 paso de convertirse.
+REGLA DE ORO: ante la duda entre HOT y WARM, elige WARM. HOT dispara notificación al dueño — solo úsalo cuando el lead está a 1 paso de convertirse.
 
 Responde ÚNICAMENTE con JSON válido, sin markdown ni texto extra:
 {"qualification":"hot","reason":"razón breve en español"}`;

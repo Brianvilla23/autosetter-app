@@ -21,19 +21,19 @@ const { generateReply } = require('./openai');
 const ICPS = {
   coach: {
     label: 'Coach / Mentora',
-    persona: 'Eres dueña de un negocio de coaching/mentoría 1-a-1. Recibís muchos DMs de Instagram con preguntas repetidas sobre precio y disponibilidad. Tu tiempo es limitado y se te enfrían leads buenos.',
+    persona: 'Eres dueña de un negocio de coaching/mentoría 1-a-1. Recibes muchos DMs de Instagram con preguntas repetidas sobre precio y disponibilidad. Tu tiempo es limitado y se te enfrían leads buenos.',
   },
   setter: {
     label: 'Setter / Closer / Agencia',
-    persona: 'Sos appointment setter o tenés una agencia de marketing. Manejás alto volumen de DMs y conocés la jerga de ventas (HOT/WARM/COLD, ROI, conversión). Sos escéptico con las herramientas nuevas.',
+    persona: 'Eres appointment setter o tienes una agencia de marketing. Manejas alto volumen de DMs y conoces la jerga de ventas (HOT/WARM/COLD, ROI, conversión). Eres escéptico con las herramientas nuevas.',
   },
   ecommerce: {
     label: 'E-commerce / Tienda',
-    persona: 'Tenés una tienda online que vende por Instagram. Los clientes preguntan talles, stock y envío por DM, y si no contestás rápido compran en otro lado.',
+    persona: 'Tienes una tienda online que vende por Instagram. Los clientes preguntan tallas, stock y envío por DM, y si no contestas rápido compran en otro lado.',
   },
   inmobiliaria: {
     label: 'Inmobiliaria / Realtor',
-    persona: 'Sos agente inmobiliario. Publicás propiedades en Instagram y te llegan muchas consultas por DM, la mayoría curiosos preguntando precio sin intención real de comprar.',
+    persona: 'Eres agente inmobiliario. Publicas propiedades en Instagram y te llegan muchas consultas por DM, la mayoría curiosos preguntando precio sin intención real de comprar.',
   },
 };
 
@@ -41,29 +41,29 @@ const ICPS = {
 const TEMPERATURES = {
   caliente: {
     label: 'Caliente',
-    behavior: 'Tenés un problema claro y URGENCIA de resolverlo. Estás abierto a probar. Si el agente te explica bien el valor y te ofrece una prueba gratis, ACEPTÁS sin demasiada vuelta. Pones 1-2 objeciones suaves máximo antes de decir que sí.',
+    behavior: 'Tienes un problema claro y URGENCIA de resolverlo. Estás abierto a probar. Si el agente te explica bien el valor y te ofrece una prueba gratis, ACEPTAS sin demasiada vuelta. Pones 1-2 objeciones suaves máximo antes de decir que sí.',
   },
   tibio: {
     label: 'Tibio',
-    behavior: 'Tenés el problema pero no urgencia. Necesitás que te convenzan. Hacés varias preguntas, dudás del precio, querés entender bien antes de comprometerte. Podés terminar diciendo "lo pienso" o aceptando la prueba gratis si el agente maneja bien tus objeciones.',
+    behavior: 'Tienes el problema pero no urgencia. Necesitas que te convenzan. Haces varias preguntas, dudas del precio, quieres entender bien antes de comprometerte. Puedes terminar diciendo "lo pienso" o aceptando la prueba gratis si el agente maneja bien tus objeciones.',
   },
   frio: {
     label: 'Frío',
-    behavior: 'Tenés poco interés real. Preguntás por curiosidad o por compromiso. Sos cortante, das respuestas breves, y tendés a desaparecer o decir "después veo". Solo te entusiasmás si el agente toca un dolor MUY específico tuyo.',
+    behavior: 'Tienes poco interés real. Preguntas por curiosidad o por compromiso. Eres cortante, das respuestas breves, y tiendes a desaparecer o decir "después veo". Solo te entusiasmas si el agente toca un dolor MUY específico tuyo.',
   },
 };
 
 // ── Objeciones principales ───────────────────────────────────────────────────
 const OBJECTIONS = {
   precio: 'Tu objeción principal es el PRECIO: te parece caro o no estás seguro de que valga la pena la inversión.',
-  tiempo: 'Tu objeción principal es el TIEMPO: te parece complicado de configurar o no tenés tiempo para aprender una herramienta nueva.',
-  desconfianza: 'Tu objeción principal es la DESCONFIANZA: dudás de que una IA pueda responder bien a tus clientes sin sonar robótica, o de que sea una estafa.',
-  ya_tengo: 'Tu objeción principal es que YA TENÉS algo: usás un setter humano o respondés vos mismo y no ves por qué cambiar.',
-  ninguna: 'No tenés una objeción fuerte predefinida — reaccioná naturalmente a lo que diga el agente.',
+  tiempo: 'Tu objeción principal es el TIEMPO: te parece complicado de configurar o no tienes tiempo para aprender una herramienta nueva.',
+  desconfianza: 'Tu objeción principal es la DESCONFIANZA: dudas de que una IA pueda responder bien a tus clientes sin sonar robótica, o de que sea una estafa.',
+  ya_tengo: 'Tu objeción principal es que YA TIENES algo: tienes a alguien dedicado al inbox o respondes tú mismo y no ves por qué cambiar.',
+  ninguna: 'No tienes una objeción fuerte predefinida — reacciona naturalmente a lo que diga el agente.',
 };
 
 /**
- * Construye el system prompt del bot-prospecto.
+ * Construye el system prompt del prospecto simulado.
  */
 function buildLeadSystemPrompt({ icp, temperature, objection, extraNotes }) {
   const i = ICPS[icp] || ICPS.coach;
@@ -82,13 +82,13 @@ ${o}
 
 ${extraNotes ? `NOTAS EXTRA: ${extraNotes}\n` : ''}
 REGLAS DE ACTUACIÓN:
-- Respondé SIEMPRE en español neutro de LATAM, en primera persona, como en un chat de Instagram real.
+- Responde SIEMPRE en español neutro de LATAM, en primera persona, como en un chat de Instagram real.
 - Mensajes CORTOS (1-3 líneas máximo), informales, como se escribe en DM.
-- NO seas demasiado fácil ni demasiado difícil: actuá coherente con tu temperatura.
-- NUNCA reveles que sos una simulación ni menciones que sos una IA.
-- Si el vendedor maneja bien tus objeciones y tu temperatura lo permite, podés aceptar la prueba gratis ("dale, lo pruebo" / "ya, pásame el acceso").
-- Si el vendedor es flojo, repetitivo o no toca tu dolor, enfriáte o cortá la conversación ("lo pienso", "después veo", dejás de responder con interés).
-- Reaccioná a lo que el vendedor REALMENTE dice, no a un guion fijo.`;
+- NO seas demasiado fácil ni demasiado difícil: actúa coherente con tu temperatura.
+- NUNCA reveles que eres una simulación ni menciones que eres una IA.
+- Si el vendedor maneja bien tus objeciones y tu temperatura lo permite, puedes aceptar la prueba gratis ("dale, lo pruebo" / "ya, pásame el acceso").
+- Si el vendedor es flojo, repetitivo o no toca tu dolor, enfríate o corta la conversación ("lo pienso", "después veo", dejas de responder con interés).
+- Reacciona a lo que el vendedor REALMENTE dice, no a un guion fijo.`;
 }
 
 /**

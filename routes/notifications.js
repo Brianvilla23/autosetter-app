@@ -22,9 +22,6 @@ function defaultConfig() {
     telegram_bot_username: '',  // Solo para UX (no crítico)
     email_enabled:       true,
     email_address:       '',
-    whatsapp_enabled:    false,
-    whatsapp_number:     '',   // E.164 sin "+" (ej: 56912345678)
-    whatsapp_apikey:     '',
     webhook_enabled:     false,
     webhook_url:         '',
   };
@@ -51,7 +48,6 @@ router.put('/', async (req, res) => {
     const allowed = [
       'telegram_enabled', 'telegram_bot_token', 'telegram_chat_id', 'telegram_bot_username',
       'email_enabled', 'email_address',
-      'whatsapp_enabled', 'whatsapp_number', 'whatsapp_apikey',
       'webhook_enabled', 'webhook_url',
     ];
     const notifications = {};
@@ -59,10 +55,6 @@ router.put('/', async (req, res) => {
       if (k in body) notifications[k] = body[k];
     }
 
-    // Sanitizar phone: quitar no-dígitos
-    if (notifications.whatsapp_number) {
-      notifications.whatsapp_number = String(notifications.whatsapp_number).replace(/[^0-9]/g, '');
-    }
     // Validar URL webhook si existe
     if (notifications.webhook_url) {
       const url = String(notifications.webhook_url).trim();

@@ -3,7 +3,7 @@
  *
  * Endpoint sin auth para que visitantes de la landing puedan chatear con el
  * agente "Atinov Sales" (Brian, cofundador). Demo viva del producto:
- * el bot responde dudas sobre Atinov usando la knowledge real cargada
+ * el asistente responde dudas sobre Atinov usando la knowledge real cargada
  * por el founder.
  *
  * Seguridad:
@@ -25,14 +25,14 @@ const minuteLimiter = rateLimit({
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Demasiadas solicitudes. Esperá un minuto y volvé a intentar.' },
+  message: { error: 'Demasiadas solicitudes. Espera un minuto y vuelve a intentar.' },
 });
 const hourLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 30,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Has alcanzado el límite de mensajes. Volvé en una hora o registrate gratis para usar el bot completo.' },
+  message: { error: 'Has alcanzado el límite de mensajes. Vuelve en una hora o regístrate gratis para usar el asistente completo.' },
 });
 
 router.use(minuteLimiter);
@@ -65,7 +65,7 @@ router.get('/agent', async (req, res) => {
       configured: true,
       name: agent.name === 'Atinov Sales' ? 'Brian' : agent.name,
       avatar: agent.avatar || '⚡',
-      greeting: '¡Hey! 👋 Soy el bot de Atinov. Probame: preguntame cualquier cosa sobre cómo funciona, precios, integración. Voy a responderte exactamente como respondería al DM de un lead tuyo.',
+      greeting: '¡Hey! 👋 Soy Brian, de Atinov. Pruébame: pregúntame lo que quieras sobre cómo funciona, precios, integración. Te voy a responder igual que le respondería al DM de un lead tuyo.',
     });
   } catch (e) {
     res.json({ configured: false, name: 'Brian', avatar: '⚡', greeting: 'Hola 👋 ¿en qué te ayudo?' });
@@ -107,7 +107,7 @@ router.post('/', async (req, res) => {
     const adminUser = await db.findOne(db.users, { role: 'admin' });
     if (!adminUser?.account_id) {
       return res.json({
-        reply: 'El chat de demo no está configurado todavía. Probá la app gratis y experimentá la IA con tu propia cuenta.',
+        reply: 'El chat de demo no está configurado todavía. Prueba la app gratis y experimenta la IA con tu propia cuenta.',
         configured: false,
       });
     }
@@ -118,7 +118,7 @@ router.post('/', async (req, res) => {
     }
     if (!agent) {
       return res.json({
-        reply: 'El bot demo está en mantenimiento. Probá Atinov gratis 3 días y te respondemos personalmente cualquier duda.',
+        reply: 'El demo está en mantenimiento. Prueba Atinov gratis 3 días y te respondemos personalmente cualquier duda.',
         configured: false,
       });
     }
@@ -133,7 +133,7 @@ router.post('/', async (req, res) => {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       return res.json({
-        reply: 'El demo del bot está temporalmente sin servicio. Empezá tu prueba gratis y vas a poder usar el bot real.',
+        reply: 'El demo está temporalmente sin servicio. Empieza tu prueba gratis y vas a poder usar el asistente real.',
         configured: false,
       });
     }
@@ -152,7 +152,7 @@ router.post('/', async (req, res) => {
       ragContext = await retrieveContext({ accountId: adminUser.account_id, message, apiKey });
     } catch (e) { /* RAG opcional */ }
 
-    const baseNote = 'NOTA INTERNA: Este es el chat público de demo en la landing de Atinov. El visitante NO está logueado. Si pregunta cómo arrancar o quiere probar, dirígilo a "Probar gratis" (/app?register=1). RECOLECCIÓN: cuando notes interés real (preguntó precio, integración, "cómo empiezo"), pedí de forma natural UN dato de contacto — email o Instagram — por ej: "si querés te mando una mini guía de setup, ¿a qué mail te la mando?" o "¿cuál es tu IG así te veo el caso?". Una sola vez, sin insistir.';
+    const baseNote = 'NOTA INTERNA: Este es el chat público de demo en la landing de Atinov. El visitante NO está logueado. Si pregunta cómo arrancar o quiere probar, dirígilo a "Probar gratis" (/app?register=1). RECOLECCIÓN: cuando notes interés real (preguntó precio, integración, "cómo empiezo"), pide de forma natural UN dato de contacto — email o Instagram — por ej: "si quieres te mando una mini guía de setup, ¿a qué mail te la mando?" o "¿cuál es tu IG así te veo el caso?". Una sola vez, sin insistir.';
     const extraContext = [baseNote, ragContext].filter(Boolean).join('\n\n');
 
     const reply = await generateReply({
@@ -225,7 +225,7 @@ router.post('/', async (req, res) => {
   } catch (e) {
     console.error('[publicChat] error:', e.message);
     res.json({
-      reply: 'Hubo un problema procesando tu mensaje. Probá de nuevo en un momento o registrate gratis para usar el bot completo.',
+      reply: 'Hubo un problema procesando tu mensaje. Prueba de nuevo en un momento o regístrate gratis para usar el asistente completo.',
       error: true,
     });
   }

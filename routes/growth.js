@@ -412,7 +412,7 @@ router.get('/export-xlsx', async (req, res) => {
       [{ value: 'Tags' }, { value: 'Etiquetas separadas por punto y coma.', wrap: true }],
       [{ value: '' }, { value: '' }],
       [H('¿Importar a otro CRM?'), H('')],
-      [{ value: 'HubSpot / Pipedrive / Airtable' }, { value: 'Usá el botón "CSV (importar a otro CRM)" en Atinov — ese archivo tiene los nombres de columna que esos sistemas reconocen.', wrap: true }],
+      [{ value: 'HubSpot / Pipedrive / Airtable' }, { value: 'Usa el botón "CSV (importar a otro CRM)" en Atinov — ese archivo tiene los nombres de columna que esos sistemas reconocen.', wrap: true }],
       [{ value: 'Soporte' }, { value: 'soporte@atinov.com' }],
     ];
 

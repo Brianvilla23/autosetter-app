@@ -423,7 +423,7 @@
       <div class="card" style="margin-bottom:14px">
         <h3 style="margin-top:0">🎭 Simulador de conversaciones</h3>
         <p style="color:#888;font-size:0.86rem;margin-bottom:16px">
-          Un bot-prospecto conversa con tu agente real para que pruebes el guion sin gastar DMs reales ni arriesgar baneo de Meta. Elegí el perfil del prospecto y corré la simulación.
+          Un bot-prospecto conversa con tu agente real para que pruebes el guion sin gastar DMs reales ni arriesgar baneo de Meta. Elige el perfil del prospecto y corre la simulación.
         </p>
         <div class="form-row" style="gap:12px;flex-wrap:wrap;align-items:flex-end">
           <div class="form-group" style="flex:1;min-width:160px">
@@ -449,7 +449,7 @@
         </div>
         <div class="form-row" style="gap:12px;flex-wrap:wrap;align-items:flex-end;margin-top:6px">
           <div class="form-group" style="flex:2;min-width:240px">
-            <label>Saludo inicial (opcional — si lo dejás vacío, el prospecto abre)</label>
+            <label>Saludo inicial (opcional — si lo dejas vacío, el prospecto abre)</label>
             <input type="text" id="sim-opener" placeholder="ej: hola! cómo estás? 👋">
           </div>
           <div class="form-group" style="flex:1;min-width:160px">
@@ -710,7 +710,7 @@ async function loadSimulatorOptions() {
     document.getElementById('sim-temp').value = 'tibio';
     _simLoaded = true;
     if (!o.agents.length) {
-      document.getElementById('sim-agent').innerHTML = '<option value="">No hay agentes — creá uno primero</option>';
+      document.getElementById('sim-agent').innerHTML = '<option value="">No hay agentes — crea uno primero</option>';
     }
   } catch (e) {
     alert('Error cargando opciones: ' + e.message);
@@ -720,7 +720,7 @@ async function loadSimulatorOptions() {
 async function runSimulator() {
   const btn = document.getElementById('sim-run-btn');
   const agentId = document.getElementById('sim-agent').value;
-  if (!agentId) { alert('Elegí un agente'); return; }
+  if (!agentId) { alert('Elige un agente'); return; }
   const body = {
     agentId,
     icp:         document.getElementById('sim-icp').value,
@@ -767,9 +767,9 @@ function renderSimulation(r) {
   out.textContent = o.t; out.style.background = o.bg; out.style.color = o.c;
 
   const tips = {
-    cerrado:         'El guion funcionó con este perfil. Probá con un prospecto más difícil (frío + desconfianza) para encontrar dónde se rompe.',
-    frio_o_abandono: 'El prospecto se enfrió. Revisá: ¿el agente tocó el dolor específico? ¿manejó la objeción? ¿el saludo fue muy genérico? Ajustá las instrucciones del agente y volvé a correr.',
-    en_curso:        'No hubo cierre claro en los turnos dados. Probá subir los turnos o revisá si el agente está llevando hacia el próximo paso (pedir el "sí" para la prueba).',
+    cerrado:         'El guion funcionó con este perfil. Prueba con un prospecto más difícil (frío + desconfianza) para encontrar dónde se rompe.',
+    frio_o_abandono: 'El prospecto se enfrió. Revisa: ¿el agente tocó el dolor específico? ¿manejó la objeción? ¿el saludo fue muy genérico? Ajusta las instrucciones del agente y vuelve a correr.',
+    en_curso:        'No hubo cierre claro en los turnos dados. Prueba subir los turnos o revisa si el agente está llevando hacia el próximo paso (pedir el "sí" para la prueba).',
   };
   document.getElementById('sim-tip').textContent = '💡 ' + (tips[r.outcome] || tips.en_curso) +
     `  ·  Perfil: ${r.profile.icp} / ${r.profile.temperature} / objeción ${r.profile.objection}.`;
@@ -841,7 +841,7 @@ async function saveDiscount() {
   if (expires) body.expires_at = expires;
 
   if (!body.name || !body.code || !body.amount) {
-    alert('Completá nombre, código y cantidad');
+    alert('Completa nombre, código y cantidad');
     return;
   }
 
@@ -1149,7 +1149,7 @@ async function loadFunnel() {
     summary.innerHTML = `
       <span>Cohorte: <strong style="color:#e0e0e0">${f.cohortSize}</strong> registros en ${f.windowDays}d</span>
       <span>Conversión total: <strong style="color:${f.overallConversion >= 5 ? '#22c55e' : f.overallConversion >= 2 ? '#f59e0b' : '#ef4444'}">${f.overallConversion}%</strong> (→ pagando)</span>
-      ${bn && bn.dropOff > 0 ? `<span>Cuello de botella: <strong style="color:#ef4444">${escHtml(bn.label)}</strong> — perdés ${bn.dropOff} usuarios acá</span>` : ''}
+      ${bn && bn.dropOff > 0 ? `<span>Cuello de botella: <strong style="color:#ef4444">${escHtml(bn.label)}</strong> — pierdes ${bn.dropOff} usuarios acá</span>` : ''}
     `;
 
     const maxCount = Math.max(...f.stages.map(s => s.count), 1);
@@ -1529,7 +1529,7 @@ async function openUserDetail(id) {
       <div style="margin-top:8px;font-size:0.78rem;color:#666">Mensajes totales (muestra): ${d.messageCount}</div>
 
       <!-- NOTAS INTERNAS DEL ADMIN -->
-      <h4 style="color:#a5a5c8;font-size:0.85rem;margin:18px 0 8px">📝 Notas internas <small style="color:#666;font-weight:400">(sólo vos ves esto)</small></h4>
+      <h4 style="color:#a5a5c8;font-size:0.85rem;margin:18px 0 8px">📝 Notas internas <small style="color:#666;font-weight:400">(sólo tú ves esto)</small></h4>
       <textarea id="userNotes" rows="4" placeholder="Ej: llamar el martes, quiere upgrade a anual, pidió descuento..."
         style="width:100%;background:#0f0f1a;border:1px solid #2a2a4a;color:#e0e0e0;padding:10px;border-radius:6px;font-size:0.88rem;font-family:inherit;resize:vertical">${escHtml(currentNotes)}</textarea>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">

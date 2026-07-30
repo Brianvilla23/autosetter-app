@@ -239,7 +239,7 @@ function weeklyReportEmail({ name, email, stats }) {
     learnedBits.push(`<p style="margin:0 0 10px;">📉 <strong style="color:#f0f0ff;">Por qué no te compran:</strong> "${escapeHtml(s.top_perdida)}"</p>`);
   }
   if (s.huecos > 0) {
-    learnedBits.push(`<p style="margin:0 0 10px;">🎓 <strong style="color:#f0f0ff;">Tu agente necesita aprender ${s.huecos} cosa${s.huecos > 1 ? 's' : ''}</strong> — entrá al panel Inteligencia y enseñale en un click.</p>`);
+    learnedBits.push(`<p style="margin:0 0 10px;">🎓 <strong style="color:#f0f0ff;">Tu agente necesita aprender ${s.huecos} cosa${s.huecos > 1 ? 's' : ''}</strong> — entra al panel Inteligencia y enséñale en un click.</p>`);
   }
 
   return {
@@ -257,7 +257,7 @@ function weeklyReportEmail({ name, email, stats }) {
           </tr>
         </table>
         ${learnedBits.length ? `<p style="margin:0 0 10px;font-weight:700;color:#f0f0ff;">Lo que aprendió de tu mercado:</p>${learnedBits.join('')}` : ''}
-        ${s.hot > 0 ? `<p style="margin:14px 0 0;">Tenés <strong style="color:#ef4444;">${s.hot} lead${s.hot > 1 ? 's' : ''} caliente${s.hot > 1 ? 's' : ''}</strong> en el CRM esperando que los contactes. No los dejes enfriar.</p>` : ''}
+        ${s.hot > 0 ? `<p style="margin:14px 0 0;">Tienes <strong style="color:#ef4444;">${s.hot} lead${s.hot > 1 ? 's' : ''} caliente${s.hot > 1 ? 's' : ''}</strong> en el CRM esperando que los contactes. No los dejes enfriar.</p>` : ''}
       `,
       ctaText: 'Ver el panel Inteligencia →',
       ctaUrl: `${APP_URL}/app`,

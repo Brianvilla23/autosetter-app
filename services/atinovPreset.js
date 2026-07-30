@@ -1,7 +1,7 @@
 /**
  * Atinov — Sales Preset ("dogfooding")
  *
- * Preset completo para que el propio bot venda Atinov.
+ * Preset completo para que el propio asistente venda Atinov.
  * Incluye:
  *  - Agente con instrucciones de closer específicas para este SaaS
  *  - Knowledge base con precios reales, features, casos de uso
@@ -30,7 +30,7 @@ IDIOMA: español neutro latinoamericano con tuteo (tú, tienes, puedes, cuéntam
 
 Señales de CALIENTE: menciona coach/agencia/infoproducto/ecommerce, habla de "no doy abasto con DMs", "pierdo leads", "necesito alguien que responda", "tengo community manager pero es caro"
 
-4. FLUJO DE VENTA (5 pasos, NUNCA saltees)
+4. FLUJO DE VENTA (5 pasos, NUNCA saltes)
 
 Paso 1 — APERTURA (saluda humano primero, dolor después)
 
@@ -82,12 +82,12 @@ Paso 4 — GRAND SLAM OFFER (presentar el valor con la ecuación de Hormozi)
 ARMA EL STACK MENTALMENTE Y BÁJALO EN PIEZAS, NO TODO JUNTO:
 
 ★ Resultado soñado: "tu IG vendiendo solo, tú cerrando solo los HOT, sin perder un DM nunca más"
-★ Probabilidad: "el bot responde en 3 seg con tu mismo tono, califica HOT/WARM/COLD automático, y a ti solo te avisa cuando aparece un caliente"
+★ Probabilidad: "el asistente responde en 3 seg con tu mismo tono, califica HOT/WARM/COLD solo, y a ti solo te avisa cuando aparece un caliente"
 ★ Tiempo: "lo tienes funcionando hoy mismo, setup en 10 minutos"
 ★ Esfuerzo: "conectas IG con 1 click, pegas tu info, listo. No tienes que entrenar a nadie ni reemplazar a tu CM"
 
 VALOR INCLUIDO en el plan Pro (\\$297/mes USD · \\$270.000 CLP):
-1. Bot IA conversacional (no árbol de decisión) — vale lo que cobra un setter (\\$800-1500/mes)
+1. Asistente IA conversacional (no árbol de decisión) — vale lo que cobra una persona dedicada al inbox (\\$800-1500/mes)
 2. Calificación automática HOT/WARM/COLD con razones — te ahorra horas de revisar DMs
 3. Follow-ups automáticos (Meta-compliant) — rescata 30%+ de leads "fantasma"
 4. Lead magnets automáticos — convierte el "no estoy listo" en email para tu lista
@@ -125,7 +125,7 @@ NUNCA tirar el número antes de calificar. Devuelve:
 "Perfecto. ¿Qué necesitas saber concretamente para decidir? Así te paso solo eso y no te lleno de info que no te sirve."
 
 "No confío en la IA / ¿y si le dice una tontería al cliente?" →
-"Justo por eso tenemos un tester interno: antes de activarla en vivo, le haces 20 preguntas con tu propio caso, ajustas el tono, y tú decides cuándo se enciende. Y los HOT te llegan a ti — el bot no cierra ventas grandes solo, te las pasa."
+"Justo por eso tenemos un tester interno: antes de activarla en vivo, le haces 20 preguntas con tu propio caso, ajustas el tono, y tú decides cuándo se enciende. Y los HOT te llegan a ti — el asistente no cierra ventas grandes solo, te las pasa."
 
 "Ya uso ManyChat / Chatfuel / Wati / otro" →
 "Esos son árboles de decisión del 2015 — tu cliente sabe que está hablando con un menú al segundo mensaje. Por eso convierten poco. Atinov es IA conversacional real: habla como tú, responde lo que no anticipaste, califica leads. 3 días gratis y comparas tú mismo."
@@ -160,7 +160,7 @@ NUNCA tirar el número antes de calificar. Devuelve:
 const KNOWLEDGE_ITEMS = [
   {
     title: 'Atinov — Servicio',
-    content: `PRODUCTO: Atinov — SaaS de automatización de DMs de Instagram con IA conversacional.
+    content: `PRODUCTO: Atinov — asistente de inbox con IA conversacional para Instagram y WhatsApp.
 
 QUÉ HACE:
 - Responde DMs de Instagram automáticamente 24/7 con IA real (GPT-4), no árbol de decisión
@@ -195,7 +195,7 @@ PLAN PRO — $297 USD/mes (o $270.000 CLP/mes) ⭐ MÁS POPULAR
 - Lead magnets automáticos (hasta 10)
 - Webhook + integración con CRM
 - Soporte prioritario
-- DM extra: $0.025 USD c/u (sólo si pasás el techo de 6.000)
+- DM extra: $0.025 USD c/u (sólo si pasas el techo de 6.000)
 
 PLAN AGENCY — $497 USD/mes (o $450.000 CLP/mes)
 - 10 cuentas de Instagram
@@ -214,12 +214,12 @@ PRUEBA GRATIS: 3 días sin tarjeta en todos los planes.
 
 GARANTÍA: 7 días de reembolso sin preguntas en el primer pago.
 
-FACTURACIÓN: Lemon Squeezy (tarjeta internacional, USD) o Mercado Pago (LATAM, CLP/ARS/MXN). Podés cancelar cuando quieras desde el panel.
+FACTURACIÓN: pago mensual con tarjeta o medios locales. Puedes cancelar cuando quieras desde el panel.
 
 CÓMO PRESENTAR EL PRECIO AL LEAD (no tires el número sin calificar):
-- Si te pregunta "cuánto sale" sin contexto: "antes de tirarte el número, ¿cuánto te vale un cliente tuyo hoy?" — hacé la cuenta con él.
+- Si te pregunta "cuánto sale" sin contexto: "antes de tirarte el número, ¿cuánto te vale un cliente tuyo hoy?" — haz la cuenta con él.
 - El pitch clave: "con que cierre 1 cliente extra al mes ya se paga solo múltiples veces" (siempre).
-- Recomendá el Pro a coaches/agencias/infoproductos con ticket $500+. Starter solo para los que recién arrancan o tienen ticket bajo.`,
+- Recomienda el Pro a coaches/agencias/infoproductos con ticket $500+. Starter solo para los que recién arrancan o tienen ticket bajo.`,
   },
   {
     title: 'Resultados típicos / casos',
@@ -227,9 +227,9 @@ CÓMO PRESENTAR EL PRECIO AL LEAD (no tires el número sin calificar):
 
 COACH DE NEGOCIOS (nicho mentoría): De 15 a 60 leads calificados por mes, sin contratar community manager. ROI en 3 semanas.
 
-AGENCIA DE MARKETING: Automatizó respuestas de prospección, su equipo pasó a enfocarse solo en cerrar los HOT. Triplicó conversión de DM → llamada.
+AGENCIA DE MARKETING: Delegó al asistente las respuestas iniciales, su equipo pasó a enfocarse solo en cerrar los HOT. Triplicó conversión de DM → llamada.
 
-INFOPRODUCTO (curso online): El bot captura emails con lead magnet automático, genera 200+ leads a una base de datos mensual. Nurturing por email después.
+INFOPRODUCTO (curso online): El asistente captura emails con lead magnet, genera 200+ leads a una base de datos mensual. Nurturing por email después.
 
 E-COMMERCE: Responde preguntas de producto (talles, envíos, stock) al instante. Conversión de DM → checkout subió 40%.
 
@@ -241,15 +241,15 @@ PRIMER RESULTADO: en 24-48h cuando llegan los primeros DMs.`,
     content: `INTEGRACIONES:
 - Meta (Facebook + Instagram API oficial)
 - OpenAI (GPT-4 para respuestas)
-- Lemon Squeezy / Mercado Pago (billing)
+- Mercado Pago (billing)
 - Resend (emails transaccionales)
 - Export CSV → cualquier CRM (HubSpot, Pipedrive, Notion, Google Sheets)
 
 SEGURIDAD:
-- Tokens de Meta renovados automáticamente cada 60 días (nunca tenés que re-loguearte)
+- Tokens de Meta renovados automáticamente cada 60 días (nunca tienes que re-loguearte)
 - Datos encriptados, servidores en Railway (US/EU)
 - Cumple políticas de Meta — tu cuenta nunca queda baneada por esto
-- Podés pausar o eliminar todo en 1 click
+- Puedes pausar o eliminar todo en 1 click
 
 QUÉ NO HACE:
 - No manda DMs fríos masivos (eso es contra las políticas de Meta y te banea)
@@ -259,7 +259,7 @@ QUÉ NO HACE:
 ];
 
 const LINKS = [
-  { name: 'Agendá demo de 15 min', url: 'https://calendly.com/brayanvillalobos/demo-atinov', description: 'Demo en vivo donde te dejamos el bot andando en tu cuenta' },
+  { name: 'Agenda demo de 15 min', url: 'https://calendly.com/brayanvillalobos/demo-atinov', description: 'Demo en vivo donde te dejamos el asistente andando en tu cuenta' },
   { name: 'Empezar prueba gratis', url: 'https://atinov.com/?register=1', description: '3 días gratis sin tarjeta' },
   { name: 'Ver pricing completo', url: 'https://atinov.com/pricing', description: 'Planes Starter / Pro / Agency' },
 ];
@@ -268,7 +268,7 @@ const LEAD_MAGNETS = [
   {
     title: 'Guía: 7 errores al vender por DM',
     description: 'PDF de 12 páginas con los errores que están matando tus conversiones y cómo arreglarlos. El framework que uso yo.',
-    pitch: 'mirá, te mando la guía de 7 errores al vender por DM — es la que uso yo con los que están arrancando. ¿A qué mail te la paso?',
+    pitch: 'mira, te mando la guía de 7 errores al vender por DM — es la que uso yo con los que están arrancando. ¿A qué mail te la paso?',
     trigger_intent: 'not_ready',
     delivery: 'email',
     delivery_url: 'https://atinov.com/resources/guia-7-errores-dm.pdf',
@@ -276,7 +276,7 @@ const LEAD_MAGNETS = [
   {
     title: 'Diagnóstico gratis de tu IG',
     description: 'Análisis personalizado de tu cuenta con los 3 cambios de mayor impacto para convertir más DMs en ventas.',
-    pitch: 'Te armo un análisis gratis de tu cuenta — me decís tu @ y te devuelvo los 3 cambios con más impacto. ¿Te sirve?',
+    pitch: 'Te armo un análisis gratis de tu cuenta — me dices tu @ y te devuelvo los 3 cambios con más impacto. ¿Te sirve?',
     trigger_intent: 'diagnostic',
     delivery: 'email',
     delivery_url: 'https://atinov.com/resources/diagnostico',
@@ -284,7 +284,7 @@ const LEAD_MAGNETS = [
   {
     title: 'Caso de éxito: de 10 a 80 leads/mes',
     description: 'Breakdown completo de cómo un coach pasó de 10 a 80 leads calificados al mes con Atinov. Incluye mensajes reales.',
-    pitch: 'Querés ver cómo un coach similar pasó de 10 a 80 leads/mes? Te mando el breakdown con los mensajes reales. ¿A qué mail?',
+    pitch: '¿Quieres ver cómo un coach similar pasó de 10 a 80 leads/mes? Te mando el breakdown con los mensajes reales. ¿A qué mail?',
     trigger_intent: 'pricing_objection',
     delivery: 'email',
     delivery_url: 'https://atinov.com/resources/caso-exito-coach',

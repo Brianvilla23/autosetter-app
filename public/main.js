@@ -138,7 +138,7 @@ function renderAuthForm(mode) {
         </summary>
         <div style="padding:0 14px 14px">
           <p style="font-size:12px;color:var(--text-3,#888);margin:0 0 10px 0;line-height:1.4">
-            Contanos de tu negocio y tu asistente arranca configurado. Si lo dejás vacío, lo editás después.
+            Cuéntanos de tu negocio y tu asistente arranca configurado. Si lo dejas vacío, lo editas después.
           </p>
           <input class="auth-input" id="biz-nicho" type="text" placeholder="Tu nicho (ej: coach de menopausia, inmobiliaria CDMX)" style="margin-bottom:8px">
           <input class="auth-input" id="biz-servicio" type="text" placeholder="Servicio principal (ej: mentoría 1-on-1 12 semanas)" style="margin-bottom:8px">
@@ -379,7 +379,7 @@ async function loadIntelligence() {
           <button class="btn-primary" style="padding:7px 14px;font-size:13px;flex-shrink:0" onclick="toggleTeachPanel(${idx})">Enseñarle</button>
         </div>
         <div id="gap-panel-${idx}" style="display:none;border-top:1px solid var(--border);background:var(--surface-2);padding:14px">
-          <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px">Escribí la respuesta — tu agente la usa desde la próxima conversación:</label>
+          <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px">Escribe la respuesta — tu agente la usa desde la próxima conversación:</label>
           <textarea id="gap-answer-${idx}" class="form-input" rows="3" placeholder="Ej: El primer paso es conectar tu Instagram desde Ajustes, toma 5 minutos…" style="width:100%;resize:vertical;font-family:inherit;font-size:13.5px"></textarea>
           <div style="display:flex;gap:8px;margin-top:10px">
             <button class="btn-primary" style="padding:8px 18px;font-size:13px" onclick="teachAgent(${idx})">Guardar respuesta</button>
@@ -416,7 +416,7 @@ async function teachAgent(idx) {
   const gap = (window._intelGaps || [])[idx];
   if (!gap) return;
   const answer = document.getElementById(`gap-answer-${idx}`)?.value;
-  if (!answer || !answer.trim()) { showToast('⚠️ Escribí la respuesta primero'); return; }
+  if (!answer || !answer.trim()) { showToast('⚠️ Escribe la respuesta primero'); return; }
   const r = await apiFetch('/api/intelligence/teach', 'POST', {
     accountId: ACCOUNT_ID, gapText: gap.text, answer: answer.trim(),
   });
@@ -532,7 +532,7 @@ async function loadOnboarding() {
 
     const subtitle = data.nextStep
       ? `Próximo paso: <strong>${escHtmlStep(data.nextStep.title)}</strong>`
-      : 'Completá estos pasos para activar tu bot';
+      : 'Completa estos pasos para activar tu bot';
     document.getElementById('onboarding-subtitle').innerHTML = subtitle;
 
     document.getElementById('onboarding-steps').innerHTML = data.steps.map((s, i) => {
@@ -804,7 +804,7 @@ async function renderAgentBuilder(agentId) {
           <small style="color:#666;font-size:0.72rem;display:block;margin-top:6px">
             El bot espera un tiempo aleatorio entre estos valores antes de responder.
             <strong>Recomendado: 5-15s</strong> para responder rápido (lead HOT no se enfría) sin parecer instantáneo.
-            Si tu cuenta es nueva o querés ser conservador, usá 20-40s.
+            Si tu cuenta es nueva o quieres ser conservador, usa 20-40s.
           </small>
         </div>
       </div>
@@ -1181,7 +1181,7 @@ async function deleteKnowledge(id) {
   if (!confirm('¿Eliminar esta entrada de conocimiento? El bot dejará de usar esta info.')) return;
   const r = await apiFetch(`/api/knowledge/${id}`, 'DELETE');
   if (!r) {
-    showToast('❌ No se pudo eliminar — recargá la página y probá de nuevo');
+    showToast('❌ No se pudo eliminar — recarga la página y prueba de nuevo');
     return;
   }
   if (r.removed > 0) showToast('✅ Eliminado');
@@ -1484,7 +1484,7 @@ async function deleteLink(id) {
   if (!confirm('¿Eliminar este link? El bot dejará de poder compartirlo.')) return;
   const r = await apiFetch(`/api/links/${id}`, 'DELETE');
   if (!r) {
-    showToast('❌ No se pudo eliminar — recargá la página y probá de nuevo');
+    showToast('❌ No se pudo eliminar — recarga la página y prueba de nuevo');
     return;
   }
   if (r.removed > 0) showToast('✅ Link eliminado');
@@ -1650,9 +1650,6 @@ async function loadNotifications() {
   setVal('notif-tg-chatid',       c.telegram_chat_id);
   setChk('notif-email-enabled',   c.email_enabled);
   setVal('notif-email-address',   c.email_address);
-  setChk('notif-wa-enabled',      c.whatsapp_enabled);
-  setVal('notif-wa-number',       c.whatsapp_number);
-  setVal('notif-wa-apikey',       c.whatsapp_apikey);
   setChk('notif-wh-enabled',      c.webhook_enabled);
   setVal('notif-wh-url',          c.webhook_url);
 
@@ -1670,9 +1667,6 @@ async function loadNotifications() {
         telegram_chat_id:    document.getElementById('notif-tg-chatid').value.trim(),
         email_enabled:    document.getElementById('notif-email-enabled').checked,
         email_address:    document.getElementById('notif-email-address').value.trim(),
-        whatsapp_enabled: document.getElementById('notif-wa-enabled').checked,
-        whatsapp_number:  document.getElementById('notif-wa-number').value.trim(),
-        whatsapp_apikey:  document.getElementById('notif-wa-apikey').value.trim(),
         webhook_enabled:  document.getElementById('notif-wh-enabled').checked,
         webhook_url:      document.getElementById('notif-wh-url').value.trim(),
       };
@@ -1692,7 +1686,6 @@ async function loadNotifications() {
 
   wireTestButton('btn-test-tg',    'telegram', 'notif-tg-result');
   wireTestButton('btn-test-email', 'email',    'notif-email-result');
-  wireTestButton('btn-test-wa',    'whatsapp', 'notif-wa-result');
   wireTestButton('btn-test-wh',    'webhook',  'notif-wh-result');
 
   // Botón "Detectar chat" — llama getUpdates y auto-llena chat_id
@@ -1706,7 +1699,7 @@ async function loadNotifications() {
       const token = tokenEl.value.trim();
       if (!token) {
         out.style.color = 'var(--red, #ef4444)';
-        out.textContent = '❌ Pegá el bot token primero';
+        out.textContent = '❌ Pega el bot token primero';
         return;
       }
       detectBtn.disabled = true;
@@ -1739,7 +1732,7 @@ async function loadNotifications() {
       } else {
         out.style.color = 'var(--red, #ef4444)';
         const hint = r?.reason === 'no_messages'
-          ? 'Abrí el bot y enviale /start, después reintentá'
+          ? 'Abre el bot y envíale /start, después reintenta'
           : (r?.reason || 'error');
         out.textContent = '❌ ' + hint;
       }
@@ -2211,8 +2204,8 @@ async function loadMagnets() {
       list.innerHTML = `
         <div style="background:#fff7ed;border:1px dashed #fed7aa;border-radius:10px;padding:30px;text-align:center">
           <div style="font-size:32px;margin-bottom:8px">🧲</div>
-          <h4 style="margin:0 0 6px;color:#9a3412">Aún no tenés lead magnets</h4>
-          <p style="color:var(--text-2);font-size:14px;margin:0">Creá el primero y el bot empezará a ofrecerlo automáticamente a los leads que no están listos para comprar.</p>
+          <h4 style="margin:0 0 6px;color:#9a3412">Aún no tienes lead magnets</h4>
+          <p style="color:var(--text-2);font-size:14px;margin:0">Crea el primero y el bot empezará a ofrecerlo automáticamente a los leads que no están listos para comprar.</p>
         </div>`;
       return;
     }
@@ -2288,7 +2281,7 @@ async function saveMagnet() {
     delivery:       document.getElementById('magnet-delivery').value,
     delivery_url:   document.getElementById('magnet-url').value.trim(),
   };
-  if (!body.title) { showToast('Agregá un título'); return; }
+  if (!body.title) { showToast('Agrega un título'); return; }
 
   try {
     if (id) {
@@ -2810,7 +2803,7 @@ async function renderInboxThread(leadId, isRefresh = false) {
     const messages = (lead.messages || []).map(m => {
       const cls = m.role === 'user' ? 'user' : (m.role === 'manual' ? 'manual' : 'agent');
       const tag = m.role === 'user' ? `<span class="role-tag">@${escHtmlSafe(lead.ig_username)}</span>` : '';
-      const tagAuthor = m.role === 'manual' ? '✋ Vos' : (m.role === 'agent' ? '🤖 Bot' : '');
+      const tagAuthor = m.role === 'manual' ? '✋ Tú' : (m.role === 'agent' ? '🤖 Bot' : '');
       const when = m.createdAt ? new Date(m.createdAt).toLocaleString('es-ES', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }) : '';
       return `
         <div class="bubble ${cls}">
@@ -2828,7 +2821,7 @@ async function renderInboxThread(leadId, isRefresh = false) {
     const stateBanner = lead.is_bypassed
       ? `<div style="background:#fef2f2;border-bottom:2px solid #fca5a5;color:#991b1b;padding:8px 16px;font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:8px">
            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#dc2626;box-shadow:0 0 0 3px rgba(220,38,38,.18)"></span>
-           ✋ Vos tenés el control · el bot está pausado en esta conversación
+           ✋ Tú tienes el control · el bot está pausado en esta conversación
          </div>`
       : `<div style="background:#f0fdf4;border-bottom:1px solid #bbf7d0;color:#166534;padding:8px 16px;font-size:12.5px;font-weight:500;display:flex;align-items:center;gap:8px">
            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.18)"></span>
@@ -2859,11 +2852,11 @@ async function renderInboxThread(leadId, isRefresh = false) {
       </div>
       <div class="thread-input">
         <div class="row">
-          <textarea id="thread-input-text" placeholder="Escribí tu respuesta..." rows="1" onkeydown="handleThreadKey(event)"></textarea>
+          <textarea id="thread-input-text" placeholder="Escribe tu respuesta..." rows="1" onkeydown="handleThreadKey(event)"></textarea>
           <button class="btn-ghost" data-action="open-templates" title="Insertar plantilla" style="padding:10px 12px;font-size:13px">📋</button>
           <button class="btn-primary" data-action="send-message" style="padding:10px 18px;font-size:13px">Enviar</button>
         </div>
-        <div class="hint">${lead.is_bypassed ? '🚫 El bot está pausado · lo que escribas se manda como vos.' : '⚠️ Si respondés vos, el bot se pausa automáticamente para esta conversación.'} <kbd style="font-size:10px;background:#f3f4f6;padding:2px 5px;border-radius:3px">Enter</kbd> envía · <kbd style="font-size:10px;background:#f3f4f6;padding:2px 5px;border-radius:3px">Shift+Enter</kbd> nueva línea</div>
+        <div class="hint">${lead.is_bypassed ? '🚫 El bot está pausado · lo que escribas se manda como tú.' : '⚠️ Si respondes tú, el bot se pausa automáticamente para esta conversación.'} <kbd style="font-size:10px;background:#f3f4f6;padding:2px 5px;border-radius:3px">Enter</kbd> envía · <kbd style="font-size:10px;background:#f3f4f6;padding:2px 5px;border-radius:3px">Shift+Enter</kbd> nueva línea</div>
       </div>
     `;
 
@@ -2965,7 +2958,7 @@ async function deleteLead() {
     showToast('🗑️ Lead borrado.');
     INBOX_SELECTED_ID = null;
     const container = document.getElementById('inbox-thread');
-    if (container) container.innerHTML = '<div style="margin:auto;color:var(--text-3);padding:30px;text-align:center">Seleccioná una conversación</div>';
+    if (container) container.innerHTML = '<div style="margin:auto;color:var(--text-3);padding:30px;text-align:center">Selecciona una conversación</div>';
     renderInboxList();
     updateInboxBadge();
   } catch (e) { showToast('❌ ' + e.message); }
@@ -3077,7 +3070,7 @@ async function loadBillingPage() {
       ${isTrial && data.daysLeft <= 1 ? `
         <div style="margin-top:16px;padding:14px 16px;background:linear-gradient(135deg,#fff7ed,#fef3c7);border:1px solid #fbbf24;border-radius:8px">
           <strong style="color:#92400e">⚡ Tu trial vence ${data.daysLeft === 0 ? 'hoy' : 'mañana'}.</strong>
-          <span style="color:var(--text-2);font-size:13.5px"> Activá un plan para no perder acceso a tus leads y conversaciones.</span>
+          <span style="color:var(--text-2);font-size:13.5px"> Activa un plan para no perder acceso a tus leads y conversaciones.</span>
         </div>` : ''}
 
       ${data.subscriptionStatus === 'past_due' ? `
@@ -3089,7 +3082,7 @@ async function loadBillingPage() {
       ${data.subscriptionStatus === 'cancelled' ? `
         <div style="margin-top:16px;padding:14px 16px;background:#f9fafb;border:1px solid var(--border);border-radius:8px">
           <strong>Tu suscripción está cancelada.</strong>
-          <span style="color:var(--text-2);font-size:13.5px"> Mantenés acceso hasta el ${renewDate}. Después de eso, tus datos quedan guardados 30 días por si querés reactivar.</span>
+          <span style="color:var(--text-2);font-size:13.5px"> Mantienes acceso hasta el ${renewDate}. Después de eso, tus datos quedan guardados 30 días por si quieres reactivar.</span>
         </div>` : ''}
     `;
 
@@ -3157,7 +3150,7 @@ async function loadReferralsPage() {
       tbody.innerHTML = `
         <div style="text-align:center;padding:30px;color:var(--text-3)">
           <div style="font-size:32px;margin-bottom:8px">🌱</div>
-          <div style="font-size:13.5px">Aún no invitaste a nadie. Empezá compartiendo tu link arriba.</div>
+          <div style="font-size:13.5px">Aún no invitaste a nadie. Empieza compartiendo tu link arriba.</div>
         </div>`;
       return;
     }
@@ -3245,7 +3238,7 @@ async function loadQuickReplies() {
         <div style="text-align:center;padding:30px;color:var(--text-3);background:#f9fafb;border-radius:8px;border:1px dashed var(--border)">
           <div style="font-size:24px;margin-bottom:6px">📋</div>
           <div style="font-size:13px">Aún no creaste plantillas</div>
-          <div style="font-size:12px;margin-top:4px">Empezá creando una abajo (ej: "info de envíos", "horario de atención", "link de pago")</div>
+          <div style="font-size:12px;margin-top:4px">Empieza creando una abajo (ej: "info de envíos", "horario de atención", "link de pago")</div>
         </div>`;
       return;
     }
@@ -3282,7 +3275,7 @@ async function insertQuickReply(id) {
   if (!q) return;
   const input = document.getElementById('thread-input-text');
   if (!input) {
-    showToast('Abrí una conversación primero');
+    showToast('Abre una conversación primero');
     return;
   }
   // Buscar lead actual para reemplazar variables
@@ -3325,7 +3318,7 @@ async function saveQuickReply() {
   const title = document.getElementById('qr-title').value.trim();
   const content = document.getElementById('qr-content').value.trim();
   if (!title || !content) {
-    showToast('Completá título y contenido');
+    showToast('Completa título y contenido');
     return;
   }
   try {

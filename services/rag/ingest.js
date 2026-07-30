@@ -32,16 +32,16 @@ async function extractInsights(messages, apiKey) {
     .join('\n')
     .slice(0, 6000);
 
-  const sys = `Sos un analista de ventas. Te paso una conversación entre un AGENTE y un LEAD. Extraé aprendizajes accionables en JSON.
+  const sys = `Eres un analista de ventas. Te paso una conversación entre un AGENTE y un LEAD. Extrae aprendizajes accionables en JSON.
 
-Devolvé SOLO un array JSON (sin texto extra) de objetos { "kind": "...", "text": "..." } donde kind es uno de:
+Devuelve SOLO un array JSON (sin texto extra) de objetos { "kind": "...", "text": "..." } donde kind es uno de:
 - "objecion": una objeción que puso el lead (y, si la hubo, cómo se manejó)
 - "pregunta_calificadora": una pregunta del agente que ayudó a calificar
 - "msg_efectivo": un mensaje del agente que generó respuesta o avance
 - "motivo_perdida": si el lead se perdió, por qué
-- "hueco_conocimiento": una pregunta o duda del LEAD que el agente NO pudo responder bien (respondió vago, evasivo, dijo que no sabía, o le faltaba la información). Formulalo como la pregunta que el dueño del negocio debería responder, ej: "¿Cuánto demora el envío a regiones?"
+- "hueco_conocimiento": una pregunta o duda del LEAD que el agente NO pudo responder bien (respondió vago, evasivo, dijo que no sabía, o le faltaba la información). Formúlalo como la pregunta que el dueño del negocio debería responder, ej: "¿Cuánto demora el envío a regiones?"
 
-Máximo 6 items. Cada "text" en español, conciso (1-2 oraciones). Si no hay nada relevante, devolvé [].`;
+Máximo 6 items. Cada "text" en español, conciso (1-2 oraciones). Si no hay nada relevante, devuelve [].`;
 
   try {
     const client = new OpenAI({ apiKey: key });

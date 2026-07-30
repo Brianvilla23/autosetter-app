@@ -12,9 +12,9 @@
 - **Runtime**: Node.js + Express (`server.js` = fuente de verdad)
 - **Datos**: NeDB file-based (23 colecciones, `db/database.js`), persistido en Railway Volume (`DB_PATH`)
 - **IA**: OpenAI — `gpt-4o-mini` (fast) + `o4-mini` (reasoning), selección por complejidad
-- **Canales**: Instagram Graph API (`services/meta.js`) + WhatsApp Cloud API (`services/whatsapp.js`, dormante)
+- **Canales**: Instagram Graph API (`services/meta.js`) + WhatsApp Cloud API (`services/whatsapp.js`) + Messenger
 - **Pagos**: Polar (USD) + Mercado Pago (CLP) + Lemon Squeezy (deprecado)
-- **Email**: Resend · **Notif**: Telegram/CallMeBot
+- **Email**: Resend · **Notif**: email/Telegram/webhook
 
 ### Dónde vive la lógica del agente
 | Pieza | Archivo | Qué hace |

@@ -195,7 +195,7 @@ router.post('/:id/prospect-draft', async (req, res, next) => {
 
     // Solo agentes de prospección generan drafts (un nurture no tiene sentido acá).
     if (roleOf(owned) !== 'prospect') {
-      return res.status(400).json({ error: 'Este agente no es de prospección. Cambiá su rol a "prospect" o usá /test.' });
+      return res.status(400).json({ error: 'Este agente no es de prospección. Cambia su rol a "prospect" o usa /test.' });
     }
 
     const knowledgeDocs = await db.find(db.knowledge, { account_id: accountId });
