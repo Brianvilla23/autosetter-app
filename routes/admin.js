@@ -773,6 +773,68 @@ router.post('/probar-envio-ig', async (req, res) => {
 });
 
 /**
+ * POST /api/admin/probar-voces
+ * Manda una nota de voz por WhatsApp con CADA voz disponible, precedida de un
+ * texto que la nombra. Sirve para elegir la voz del agente escuchándolas en el
+ * teléfono en vez de deployar una por una — las voces de OpenAI están
+ * optimizadas para inglés y en español la diferencia entre ellas es grande.
+ * Una vez elegida: guardar el nombre en agent.voice.
+ * Body: { accountId, to, texto?, voces? }
+ */
+router.post('/probar-voces', async (req, res) => {
+  try {
+    const { accountId, to, texto, voces } = req.body;
+    if (!accountId || !to) return res.status(400).json({ error: 'accountId y to (wa_id sin +) requeridos' });
+
+    const cuenta = await db.findOne(db.accounts, { _id: accountId });
+    if (!cuenta) return res.status(404).json({ error: 'cuenta no encontrada' });
+    if (!cuenta.wa_access_token || !cuenta.wa_phone_number_id) {
+      return res.status(400).json({ error: 'la cuenta no tiene WhatsApp configurado' });
+    }
+
+    const audioSvc = require('../services/audio');
+    const wa       = require('../services/whatsapp');
+    const settings = await db.findOne(db.settings, { account_id: accountId });
+    const apiKey   = process.env.OPENAI_API_KEY || settings?.openai_key;
+    if (!apiKey) return res.status(400).json({ error: 'sin OPENAI_API_KEY' });
+
+    const frase = texto || 'Hola, ¿cómo estás? Te llamo por la camioneta que estabas viendo. Cuéntame, ¿qué presupuesto tienes en mente?';
+    const lista = Array.isArray(voces) && voces.length ? voces : audioSvc.VOCES_DISPONIBLES;
+
+    const resultados = [];
+    for (const voz of lista) {
+      try {
+        // Etiqueta en texto para saber cuál se está escuchando
+        await wa.sendMessage({
+          phoneNumberId: cuenta.wa_phone_number_id,
+          recipient:     to,
+          text:          `🎙️ Voz: ${voz}`,
+          accessToken:   cuenta.wa_access_token,
+          accountId,
+        });
+        const speech  = await audioSvc.synthesizeVoice({ text: frase, apiKey, voice: voz });
+        const ogg     = await audioSvc.toVoiceNoteOgg(speech);
+        const mediaId = await audioSvc.uploadWhatsAppAudio({
+          phoneNumberId: cuenta.wa_phone_number_id,
+          oggBuffer: ogg,
+          accessToken: cuenta.wa_access_token,
+        });
+        await audioSvc.sendWhatsAppAudioMessage({
+          phoneNumberId: cuenta.wa_phone_number_id,
+          recipient: to,
+          mediaId,
+          accessToken: cuenta.wa_access_token,
+        });
+        resultados.push({ voz, ok: true, bytes: ogg.length });
+      } catch (err) {
+        resultados.push({ voz, ok: false, error: err.response?.data?.error?.message || err.message });
+      }
+    }
+    res.json({ enviadas: resultados.filter(r => r.ok).length, frase, resultados });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
  * GET /api/admin/send-queue
  * Respuestas del agente pendientes de enviar, con el motivo del último fallo.
  * Responde "el bot contestó pero no llegó" sin bucear en los logs del hosting.

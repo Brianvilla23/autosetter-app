@@ -713,6 +713,8 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
     // Se puede apagar por agente con voice_replies: false.
     if (wasAudio && agent.voice_replies !== false) {
       pendingItem.replyAsVoice = true;
+      // Voz configurable por agente (probar con POST /api/admin/probar-voces).
+      if (agent.voice) pendingItem.voice = agent.voice;
     }
   } else if (ch === 'messenger') {
     pendingItem.pageId = account.fb_page_id;

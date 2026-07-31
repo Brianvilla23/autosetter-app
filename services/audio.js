@@ -90,15 +90,35 @@ async function transcribeAudio({ buffer, filename = 'nota.ogg', apiKey }) {
 // SALIDA: TTS → OGG/OPUS → upload → send
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Voces disponibles en la API de OpenAI. Están optimizadas para inglés, así
+// que en español la diferencia entre ellas importa mucho: las brillantes
+// ('nova', 'shimmer') suenan a locutor gringo leyendo. 'sage' y 'coral' son
+// las más cálidas y conversacionales. Configurable por agente (agent.voice)
+// y probable en caliente con POST /api/admin/probar-voces.
+const VOCES_DISPONIBLES = ['alloy', 'ash', 'ballad', 'coral', 'echo', 'fable', 'nova', 'onyx', 'sage', 'shimmer'];
+const VOZ_POR_DEFECTO = 'sage';
+
+// El parámetro `instructions` de gpt-4o-mini-tts es la palanca más fuerte
+// contra el "suena a robot": dirige acento, ritmo y actitud. Vale más que
+// cambiar de voz.
+const INSTRUCCIONES_VOZ = [
+  'Acento: español latinoamericano neutro-chileno. Tuteo siempre (tú, tienes, puedes). NUNCA voseo argentino ni acento español de España.',
+  'Actitud: una persona real grabando una nota de voz rápida a un cliente entre dos cosas que está haciendo. Cercana y segura, nunca locutor de radio ni call center.',
+  'Ritmo: conversacional y algo apurado, con micro-pausas naturales donde caería el aire al hablar. No pronuncies cada palabra con la misma fuerza: apura lo obvio y apóyate en lo importante.',
+  'Tono: cálido, con una sonrisa leve en la voz. Baja el final de las frases como en el habla normal, no lo subas como si leyeras.',
+  'Prohibido: sonar perfecto, monótono o leído.',
+].join(' ');
+
 /**
  * Genera el audio de la respuesta. gpt-4o-mini-tts acepta `instructions`
  * (tono/acento); si la cuenta no tiene acceso a ese modelo, cae a tts-1.
  */
-async function synthesizeVoice({ text, apiKey, voice = 'nova' }) {
+async function synthesizeVoice({ text, apiKey, voice = VOZ_POR_DEFECTO }) {
+  const vozFinal = VOCES_DISPONIBLES.includes(voice) ? voice : VOZ_POR_DEFECTO;
   async function call(model, withInstructions) {
-    const body = { model, voice, input: text, response_format: 'mp3' };
+    const body = { model, voice: vozFinal, input: text, response_format: 'mp3' };
     if (withInstructions) {
-      body.instructions = 'Habla en español latinoamericano neutro con tuteo, cálido y natural, al ritmo de una nota de voz de WhatsApp entre conocidos. Nunca voseo argentino.';
+      body.instructions = INSTRUCCIONES_VOZ;
     }
     const res = await fetch(`${OPENAI_BASE}/audio/speech`, {
       method: 'POST',
@@ -183,18 +203,38 @@ async function uploadWhatsAppAudio({ phoneNumberId, oggBuffer, accessToken }) {
   return data.id;
 }
 
-/** Envía un mensaje de audio referenciando un media id ya subido. */
+/**
+ * Envía un mensaje de audio referenciando un media id ya subido.
+ *
+ * `voice: true` es lo que hace que WhatsApp lo renderice como NOTA DE VOZ
+ * (ícono de micrófono + duración + descarga automática + transcripción del
+ * lado del receptor) en vez de como archivo adjunto ("🎵 Audio"). Sin ese
+ * flag, aunque el archivo sea OGG/OPUS mono correcto, llega como adjunto.
+ * Doc: developers.facebook.com → WhatsApp → Messages → Audio messages.
+ *
+ * Es una feature marcada como beta por algunos BSPs: si la cuenta no la
+ * tiene habilitada y Meta rechaza el payload, reintentamos sin el flag para
+ * que el audio igual llegue (degradado a adjunto, pero no perdido).
+ */
 async function sendWhatsAppAudioMessage({ phoneNumberId, recipient, mediaId, accessToken }) {
-  await axios.post(`${WA_BASE}/${phoneNumberId}/messages`, {
+  const url = `${WA_BASE}/${phoneNumberId}/messages`;
+  const base = {
     messaging_product: 'whatsapp',
     recipient_type: 'individual',
     to: recipient,
     type: 'audio',
-    audio: { id: mediaId },
-  }, {
-    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-    timeout: 15000,
-  });
+  };
+  const headers = { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' };
+
+  try {
+    await axios.post(url, { ...base, audio: { id: mediaId, voice: true } }, { headers, timeout: 15000 });
+  } catch (err) {
+    const code = err.response?.data?.error?.code;
+    // 100 = parámetro inválido/no soportado para esta cuenta o versión
+    if (code !== 100) throw err;
+    console.warn('[voz] "voice:true" rechazado por Meta — reintentando como audio simple');
+    await axios.post(url, { ...base, audio: { id: mediaId } }, { headers, timeout: 15000 });
+  }
 }
 
 /**
@@ -216,7 +256,7 @@ async function trySendVoiceReply(item) {
     const apiKey = process.env.OPENAI_API_KEY || settings?.openai_key;
     if (!apiKey) return false;
 
-    const speech  = await synthesizeVoice({ text: item.text, apiKey });
+    const speech  = await synthesizeVoice({ text: item.text, apiKey, voice: item.voice });
     const ogg     = await toVoiceNoteOgg(speech);
     const mediaId = await uploadWhatsAppAudio({
       phoneNumberId: item.phoneNumberId,
@@ -246,4 +286,6 @@ module.exports = {
   sendWhatsAppAudioMessage,
   trySendVoiceReply,
   MAX_VOICE_REPLY_CHARS,
+  VOCES_DISPONIBLES,
+  VOZ_POR_DEFECTO,
 };
