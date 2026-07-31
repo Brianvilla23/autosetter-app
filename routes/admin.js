@@ -773,6 +773,56 @@ router.post('/probar-envio-ig', async (req, res) => {
 });
 
 /**
+ * POST /api/admin/actualizar-prompt-agente
+ * Reemplaza las instrucciones de un agente por la plantilla vigente
+ * (DEFAULT_AGENT_PROMPT v2: presupuesto de preguntas + bifurcación + modo
+ * nutrición). Cambiar el archivo solo afecta a agentes NUEVOS — los que ya
+ * existen tienen sus instrucciones guardadas en la DB, por eso este endpoint.
+ *
+ * Guarda las instrucciones anteriores en agent.instructions_previas y las
+ * devuelve en la respuesta: nada se pierde. Ojo, hay que volver a editar el
+ * bloque CONTEXTO INICIAL con los datos del negocio.
+ * Body: { agentId, revert? }
+ */
+router.post('/actualizar-prompt-agente', async (req, res) => {
+  try {
+    const { agentId, revert } = req.body;
+    if (!agentId) return res.status(400).json({ error: 'agentId requerido' });
+
+    const agent = await db.findOne(db.agents, { _id: agentId });
+    if (!agent) return res.status(404).json({ error: 'agente no encontrado' });
+
+    if (revert) {
+      if (!agent.instructions_previas) {
+        return res.status(400).json({ error: 'este agente no tiene instrucciones previas guardadas' });
+      }
+      await db.update(db.agents, { _id: agentId }, {
+        instructions: agent.instructions_previas,
+        instructions_actualizadas_at: null,
+      });
+      return res.json({ ok: true, accion: 'revertido', agente: agent.name });
+    }
+
+    const { DEFAULT_AGENT_PROMPT } = require('../services/defaultAgentPrompt');
+    const anteriores = agent.instructions || '';
+
+    await db.update(db.agents, { _id: agentId }, {
+      instructions: DEFAULT_AGENT_PROMPT,
+      instructions_previas: anteriores,
+      instructions_actualizadas_at: new Date().toISOString(),
+    });
+
+    res.json({
+      ok: true,
+      accion: 'actualizado',
+      agente: agent.name,
+      aviso: 'Volver a editar el bloque "CONTEXTO INICIAL" con los datos del negocio (incluidas las secciones nuevas: qué hace que alguien califique, qué no, y qué regalar en modo nutrición). Para deshacer: mismo endpoint con revert:true.',
+      instrucciones_anteriores: anteriores,
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
  * POST /api/admin/probar-voces
  * Manda una nota de voz por WhatsApp con CADA voz disponible, precedida de un
  * texto que la nombra. Sirve para elegir la voz del agente escuchándolas en el
