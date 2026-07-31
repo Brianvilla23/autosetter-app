@@ -30,8 +30,11 @@
   .stat-card.green .num { color: #22c55e; }
 
   /* ── Tabs ── */
-  .tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid #2a2a4a; }
-  .tab { padding: 10px 20px; cursor: pointer; border-radius: 8px 8px 0 0; font-size: 0.9rem; color: #888; border: 1px solid transparent; border-bottom: none; transition: all .2s; }
+  /* overflow-x: la barra no cabe en pantallas chicas — que scrollee ella y no la página */
+  .tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid #2a2a4a; overflow-x: auto; scrollbar-width: thin; }
+  .tabs::-webkit-scrollbar { height: 4px; }
+  .tabs::-webkit-scrollbar-thumb { background: #2a2a4a; border-radius: 2px; }
+  .tab { padding: 10px 20px; cursor: pointer; border-radius: 8px 8px 0 0; font-size: 0.9rem; color: #888; border: 1px solid transparent; border-bottom: none; transition: all .2s; white-space: nowrap; flex: 0 0 auto; }
   .tab.active { background: #1a1a2e; color: #10b981; border-color: #2a2a4a; }
   .tab:hover:not(.active) { color: #ccc; }
 
@@ -186,6 +189,7 @@
       <div class="tab" onclick="switchTab('discounts',this)">💸 Cupones LS</div>
       <div class="tab" onclick="switchTab('metrics',this)">📊 Métricas</div>
       <div class="tab" onclick="switchTab('simulator',this)">🎭 Simulador</div>
+      <div class="tab" onclick="switchTab('agente',this)">🎙️ Agente</div>
       <div class="tab" onclick="switchTab('system',this)">⚙️ Sistema</div>
     </div>
 
@@ -471,6 +475,46 @@
     </div>
 
     <!-- ── SISTEMA ── -->
+    <div id="tab-agente" class="section">
+      <div class="card">
+        <h3 style="margin-top:0">🎙️ Probar las 10 voces</h3>
+        <p style="font-size:0.85rem;color:#a0a0c0;margin-top:0">
+          Manda a tu WhatsApp una nota de voz con cada voz disponible, etiquetada con su nombre.
+          Las voces de OpenAI están optimizadas para inglés, así que en español la diferencia entre
+          ellas es grande — elige escuchando. Tarda ~1 min en enviarlas todas.
+        </p>
+        <div class="form-row" style="margin-bottom:10px">
+          <label style="display:block;font-size:0.8rem;color:#a0a0c0;margin-bottom:4px">Tu número (formato E.164 sin +, ej: 56912345678)</label>
+          <input type="text" id="voz-to" placeholder="56912345678" style="width:100%;max-width:320px">
+        </div>
+        <div class="form-row" style="margin-bottom:10px">
+          <label style="display:block;font-size:0.8rem;color:#a0a0c0;margin-bottom:4px">Frase de prueba (opcional)</label>
+          <input type="text" id="voz-texto" placeholder="Deja vacío para usar la frase de venta por defecto" style="width:100%">
+        </div>
+        <button class="btn" id="btn-probar-voces" onclick="probarVoces()">🎧 Enviarme las 10 voces</button>
+        <span id="voz-status" style="margin-left:10px;font-size:0.85rem"></span>
+        <div id="voz-result" style="margin-top:12px"></div>
+      </div>
+
+      <div class="card">
+        <h3>🧠 Actualizar instrucciones del agente</h3>
+        <p style="font-size:0.85rem;color:#a0a0c0;margin-top:0">
+          Aplica la plantilla vigente (presupuesto de 5-6 preguntas, bifurcación y modo nutrición)
+          a un agente que ya existe. Cambiar la plantilla en el código solo afecta a agentes nuevos.
+          <strong style="color:#f0f0ff">Las instrucciones actuales se guardan</strong> y se pueden restaurar.
+          Después hay que reeditar el bloque CONTEXTO INICIAL con los datos del negocio.
+        </p>
+        <div class="form-row" style="margin-bottom:10px">
+          <label style="display:block;font-size:0.8rem;color:#a0a0c0;margin-bottom:4px">Agente</label>
+          <select id="prompt-agent" style="width:100%;max-width:320px"></select>
+        </div>
+        <button class="btn" onclick="actualizarPrompt(false)">⬆️ Aplicar plantilla nueva</button>
+        <button class="btn btn-sm" style="background:#3a3a52" onclick="actualizarPrompt(true)">↩️ Restaurar anteriores</button>
+        <span id="prompt-status" style="margin-left:10px;font-size:0.85rem"></span>
+        <div id="prompt-result" style="margin-top:12px"></div>
+      </div>
+    </div>
+
     <div id="tab-system" class="section">
       <div class="card">
         <h3>⚙️ Estado del sistema</h3>
@@ -690,6 +734,82 @@ function switchTab(name, el) {
   if (name === 'system')    loadSystem();
   if (name === 'discounts') loadDiscounts();
   if (name === 'simulator') loadSimulatorOptions();
+  if (name === 'agente')    loadAgenteTab();
+}
+
+// ── AGENTE: probar voces + actualizar instrucciones ─────────────────────────
+let _agenteLoaded = false;
+async function loadAgenteTab() {
+  if (_agenteLoaded) return;
+  try {
+    // Reusa el endpoint del simulador para listar los agentes de la cuenta
+    const o = await api('GET', '/api/admin/simulator/options');
+    const sel = document.getElementById('prompt-agent');
+    sel.innerHTML = o.agents.length
+      ? o.agents.map(a => `<option value="${a.id}">${escHtml(a.name)}</option>`).join('')
+      : '<option value="">No hay agentes en esta cuenta</option>';
+    _agenteLoaded = true;
+  } catch (e) {
+    document.getElementById('prompt-status').innerHTML = `<span style="color:#ef4444">${escHtml(e.message)}</span>`;
+  }
+}
+
+async function probarVoces() {
+  const to  = document.getElementById('voz-to').value.trim().replace(/[^0-9]/g, '');
+  const txt = document.getElementById('voz-texto').value.trim();
+  const st  = document.getElementById('voz-status');
+  const out = document.getElementById('voz-result');
+  const btn = document.getElementById('btn-probar-voces');
+
+  if (to.length < 8) { st.innerHTML = '<span style="color:#ef4444">Número inválido (E.164 sin +)</span>'; return; }
+
+  btn.disabled = true;
+  st.innerHTML = '<span style="color:#a0a0c0">Generando y enviando las 10 voces… (~1 min)</span>';
+  out.innerHTML = '';
+  try {
+    const body = { to };   // accountId lo resuelve el backend desde la sesión
+    if (txt) body.texto = txt;
+    const r = await api('POST', '/api/admin/probar-voces', body);
+    st.innerHTML = `<span style="color:#22c55e">✅ ${r.enviadas}/${r.resultados.length} enviadas — revisa tu WhatsApp</span>`;
+    out.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Voz</th><th>Estado</th></tr></thead><tbody>${
+      r.resultados.map(x => `<tr><td><strong>${escHtml(x.voz)}</strong></td><td>${
+        x.ok ? '<span style="color:#22c55e">enviada</span>'
+             : `<span style="color:#ef4444">${escHtml(x.error || 'error')}</span>`
+      }</td></tr>`).join('')
+    }</tbody></table></div>
+    <p style="font-size:0.82rem;color:#a0a0c0;margin-top:8px">Cuando elijas la que más te guste, guárdala en el campo <code>voice</code> del agente.</p>`;
+  } catch (e) {
+    st.innerHTML = `<span style="color:#ef4444">${escHtml(e.message)}</span>`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function actualizarPrompt(revert) {
+  const agentId = document.getElementById('prompt-agent').value;
+  const st  = document.getElementById('prompt-status');
+  const out = document.getElementById('prompt-result');
+  if (!agentId) { st.innerHTML = '<span style="color:#ef4444">Elige un agente</span>'; return; }
+
+  const msg = revert
+    ? '¿Restaurar las instrucciones anteriores de este agente?'
+    : '¿Aplicar la plantilla nueva a este agente?\n\nLas instrucciones actuales quedan guardadas y se pueden restaurar con el botón de al lado.';
+  if (!confirm(msg)) return;
+
+  st.innerHTML = '<span style="color:#a0a0c0">Aplicando…</span>';
+  out.innerHTML = '';
+  try {
+    const r = await api('POST', '/api/admin/actualizar-prompt-agente', { agentId, revert: !!revert });
+    st.innerHTML = `<span style="color:#22c55e">✅ ${escHtml(r.accion)} — ${escHtml(r.agente)}</span>`;
+    if (r.aviso) {
+      out.innerHTML = `<div style="background:#2a2a3e;border-left:3px solid #f59e0b;padding:12px;border-radius:6px;font-size:0.85rem;color:#e0e0f0">⚠️ ${escHtml(r.aviso)}</div>`;
+    }
+    if (r.instrucciones_anteriores) {
+      out.innerHTML += `<details style="margin-top:10px"><summary style="cursor:pointer;font-size:0.85rem;color:#a0a0c0">Ver las instrucciones anteriores (respaldo)</summary><pre style="background:#16161f;padding:12px;border-radius:6px;font-size:0.75rem;white-space:pre-wrap;max-height:320px;overflow:auto;margin-top:8px">${escHtml(r.instrucciones_anteriores)}</pre></details>`;
+    }
+  } catch (e) {
+    st.innerHTML = `<span style="color:#ef4444">${escHtml(e.message)}</span>`;
+  }
 }
 
 // ── SIMULADOR DE CONVERSACIONES ─────────────────────────────────────────────

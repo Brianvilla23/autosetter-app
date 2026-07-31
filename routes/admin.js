@@ -833,8 +833,10 @@ router.post('/actualizar-prompt-agente', async (req, res) => {
  */
 router.post('/probar-voces', async (req, res) => {
   try {
-    const { accountId, to, texto, voces } = req.body;
-    if (!accountId || !to) return res.status(400).json({ error: 'accountId y to (wa_id sin +) requeridos' });
+    // accountId opcional: por defecto la cuenta de la sesión (igual que el simulador)
+    const accountId = req.body.accountId || req.user.accountId;
+    const { to, texto, voces } = req.body;
+    if (!accountId || !to) return res.status(400).json({ error: 'to (wa_id sin +) requerido' });
 
     const cuenta = await db.findOne(db.accounts, { _id: accountId });
     if (!cuenta) return res.status(404).json({ error: 'cuenta no encontrada' });
