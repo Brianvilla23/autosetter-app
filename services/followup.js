@@ -56,6 +56,13 @@ async function scheduleFollowUps() {
     );
 
     for (const lead of eligibleLeads) {
+      // Score-gating: no perseguir leads FRÍOS — quema la audiencia y el
+      // benchmark de la industria muestra que la proactividad genérica baja
+      // el reply rate. Un lead sin calificar aún (null) sí recibe follow-up:
+      // suele ser conversación nueva donde el recordatorio rinde más.
+      // Override por agente: followup_include_cold = true.
+      if (lead.qualification === 'cold' && agent.followup_include_cold !== true) continue;
+
       // ¿Excedió max attempts?
       const previousFollowups = await db.find(db.followups, {
         lead_id: lead._id, cancelled: { $ne: true }

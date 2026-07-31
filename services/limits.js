@@ -46,9 +46,11 @@ async function getUsage(userId) {
   }
 
   // Contar recursos reales del usuario (sus accounts + agentes + magnets)
-  const accounts = await db.find(db.accounts, { _id: user.accountId });
+  // El campo en users es account_id (snake_case) — con user.accountId el
+  // lookup devolvía [] y los límites de recursos del plan nunca se aplicaban.
+  const accounts = await db.find(db.accounts, { _id: user.account_id });
   // TODO multi-cuenta: cuando tengamos user.accountIds[], sumar todos
-  const accountId = user.accountId;
+  const accountId = user.account_id;
   const agents  = accountId ? await db.find(db.agents,      { account_id: accountId }) : [];
   const magnets = accountId ? await db.find(db.magnetLinks, { account_id: accountId }) : [];
 

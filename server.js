@@ -793,6 +793,14 @@ setInterval(() => {
     .catch(e => console.error('weeklyReport sweep:', e.message));
 }, 60 * 60 * 1000);
 
+// ── DAILY BRIEFING WORKER ─────────────────────────────────────────────────────
+// Cada 30 min chequea; manda una vez al día por user (≥12 UTC ≈ 8-9am Chile)
+// el resumen de las últimas 24h por Telegram/email. Sin actividad no manda.
+setInterval(() => {
+  require('./services/dailyBriefing').sweepDailyBriefings()
+    .catch(e => console.error('dailyBriefing sweep:', e.message));
+}, 30 * 60 * 1000);
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`\n🚀 Atinov running   → http://localhost:${PORT}`);

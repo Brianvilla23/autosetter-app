@@ -100,12 +100,16 @@ async function sweepWeeklyReports({ force = false, onlyAccountId = null } = {}) 
   const users = await db.find(db.users, {});
   let sent = 0, skipped = 0;
   for (const u of users) {
-    if (!u.email || !u.accountId) { skipped++; continue; }
-    if (onlyAccountId && u.accountId !== onlyAccountId) continue;
+    // El campo en la tabla users es account_id (snake_case). Con el bug viejo
+    // (u.accountId) el filtro descartaba a TODOS los users y el reporte
+    // semanal nunca se envió a nadie. Misma clase de bug ya documentada en
+    // routes/webhook.js para notifyHotLead.
+    if (!u.email || !u.account_id) { skipped++; continue; }
+    if (onlyAccountId && u.account_id !== onlyAccountId) continue;
     if (!force && u.weeklyReportSentAt && u.weeklyReportSentAt >= weekStart) { skipped++; continue; }
 
     try {
-      const stats = await buildWeeklyStats(u.accountId);
+      const stats = await buildWeeklyStats(u.account_id);
       if (!force && !isWorthSending(stats)) { skipped++; continue; }
 
       const tpl = weeklyReportEmail({ name: u.name, email: u.email, stats });

@@ -90,7 +90,7 @@ router.get('/users', async (req, res) => {
     }
 
     const safe  = users.map(u => {
-      const acc = u.accountId ? accountById.get(u.accountId) : null;
+      const acc = u.account_id ? accountById.get(u.account_id) : null;
       const igConnected = !!(acc && (acc.ig_username || acc.ig_user_id));
       return {
         id:                   u._id,
@@ -107,7 +107,7 @@ router.get('/users', async (req, res) => {
         ig_connected:         igConnected,
         ig_username:          acc?.ig_username || null,
         ig_user_id:           acc?.ig_user_id  || null,
-        accountId:            u.accountId      || null,
+        accountId:            u.account_id     || null,
         leadsCount:           acc ? (leadsByAcc.get(acc._id) || 0) : 0,
         lastActivityAt:       acc ? (lastActByAcc.get(acc._id) || null) : null,
         adminNotes:           u.adminNotes     || '',
@@ -430,7 +430,7 @@ router.get('/metrics', async (req, res) => {
     const accounts = await db.find(db.accounts, {});
     const accountByUser = {};
     for (const u of allUsers) {
-      const acc = accounts.find(a => a._id === u.accountId);
+      const acc = accounts.find(a => a._id === u.account_id);
       accountByUser[u._id] = acc?._id;
     }
     const topUsers = allUsers
@@ -474,7 +474,7 @@ router.get('/users/:id/detail', async (req, res) => {
     const user = await db.findOne(db.users, { _id: req.params.id });
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
 
-    const account = user.accountId ? await db.findOne(db.accounts, { _id: user.accountId }) : null;
+    const account = user.account_id ? await db.findOne(db.accounts, { _id: user.account_id }) : null;
     const agents  = account  ? await db.find(db.agents, { account_id: account._id })  : [];
     const leads   = account  ? await db.find(db.leads,  { account_id: account._id })  : [];
     const messages = [];
