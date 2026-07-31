@@ -265,6 +265,88 @@ router.post('/change-password', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// ── RESET DE CONTRASEÑA DE ADMIN (rompe-vidrio) ───────────────────────────────
+/**
+ * POST /api/user/admin-reset
+ *
+ * Recuperación de acceso cuando se perdió la contraseña del admin y no existe
+ * flujo de "olvidé mi clave". Diseño fail-closed: la ruta NO existe a menos que
+ * ADMIN_RESET_SECRET esté definida en el entorno (Railway). Es decir, solo
+ * quien controla las variables de entorno del hosting puede habilitarla.
+ *
+ * Uso:
+ *   1. En Railway → Variables: crear ADMIN_RESET_SECRET con un valor largo y random.
+ *   2. Llamar este endpoint con ese secreto y la contraseña nueva.
+ *   3. BORRAR la variable de Railway. La ruta vuelve a desaparecer.
+ *
+ * Body: { secret, newPassword, email? }
+ *   - email opcional: si hay un solo admin, se resuelve solo. Si hay varios,
+ *     responde con la lista de correos admin para elegir (no filtra nada más).
+ *
+ * Solo opera sobre usuarios con role 'admin' y deja registro en auditLog.
+ */
+const adminResetLimiter = require('express-rate-limit')({
+  windowMs: 15 * 60 * 1000,
+  max: 5,                     // 5 intentos cada 15 min por IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiados intentos. Espera 15 minutos.' },
+});
+
+router.post('/admin-reset', adminResetLimiter, async (req, res, next) => {
+  try {
+    const expected = process.env.ADMIN_RESET_SECRET;
+    // Sin la variable, la ruta se comporta como inexistente.
+    if (!expected || expected.length < 16) return res.status(404).json({ error: 'Not found' });
+
+    const { secret, newPassword, email } = req.body || {};
+    if (typeof secret !== 'string' || secret.length !== expected.length) {
+      return res.status(403).json({ error: 'Prohibido' });
+    }
+    // Comparación en tiempo constante para no filtrar el secreto por timing.
+    const crypto = require('crypto');
+    const ok = crypto.timingSafeEqual(Buffer.from(secret), Buffer.from(expected));
+    if (!ok) return res.status(403).json({ error: 'Prohibido' });
+
+    const admins = (await db.find(db.users, {})).filter(u => u.role === 'admin');
+    if (!admins.length) return res.status(404).json({ error: 'No hay ningún usuario con rol admin' });
+
+    let target;
+    if (email) {
+      target = admins.find(u => (u.email || '').toLowerCase() === String(email).toLowerCase());
+      if (!target) return res.status(404).json({ error: 'Ese correo no corresponde a un admin' });
+    } else if (admins.length === 1) {
+      target = admins[0];
+    } else {
+      return res.status(400).json({
+        error: 'Hay más de un admin — repite la llamada indicando "email"',
+        admins: admins.map(u => u.email),
+      });
+    }
+
+    const pwErr = validatePassword(newPassword);
+    if (pwErr) return res.status(400).json({ error: pwErr });
+
+    const hash = await bcrypt.hash(newPassword, 12);
+    await db.update(db.users, { _id: target._id }, { password_hash: hash });
+
+    await db.insert(db.auditLog, {
+      action: 'admin_password_reset',
+      actor:  'admin-reset endpoint',
+      target: target.email,
+      ip:     req.ip || null,
+      at:     new Date().toISOString(),
+    }).catch(() => null);
+
+    console.warn(`🔐 Contraseña de admin restablecida para ${target.email} vía admin-reset`);
+    res.json({
+      ok: true,
+      email: target.email,
+      aviso: 'Listo. Ahora BORRA la variable ADMIN_RESET_SECRET en Railway para cerrar esta puerta.',
+    });
+  } catch (e) { next(e); }
+});
+
 // ── Helper: seed demo agent ───────────────────────────────────────────────────
 /**
  * seedDemoAgent — crea agente, knowledge y 3 links default para una cuenta nueva.
