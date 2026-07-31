@@ -55,9 +55,11 @@ async function downloadWhatsAppMedia({ mediaId, accessToken }) {
     maxContentLength: 16 * 1024 * 1024, // WhatsApp capea audio a 16MB
     timeout: 30000,
   });
+  // mimeType null si Meta no lo informa — cada call site aplica su default
+  // (audio/ogg para notas de voz, image/jpeg para fotos).
   return {
     buffer:   Buffer.from(bin.data),
-    mimeType: meta.data.mime_type || 'audio/ogg',
+    mimeType: meta.data.mime_type || null,
   };
 }
 

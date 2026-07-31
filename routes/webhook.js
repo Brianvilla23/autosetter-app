@@ -348,11 +348,12 @@ async function handleComment(pageId, commentData) {
 // El account se identifica por wa_phone_number_id (único por número WSP).
 // El sender se identifica por wa_id (formato sin '+', ej "5491155...").
 async function handleWhatsAppMessage(phoneNumberId, msg, value) {
-  // Se procesan texto y audio (notas de voz transcritas con Whisper).
-  // Imagen/video/documentos se ignoran por ahora.
+  // Se procesan texto, audio (notas de voz → Whisper) e imagen (→ GPT-4o visión).
+  // Video/documentos se ignoran por ahora.
   const isText  = msg.type === 'text'  && !!msg.text?.body;
   const isAudio = msg.type === 'audio' && !!msg.audio?.id;
-  if (!isText && !isAudio) {
+  const isImage = msg.type === 'image' && !!msg.image?.id;
+  if (!isText && !isAudio && !isImage) {
     console.log(`[wa] tipo no soportado: ${msg.type} de ${msg.from}`);
     return;
   }
@@ -376,35 +377,56 @@ async function handleWhatsAppMessage(phoneNumberId, msg, value) {
     return;
   }
 
-  // ── Nota de voz → transcripción Whisper ──────────────────────────────────
-  // La transcripción entra al pipeline como si fuera texto; el flag wasAudio
-  // hace que la respuesta salga también como nota de voz (espejo del lead).
+  // ── Media entrante → texto para el pipeline ──────────────────────────────
+  // Audio: transcripción Whisper; el flag wasAudio hace que la respuesta
+  // salga también como nota de voz (espejo del lead).
+  // Imagen: descripción GPT-4o visión inyectada como texto entre corchetes.
   let text;
   let wasAudio = false;
+  let wasImage = false;
   if (isText) {
     text = msg.text.body;
   } else {
+    const settings = await db.findOne(db.settings, { account_id: account._id });
+    const apiKey   = process.env.OPENAI_API_KEY || settings?.openai_key;
+    if (!apiKey) {
+      console.log(`[wa] media ignorado (sin OpenAI key) de ${senderId}`);
+      return;
+    }
+    const { downloadWhatsAppMedia } = require('../services/audio');
     try {
-      const audioSvc = require('../services/audio');
-      const settings = await db.findOne(db.settings, { account_id: account._id });
-      const apiKey   = process.env.OPENAI_API_KEY || settings?.openai_key;
-      if (!apiKey) {
-        console.log(`[wa] audio ignorado (sin OpenAI key) de ${senderId}`);
-        return;
+      if (isAudio) {
+        const audioSvc = require('../services/audio');
+        const media = await downloadWhatsAppMedia({
+          mediaId: msg.audio.id,
+          accessToken: account.wa_access_token,
+        });
+        text = await audioSvc.transcribeAudio({ buffer: media.buffer, apiKey });
+        if (!text) {
+          console.log(`[wa] audio de ${senderId} sin transcripción utilizable`);
+          return;
+        }
+        wasAudio = true;
+        console.log(`🎧 WSP audio transcrito de ${senderName}: "${text.slice(0, 80)}..."`);
+      } else {
+        const { describeImage } = require('../services/vision');
+        const media = await downloadWhatsAppMedia({
+          mediaId: msg.image.id,
+          accessToken: account.wa_access_token,
+        });
+        const caption = msg.image.caption || null;
+        const desc = await describeImage({
+          buffer: media.buffer,
+          mimeType: media.mimeType || 'image/jpeg',
+          caption,
+          apiKey,
+        });
+        text = `[El lead envió una FOTO${caption ? ` con el texto: "${caption}"` : ''}. Lo que se ve: ${desc}]`;
+        wasImage = true;
+        console.log(`🖼️ WSP imagen descrita de ${senderName}: "${desc.slice(0, 80)}..."`);
       }
-      const media = await audioSvc.downloadWhatsAppMedia({
-        mediaId: msg.audio.id,
-        accessToken: account.wa_access_token,
-      });
-      text = await audioSvc.transcribeAudio({ buffer: media.buffer, apiKey });
-      if (!text) {
-        console.log(`[wa] audio de ${senderId} sin transcripción utilizable`);
-        return;
-      }
-      wasAudio = true;
-      console.log(`🎧 WSP audio transcrito de ${senderName}: "${text.slice(0, 80)}..."`);
     } catch (e) {
-      console.error(`[wa] error transcribiendo audio de ${senderId}:`, e.message);
+      console.error(`[wa] error procesando ${msg.type} de ${senderId}:`, e.message);
       return;
     }
   }
@@ -456,7 +478,7 @@ async function handleWhatsAppMessage(phoneNumberId, msg, value) {
 
   if (lead.automation !== 'automated' || lead.is_bypassed) return;
 
-  await runConversation({ account, agent, lead, senderId, text, wasAudio });
+  await runConversation({ account, agent, lead, senderId, text, wasAudio, wasImage });
 }
 
 // ── HANDLER: MENSAJE DE MESSENGER (Página de Facebook / Marketplace) ─────────
@@ -528,12 +550,14 @@ async function handleMessengerMessage(pageId, event) {
 }
 
 // ── MOTOR PRINCIPAL: genera respuesta IA y envía DM ──────────────────────────
-async function runConversation({ account, agent, lead, senderId, text, isCommentTrigger = false, wasAudio = false }) {
+async function runConversation({ account, agent, lead, senderId, text, isCommentTrigger = false, wasAudio = false, wasImage = false }) {
   if (lead.automation !== 'automated' || lead.is_bypassed) return;
 
   // Guardar mensaje entrante (no cuenta al límite: son los DMs recibidos)
-  // media:'audio' marca que llegó como nota de voz y content es su transcripción.
-  await db.insert(db.messages, { lead_id: lead._id, role: 'user', content: text, ...(wasAudio ? { media: 'audio' } : {}) });
+  // media marca el origen: 'audio' = nota de voz (content es su transcripción),
+  // 'image' = foto (content es su descripción).
+  const mediaTag = wasAudio ? 'audio' : wasImage ? 'image' : null;
+  await db.insert(db.messages, { lead_id: lead._id, role: 'user', content: text, ...(mediaTag ? { media: mediaTag } : {}) });
   await db.update(db.leads, { _id: lead._id }, { last_message_at: new Date().toISOString() });
 
   // ── CHECK LÍMITE DE PLAN ─────────────────────────────────────────────────
@@ -617,7 +641,14 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
     ? 'NOTA: el lead te envió una NOTA DE VOZ — lo que lees es su transcripción. Tu respuesta se le enviará como nota de voz hablada: redacta como se habla (frases cortas, sin listas, sin emojis). Si necesitas compartir un link, inclúyelo normal y el mensaje saldrá como texto en vez de audio.'
     : null;
 
-  const extraContext = [baseContext, messengerHandoff, magnetContext, audioContext, ragContext].filter(Boolean).join('\n\n') || null;
+  // ── Memoria por lead: hechos de conversaciones anteriores (cualquier canal)
+  let memoryContext = null;
+  try {
+    const { buildMemoryContext } = require('../services/leadMemory');
+    memoryContext = buildMemoryContext(lead);
+  } catch (e) { /* memoria opcional */ }
+
+  const extraContext = [baseContext, messengerHandoff, magnetContext, audioContext, memoryContext, ragContext].filter(Boolean).join('\n\n') || null;
 
   const reply = await generateReply({
     agent, knowledge, links,
@@ -640,6 +671,12 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
     const { scoreLead } = require('../services/rag/score');
     scoreLead(lead, apiKey).catch(() => {});
   } catch (e) { /* RAG opcional */ }
+
+  // ── Memoria por lead: extraer/actualizar hechos (async, best-effort) ──────
+  try {
+    const { updateLeadMemory } = require('../services/leadMemory');
+    updateLeadMemory({ leadId: lead._id, apiKey }).catch(() => {});
+  } catch (e) { /* memoria opcional */ }
 
   // Calcular delay humanizador (5-15s default, configurable por agente)
   // Bajamos default de 30-90s a 5-15s tras feedback: setters/closers necesitan

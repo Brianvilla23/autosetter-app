@@ -178,6 +178,14 @@ async function processFollowUps() {
         ? `FOLLOW-UP 1/2: El prospecto no ha respondido en las últimas horas. Envía un mensaje corto y cálido que le recuerde suavemente que estás ahí. NO seas agresivo. Ejemplos: "Oye, ¿pudiste ver mi mensaje? sin presión 😊", "¿Quedaste con alguna duda?", "¿Cómo vas con eso que me contaste?". Máximo 1 pregunta. Adapta al contexto de la última conversación.`
         : `FOLLOW-UP 2/2 (ÚLTIMO): Es el segundo y último intento. Haz un cierre suave y empático — dale una salida digna. Algo como: "Hey, entiendo si no es el momento, si alguna vez quieres retomar aquí estaré 😊". NO pidas nada. Es despedida amable.`;
 
+      // Memoria por lead: el follow-up con contexto ("tú que buscabas la 4x4...")
+      // es lo que separa persistencia de spam.
+      let memoryContext = null;
+      try {
+        const { buildMemoryContext } = require('./leadMemory');
+        memoryContext = buildMemoryContext(lead);
+      } catch (e) { /* memoria opcional */ }
+
       const history = messages;
       const reply = await generateReply({
         agent,
@@ -187,7 +195,7 @@ async function processFollowUps() {
         newMessage: '[FOLLOW-UP AUTOMÁTICO — generar mensaje proactivo sin responder a un mensaje del prospecto]',
         accountId: account._id,
         apiKey,
-        extraContext: followupHint,
+        extraContext: [followupHint, memoryContext].filter(Boolean).join('\n\n'),
         qualification: lead.qualification || null,
         leadPhone:     lead.wa_id || null,
         leadChannel:   lead.channel || (lead.wa_id ? 'whatsapp' : 'instagram'),
@@ -203,15 +211,39 @@ async function processFollowUps() {
       });
       await db.update(db.leads, { _id: lead._id }, { last_message_at: new Date().toISOString() });
 
-      // Enviar por IG
-      const igUserId = account.ig_platform_id || account.ig_user_id;
-      await sendMessage({
-        recipientId: lead.ig_user_id,
-        text:        reply,
-        accessToken: account.access_token,
-        igUserId,
-        accountId:   account._id,
-      });
+      // Enviar por el canal del lead. Antes se enviaba SIEMPRE por Instagram,
+      // así que los follow-ups de leads WhatsApp/Messenger fallaban contra la
+      // Graph API de IG. Los tres canales comparten la ventana de 24h y acá
+      // siempre estamos dentro de ella (WINDOW_HOURS), por lo que el mensaje
+      // libre de servicio es válido en los tres.
+      if (lead.channel === 'whatsapp' && lead.wa_id && account.wa_access_token) {
+        const wa = require('./whatsapp');
+        await wa.sendMessage({
+          phoneNumberId: account.wa_phone_number_id,
+          recipient:     lead.wa_id,
+          text:          reply,
+          accessToken:   account.wa_access_token,
+          accountId:     account._id,
+        });
+      } else if (lead.channel === 'messenger' && lead.fb_psid && account.fb_page_token) {
+        const msgr = require('./messenger');
+        await msgr.sendMessage({
+          pageId:      account.fb_page_id,
+          recipient:   lead.fb_psid,
+          text:        reply,
+          accessToken: account.fb_page_token,
+          accountId:   account._id,
+        });
+      } else {
+        const igUserId = account.ig_platform_id || account.ig_user_id;
+        await sendMessage({
+          recipientId: lead.ig_user_id,
+          text:        reply,
+          accessToken: account.access_token,
+          igUserId,
+          accountId:   account._id,
+        });
+      }
 
       await db.update(db.followups, { _id: fu._id }, { sent_at: new Date().toISOString() });
       console.log(`🔔 Follow-up #${fu.attempt_num} → @${lead.ig_username}: ${reply.substring(0, 70)}...`);
