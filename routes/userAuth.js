@@ -265,6 +265,109 @@ router.post('/change-password', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// ── OLVIDÉ MI CONTRASEÑA (clientes finales, vía email) ────────────────────────
+const forgotLimiter = require('express-rate-limit')({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiados intentos. Espera 15 minutos.' },
+});
+
+/**
+ * POST /api/user/forgot-password  Body: { email }
+ *
+ * Genera un token de un solo uso (1 h de validez), guarda solo su hash
+ * SHA-256 en el user, y envía el link por email vía Resend. SIEMPRE responde
+ * ok — no revela si el email existe (anti-enumeración). Si Resend no está
+ * configurado responde ok igual y solo loguea (fail-safe sin filtrar info).
+ */
+router.post('/forgot-password', forgotLimiter, async (req, res, next) => {
+  try {
+    const { email } = req.body || {};
+    const generic = { ok: true, message: 'Si ese correo tiene cuenta, te llegará un link para restablecer la contraseña.' };
+    if (!validateEmail(email)) return res.json(generic);
+
+    const user = await db.findOne(db.users, { email: email.toLowerCase() });
+    if (!user) return res.json(generic);
+
+    const crypto = require('crypto');
+    const token = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    await db.update(db.users, { _id: user._id }, {
+      reset_token_hash: tokenHash,
+      reset_token_expires: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+    });
+
+    const appUrl = process.env.APP_URL || 'https://atinov.com';
+    const link = `${appUrl}/app?reset_token=${token}&reset_email=${encodeURIComponent(user.email)}`;
+    const { sendEmail } = require('../services/notifications');
+    // Fire-and-forget: esperar el envío crearía un oráculo de timing (con
+    // email existente la respuesta tardaría el round-trip a Resend; sin
+    // email, milisegundos — medible para enumerar cuentas).
+    sendEmail({
+      to: user.email,
+      subject: 'Restablece tu contraseña de Atinov',
+      html: `
+        <div style="font-family:system-ui,-apple-system,'Segoe UI',sans-serif;max-width:520px;margin:auto;padding:24px">
+          <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:28px">
+            <h2 style="margin:0 0 12px;font-size:19px">Restablecer contraseña</h2>
+            <p style="color:#475569;line-height:1.6;margin:0 0 18px">Pediste restablecer tu contraseña de Atinov. El link vale por 1 hora. Si no fuiste tú, ignora este correo — tu cuenta sigue segura.</p>
+            <a href="${link}" style="display:inline-block;background:#111;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">Crear contraseña nueva →</a>
+          </div>
+        </div>`,
+    }).then(r => {
+      if (!r.ok) console.error('[forgot-password] email no enviado:', r.reason);
+    }).catch(e => console.error('[forgot-password] email error:', e.message));
+    res.json(generic);
+  } catch (e) { next(e); }
+});
+
+/**
+ * POST /api/user/reset-password  Body: { email, token, newPassword }
+ * Valida el token contra su hash + expiración, aplica la política de
+ * contraseñas y deja registro en auditLog.
+ */
+router.post('/reset-password', forgotLimiter, async (req, res, next) => {
+  try {
+    const { email, token, newPassword } = req.body || {};
+    if (!validateEmail(email) || !token) return res.status(400).json({ error: 'Link inválido' });
+
+    const user = await db.findOne(db.users, { email: email.toLowerCase() });
+    if (!user || !user.reset_token_hash || !user.reset_token_expires) {
+      return res.status(400).json({ error: 'Link inválido o ya usado. Pide uno nuevo.' });
+    }
+    if (user.reset_token_expires < new Date().toISOString()) {
+      return res.status(400).json({ error: 'El link expiró (dura 1 hora). Pide uno nuevo.' });
+    }
+    const crypto = require('crypto');
+    const tokenHash = crypto.createHash('sha256').update(String(token)).digest('hex');
+    const a = Buffer.from(tokenHash);
+    const b = Buffer.from(user.reset_token_hash);
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+      return res.status(400).json({ error: 'Link inválido o ya usado. Pide uno nuevo.' });
+    }
+
+    const pwErr = validatePassword(newPassword);
+    if (pwErr) return res.status(400).json({ error: pwErr });
+
+    const hash = await bcrypt.hash(newPassword, 12);
+    await db.update(db.users, { _id: user._id }, {
+      password_hash: hash,
+      reset_token_hash: null,
+      reset_token_expires: null,
+    });
+    await db.insert(db.auditLog, {
+      action: 'password_reset_email',
+      target: user.email,
+      ip: req.ip || null,
+      at: new Date().toISOString(),
+    }).catch(() => null);
+
+    res.json({ ok: true, message: 'Contraseña actualizada. Ya puedes iniciar sesión.' });
+  } catch (e) { next(e); }
+});
+
 // ── RESET DE CONTRASEÑA DE ADMIN (rompe-vidrio) ───────────────────────────────
 /**
  * POST /api/user/admin-reset

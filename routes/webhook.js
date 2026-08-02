@@ -648,9 +648,16 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
     memoryContext = buildMemoryContext(lead);
   } catch (e) { /* memoria opcional */ }
 
-  const extraContext = [baseContext, messengerHandoff, magnetContext, audioContext, memoryContext, ragContext].filter(Boolean).join('\n\n') || null;
+  // ── Cobro in-chat: capacidad solo si la cuenta tiene Mercado Pago ─────────
+  let paymentContext = null;
+  try {
+    const { buildPaymentContext } = require('../services/payments');
+    paymentContext = buildPaymentContext(settings);
+  } catch (e) { /* pagos opcional */ }
 
-  const reply = await generateReply({
+  const extraContext = [baseContext, messengerHandoff, magnetContext, audioContext, memoryContext, paymentContext, ragContext].filter(Boolean).join('\n\n') || null;
+
+  let reply = await generateReply({
     agent, knowledge, links,
     conversationHistory: history.slice(0, -1),
     newMessage: text,
@@ -661,6 +668,21 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
     leadPhone:     lead.wa_id || null,
     leadChannel:   lead.channel || (lead.wa_id ? 'whatsapp' : 'instagram'),
   });
+
+  // ── Resolver marcadores [PAGO: ...] → link real de Mercado Pago ──────────
+  // Antes de guardar/encolar, para que DB y cola tengan el texto final.
+  // Fail-closed: sin token o con error, el marcador se elimina y el mensaje
+  // sale igual.
+  try {
+    const { resolvePaymentMarkers } = require('../services/payments');
+    const resolved = await resolvePaymentMarkers(reply, {
+      settings, accountId: account._id, leadId: lead._id,
+    });
+    reply = resolved.text;
+    if (resolved.links.length) {
+      console.log(`💳 [${agent.name}] Link de pago generado para @${lead.ig_username}: $${resolved.links[0].amount} CLP`);
+    }
+  } catch (e) { console.warn('[pago] resolución de marcadores falló (no bloquea):', e.message); }
 
   // Guardar respuesta del agente
   await db.insert(db.messages, { lead_id: lead._id, role: 'agent', content: reply });
@@ -787,6 +809,29 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
     }
   }).catch(e => console.error('classifyLead error:', e));
 }
+
+// ── WEBHOOK DE MERCADO PAGO ──────────────────────────────────────────────────
+// POST /webhook/mercadopago?acc=<accountId>&lead=<leadId>
+// MP notifica; NO confiamos en el body: se consulta el pago a la API de MP
+// con el token de la cuenta y solo se actúa si está aprobado y el
+// external_reference calza. Siempre 200 (MP reintenta ante otros códigos).
+router.post('/mercadopago', async (req, res) => {
+  res.sendStatus(200);
+  try {
+    const accountId = String(req.query.acc || '');
+    const leadId    = String(req.query.lead || '');
+    const paymentId = req.body?.data?.id || req.query['data.id'] || req.query.id;
+    const type      = req.body?.type || req.query.type || req.query.topic;
+    if (!accountId || !leadId || !paymentId) return;
+    if (type && !String(type).includes('payment')) return;
+
+    const { handleMpNotification } = require('../services/payments');
+    const r = await handleMpNotification({ accountId, leadId, paymentId });
+    if (!r.ok) console.log(`[MP] notificación ignorada (${r.reason}) — payment ${paymentId}`);
+  } catch (e) {
+    console.error('[MP] webhook error:', e.response?.data || e.message);
+  }
+});
 
 module.exports = router;
 module.exports.leerBitacora = leerBitacora;

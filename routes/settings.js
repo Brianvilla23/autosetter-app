@@ -114,6 +114,41 @@ router.delete('/whatsapp', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// ── MERCADO PAGO (cobro dentro del chat) ────────────────────────────────────
+// PUT body: { accountId, mp_access_token }
+// Con el token guardado, el agente gana la capacidad de generar links de
+// pago reales de Checkout Pro cuando el lead confirma la compra ([PAGO: ...]).
+// El token vive en settings, NUNCA se devuelve al frontend, y se pisa solo
+// si viene uno nuevo real (no el masked).
+router.put('/mercadopago', async (req, res, next) => {
+  try {
+    const { accountId, mp_access_token } = req.body;
+    if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
+
+    if (!mp_access_token || mp_access_token.includes('…')) {
+      return res.json({ ok: true, unchanged: true });
+    }
+    const clean = String(mp_access_token).trim();
+    const exists = await db.findOne(db.settings, { account_id: accountId });
+    if (exists) {
+      await db.update(db.settings, { account_id: accountId }, { mp_access_token: clean, updatedAt: new Date().toISOString() });
+    } else {
+      await db.insert(db.settings, { account_id: accountId, openai_key: '', mp_access_token: clean });
+    }
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+
+// DELETE — desconectar Mercado Pago (el agente pierde la capacidad de cobro)
+router.delete('/mercadopago', async (req, res, next) => {
+  try {
+    const { accountId } = req.query;
+    if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
+    await db.update(db.settings, { account_id: accountId }, { mp_access_token: null });
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+
 // ── MESSENGER (Página de Facebook / Marketplace) ────────────────────────────
 // PUT body: { accountId, fb_page_id, fb_page_token, wa_display_number }
 // El cliente pega el ID de su Página + el Page Access Token (de la Meta App,

@@ -23,6 +23,7 @@ const SENSITIVE_ACCOUNT_FIELDS = [
 // Campos de settings que NUNCA deben salir crudos.
 const SENSITIVE_SETTINGS_FIELDS = [
   'openai_key',         // API key de OpenAI del user (permite gastar su cuota)
+  'mp_access_token',    // token de Mercado Pago (permite crear cobros y leer pagos)
 ];
 
 /** Enmascara un secret dejando ver prefijo + últimos 4 (ej "sk-pr…wXyZ"). */
@@ -62,6 +63,8 @@ function sanitizeSettings(settings) {
   }
   safe.has_openai_key    = !!settings.openai_key;
   safe.openai_key_masked = maskSecret(settings.openai_key);
+  safe.has_mp_access_token    = !!settings.mp_access_token;
+  safe.mp_access_token_masked = maskSecret(settings.mp_access_token);
   return safe;
 }
 

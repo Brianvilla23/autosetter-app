@@ -52,8 +52,11 @@ function sanitizeObject(obj) {
   if (obj && typeof obj === 'object') {
     const clean = {};
     for (const key of Object.keys(obj)) {
-      // No sanitizar el campo 'password' (bcrypt maneja su propio hashing)
-      if (key === 'password') {
+      // No sanitizar campos de credenciales: xss() escaparía < > & y el
+      // valor guardado/comparado ya no sería el que el usuario escribió
+      // (ej: reset-password hashearía "Pass&lt;word" y el login con
+      // "Pass<word" fallaría para siempre — lockout).
+      if (key === 'password' || key === 'newPassword' || key === 'currentPassword' || key === 'token' || key === 'secret') {
         clean[key] = obj[key];
       } else {
         clean[key] = sanitizeObject(obj[key]);

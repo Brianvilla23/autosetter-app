@@ -11,13 +11,16 @@
   /* ── Brand colors */
   /* Acento personalizable por el cliente (Ajustes → Apariencia).
      El tema se aplica seteando estas vars en :root desde JS. */
-  --accent:      #059669;
-  --accent-dark: #047857;
-  --accent-bg:   #ecfdf5;
-  --orange:    #10b981;   /* alias histórico del acento — lo usa media app */
-  --orange-2:  #34d399;
-  --orange-bg: rgba(16, 185, 129, 0.08);
-  --grad:      linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
+  /* Default = identidad MONOCROMA de la marca (negro #0a0a0a + blanco hueso).
+     La esmeralda y demás colores siguen disponibles como tema opcional en
+     Ajustes → Apariencia; el script del <head> aplica el tema guardado. */
+  --accent:      #0a0a0a;
+  --accent-dark: #000000;
+  --accent-bg:   #f0efe9;
+  --orange:    #0a0a0a;   /* alias histórico del acento — lo usa media app */
+  --orange-2:  #5c5c57;
+  --orange-bg: rgba(10, 10, 10, 0.06);
+  --grad:      linear-gradient(135deg, #0a0a0a 0%, #2e2e2a 100%);
   --grad-soft: linear-gradient(135deg, rgba(16,185,129,.12) 0%, rgba(6,182,212,.08) 100%);
 
   /* ── Sidebar */

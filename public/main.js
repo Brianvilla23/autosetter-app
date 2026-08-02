@@ -102,6 +102,11 @@ function showAuthScreen(mode) {
 function renderAuthForm(mode) {
   const box = document.getElementById('auth-box');
 
+  // Si el usuario llegó desde el email de "olvidé mi contraseña", el link trae
+  // ?reset_token=...&reset_email=... → mostrar directo el form de clave nueva.
+  const urlParams = new URLSearchParams(window.location.search);
+  if (mode === 'login' && urlParams.get('reset_token')) mode = 'reset';
+
   if (mode === 'login') {
     box.innerHTML = `
       <div class="auth-logo">⚡ Atinov</div>
@@ -111,12 +116,94 @@ function renderAuthForm(mode) {
       <input class="auth-input" id="auth-password" type="password" placeholder="Contraseña" autocomplete="current-password">
       <div id="auth-error" class="auth-error" style="display:none"></div>
       <button class="btn-primary auth-btn" id="auth-submit">Entrar</button>
+      <p class="auth-footer" style="margin-top:10px"><a href="#" id="auth-to-forgot" style="color:var(--text-3,#888);font-size:12.5px">¿Olvidaste tu contraseña?</a></p>
       <p class="auth-footer">¿Nuevo aquí? <a href="#" id="auth-to-register" style="color:var(--orange);font-weight:600">Crear cuenta gratis →</a></p>
     `;
     document.getElementById('auth-submit').onclick = () => submitAuth('login');
     document.getElementById('auth-password').addEventListener('keydown', e => { if (e.key === 'Enter') submitAuth('login'); });
     document.getElementById('auth-to-register').onclick = (e) => { e.preventDefault(); showAuthScreen('register'); };
+    document.getElementById('auth-to-forgot').onclick = (e) => { e.preventDefault(); showAuthScreen('forgot'); };
     document.getElementById('auth-email')?.focus();
+
+  } else if (mode === 'forgot') {
+    box.innerHTML = `
+      <div class="auth-logo">⚡ Atinov</div>
+      <h2 class="auth-title">Recuperar contraseña</h2>
+      <p class="auth-sub">Te enviamos un link a tu correo para crear una nueva</p>
+      <input class="auth-input" id="auth-email" type="email" placeholder="Email de tu cuenta" autocomplete="email">
+      <div id="auth-error" class="auth-error" style="display:none"></div>
+      <button class="btn-primary auth-btn" id="auth-submit">Enviarme el link</button>
+      <p class="auth-footer"><a href="#" id="auth-to-login" style="color:var(--orange);font-weight:600">← Volver a iniciar sesión</a></p>
+    `;
+    document.getElementById('auth-submit').onclick = async () => {
+      const email = document.getElementById('auth-email').value.trim();
+      const err = document.getElementById('auth-error');
+      const btn = document.getElementById('auth-submit');
+      btn.disabled = true; btn.textContent = 'Enviando…';
+      try {
+        const r = await fetch('/api/user/forgot-password', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        });
+        const d = await r.json();
+        err.style.display = 'block';
+        err.style.color = 'var(--green, #22c55e)';
+        err.textContent = d.message || 'Si ese correo tiene cuenta, te llegará un link.';
+        btn.textContent = 'Enviado ✓';
+      } catch (e) {
+        err.style.display = 'block';
+        err.textContent = 'Error de conexión — intenta de nuevo';
+        btn.disabled = false; btn.textContent = 'Enviarme el link';
+      }
+    };
+    document.getElementById('auth-to-login').onclick = (e) => { e.preventDefault(); showAuthScreen('login'); };
+    document.getElementById('auth-email')?.focus();
+
+  } else if (mode === 'reset') {
+    const rToken = urlParams.get('reset_token') || '';
+    const rEmail = urlParams.get('reset_email') || '';
+    box.innerHTML = `
+      <div class="auth-logo">⚡ Atinov</div>
+      <h2 class="auth-title">Nueva contraseña</h2>
+      <p class="auth-sub">Para ${rEmail ? rEmail.replace(/</g, '&lt;') : 'tu cuenta'}</p>
+      <input class="auth-input" id="auth-password" type="password" placeholder="Contraseña nueva (mín. 8, letra y número)" autocomplete="new-password">
+      <input class="auth-input" id="auth-password2" type="password" placeholder="Confirmar contraseña" autocomplete="new-password">
+      <div id="auth-error" class="auth-error" style="display:none"></div>
+      <button class="btn-primary auth-btn" id="auth-submit">Guardar contraseña</button>
+      <p class="auth-footer"><a href="#" id="auth-to-login" style="color:var(--orange);font-weight:600">← Volver a iniciar sesión</a></p>
+    `;
+    document.getElementById('auth-submit').onclick = async () => {
+      const p1 = document.getElementById('auth-password').value;
+      const p2 = document.getElementById('auth-password2').value;
+      const err = document.getElementById('auth-error');
+      err.style.display = 'none'; err.style.color = '';
+      if (p1 !== p2) { err.style.display = 'block'; err.textContent = 'Las contraseñas no coinciden'; return; }
+      try {
+        const r = await fetch('/api/user/reset-password', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: rEmail, token: rToken, newPassword: p1 }),
+        });
+        const d = await r.json();
+        if (!r.ok) { err.style.display = 'block'; err.textContent = d.error || 'Error'; return; }
+        // Limpiar el token de la URL y volver al login con mensaje
+        window.history.replaceState({}, '', window.location.pathname);
+        showAuthScreen('login');
+        const loginErr = document.getElementById('auth-error');
+        if (loginErr) {
+          loginErr.style.display = 'block';
+          loginErr.style.color = 'var(--green, #22c55e)';
+          loginErr.textContent = '✓ Contraseña actualizada — inicia sesión';
+        }
+      } catch (e) {
+        err.style.display = 'block'; err.textContent = 'Error de conexión — intenta de nuevo';
+      }
+    };
+    document.getElementById('auth-to-login').onclick = (e) => {
+      e.preventDefault();
+      window.history.replaceState({}, '', window.location.pathname);
+      showAuthScreen('login');
+    };
+    document.getElementById('auth-password')?.focus();
 
   } else if (mode === 'register') {
     box.innerHTML = `
@@ -133,7 +220,7 @@ function renderAuthForm(mode) {
       <details style="margin:14px 0 6px 0;background:linear-gradient(135deg,rgba(16,185,129,0.08),rgba(6,182,212,0.03));border:1px solid rgba(16,185,129,0.3);border-radius:10px;overflow:hidden">
         <summary style="cursor:pointer;padding:13px 14px;display:flex;align-items:center;gap:8px;list-style:none">
           <span style="font-size:17px">✨</span>
-          <strong style="font-size:13.5px;color:#34d399">Personalizá tu agente en 1 minuto</strong>
+          <strong style="font-size:13.5px;color:#34d399">Personaliza tu agente en 1 minuto</strong>
           <span style="font-size:11px;color:var(--text-3,#888);margin-left:auto">opcional ▾</span>
         </summary>
         <div style="padding:0 14px 14px">
@@ -151,10 +238,10 @@ function renderAuthForm(mode) {
       <div id="auth-error" class="auth-error" style="display:none"></div>
       <button class="btn-primary auth-btn" id="auth-submit">Crear cuenta y comenzar →</button>
       <div style="display:flex;justify-content:center;gap:14px;flex-wrap:wrap;margin-top:12px;font-size:11.5px;color:var(--text-3,#888)">
-        <span>✓ Sin tarjeta</span><span>✓ 3 días gratis</span><span>✓ Cancelás cuando quieras</span>
+        <span>✓ Sin tarjeta</span><span>✓ 3 días gratis</span><span>✓ Cancelas cuando quieras</span>
       </div>
       <p class="auth-legal" style="font-size:12px;color:var(--text-3,#888);text-align:center;margin-top:12px;line-height:1.5">
-        Al crear la cuenta aceptás nuestros
+        Al crear la cuenta aceptas nuestros
         <a href="/terms.html" target="_blank" style="color:var(--orange)">Términos</a>
         y la <a href="/privacy.html" target="_blank" style="color:var(--orange)">Política de Privacidad</a>.
       </p>
@@ -432,6 +519,10 @@ window.teachAgent = teachAgent;
 // los valores YA resueltos para que el script del <head> lo aplique antes del
 // primer render (sin parpadeo). Solo afecta a este navegador.
 const ATINOV_THEMES = {
+  // Monocroma = la identidad vigente de la marca (negro #0a0a0a + blanco hueso,
+  // grises cálidos, cero gradientes de color). Es el default para cuentas
+  // nuevas; los temas de color quedan como personalización opcional.
+  monocroma: { label: 'Monocroma', accent: '#0a0a0a', dark: '#000000', bg: '#f0efe9', brand: '#0a0a0a', brand2: '#5c5c57', brandBg: 'rgba(10,10,10,.06)', grad: 'linear-gradient(135deg,#0a0a0a 0%,#2e2e2a 100%)' },
   esmeralda: { label: 'Esmeralda', accent: '#059669', dark: '#047857', bg: '#ecfdf5', brand: '#10b981', brand2: '#34d399', brandBg: 'rgba(16,185,129,.08)', grad: 'linear-gradient(135deg,#10b981 0%,#06b6d4 100%)' },
   azul:      { label: 'Azul',      accent: '#2563eb', dark: '#1d4ed8', bg: '#eff6ff', brand: '#3b82f6', brand2: '#60a5fa', brandBg: 'rgba(59,130,246,.08)',  grad: 'linear-gradient(135deg,#3b82f6 0%,#06b6d4 100%)' },
   violeta:   { label: 'Violeta',   accent: '#7c3aed', dark: '#6d28d9', bg: '#f5f3ff', brand: '#8b5cf6', brand2: '#a78bfa', brandBg: 'rgba(139,92,246,.08)',  grad: 'linear-gradient(135deg,#8b5cf6 0%,#ec4899 100%)' },
@@ -452,7 +543,7 @@ function getThemePref() {
 
 function setTheme(accentKey, bgKey) {
   const pref = getThemePref();
-  const a = ATINOV_THEMES[accentKey || pref.accentKey] ? (accentKey || pref.accentKey) : 'esmeralda';
+  const a = ATINOV_THEMES[accentKey || pref.accentKey] ? (accentKey || pref.accentKey) : 'monocroma';
   const b = ATINOV_BGS[bgKey || pref.bgKey] ? (bgKey || pref.bgKey) : 'claro';
   const t = ATINOV_THEMES[a], g = ATINOV_BGS[b];
   const vars = {
@@ -470,7 +561,7 @@ window.setTheme = setTheme;
 
 function renderThemeSwatches() {
   const pref = getThemePref();
-  const activeA = pref.accentKey || 'esmeralda';
+  const activeA = pref.accentKey || 'monocroma';
   const activeB = pref.bgKey || 'claro';
   const sw = document.getElementById('theme-swatches');
   if (sw) {
@@ -532,7 +623,7 @@ async function loadOnboarding() {
 
     const subtitle = data.nextStep
       ? `Próximo paso: <strong>${escHtmlStep(data.nextStep.title)}</strong>`
-      : 'Completa estos pasos para activar tu bot';
+      : 'Completa estos pasos para activar tu agente';
     document.getElementById('onboarding-subtitle').innerHTML = subtitle;
 
     document.getElementById('onboarding-steps').innerHTML = data.steps.map((s, i) => {
@@ -745,7 +836,7 @@ async function renderAgentBuilder(agentId) {
 
         <div style="margin-top:16px;padding:14px;background:#0f0f1a;border:1px solid #2a2a4a;border-radius:8px">
           <label style="font-size:0.78rem;color:#a5a5c8;font-weight:600;display:block;margin-bottom:6px">
-            🔑 Palabras clave que activan el bot
+            🔑 Palabras clave que activan el agente
           </label>
           <input
             type="text"
@@ -755,7 +846,7 @@ async function renderAgentBuilder(agentId) {
             style="width:100%;background:#1a1a2e;border:1px solid #3a3a5a;color:#e0e0e0;padding:8px 10px;border-radius:6px;font-size:0.85rem"
           />
           <small style="color:#666;font-size:0.72rem;display:block;margin-top:6px">
-            Dejar vacío = el bot responde a <strong style="color:#a5a5c8">cualquier mensaje</strong>.
+            Dejar vacío = el agente responde a <strong style="color:#a5a5c8">cualquier mensaje</strong>.
             Con keywords = solo se activa cuando el DM o comentario contiene una de estas palabras.
           </small>
         </div>
@@ -802,7 +893,7 @@ async function renderAgentBuilder(agentId) {
             </div>
           </div>
           <small style="color:#666;font-size:0.72rem;display:block;margin-top:6px">
-            El bot espera un tiempo aleatorio entre estos valores antes de responder.
+            El agente espera un tiempo aleatorio entre estos valores antes de responder.
             <strong>Recomendado: 5-15s</strong> para responder rápido (lead HOT no se enfría) sin parecer instantáneo.
             Si tu cuenta es nueva o quieres ser conservador, usa 20-40s.
           </small>
@@ -1178,7 +1269,7 @@ async function openKnowledgeModal(id) {
 }
 
 async function deleteKnowledge(id) {
-  if (!confirm('¿Eliminar esta entrada de conocimiento? El bot dejará de usar esta info.')) return;
+  if (!confirm('¿Eliminar esta entrada de conocimiento? El agente dejará de usar esta info.')) return;
   const r = await apiFetch(`/api/knowledge/${id}`, 'DELETE');
   if (!r) {
     showToast('❌ No se pudo eliminar — recarga la página y prueba de nuevo');
@@ -1481,7 +1572,7 @@ async function saveLink() {
 }
 
 async function deleteLink(id) {
-  if (!confirm('¿Eliminar este link? El bot dejará de poder compartirlo.')) return;
+  if (!confirm('¿Eliminar este link? El agente dejará de poder compartirlo.')) return;
   const r = await apiFetch(`/api/links/${id}`, 'DELETE');
   if (!r) {
     showToast('❌ No se pudo eliminar — recarga la página y prueba de nuevo');
@@ -2205,7 +2296,7 @@ async function loadMagnets() {
         <div style="background:#fff7ed;border:1px dashed #fed7aa;border-radius:10px;padding:30px;text-align:center">
           <div style="font-size:32px;margin-bottom:8px">🧲</div>
           <h4 style="margin:0 0 6px;color:#9a3412">Aún no tienes lead magnets</h4>
-          <p style="color:var(--text-2);font-size:14px;margin:0">Crea el primero y el bot empezará a ofrecerlo automáticamente a los leads que no están listos para comprar.</p>
+          <p style="color:var(--text-2);font-size:14px;margin:0">Crea el primero y el agente empezará a ofrecerlo automáticamente a los leads que no están listos para comprar.</p>
         </div>`;
       return;
     }
@@ -2304,7 +2395,7 @@ async function toggleMagnet(id, enabled) {
 }
 
 async function deleteMagnet(id) {
-  if (!confirm('¿Eliminar este lead magnet? El bot dejará de ofrecerlo.')) return;
+  if (!confirm('¿Eliminar este lead magnet? El agente dejará de ofrecerlo.')) return;
   try {
     await apiFetch(`/api/lead-magnets/${id}`, 'DELETE');
     showToast('🗑️ Magnet eliminado');
@@ -2803,7 +2894,7 @@ async function renderInboxThread(leadId, isRefresh = false) {
     const messages = (lead.messages || []).map(m => {
       const cls = m.role === 'user' ? 'user' : (m.role === 'manual' ? 'manual' : 'agent');
       const tag = m.role === 'user' ? `<span class="role-tag">@${escHtmlSafe(lead.ig_username)}</span>` : '';
-      const tagAuthor = m.role === 'manual' ? '✋ Tú' : (m.role === 'agent' ? '🤖 Bot' : '');
+      const tagAuthor = m.role === 'manual' ? '✋ Tú' : (m.role === 'agent' ? '🤖 Agente' : '');
       const when = m.createdAt ? new Date(m.createdAt).toLocaleString('es-ES', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }) : '';
       return `
         <div class="bubble ${cls}">
@@ -2821,7 +2912,7 @@ async function renderInboxThread(leadId, isRefresh = false) {
     const stateBanner = lead.is_bypassed
       ? `<div style="background:#fef2f2;border-bottom:2px solid #fca5a5;color:#991b1b;padding:8px 16px;font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:8px">
            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#dc2626;box-shadow:0 0 0 3px rgba(220,38,38,.18)"></span>
-           ✋ Tú tienes el control · el bot está pausado en esta conversación
+           ✋ Tú tienes el control · el agente está pausado en esta conversación
          </div>`
       : `<div style="background:#f0fdf4;border-bottom:1px solid #bbf7d0;color:#166534;padding:8px 16px;font-size:12.5px;font-weight:500;display:flex;align-items:center;gap:8px">
            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.18)"></span>
@@ -2856,7 +2947,7 @@ async function renderInboxThread(leadId, isRefresh = false) {
           <button class="btn-ghost" data-action="open-templates" title="Insertar plantilla" style="padding:10px 12px;font-size:13px">📋</button>
           <button class="btn-primary" data-action="send-message" style="padding:10px 18px;font-size:13px">Enviar</button>
         </div>
-        <div class="hint">${lead.is_bypassed ? '🚫 El bot está pausado · lo que escribas se manda como tú.' : '⚠️ Si respondes tú, el bot se pausa automáticamente para esta conversación.'} <kbd style="font-size:10px;background:#f3f4f6;padding:2px 5px;border-radius:3px">Enter</kbd> envía · <kbd style="font-size:10px;background:#f3f4f6;padding:2px 5px;border-radius:3px">Shift+Enter</kbd> nueva línea</div>
+        <div class="hint">${lead.is_bypassed ? '🚫 El agente está pausado · lo que escribas se manda como tú.' : '⚠️ Si respondes tú, el agente se pausa automáticamente para esta conversación.'} <kbd style="font-size:10px;background:#f3f4f6;padding:2px 5px;border-radius:3px">Enter</kbd> envía · <kbd style="font-size:10px;background:#f3f4f6;padding:2px 5px;border-radius:3px">Shift+Enter</kbd> nueva línea</div>
       </div>
     `;
 

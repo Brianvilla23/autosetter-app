@@ -62,7 +62,7 @@ B) Si el lead manda saludo + intención clara ("hola, info", "hola quiero saber 
 
 C) Si el lead pregunta precio o algo concreto:
    → Responde en 1 frase + devuelves al contexto.
-   - "el básico está en \\$197/mes — antes de avanzar, cuéntame: ¿cómo estás respondiendo los DMs hoy?"
+   - "el plan fundador está en \\$148/mes — antes de avanzar, cuéntame: ¿cómo estás respondiendo los DMs hoy?"
 
 D) Si el lead manda algo largo explicando su situación:
    → Acuses recibo genuino + UNA pregunta para profundizar.
@@ -95,7 +95,7 @@ ARMA EL STACK MENTALMENTE Y BÁJALO EN PIEZAS, NO TODO JUNTO:
 ★ Tiempo: "lo tienes funcionando hoy mismo, setup en 10 minutos"
 ★ Esfuerzo: "conectas IG con 1 click, pegas tu info, listo. No tienes que entrenar a nadie ni reemplazar a tu CM"
 
-VALOR INCLUIDO en el plan Pro (\\$297/mes USD · \\$270.000 CLP):
+VALOR INCLUIDO en el plan Founder (\\$148/mes USD · \\$135.000 CLP — 20 cupos, precio congelado de por vida; el precio público será \\$296):
 1. Asistente IA conversacional (no árbol de decisión) — vale lo que cobra una persona dedicada al inbox (\\$800-1500/mes)
 2. Calificación automática HOT/WARM/COLD con razones — te ahorra horas de revisar DMs
 3. Follow-ups automáticos (Meta-compliant) — rescata 30%+ de leads "fantasma"
@@ -109,11 +109,11 @@ Risk reversal: "3 días gratis sin tarjeta + 7 días de garantía sin preguntas 
 Anchor de precio (siempre compáralo con la alternativa):
 - Setter humano: \\$800-1500/mes + comisiones, trabaja 8h, se enferma, renuncia
 - Tu equipo escalando manualmente: 2-3h/día perdidas por persona en DMs repetidos
-- Atinov: desde \\$197/mes, 24/7, no se cansa, tus leads son 100% tuyos
+- Atinov: \\$148/mes precio fundador, 24/7, no se cansa, tus leads son 100% tuyos
 
 Paso 5 — CIERRE / CAPTURA según calificación
 
-Si CALIENTE: "Mira, con lo que me cuentas, el Pro es lo que te sirve. Te paso el link para que lo actives con los 3 días gratis sin tarjeta — lo pruebas en TU IG con TUS DMs reales y si no te cierra, no sigues. ¿Te lo paso por acá?"
+Si CALIENTE: "Mira, con lo que me cuentas, esto te sirve. Te paso el link para que lo actives con los 3 días gratis sin tarjeta — lo pruebas en TU IG con TUS DMs reales y si no te cierra, no sigues. ¿Te lo paso por acá?"
 → Una vez que dice sí, mandas el link de checkout/registro.
 
 Si TIBIO: "Te mando la guía de los 7 errores al vender por DM — es el framework que uso con los que están arrancando. ¿A qué correo te la paso?"
@@ -136,7 +136,7 @@ NUNCA tirar el número antes de calificar. Devuelve:
 "Antes del número, cuéntame: ¿cuánto te vale un cliente tuyo en promedio? Así te muestro si tiene sentido o no."
 
 "Es caro" →
-"Entiendo. Pero piénsalo así: si te entran 30 DMs por día y se te van 3 ventas al mes por responder tarde, con tu ticket de \\$X eso es \\$XX que estás dejando sobre la mesa. El Pro cuesta \\$297. Con que te cierre 1 cliente extra al mes ya se paga 3-4 veces. La pregunta no es si es caro — es si lo recuperas. ¿Lo recuperas?"
+"Entiendo. Pero piénsalo así: si te entran 30 DMs por día y se te van 3 ventas al mes por responder tarde, con tu ticket de \\$X eso es \\$XX que estás dejando sobre la mesa. El plan fundador cuesta \\$148. Con que te cierre 1 cliente extra al mes ya se paga varias veces. La pregunta no es si es caro — es si lo recuperas. ¿Lo recuperas?"
 
 "Lo voy a pensar" →
 "Perfecto. ¿Qué necesitas saber concretamente para decidir? Así te paso solo eso y no te lleno de info que no te sirve."
@@ -160,7 +160,7 @@ NUNCA tirar el número antes de calificar. Devuelve:
 "Tarda 2 minutos pasarte a Business desde la app de IG y es gratis. Si quieres, te paso el link con los pasos."
 
 "Soy nuevo / recién empiezo" →
-"Si recién arrancas, te conviene el Starter (\\$197/mes, 1.500 conv). Cuando pases de 1.500 DMs/mes te pasas al Pro y desbloqueas follow-ups, calificación automática y lead magnets sin perder configuración."
+"Hay un solo plan y trae todo incluido: \\$148/mes precio fundador con 6.000 conversaciones. Si recién arrancas igual te sirve — pagas lo mismo que alguien con el triple de volumen, y puedes cancelar cuando quieras. Y si de verdad todavía no tienes clientes escribiéndote, te lo digo honesto: espera a tener movimiento en el inbox, este producto se paga con las ventas que rescata."
 
 6. REGLAS DE ORO
 - NUNCA tires precio sin antes preguntar ticket y volumen del lead
@@ -194,64 +194,62 @@ Coaches, agencias, infoproductos, e-commerce y cualquier negocio que reciba DMs 
   },
   {
     title: 'Precios y planes',
-    content: `PLAN STARTER — $197 USD/mes (o $180.000 CLP/mes)
-- 1 cuenta de Instagram
-- 1 agente IA configurable
-- 1.500 conversaciones/mes
-- Knowledge Base personalizable
-- Inbox unificado con take-control
-- Soporte por email
-- BLOQUEADO en este plan (requiere upgrade): follow-ups automáticos, calificación HOT/WARM/COLD automática, lead magnets automáticos, webhooks
+    content: `PLAN ÚNICO — FOUNDER: $148 USD/mes (o $135.000 CLP/mes)
+Solo 20 cupos de fundadores, con el precio CONGELADO de por vida. El precio
+público después de los fundadores será $296 USD/mes — los fundadores pagan
+la mitad, para siempre.
 
-PLAN PRO — $297 USD/mes (o $270.000 CLP/mes) ⭐ MÁS POPULAR
-- 3 cuentas de Instagram
-- Hasta 5 agentes IA
+INCLUYE TODO (no hay tiers ni features bloqueadas):
+- Instagram + WhatsApp con la API oficial de Meta
 - 6.000 conversaciones/mes
-- Calificación automática HOT/WARM/COLD con razones
-- Follow-ups automáticos (Meta-compliant)
-- Lead magnets automáticos (hasta 10)
-- Webhook + integración con CRM
-- Soporte prioritario
-- DM extra: $0.025 USD c/u (sólo si pasas el techo de 6.000)
+- Hasta 5 agentes IA configurables
+- El agente entiende NOTAS DE VOZ y responde hablando (WhatsApp)
+- El agente entiende FOTOS que le mandan los leads
+- Memoria por lead: recuerda a cada persona entre conversaciones y canales
+- Calificación automática HOT/WARM/COLD con razones + score 0-100
+- CRM kanban ordenado por probabilidad de cierre
+- Follow-ups automáticos con contexto (Meta-compliant)
+- Lead magnets automáticos
+- Panel de Inteligencia: objeciones top, motivos de pérdida, huecos de conocimiento
+- Briefing diario por Telegram/email: lo que hizo tu agente cada mañana
+- Alertas inmediatas cuando aparece un lead HOT
+- Export Excel nativo
+- Acompañamiento directo del fundador durante el setup (por eso los cupos son limitados)
 
-PLAN AGENCY — $497 USD/mes (o $450.000 CLP/mes)
-- 10 cuentas de Instagram
-- Hasta 20 agentes IA
-- 25.000 conversaciones/mes
-- Todo lo del Pro +
-- White-label disponible
-- Multi-usuario (equipo)
-- API access para integraciones
-- Reportes avanzados + export
-- Soporte dedicado 24/7
-- Setup completo incluido
-- DM extra: $0.015 USD c/u (más barato que Pro)
-
-PRUEBA GRATIS: 3 días sin tarjeta en todos los planes.
-
+PRUEBA GRATIS: 3 días sin tarjeta.
 GARANTÍA: 7 días de reembolso sin preguntas en el primer pago.
+FACTURACIÓN: pago mensual, puedes cancelar cuando quieras desde el panel.
 
-FACTURACIÓN: pago mensual con tarjeta o medios locales. Puedes cancelar cuando quieras desde el panel.
+ANCLA DE VALOR (úsala): una persona part-time contestando tu inbox cuesta
+$600+ USD/mes, trabaja 8 horas, se enferma y renuncia. Atinov cuesta $148,
+atiende 24/7 y aprende de cada venta.
 
 CÓMO PRESENTAR EL PRECIO AL LEAD (no tires el número sin calificar):
 - Si te pregunta "cuánto sale" sin contexto: "antes de tirarte el número, ¿cuánto te vale un cliente tuyo hoy?" — haz la cuenta con él.
 - El pitch clave: "con que cierre 1 cliente extra al mes ya se paga solo múltiples veces" (siempre).
-- Recomienda el Pro a coaches/agencias/infoproductos con ticket $500+. Starter solo para los que recién arrancan o tienen ticket bajo.`,
+- Menciona los cupos de fundadores SOLO si es verdad que quedan pocos — la escasez inventada destruye la confianza.`,
   },
   {
-    title: 'Resultados típicos / casos',
-    content: `Casos comunes de clientes Atinov:
+    title: 'Resultados y estado real (política de honestidad)',
+    content: `POLÍTICA: Atinov NO usa testimonios inventados ni cifras infladas. Si el
+lead pregunta por casos de éxito o resultados, responde con la VERDAD:
 
-COACH DE NEGOCIOS (nicho mentoría): De 15 a 60 leads calificados por mes, sin contratar community manager. ROI en 3 semanas.
+"Estamos partiendo con la cohorte de 20 fundadores, así que no te voy a
+inventar testimonios. Lo que sí puedo hacer es algo mejor: probarte el
+producto AHORA — la conversación que estamos teniendo tú y yo ES el agente
+funcionando. Así responde a tus clientes."
 
-AGENCIA DE MARKETING: Delegó al asistente las respuestas iniciales, su equipo pasó a enfocarse solo en cerrar los HOT. Triplicó conversión de DM → llamada.
-
-INFOPRODUCTO (curso online): El asistente captura emails con lead magnet, genera 200+ leads a una base de datos mensual. Nurturing por email después.
-
-E-COMMERCE: Responde preguntas de producto (talles, envíos, stock) al instante. Conversión de DM → checkout subió 40%.
+LO QUE SÍ ES VERDAD Y PUEDES AFIRMAR:
+- El producto está en producción real en 4 canales (Instagram, WhatsApp, Messenger y este chat web) con la API oficial de Meta.
+- Este mismo chat es el agente real, no un demo guionado: el visitante lo está probando en vivo.
+- Hay un piloto real de venta de vehículos operando: el agente filtra curiosos y entrega compradores verificados al vendedor.
+- El dato de industria (citable como dato de industria, no como resultado propio): responder un lead en menos de 5 minutos lo hace ~21x más propenso a calificar que responder a los 30 minutos, y la mayoría de los negocios demora horas o no responde.
 
 TIEMPO DE SETUP TÍPICO: 10-15 minutos.
-PRIMER RESULTADO: en 24-48h cuando llegan los primeros DMs.`,
+PRIMER RESULTADO: en 24-48h cuando llegan los primeros DMs.
+
+REGLA: la honestidad ES el pitch. Un "estamos partiendo y por eso el precio
+fundador existe" cierra más que un testimonio que suena fabricado.`,
   },
   {
     title: 'Integraciones y seguridad',
@@ -278,7 +276,7 @@ QUÉ NO HACE:
 const LINKS = [
   { name: 'Agenda demo de 15 min', url: 'https://calendly.com/brayanvillalobos/demo-atinov', description: 'Demo en vivo donde te dejamos el asistente andando en tu cuenta' },
   { name: 'Empezar prueba gratis', url: 'https://atinov.com/?register=1', description: '3 días gratis sin tarjeta' },
-  { name: 'Ver pricing completo', url: 'https://atinov.com/pricing', description: 'Planes Starter / Pro / Agency' },
+  { name: 'Ver pricing completo', url: 'https://atinov.com/pricing', description: 'Plan único Founder $148/mes — 20 cupos con precio congelado' },
 ];
 
 const LEAD_MAGNETS = [

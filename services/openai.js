@@ -376,9 +376,14 @@ Ejemplo: "mira, te mando la guía que uso con los que están arrancando — ¿a 
     console.log(`🧠 Reasoning ON (${selectedModel}) — score=${complexity.score} reasons=[${complexity.reasons.join(', ')}]`);
   }
 
+  // Los mensajes role:'sistema' (ej. "Pago confirmado por Mercado Pago") son
+  // anotaciones del CRM, no diálogo — si entran al historial quedan atribuidos
+  // al LEAD y contaminan al modelo. Se filtran de todo lo que ve el LLM.
+  const dialogHistory = conversationHistory.filter(m => m.role !== 'sistema');
+
   const messages = [
     { role: 'system', content: systemPrompt },
-    ...conversationHistory.map(m => ({
+    ...dialogHistory.map(m => ({
       role: m.role === 'agent' ? 'assistant' : 'user',
       content: m.content
     })),
@@ -394,7 +399,7 @@ Ejemplo: "mira, te mando la guía que uso con los que están arrancando — ¿a 
     // Para reasoning models: consolidar system en primer 'developer'/'user' message
     const reasoningMessages = [
       { role: 'developer', content: systemPrompt },
-      ...conversationHistory.map(m => ({
+      ...dialogHistory.map(m => ({
         role: m.role === 'agent' ? 'assistant' : 'user',
         content: m.content
       })),
@@ -452,6 +457,7 @@ async function classifyLead({ conversationHistory, accountId, apiKey }) {
   const client = new OpenAI({ apiKey: key });
 
   const conversationText = conversationHistory
+    .filter(m => m.role !== 'sistema') // anotaciones del CRM, no diálogo del prospecto
     .map(m => `${m.role === 'agent' ? 'AGENTE' : 'PROSPECTO'}: ${m.content}`)
     .join('\n');
 

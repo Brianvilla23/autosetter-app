@@ -773,6 +773,32 @@ router.post('/probar-envio-ig', async (req, res) => {
 });
 
 /**
+ * POST /api/admin/crear-demo
+ * Crea (o resetea) la cuenta demo@atinov.com — Clínica Demo Sonrisa — con
+ * leads, conversaciones (incluye nota de voz y foto), memoria por lead,
+ * follow-ups y un deal ganado. Para mostrar el dashboard en llamadas de
+ * venta sin exponer datos reales. Devuelve la contraseña UNA vez.
+ * Body: { password? } — si no viene, se genera una aleatoria.
+ */
+router.post('/crear-demo', async (req, res) => {
+  try {
+    const { seedDemo, DEMO_EMAIL } = require('../services/demoSeed');
+    const password = req.body?.password && String(req.body.password).length >= 8
+      ? String(req.body.password)
+      : 'Demo' + require('crypto').randomBytes(4).toString('hex') + '1';
+    const r = await seedDemo({ password });
+    await db.insert(db.auditLog, {
+      action: 'demo_seed', target: DEMO_EMAIL, at: new Date().toISOString(),
+    }).catch(() => null);
+    res.json({
+      ...r,
+      password,
+      aviso: 'Guarda la contraseña — no se vuelve a mostrar. Entra en /app con demo@atinov.com. Volver a llamar este endpoint resetea los datos del demo.',
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
  * POST /api/admin/actualizar-prompt-agente
  * Reemplaza las instrucciones de un agente por la plantilla vigente
  * (DEFAULT_AGENT_PROMPT v2: presupuesto de preguntas + bifurcación + modo

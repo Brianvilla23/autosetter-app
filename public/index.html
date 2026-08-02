@@ -224,7 +224,7 @@
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
         <div>
           <h3 style="margin:0;font-size:17px;color:#9a3412">🚀 Termina tu setup</h3>
-          <p style="margin:4px 0 0;color:var(--text-2);font-size:13px" id="onboarding-subtitle">Completa estos pasos para activar tu bot</p>
+          <p style="margin:4px 0 0;color:var(--text-2);font-size:13px" id="onboarding-subtitle">Completa estos pasos para activar tu agente</p>
         </div>
         <div style="display:flex;align-items:center;gap:10px">
           <span id="onboarding-progress-text" style="font-size:13px;color:var(--text-2);font-weight:600">0/6</span>
@@ -248,7 +248,7 @@
       <div class="home-card">
         <h3>💡 Tips rápidos</h3>
         <ul style="padding-left:18px;color:var(--text-2);font-size:14px;line-height:1.7;margin:0">
-          <li>Prueba el bot en el <strong>Tester</strong> antes de ponerlo live.</li>
+          <li>Prueba el agente en el <strong>Tester</strong> antes de ponerlo live.</li>
           <li>Revisa los <strong>Leads HOT</strong> — ésos son tus ventas calientes.</li>
           <li>Editá el prompt del agente cuando detectes respuestas flojas.</li>
           <li>Configura <strong>follow-ups</strong> para rescatar leads que te dejaron en visto.</li>
@@ -342,7 +342,7 @@
     <div class="page-header">
       <div>
         <h1>Inbox</h1>
-        <p>Todas las conversaciones del bot. Toma el control cuando necesites cerrar tú.</p>
+        <p>Todas las conversaciones del agente. Toma el control cuando necesites cerrar tú.</p>
       </div>
       <button class="btn-ghost" onclick="loadInbox()" title="Refrescar" style="padding:8px 14px">↻</button>
     </div>
@@ -489,7 +489,7 @@
     <div class="page-header">
       <div>
         <h1>Analytics</h1>
-        <p>Métricas detalladas de tu bot: performance, conversión y comportamiento de leads.</p>
+        <p>Métricas detalladas de tu agente: performance, conversión y comportamiento de leads.</p>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
         <select id="analytics-window" style="padding:7px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:#fff">
@@ -516,7 +516,7 @@
       <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px">
         <div style="font-size:12px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Tasa de calificación</div>
         <div style="font-size:1.6rem;font-weight:800;color:#10b981" id="kpi-qualified">—</div>
-        <div style="font-size:12px;color:var(--text-2);margin-top:4px">% de leads que el bot pudo calificar</div>
+        <div style="font-size:12px;color:var(--text-2);margin-top:4px">% de leads que el agente pudo calificar</div>
       </div>
       <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px">
         <div style="font-size:12px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Tasa de conversión</div>
@@ -529,9 +529,9 @@
         <div style="font-size:12px;color:var(--text-2);margin-top:4px">% de leads calificados como caliente</div>
       </div>
       <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px">
-        <div style="font-size:12px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Bot respondió</div>
+        <div style="font-size:12px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Agente respondió</div>
         <div style="font-size:1.6rem;font-weight:800;color:#0ea5e9" id="kpi-respondidos">—</div>
-        <div style="font-size:12px;color:var(--text-2);margin-top:4px">leads con al menos 1 respuesta del bot</div>
+        <div style="font-size:12px;color:var(--text-2);margin-top:4px">leads con al menos 1 respuesta del agente</div>
       </div>
     </div>
 
@@ -560,7 +560,7 @@
 
     <!-- Funnel -->
     <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:18px">
-      <h3 style="margin:0 0 14px;font-size:15px">🎯 Funnel del bot</h3>
+      <h3 style="margin:0 0 14px;font-size:15px">🎯 Funnel del agente</h3>
       <div id="analytics-funnel" style="display:flex;flex-direction:column;gap:10px"></div>
     </div>
 
@@ -723,13 +723,13 @@
     <div class="page-header">
       <div>
         <h1>Lead Magnets</h1>
-        <p>Ganchos de valor que el bot ofrece para capturar leads que no están listos para comprar</p>
+        <p>Ganchos de valor que el agente ofrece para capturar leads que no están listos para comprar</p>
       </div>
       <button class="btn-primary" onclick="openMagnetForm()">+ Nuevo magnet</button>
     </div>
 
     <div class="links-info">
-      🧲 Cuando un lead muestra interés pero dice "lo pienso" / "es caro" / "no estoy listo", el bot le ofrece uno de estos recursos (PDF, guía, caso, diagnóstico) a cambio de su email.
+      🧲 Cuando un lead muestra interés pero dice "lo pienso" / "es caro" / "no estoy listo", el agente le ofrece uno de estos recursos (PDF, guía, caso, diagnóstico) a cambio de su email.
       <br>Así conviertes ruido en base de datos con la que puedes hacer follow-up después.
     </div>
 
@@ -755,7 +755,7 @@
         </div>
 
         <div class="form-row" style="flex-direction:column;align-items:stretch;margin-top:10px">
-          <label style="font-size:13px;color:var(--text-2);margin-bottom:4px">Frase que usa el bot para ofrecerlo <small>(opcional, tono natural)</small></label>
+          <label style="font-size:13px;color:var(--text-2);margin-bottom:4px">Frase que usa el agente para ofrecerlo <small>(opcional, tono natural)</small></label>
           <textarea id="magnet-pitch" placeholder="Ej: mira, te mando la guía que uso con los que están arrancando — ¿a qué mail te la paso?" class="form-input" rows="2" maxlength="300" style="resize:vertical"></textarea>
         </div>
 
@@ -838,7 +838,7 @@
     <!-- FOLLOW-UP CONFIG -->
     <div class="settings-card" style="margin-bottom:20px">
       <h3>🔔 Follow-up automático</h3>
-      <p>Si un lead no responde en X horas (dentro de ventana 24h de Instagram), el bot le manda un mensaje de seguimiento contextual. Máximo 2 intentos por lead. 100% compliant con la política de Meta.</p>
+      <p>Si un lead no responde en X horas (dentro de ventana 24h de Instagram), el agente le manda un mensaje de seguimiento contextual. Máximo 2 intentos por lead. 100% compliant con la política de Meta.</p>
       <div id="followup-agents-list" style="margin-top:14px"></div>
     </div>
 
@@ -852,7 +852,7 @@
       </div>
       <small style="color:var(--text-3);display:block;margin-top:8px;font-size:12px">
         <strong>Leads</strong>: 31 columnas con info de cada lead (1 fila por lead).<br>
-        <strong>Conversaciones</strong>: cada mensaje con su contenido (1 fila por mensaje, ideal para revisar tonos del bot).
+        <strong>Conversaciones</strong>: cada mensaje con su contenido (1 fila por mensaje, ideal para revisar tonos del agente).
       </small>
     </div>
 
@@ -1032,7 +1032,7 @@
 
       <div class="settings-card">
         <h3>Apariencia</h3>
-        <p>Personalizá el color de acento y el fondo del panel. Se guarda en este navegador.</p>
+        <p>Personaliza el color de acento y el fondo del panel. Se guarda en este navegador.</p>
         <div class="form-row">
           <label>Color de acento</label>
           <div id="theme-swatches" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px"></div>
@@ -1574,8 +1574,8 @@ function onbRender() {
     bodyEl.innerHTML = `
       <p>Atinov va a calificar tus DMs de Instagram 24/7 y avisarte cuando un lead esté listo para agendar o comprar.</p>
       <p>En los próximos 3 pasos vamos a dejar todo listo:</p>
-      <div class="onb-feature"><span class="ico">📸</span><div class="txt"><strong>Conectar Instagram</strong><small>Para que el bot pueda leer y responder DMs en tu nombre</small></div></div>
-      <div class="onb-feature"><span class="ico">🤖</span><div class="txt"><strong>Configurar tu agente</strong><small>Le das tu oferta y personalidad, el bot lo usa en cada conversación</small></div></div>
+      <div class="onb-feature"><span class="ico">📸</span><div class="txt"><strong>Conectar Instagram</strong><small>Para que el agente pueda leer y responder DMs en tu nombre</small></div></div>
+      <div class="onb-feature"><span class="ico">🤖</span><div class="txt"><strong>Configurar tu agente</strong><small>Le das tu oferta y personalidad, tu agente lo usa en cada conversación</small></div></div>
       <div class="onb-feature"><span class="ico">🔥</span><div class="txt"><strong>Alertas de leads HOT</strong><small>Recibís un Telegram solo cuando un lead pide agenda o precio</small></div></div>
       <p style="color:#888;font-size:0.82rem;margin-top:14px">⏱ Toma unos 3–4 minutos. Puedes saltar cualquier paso y volver después desde Configuración.</p>
     `;
@@ -1630,7 +1630,7 @@ function onbRender() {
         <li><strong>Links:</strong> tu Calendly, testimonios, VSL</li>
       </ul>
       <div class="onb-highlight">
-        💡 <strong>Tip:</strong> cuanto más específico seas con la oferta y el tono, mejor cierra el bot. Tardás 5 min ahora y ahorrás horas después.
+        💡 <strong>Tip:</strong> cuanto más específico seas con la oferta y el tono, mejor cierra el agente. Tardas 5 min ahora y ahorras horas después.
       </div>
       <button class="onb-btn onb-btn-ghost" onclick="onbGoToAgents()" style="width:100%;margin-top:6px">
         🤖 Ir a configurar mi agente
@@ -1648,7 +1648,7 @@ function onbRender() {
         <span class="ico">${done?'✅':'🔔'}</span>
         <div class="txt">
           <strong>${done?'Telegram configurado':'Telegram pendiente'}</strong>
-          <small>${done?'Ya vas a recibir alertas de leads HOT':'Configura tu bot para no perder ningún lead caliente'}</small>
+          <small>${done?'Ya vas a recibir alertas de leads HOT':'Configura las alertas para no perder ningún lead caliente'}</small>
         </div>
       </div>
       ${done ? '' : `
