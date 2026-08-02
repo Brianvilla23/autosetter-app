@@ -801,6 +801,15 @@ setInterval(() => {
     .catch(e => console.error('dailyBriefing sweep:', e.message));
 }, 30 * 60 * 1000);
 
+// ── AUTO-MEJORA SEMANAL DEL AGENTE ────────────────────────────────────────────
+// Cada hora chequea; corre los lunes ≥13 UTC, una vez por semana por cuenta:
+// analiza conversaciones perdidas → propone mejoras al prompt → el dueño las
+// aprueba en el Panel de Inteligencia. Autonomía gobernada, nunca auto-aplica.
+setInterval(() => {
+  require('./services/promptImprover').sweepImprovements()
+    .catch(e => console.error('promptImprover sweep:', e.message));
+}, 60 * 60 * 1000);
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`\n🚀 Atinov running   → http://localhost:${PORT}`);

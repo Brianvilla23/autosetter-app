@@ -776,6 +776,24 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
     const stageLog = stageUpd.pipeline_stage ? ` · etapa→${stageUpd.pipeline_stage}` : '';
     console.log(`🎯 [@${lead.ig_username}] → ${result.qualification.toUpperCase()}: ${result.reason}${stageLog}`);
 
+    // ── Evento facturable: lead calificado HOT (transición, con dedup) ──────
+    // Base del pricing por resultado (Tier 3): registro objetivo y auditable
+    // de cada outcome que el agente produce. Hoy solo se CUENTA — el cobro
+    // por outcome se activa cuando el plan lo incluya.
+    if (result.qualification === 'hot' && prevQualification !== 'hot') {
+      try {
+        const yaExiste = await db.findOne(db.billableEvents, { lead_id: lead._id, type: 'lead_calificado' });
+        if (!yaExiste) {
+          await db.insert(db.billableEvents, {
+            account_id: account._id,
+            lead_id: lead._id,
+            type: 'lead_calificado',
+            detalle: result.reason || null,
+          });
+        }
+      } catch (e) { /* contador best-effort */ }
+    }
+
     // ── Disparar notificación si transicionó a HOT ───────────────────────────
     if (result.qualification === 'hot' && prevQualification !== 'hot') {
       try {

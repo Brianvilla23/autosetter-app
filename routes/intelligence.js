@@ -44,6 +44,48 @@ function aggregate(items, cap = 12) {
     .map(({ text, count, outcome }) => ({ text, count, outcome }));
 }
 
+// ── MEJORAS PROPUESTAS (auto-mejora semanal del agente) ─────────────────────
+// El job semanal analiza conversaciones perdidas y propone mejoras al prompt.
+// El dueño las aprueba (se anexan a agent.instructions) o descarta, 1 clic.
+
+// GET /api/intelligence/improvements?accountId=X
+router.get('/improvements', async (req, res, next) => {
+  try {
+    const { accountId } = req.query;
+    if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
+    const items = (await db.find(db.improvements, { account_id: accountId, status: 'pending' }))
+      .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+    res.json({ improvements: items.map(i => ({
+      id: i._id, causa: i.causa, evidencia: i.evidencia, propuesta: i.propuesta,
+      muestra: i.muestra, createdAt: i.createdAt,
+    })) });
+  } catch (e) { next(e); }
+});
+
+// POST /api/intelligence/improvements/apply  Body: { accountId, id }
+router.post('/improvements/apply', async (req, res, next) => {
+  try {
+    const { accountId, id } = req.body;
+    if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
+    const { applyImprovement } = require('../services/promptImprover');
+    const r = await applyImprovement(id, accountId);
+    if (!r.ok) return res.status(400).json(r);
+    res.json(r);
+  } catch (e) { next(e); }
+});
+
+// POST /api/intelligence/improvements/dismiss  Body: { accountId, id }
+router.post('/improvements/dismiss', async (req, res, next) => {
+  try {
+    const { accountId, id } = req.body;
+    if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
+    const { dismissImprovement } = require('../services/promptImprover');
+    const r = await dismissImprovement(id, accountId);
+    if (!r.ok) return res.status(400).json(r);
+    res.json(r);
+  } catch (e) { next(e); }
+});
+
 // GET /api/intelligence?accountId=X
 router.get('/', async (req, res, next) => {
   try {

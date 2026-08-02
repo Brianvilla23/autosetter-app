@@ -773,6 +773,73 @@ router.post('/probar-envio-ig', async (req, res) => {
 });
 
 /**
+ * GET /api/admin/eventos-facturables?mes=YYYY-MM
+ * Resumen mensual de outcomes por cuenta: leads calificados (HOT) y ventas
+ * cerradas con pago MP verificado. Es la base auditable del pricing por
+ * resultado — hoy solo cuenta; el cobro por outcome se activa por plan.
+ */
+router.get('/eventos-facturables', async (req, res) => {
+  try {
+    const mes = /^\d{4}-\d{2}$/.test(String(req.query.mes || ''))
+      ? String(req.query.mes)
+      : new Date().toISOString().slice(0, 7);
+    const eventos = (await db.find(db.billableEvents, {}))
+      .filter(e => (e.createdAt || '').startsWith(mes));
+
+    // Dedup del lado lectura — la métrica de cobro debe ser inmune a las
+    // carreras de escritura: MP notifica el mismo pago 2 veces (created +
+    // updated), y dos clasificaciones concurrentes pueden duplicar el evento
+    // de lead. Ventas: únicas por mp_payment_id. Leads: únicos por lead_id.
+    const porCuenta = {};
+    const pagosVistos = new Set();
+    const leadsVistos = new Set();
+    for (const e of eventos) {
+      const c = (porCuenta[e.account_id] ||= { leads_calificados: 0, ventas_cerradas: 0, monto_ventas_clp: 0 });
+      if (e.type === 'lead_calificado') {
+        const key = `${e.account_id}:${e.lead_id}`;
+        if (leadsVistos.has(key)) continue;
+        leadsVistos.add(key);
+        c.leads_calificados++;
+      }
+      if (e.type === 'venta_cerrada') {
+        if (e.mp_payment_id && pagosVistos.has(e.mp_payment_id)) continue;
+        if (e.mp_payment_id) pagosVistos.add(e.mp_payment_id);
+        c.ventas_cerradas++;
+        c.monto_ventas_clp += Number(e.amount) || 0;
+      }
+    }
+    // Nombre de cuenta para lectura humana
+    const cuentas = await db.find(db.accounts, {});
+    const resumen = Object.entries(porCuenta).map(([accId, stats]) => ({
+      accountId: accId,
+      cuenta: cuentas.find(a => a._id === accId)?.ig_username || cuentas.find(a => a._id === accId)?.name || accId,
+      ...stats,
+    })).sort((a, b) => b.ventas_cerradas - a.ventas_cerradas || b.leads_calificados - a.leads_calificados);
+
+    res.json({ mes, total_eventos: eventos.length, cuentas: resumen });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
+ * POST /api/admin/aplicar-preset-dental
+ * Aplica el preset vertical dental a una cuenta: agente recepcionista +
+ * knowledge base con placeholders [EDITAR]. No borra nada existente.
+ * Body: { accountId, nombreClinica? }
+ */
+router.post('/aplicar-preset-dental', async (req, res) => {
+  try {
+    const { accountId, nombreClinica } = req.body;
+    if (!accountId) return res.status(400).json({ error: 'accountId requerido' });
+    const cuenta = await db.findOne(db.accounts, { _id: accountId });
+    if (!cuenta) return res.status(404).json({ error: 'cuenta no encontrada' });
+
+    const { applyDentalPreset } = require('../services/presets/dentalPreset');
+    const r = await applyDentalPreset(db, accountId, { nombreClinica });
+    res.json(r);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
  * POST /api/admin/crear-demo
  * Crea (o resetea) la cuenta demo@atinov.com — Clínica Demo Sonrisa — con
  * leads, conversaciones (incluye nota de voz y foto), memoria por lead,

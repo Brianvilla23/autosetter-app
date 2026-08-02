@@ -139,6 +139,24 @@ async function handleMpNotification({ accountId, leadId, paymentId }) {
     role: 'sistema',
     content: `💰 Pago confirmado por Mercado Pago: $${Number(pago.transaction_amount).toLocaleString('es-CL')} CLP (${pago.description || 'sin descripción'})`,
   });
+  // Evento facturable: venta cerrada con pago verificado — la señal más dura
+  // que existe para el pricing por resultado (Tier 3). Pre-check por
+  // mp_payment_id: MP manda payment.created Y payment.updated casi
+  // simultáneas para el mismo pago (achica la ventana de carrera; el
+  // agregador del admin deduplica además del lado lectura).
+  const dupEvento = await db.findOne(db.billableEvents, {
+    type: 'venta_cerrada', mp_payment_id: String(pago.id),
+  }).catch(() => null);
+  if (!dupEvento) {
+    await db.insert(db.billableEvents, {
+      account_id: accountId,
+      lead_id: leadId,
+      type: 'venta_cerrada',
+      amount: pago.transaction_amount,
+      currency: 'CLP',
+      mp_payment_id: String(pago.id),
+    }).catch(() => null);
+  }
   console.log(`💰 [MP] Pago aprobado → lead ${leadId} a GANADO ($${pago.transaction_amount} CLP)`);
   return { ok: true, amount: pago.transaction_amount };
 }

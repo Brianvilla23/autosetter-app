@@ -411,6 +411,11 @@ function loadSection(name) {
 // de pérdida, mensajes que funcionan. Empty-state si el RAG no tiene datos.
 async function loadIntelligence() {
   if (!ACCOUNT_ID) return;
+
+  // Mejoras propuestas: independientes del RAG (funcionan sin Supabase),
+  // por eso se cargan ANTES del early-return de abajo.
+  loadImprovements().catch(() => null);
+
   const d = await apiFetch(`/api/intelligence?accountId=${ACCOUNT_ID}`);
   if (!d) return;
 
@@ -480,6 +485,43 @@ async function loadIntelligence() {
   }
 }
 window.loadIntelligence = loadIntelligence;
+
+// ── Mejoras propuestas (auto-mejora semanal del agente) ─────────────────────
+async function loadImprovements() {
+  const card = document.getElementById('intel-improvements-card');
+  const list = document.getElementById('intel-list-improvements');
+  if (!card || !list) return;
+  const d = await apiFetch(`/api/intelligence/improvements?accountId=${ACCOUNT_ID}`);
+  const items = d?.improvements || [];
+  if (!items.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  list.innerHTML = items.map(i => `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;padding:13px 14px">
+      <div style="font-size:13.5px;font-weight:700;margin-bottom:3px">${escHtml(i.causa)}</div>
+      ${i.evidencia ? `<div style="font-size:12.5px;color:var(--text-2);margin-bottom:8px">${escHtml(i.evidencia)}${i.muestra ? ` · análisis sobre ${i.muestra} conversaciones` : ''}</div>` : ''}
+      <div style="font-size:13px;background:var(--surface-2);border-left:3px solid var(--accent);border-radius:6px;padding:9px 12px;margin-bottom:10px;line-height:1.5">${escHtml(i.propuesta)}</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-primary" style="padding:7px 16px;font-size:13px" onclick="applyImprovementUI('${i.id}', this)">✓ Aprobar</button>
+        <button class="btn-ghost" style="padding:7px 12px;font-size:13px" onclick="dismissImprovementUI('${i.id}', this)">Descartar</button>
+      </div>
+    </div>`).join('');
+}
+
+async function applyImprovementUI(id, btn) {
+  btn.disabled = true; btn.textContent = 'Aplicando…';
+  const r = await apiFetch('/api/intelligence/improvements/apply', 'POST', { accountId: ACCOUNT_ID, id });
+  if (r?.ok) { showToast('✓ Mejora agregada a las instrucciones del agente'); loadImprovements(); }
+  else { showToast('❌ ' + (r?.error || 'Error')); btn.disabled = false; btn.textContent = '✓ Aprobar'; }
+}
+window.applyImprovementUI = applyImprovementUI;
+
+async function dismissImprovementUI(id, btn) {
+  btn.disabled = true;
+  const r = await apiFetch('/api/intelligence/improvements/dismiss', 'POST', { accountId: ACCOUNT_ID, id });
+  if (r?.ok) loadImprovements();
+  else { showToast('❌ ' + (r?.error || 'Error')); btn.disabled = false; }
+}
+window.dismissImprovementUI = dismissImprovementUI;
 
 // Expande/colapsa el panel inline de enseñanza (cierra los demás al abrir uno).
 function toggleTeachPanel(idx, forceClose) {
