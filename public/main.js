@@ -1765,6 +1765,51 @@ async function loadSettings() {
     if (r?.ok) { loadSettings(); showToast('Messenger desconectado'); }
   });
 
+  // ── Google Calendar (agendamiento in-chat) ────────────────────────────────
+  // onclick por asignación (no addEventListener): esta función corre en cada
+  // loadSettings() y los listeners acumulados dispararían handlers múltiples.
+  const gcal = await apiFetch('/api/calendar/status');
+  const gcalConnEl = document.getElementById('gcal-connected');
+  const gcalNotEl  = document.getElementById('gcal-not-connected');
+  if (gcalConnEl) gcalConnEl.style.display = gcal?.connected ? '' : 'none';
+  if (gcalNotEl)  gcalNotEl.style.display  = gcal?.connected ? 'none' : '';
+  if (gcal?.connected && gcal.connected_at) {
+    const s = document.getElementById('gcal-connected-since');
+    if (s) s.textContent = 'Conectado desde el ' + new Date(gcal.connected_at).toLocaleDateString('es-CL');
+  }
+  // Estado del botón SIEMPRE recalculado: si quedó deshabilitado por un click
+  // previo (Atrás del navegador restaura el DOM) o el server recién se
+  // configuró, debe revivir sin F5.
+  const gcalHint = document.getElementById('gcal-hint');
+  const btnGcal = document.getElementById('btn-connect-gcal');
+  if (btnGcal) btnGcal.disabled = !(gcal?.configured);
+  if (gcalHint) {
+    gcalHint.textContent = (gcal && !gcal.configured)
+      ? '⏳ Función en preparación — disponible muy pronto.'
+      : '';
+  }
+  if (btnGcal) btnGcal.onclick = async () => {
+    btnGcal.disabled = true;
+    try {
+      const res = await fetch(API + '/api/calendar/connect', {
+        headers: { 'Authorization': `Bearer ${AUTH_TOKEN}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.url) throw new Error(data.error || 'No se pudo iniciar la conexión');
+      window.location.href = data.url;
+    } catch (e) {
+      btnGcal.disabled = false;
+      showToast('⚠️ ' + e.message);
+    }
+  };
+
+  const btnGcalOff = document.getElementById('btn-disconnect-gcal');
+  if (btnGcalOff) btnGcalOff.onclick = async () => {
+    if (!confirm('¿Desconectar Google Calendar? El agente dejará de ofrecer horarios y agendar citas.')) return;
+    const r = await apiFetch('/api/calendar/disconnect', 'POST', {});
+    if (r?.ok) { loadSettings(); showToast('Calendario desconectado'); }
+  };
+
   // ── Notificaciones ────────────────────────────────────────────────────────
   await loadNotifications();
 }

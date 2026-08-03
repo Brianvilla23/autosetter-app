@@ -68,30 +68,35 @@ router.post('/disconnect', async (req, res) => {
 
 /**
  * Callback del consent de Google (público — protegido por el state firmado).
- * Responde una página mínima que se cierra sola.
+ * Todos los paths responden una página mínima que redirige a /app.
  */
 async function handleOAuthCallback(req, res) {
-  const page = (titulo, cuerpo) => res.set('Content-Type', 'text/html; charset=utf-8').send(
+  // El flujo llega navegando en la MISMA pestaña desde el dashboard, así que
+  // TODOS los paths (éxito y error) devuelven una página que redirige a /app —
+  // nunca dejar al dueño varado en texto plano fuera de su panel.
+  const page = (titulo, cuerpo, status = 200) => res.status(status)
+    .set('Content-Type', 'text/html; charset=utf-8').send(
     `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>${titulo}</title></head>` +
     `<body style="font-family:sans-serif;background:#0a0a0a;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">` +
-    `<div style="text-align:center"><h2>${titulo}</h2><p>${cuerpo}</p></div>` +
-    `<script>setTimeout(()=>{try{window.close()}catch(e){}},4000)</script></body></html>`
+    `<div style="text-align:center"><h2>${titulo}</h2><p>${cuerpo}</p>` +
+    `<p style="opacity:.6;font-size:14px">Volviendo a tu panel…</p></div>` +
+    `<script>setTimeout(()=>{window.location.href='/app'},2500)</script></body></html>`
   );
   try {
-    if (!cal.isConfigured()) return res.status(400).send('Google Calendar no configurado');
+    if (!cal.isConfigured()) return page('No disponible', 'Google Calendar no está configurado en el servidor.', 400);
     const { code, state, error } = req.query;
-    if (error) return page('Conexión cancelada', 'Cerraste el permiso de Google. Puedes intentarlo de nuevo desde Atinov.');
-    if (!code || !state) return res.status(400).send('Faltan parámetros');
+    if (error) return page('Conexión cancelada', 'Cerraste el permiso de Google. Puedes intentarlo de nuevo desde Configuración.');
+    if (!code || !state) return page('Faltan parámetros', 'Reintenta la conexión desde Configuración.', 400);
 
     const accountId = cal.verifyState(state);
-    if (!accountId) return res.status(400).send('State inválido o expirado — reintenta desde Atinov');
+    if (!accountId) return page('El permiso expiró', 'Pasaron más de 10 minutos — reintenta la conexión desde Configuración.', 400);
 
     const cuenta = await db.findOne(db.accounts, { _id: accountId });
-    if (!cuenta) return res.status(404).send('Cuenta no encontrada');
+    if (!cuenta) return page('Cuenta no encontrada', 'Reintenta la conexión desde Configuración.', 404);
 
     const tokens = await cal.exchangeCode(String(code));
     if (!tokens?.refresh_token) {
-      return page('Falta un permiso', 'Google no entregó el acceso permanente. Reintenta y acepta todos los permisos.');
+      return page('Falta un permiso', 'Google no entregó el acceso permanente. Reintenta y acepta todos los permisos.', 400);
     }
 
     const existing = await db.findOne(db.settings, { account_id: accountId });
@@ -108,10 +113,10 @@ async function handleOAuthCallback(req, res) {
     // seguiría leyendo/escribiendo el calendario anterior hasta 1h.
     cal.clearAccountCache(accountId);
     console.log(`📅 Google Calendar conectado para cuenta ${accountId}`);
-    return page('✅ Calendario conectado', 'Tu agente ya puede agendar citas reales. Puedes cerrar esta ventana.');
+    return page('✅ Calendario conectado', 'Tu agente ya puede ver tu disponibilidad y agendar citas reales.');
   } catch (e) {
     console.error('[agenda] callback OAuth falló:', e.response?.data || e.message);
-    return res.status(500).send('Error conectando el calendario — reintenta desde Atinov');
+    return page('Error al conectar', 'No se pudo completar la conexión — reintenta desde Configuración.', 500);
   }
 }
 
