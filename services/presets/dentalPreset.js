@@ -56,7 +56,6 @@ Mensajes de 1-3 líneas, como WhatsApp real. Cálida sin ser empalagosa. Emojis 
 const DENTAL_KNOWLEDGE = [
   {
     title: '[EDITAR] Clínica — información general',
-    is_main: true,
     content: `NOMBRE: [EDITAR: nombre completo de la clínica]
 DIRECCIÓN: [EDITAR: dirección exacta + referencia (ej: "frente a la plaza")]
 HORARIOS: [EDITAR: ej. Lun-Vie 9:00-19:00, Sáb 9:00-14:00]
@@ -109,6 +108,9 @@ async function applyDentalPreset(db, accountId, { nombreClinica } = {}) {
     avatar: '🦷',
     enabled: false, // el dueño la enciende cuando complete los [EDITAR]
     role: 'nurture',
+    // Preset autocontenido: ve SOLO su propia knowledge. Sin esto mezclaría
+    // la base común del negocio previo de la cuenta con la del vertical.
+    ignore_main_knowledge: true,
     instructions,
     link_ids: [],
     delay_min: 5,
@@ -124,7 +126,10 @@ async function applyDentalPreset(db, accountId, { nombreClinica } = {}) {
       account_id: accountId,
       title: k.title,
       content,
-      is_main: !!k.is_main,
+      // NUNCA is_main: knowledgeForAgent inyecta is_main a TODOS los agentes
+      // de la cuenta — un agente vivo empezaría a recibir los [EDITAR] en su
+      // prompt. El preset se liga solo a su agente vía agent_ids.
+      is_main: false,
       agent_ids: [agent._id],
     });
     knowledgeCreated++;

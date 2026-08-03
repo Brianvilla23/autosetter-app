@@ -198,8 +198,31 @@ router.delete('/users/:id', async (req, res) => {
     const user = await db.findOne(db.users, { _id: id });
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
     if (user.role === 'admin') return res.status(403).json({ error: 'No puedes eliminar al administrador' });
+
+    // Cascada completa de la cuenta (Ley 21.719): eliminar el usuario no puede
+    // dejar leads, conversaciones ni colas huérfanas con datos personales.
+    // billableEvents y auditLog se CONSERVAN (retención contable/administrativa).
+    const accId = user.account_id;
+    if (accId) {
+      const leads = await db.find(db.leads, { account_id: accId });
+      const leadIds = leads.map(l => l._id);
+      if (leadIds.length) await db.remove(db.messages, { lead_id: { $in: leadIds } });
+      await db.remove(db.followups,    { account_id: accId });
+      await db.remove(db.pendingSends, { accountId: accId });
+      await db.remove(db.failedSends,  { accountId: accId });
+      await db.remove(db.leads,        { account_id: accId });
+      await db.remove(db.agents,       { account_id: accId });
+      await db.remove(db.knowledge,    { account_id: accId });
+      await db.remove(db.links,        { account_id: accId });
+      await db.remove(db.bypassed,     { account_id: accId });
+      await db.remove(db.settings,     { account_id: accId });
+      await db.remove(db.magnetLinks,  { account_id: accId });
+      await db.remove(db.quickReplies, { account_id: accId });
+      await db.remove(db.accounts,     { _id: accId });
+    }
+
     await db.remove(db.users, { _id: id });
-    await audit(req, 'user.delete', id, { email: user.email, name: user.name });
+    await audit(req, 'user.delete', id, { email: user.email, name: user.name, accountCascade: !!accId });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -821,6 +844,87 @@ router.get('/eventos-facturables', async (req, res) => {
 });
 
 /**
+ * GET /api/admin/costo-whatsapp?mes=YYYY-MM&rate=0.02
+ * Proyección del costo Meta post 1-oct-2026: desde esa fecha CADA mensaje
+ * del negocio por WhatsApp se cobra (incluidas las respuestas de servicio en
+ * ventana 24h, hoy gratis) al precio utility del país — Chile ≈ US$0.02/msg,
+ * sin descuento por volumen. Este endpoint cuenta los mensajes salientes
+ * REALES del mes por cuenta y proyecta cuánto costarían con ese régimen.
+ * Base de la decisión de fair-use del plan Founder ANTES de octubre.
+ * `rate` permite recalcular cuando Meta publique el rate card CLP definitivo.
+ */
+router.get('/costo-whatsapp', async (req, res) => {
+  try {
+    if (req.query.mes !== undefined && !/^\d{4}-(0[1-9]|1[0-2])$/.test(String(req.query.mes))) {
+      return res.status(400).json({ error: 'mes inválido — formato YYYY-MM' });
+    }
+    const mes = req.query.mes ? String(req.query.mes) : new Date().toISOString().slice(0, 7);
+    const rate = Number(req.query.rate) > 0 ? Number(req.query.rate) : 0.02;
+    const PLAN_FOUNDER_USD = 148;
+
+    const [y, m] = mes.split('-').map(Number);
+    const start = `${mes}-01`;
+    const end = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, '0')}-01`;
+
+    // Leads WhatsApp por cuenta (leads viejos pueden no tener channel: wa_id
+    // manda). Se excluyen los leads demo — inflarían justo la métrica que
+    // decide el fair-use. Leads fusionados IG+WSP cuentan completos: leve
+    // sobreestimación, que para pricing es el lado seguro.
+    const leads = await db.find(db.leads, {});
+    const waLeads = leads.filter(l => !l.demo && (l.channel === 'whatsapp' || (!l.channel && l.wa_id)));
+    const cuentaPorLead = new Map(waLeads.map(l => [l._id, l.account_id]));
+
+    // Mensajes salientes del mes de esos leads
+    const salientes = (await db.find(db.messages, {
+      role: 'agent', createdAt: { $gte: start, $lt: end },
+    })).filter(msg => cuentaPorLead.has(msg.lead_id));
+
+    const porCuenta = {};
+    for (const msg of salientes) {
+      const c = (porCuenta[cuentaPorLead.get(msg.lead_id)] ||= {
+        mensajes_salientes: 0, de_ellos_followups: 0, leads_contactados: new Set(),
+      });
+      c.mensajes_salientes++;
+      if (msg.is_followup) c.de_ellos_followups++;
+      c.leads_contactados.add(msg.lead_id);
+    }
+
+    // Tokens LLM del mes por cuenta, como referencia del costo total de servir
+    // (aiUsage usa accountId camel — así se escribe en openai.js, no unificar)
+    const ai = (await db.find(db.aiUsage, { createdAt: { $gte: start, $lt: end } }));
+    const tokensPorCuenta = {};
+    for (const u of ai) {
+      if (u.accountId) tokensPorCuenta[u.accountId] = (tokensPorCuenta[u.accountId] || 0) + (u.totalTokens || 0);
+    }
+
+    const cuentas = await db.find(db.accounts, {});
+    const resumen = Object.entries(porCuenta).map(([accId, c]) => {
+      const costoUsd = c.mensajes_salientes * rate;
+      return {
+        accountId: accId,
+        cuenta: cuentas.find(a => a._id === accId)?.ig_username || cuentas.find(a => a._id === accId)?.name || accId,
+        mensajes_salientes: c.mensajes_salientes,
+        de_ellos_followups: c.de_ellos_followups,
+        leads_contactados: c.leads_contactados.size,
+        msgs_por_lead: c.leads_contactados.size ? Math.round(c.mensajes_salientes / c.leads_contactados.size * 10) / 10 : 0,
+        costo_proyectado_usd: Math.round(costoUsd * 100) / 100,
+        pct_del_plan_founder: Math.round(costoUsd / PLAN_FOUNDER_USD * 1000) / 10,
+        tokens_llm: tokensPorCuenta[accId] || 0,
+      };
+    }).sort((a, b) => b.costo_proyectado_usd - a.costo_proyectado_usd);
+
+    const totalMsgs = resumen.reduce((s, r) => s + r.mensajes_salientes, 0);
+    res.json({
+      mes, rate_usd_por_mensaje: rate,
+      nota: 'Proyección post 1-oct-2026: hoy estos mensajes de servicio son gratis. IG/Messenger no se cobran — solo WhatsApp.',
+      total_mensajes_wa_salientes: totalMsgs,
+      costo_total_proyectado_usd: Math.round(totalMsgs * rate * 100) / 100,
+      cuentas: resumen,
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
  * POST /api/admin/aplicar-preset-dental
  * Aplica el preset vertical dental a una cuenta: agente recepcionista +
  * knowledge base con placeholders [EDITAR]. No borra nada existente.
@@ -835,6 +939,27 @@ router.post('/aplicar-preset-dental', async (req, res) => {
 
     const { applyDentalPreset } = require('../services/presets/dentalPreset');
     const r = await applyDentalPreset(db, accountId, { nombreClinica });
+    await audit(req, 'preset.dental_apply', accountId, { nombreClinica: nombreClinica || null });
+    res.json(r);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
+ * POST /api/admin/aplicar-preset-estetica
+ * Aplica el preset vertical estética a una cuenta: agente recepcionista +
+ * knowledge base con placeholders [EDITAR]. No borra nada existente.
+ * Body: { accountId, nombreCentro? }
+ */
+router.post('/aplicar-preset-estetica', async (req, res) => {
+  try {
+    const { accountId, nombreCentro } = req.body;
+    if (!accountId) return res.status(400).json({ error: 'accountId requerido' });
+    const cuenta = await db.findOne(db.accounts, { _id: accountId });
+    if (!cuenta) return res.status(404).json({ error: 'cuenta no encontrada' });
+
+    const { applyEsteticaPreset } = require('../services/presets/esteticaPreset');
+    const r = await applyEsteticaPreset(db, accountId, { nombreCentro });
+    await audit(req, 'preset.estetica_apply', accountId, { nombreCentro: nombreCentro || null });
     res.json(r);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

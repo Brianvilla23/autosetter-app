@@ -724,6 +724,7 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
                 : ch === 'messenger' ? account.fb_page_token
                 : account.access_token,
     accountId:    account._id,     // Para incrementar contador de DMs al enviar
+    lead_id:      lead._id,        // Supresión 21.719: la cola (y failedSends, que la hereda) debe poder borrarse por lead
     sendAt,
     leadUsername: lead.ig_username || lead.wa_name || senderId,
     agentName:    agent.name,

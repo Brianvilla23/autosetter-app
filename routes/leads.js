@@ -292,14 +292,26 @@ router.delete('/bypassed/:id', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-// ── DELETE lead (borra lead + mensajes + pendingSends asociados) ──────────────
-// Útil para limpiar testing antes de un demo en vivo.
+// ── DELETE lead (borra lead + mensajes + colas + follow-ups asociados) ────────
+// También es la supresión de la Ley 21.719: al borrar un prospecto no puede
+// quedar NADA con sus datos — ni follow-ups programados (que además quedaban
+// huérfanos y programados para enviarse) ni pendingSends/failedSends (guardan
+// el texto del mensaje). memory_facts viven dentro del lead y mueren con él.
+// Las colas se borran por lead_id (items nuevos) Y por recipientId+accountId:
+// los items encolados antes de 2026-08 no llevaban lead_id.
 router.delete('/:id', async (req, res, next) => {
   try {
     const lead = await loadOwnedLead(req, res);
     if (!lead) return;
+    const extIds = [lead.wa_id, lead.ig_user_id].filter(Boolean);
     await db.remove(db.messages,     { lead_id: lead._id }, { multi: true });
-    await db.remove(db.pendingSends, { lead_id: lead._id }, { multi: true });
+    await db.remove(db.followups,    { lead_id: lead._id }, { multi: true });
+    for (const store of [db.pendingSends, db.failedSends]) {
+      await db.remove(store, { lead_id: lead._id }, { multi: true });
+      if (extIds.length) {
+        await db.remove(store, { accountId: lead.account_id, recipientId: { $in: extIds } }, { multi: true });
+      }
+    }
     await db.remove(db.leads,        { _id: lead._id });
     console.log(`🗑️ Lead borrado: @${lead.ig_username} (${lead._id})`);
     res.json({ ok: true });
@@ -313,8 +325,14 @@ router.post('/:id/clear-messages', async (req, res, next) => {
   try {
     const lead = await loadOwnedLead(req, res);
     if (!lead) return;
+    const extIds = [lead.wa_id, lead.ig_user_id].filter(Boolean);
     await db.remove(db.messages,     { lead_id: lead._id }, { multi: true });
-    await db.remove(db.pendingSends, { lead_id: lead._id }, { multi: true });
+    for (const store of [db.pendingSends, db.failedSends]) {
+      await db.remove(store, { lead_id: lead._id }, { multi: true });
+      if (extIds.length) {
+        await db.remove(store, { accountId: lead.account_id, recipientId: { $in: extIds } }, { multi: true });
+      }
+    }
     // Resetear estado del lead para que el flujo arranque limpio
     await db.update(db.leads, { _id: lead._id }, {
       qualification: null,
@@ -338,7 +356,11 @@ router.post('/clear-all', async (req, res, next) => {
     const leads = await db.find(db.leads, { account_id: accountId });
     const leadIds = leads.map(l => l._id);
     await db.remove(db.messages,     { lead_id: { $in: leadIds } }, { multi: true });
-    await db.remove(db.pendingSends, { lead_id: { $in: leadIds } }, { multi: true });
+    // Al borrar TODOS los leads de la cuenta, toda su cola muere con ellos
+    // (por accountId cubre también items viejos sin lead_id).
+    await db.remove(db.pendingSends, { accountId }, { multi: true });
+    await db.remove(db.failedSends,  { accountId }, { multi: true });
+    await db.remove(db.followups,    { account_id: accountId }, { multi: true });
     await db.remove(db.leads,        { account_id: accountId }, { multi: true });
     console.warn(`🗑️🗑️ CLEAR-ALL: ${leads.length} leads borrados para account ${accountId}`);
     res.json({ ok: true, deleted: leads.length });

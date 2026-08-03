@@ -95,6 +95,13 @@ const CHECKS = [
     expectStatus: 401,
   },
   {
+    name: '/api/admin/aplicar-preset-estetica sin auth → 401',
+    method: 'POST',
+    path: '/api/admin/aplicar-preset-estetica',
+    body: '{"accountId":"fake"}',
+    expectStatus: 401,
+  },
+  {
     name: 'Header CSP presente',
     method: 'GET',
     path: '/',
