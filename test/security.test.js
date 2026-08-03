@@ -57,6 +57,24 @@ test('sanitizeSettings NUNCA expone openai_key cruda', () => {
   assert.ok(!safe.openai_key_masked.includes('ABCDEFGHIJKLMNOP'));
 });
 
+test('sanitizeSettings NUNCA expone secrets de Google Calendar ni Shopify', () => {
+  const settings = {
+    account_id: 'acc1',
+    google_refresh_token: '1//04_REFRESH_TOKEN_SUPER_SECRETO',
+    shopify_webhook_secret: 'shpss_SECRETO_DE_FIRMA_9876',
+  };
+  const safe = sanitizeSettings(settings);
+  const serialized = JSON.stringify(safe);
+
+  assert.ok(!('google_refresh_token' in safe), 'google_refresh_token NO debe estar presente');
+  assert.ok(!('shopify_webhook_secret' in safe), 'shopify_webhook_secret NO debe estar presente');
+  assert.ok(!serialized.includes('REFRESH_TOKEN_SUPER_SECRETO'), 'el refresh token no debe aparecer ni serializado');
+  assert.ok(!serialized.includes('SECRETO_DE_FIRMA'), 'el secret de Shopify no debe aparecer');
+  // Flags de presencia sí (es lo que la UI necesita para mostrar "conectado")
+  assert.strictEqual(safe.has_google_calendar, true);
+  assert.strictEqual(safe.has_shopify, true);
+});
+
 test('sanitizeAccount/Settings manejan null sin romper', () => {
   assert.strictEqual(sanitizeAccount(null), null);
   assert.strictEqual(sanitizeSettings(null), null);

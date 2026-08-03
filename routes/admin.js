@@ -816,8 +816,20 @@ router.get('/eventos-facturables', async (req, res) => {
     const porCuenta = {};
     const pagosVistos = new Set();
     const leadsVistos = new Set();
+    const pedidosVistos = new Set();
     for (const e of eventos) {
-      const c = (porCuenta[e.account_id] ||= { leads_calificados: 0, ventas_cerradas: 0, monto_ventas_clp: 0 });
+      const c = (porCuenta[e.account_id] ||= {
+        leads_calificados: 0, ventas_cerradas: 0, monto_ventas_clp: 0, pedidos_confirmados: 0,
+      });
+      // Pedidos de Shopify confirmados por el agente: mismo peso de outcome que
+      // una venta cerrada para el pricing por resultado.
+      if (e.type === 'pedido_confirmado') {
+        const key = `${e.account_id}:${e.shopify_order_id}`;
+        if (pedidosVistos.has(key)) continue;
+        pedidosVistos.add(key);
+        c.pedidos_confirmados++;
+        if (e.currency === 'CLP') c.monto_ventas_clp += Number(e.amount) || 0;
+      }
       if (e.type === 'lead_calificado') {
         const key = `${e.account_id}:${e.lead_id}`;
         if (leadsVistos.has(key)) continue;
@@ -837,7 +849,9 @@ router.get('/eventos-facturables', async (req, res) => {
       accountId: accId,
       cuenta: cuentas.find(a => a._id === accId)?.ig_username || cuentas.find(a => a._id === accId)?.name || accId,
       ...stats,
-    })).sort((a, b) => b.ventas_cerradas - a.ventas_cerradas || b.leads_calificados - a.leads_calificados);
+    })).sort((a, b) =>
+      (b.ventas_cerradas + b.pedidos_confirmados) - (a.ventas_cerradas + a.pedidos_confirmados)
+      || b.leads_calificados - a.leads_calificados);
 
     res.json({ mes, total_eventos: eventos.length, cuentas: resumen });
   } catch (e) { res.status(500).json({ error: e.message }); }

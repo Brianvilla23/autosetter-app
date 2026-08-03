@@ -1765,6 +1765,46 @@ async function loadSettings() {
     if (r?.ok) { loadSettings(); showToast('Messenger desconectado'); }
   });
 
+  // ── Shopify (confirmación de pedidos) ─────────────────────────────────────
+  // El estado viene del flag de settings (el secret nunca llega al frontend).
+  const shopConn = !!data.settings?.has_shopify;
+  const shopConnEl = document.getElementById('shopify-connected');
+  const shopNotEl  = document.getElementById('shopify-not-connected');
+  if (shopConnEl) shopConnEl.style.display = shopConn ? '' : 'none';
+  if (shopNotEl)  shopNotEl.style.display  = shopConn ? 'none' : '';
+  if (shopConn) {
+    const t = document.getElementById('shopify-template-label');
+    if (t) t.textContent = data.settings.shopify_template_name
+      ? `Template: ${data.settings.shopify_template_name}`
+      : '⚠️ Falta el nombre del template aprobado en Meta';
+  }
+  const shopUrlEl = document.getElementById('shopify-webhook-url');
+  if (shopUrlEl) shopUrlEl.textContent = `${location.origin}/webhook/shopify?acc=${ACCOUNT_ID}`;
+
+  const btnShop = document.getElementById('btn-save-shopify');
+  if (btnShop) btnShop.onclick = async () => {
+    const secret   = document.getElementById('shopify-secret')?.value.trim();
+    const template = document.getElementById('shopify-template')?.value.trim();
+    const eta      = document.getElementById('shopify-eta')?.value.trim();
+    if (!secret || !template) {
+      showToast('⚠️ Falta la clave secreta o el nombre del template'); return;
+    }
+    const r = await apiFetch('/api/settings/shopify', 'PUT', {
+      accountId: ACCOUNT_ID,
+      shopify_webhook_secret: secret,
+      shopify_template_name: template,
+      ...(eta ? { shopify_eta_dias: eta } : {}),
+    });
+    if (r?.ok) { loadSettings(); showToast('✅ Tienda conectada — ahora crea el webhook en Shopify'); }
+  };
+
+  const btnShopOff = document.getElementById('btn-disconnect-shopify');
+  if (btnShopOff) btnShopOff.onclick = async () => {
+    if (!confirm('¿Desconectar la tienda? Los pedidos nuevos dejarán de confirmarse solos.')) return;
+    const r = await apiFetch(`/api/settings/shopify?accountId=${ACCOUNT_ID}`, 'DELETE');
+    if (r?.ok) { loadSettings(); showToast('Tienda desconectada'); }
+  };
+
   // ── Google Calendar (agendamiento in-chat) ────────────────────────────────
   // onclick por asignación (no addEventListener): esta función corre en cada
   // loadSettings() y los listeners acumulados dispararían handlers múltiples.

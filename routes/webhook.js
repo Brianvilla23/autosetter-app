@@ -663,7 +663,14 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
     calendarContext = await buildCalendarContext(settings, account._id);
   } catch (e) { /* agenda opcional */ }
 
-  const extraContext = [baseContext, messengerHandoff, magnetContext, audioContext, memoryContext, paymentContext, calendarContext, ragContext].filter(Boolean).join('\n\n') || null;
+  // ── Pedido de Shopify pendiente: el agente confirma el despacho ───────────
+  let orderContext = null;
+  try {
+    const { buildOrderContext } = require('../services/shopify');
+    orderContext = buildOrderContext(lead);
+  } catch (e) { /* pedidos opcional */ }
+
+  const extraContext = [baseContext, messengerHandoff, magnetContext, audioContext, memoryContext, paymentContext, calendarContext, orderContext, ragContext].filter(Boolean).join('\n\n') || null;
 
   let reply = await generateReply({
     agent, knowledge, links,
@@ -705,6 +712,21 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
       console.log(`📅 [${agent.name}] Cita agendada para @${lead.ig_username}: ${agendado.events[0].when}`);
     }
   } catch (e) { console.warn('[agenda] resolución de marcadores falló (no bloquea):', e.message); }
+
+  // ── Resolver marcadores [PEDIDO: ...] → estado del pedido de Shopify ──────
+  try {
+    const { resolveOrderMarkers } = require('../services/shopify');
+    const pedido = await resolveOrderMarkers(reply, { lead, accountId: account._id });
+    reply = pedido.text;
+  } catch (e) { console.warn('[shopify] resolución de marcadores falló (no bloquea):', e.message); }
+
+  // Red de seguridad: si el LLM respondió SOLO con un marcador, el scrub deja
+  // el texto vacío y el envío moriría en failedSends tras 5 reintentos — la
+  // clienta confirma su pedido y no recibe nada. Acuse mínimo en su lugar.
+  if (!reply || !reply.trim()) {
+    console.warn(`[${agent.name}] reply vacío tras resolver marcadores — se envía acuse mínimo`);
+    reply = 'Listo, quedó registrado 👌';
+  }
 
   // Guardar respuesta del agente
   await db.insert(db.messages, { lead_id: lead._id, role: 'agent', content: reply });
@@ -871,6 +893,188 @@ router.post('/mercadopago', async (req, res) => {
     if (!r.ok) console.log(`[MP] notificación ignorada (${r.reason}) — payment ${paymentId}`);
   } catch (e) {
     console.error('[MP] webhook error:', e.response?.data || e.message);
+  }
+});
+
+// ── WEBHOOK DE SHOPIFY ───────────────────────────────────────────────────────
+// POST /webhook/shopify?acc=<accountId>  ·  topic orders/create (y orders/paid)
+//
+// Entra un pedido → se crea/actualiza el lead con el pedido en su ficha → sale
+// el mensaje de confirmación por WhatsApp (template aprobado). Cuando la
+// clienta responde, el flujo normal de WhatsApp la encuentra por wa_id y el
+// agente ya tiene el pedido en contexto.
+//
+// Seguridad: HMAC-SHA256 del cuerpo CRUDO con el secret de LA CUENTA
+// (fail-closed: sin secret configurado se rechaza todo). 401 ante firma
+// inválida — Shopify no debe reintentar un payload que no es nuestro.
+router.post('/shopify', async (req, res) => {
+  try {
+    const accountId = String(req.query.acc || '');
+    if (!accountId) return res.status(400).json({ error: 'falta acc' });
+
+    const settings = await db.findOne(db.settings, { account_id: accountId });
+    const secret = settings?.shopify_webhook_secret;
+    // 200 (no 403) a propósito: Shopify reintenta ~19 veces en 48h ante
+    // cualquier no-2xx y termina BORRANDO la suscripción. Si el dueño
+    // desconectó la tienda, queremos que deje de mandar, no que se autodestruya
+    // el webhook. La firma inválida sí responde 401 (señal real de problema).
+    if (!secret) return res.status(200).json({ ignored: 'cuenta sin Shopify configurado' });
+
+    const shopify = require('../services/shopify');
+    const firmaOk = shopify.verifyWebhook(
+      req.rawBody, req.get('X-Shopify-Hmac-Sha256'), secret
+    );
+    if (!firmaOk) {
+      console.warn(`[shopify] firma inválida para cuenta ${accountId}`);
+      return res.status(401).json({ error: 'firma inválida' });
+    }
+
+    // ACK inmediato: Shopify corta a los 5s y reintenta. El trabajo sigue abajo.
+    res.sendStatus(200);
+
+    // UN solo topic por cuenta (default orders/create). Aceptar create Y paid
+    // provocaba una carrera real: Shopify dispara ambos con milisegundos de
+    // diferencia en pedidos pagados online, las dos requests leen el dedup en
+    // null y la clienta recibe DOS mensajes (y quedan dos leads con el mismo
+    // wa_id). El dueño elige uno en la configuración.
+    const topicEsperado = settings.shopify_topic || 'orders/create';
+    const topic = req.get('X-Shopify-Topic') || 'orders/create';
+    if (topic !== topicEsperado) {
+      console.log(`[shopify] topic ${topic} ignorado (la cuenta escucha ${topicEsperado})`);
+      return;
+    }
+
+    const account = await db.findOne(db.accounts, { _id: accountId });
+    if (!account) return;
+
+    const orden = shopify.parseOrder(req.body, {
+      etaDias: Number(settings.shopify_eta_dias) > 0 ? Number(settings.shopify_eta_dias) : 3,
+    });
+
+    // Dedup: orders/create y orders/paid pueden llegar por el mismo pedido, y
+    // Shopify reintenta ante cualquier hipo de red.
+    const yaProcesado = await db.findOne(db.leads, {
+      account_id: accountId, 'shopify_order.orderId': orden.orderId,
+    });
+    if (yaProcesado) {
+      console.log(`[shopify] pedido ${orden.numero} ya procesado — ignorado`);
+      return;
+    }
+
+    if (!orden.telefono) {
+      console.warn(`[shopify] pedido ${orden.numero} sin teléfono utilizable — no se puede contactar`);
+      return;
+    }
+
+    const agente = await db.findOne(db.agents, { account_id: accountId, enabled: true });
+    const pedidoFicha = {
+      orderId: orden.orderId, numero: orden.numero, productos: orden.productos,
+      direccion: orden.direccion, total: orden.total, moneda: orden.moneda,
+      etaLegible: orden.etaLegible, etaIso: orden.etaIso,
+      estado: 'pendiente', creado_at: new Date().toISOString(),
+    };
+
+    let lead = await db.findOne(db.leads, { account_id: accountId, wa_id: orden.telefono });
+    if (lead) {
+      // NO se pisa pipeline_stage: un cliente recurrente que ya estaba en
+      // "ganado" volvería a "nuevo" quedando contado como convertido en la
+      // columna equivocada.
+      await db.update(db.leads, { _id: lead._id }, {
+        shopify_order: pedidoFicha,
+        last_message_at: new Date().toISOString(),
+      });
+      lead = { ...lead, shopify_order: pedidoFicha };
+    } else {
+      lead = await db.insert(db.leads, {
+        account_id: accountId,
+        agent_id: agente?._id || null,
+        wa_id: orden.telefono,
+        wa_name: orden.nombre,
+        ig_user_id: orden.telefono,      // compatibilidad con el inbox actual
+        ig_username: orden.nombre,
+        channel: 'whatsapp',
+        status: 'active', automation: 'automated',
+        is_bypassed: false, is_converted: false,
+        pipeline_stage: 'nuevo',
+        triggered_by: 'shopify_order',
+        shopify_order: pedidoFicha,
+        last_message_at: new Date().toISOString(),
+      });
+    }
+
+    // Envío del template. Sin WhatsApp conectado o sin template configurado el
+    // pedido queda igual registrado en el lead (el dueño lo ve en el inbox).
+    const templateName = settings.shopify_template_name;
+    if (!account.wa_phone_number_id || !account.wa_access_token) {
+      console.warn(`[shopify] pedido ${orden.numero} registrado pero la cuenta no tiene WhatsApp conectado`);
+      return;
+    }
+    if (!templateName) {
+      console.warn(`[shopify] pedido ${orden.numero} registrado pero falta shopify_template_name`);
+      return;
+    }
+
+    // No abrir una conversación que el agente no va a poder continuar: si el
+    // lead está en manos de un humano (bypass/handoff/automatización off), la
+    // clienta respondería "sí, confirmo" y nadie le contestaría.
+    const enBypass = await db.findOne(db.bypassed, { account_id: accountId, wa_id: orden.telefono });
+    if (enBypass || lead.is_bypassed || (lead.automation && lead.automation !== 'automated')) {
+      console.warn(`[shopify] pedido ${orden.numero} registrado pero el lead está en manejo humano — no se envía automático`);
+      await db.insert(db.messages, {
+        lead_id: lead._id, role: 'sistema',
+        content: `🛒 Pedido nuevo ${orden.numero} (${orden.productos}) — este lead está en manejo humano, confírmalo tú.`,
+      }).catch(() => null);
+      return;
+    }
+
+    // El template consume cuota del plan igual que cualquier DM saliente.
+    const { checkDMAllowance, incrementDMCount } = require('../services/limits');
+    const permiso = await checkDMAllowance(accountId).catch(() => ({ allowed: true }));
+    if (permiso && permiso.allowed === false) {
+      console.warn(`[shopify] pedido ${orden.numero} registrado pero la cuenta alcanzó el límite de mensajes del plan`);
+      await db.insert(db.messages, {
+        lead_id: lead._id, role: 'sistema',
+        content: `⚠️ Pedido ${orden.numero} sin confirmar: la cuenta alcanzó el límite de mensajes de su plan.`,
+      }).catch(() => null);
+      return;
+    }
+
+    const wa = require('../services/whatsapp');
+    const params = [
+      orden.primerNombre,
+      orden.productos,
+      orden.direccion || 'no registrada',
+      orden.etaLegible,
+    ].map(t => ({ type: 'text', text: String(t).slice(0, 250) }));
+
+    try {
+      await wa.sendTemplate({
+        phoneNumberId: account.wa_phone_number_id,
+        recipient: orden.telefono,
+        templateName,
+        languageCode: settings.shopify_template_lang || 'es',
+        components: [{ type: 'body', parameters: params }],
+        accessToken: account.wa_access_token,
+      });
+      // Guardar lo enviado como mensaje del agente: la clienta responde a ESTO
+      // y el historial del LLM tiene que reflejarlo.
+      await db.insert(db.messages, {
+        lead_id: lead._id, role: 'agent',
+        content: `Hola ${orden.primerNombre}! Tenemos tu pedido de ${orden.productos} listo para despacho. Dirección registrada: ${orden.direccion || 'no registrada'}. ¿Nos confirmas que está correcta para enviarlo? Llegada estimada: ${orden.etaLegible}.`,
+        is_template: true,
+      });
+      await incrementDMCount(accountId, 1).catch(() => null);
+      console.log(`🛒 [shopify] Confirmación enviada — ${orden.numero} a ${orden.telefono}`);
+    } catch (e) {
+      console.error(`[shopify] no se pudo enviar la confirmación de ${orden.numero}:`,
+        e.response?.data?.error?.message || e.message);
+      await db.insert(db.messages, {
+        lead_id: lead._id, role: 'sistema',
+        content: `⚠️ No se pudo enviar la confirmación automática del pedido ${orden.numero}. Contáctala manualmente.`,
+      }).catch(() => null);
+    }
+  } catch (e) {
+    console.error('[shopify] webhook error:', e.response?.data || e.message);
   }
 });
 

@@ -214,6 +214,7 @@ async function processFollowUps() {
       reply = (reply || '')
         .replace(/\[PAGO[^\]]*\]?/gi, '')
         .replace(/\[AGENDAR[^\]]*\]?/gi, '')
+        .replace(/\[PEDIDO[^\]]*\]?/gi, '')
         .replace(/[ \t]{2,}/g, ' ').trim();
       if (!reply) {
         await db.update(db.followups, { _id: fu._id }, { cancelled: true, reason: 'reply vacío tras scrub' });

@@ -121,6 +121,21 @@ const CHECKS = [
     expectBodyIncludes: 'Conectar Google Calendar',
   },
   {
+    name: 'Webhook Shopify sin acc → 400',
+    method: 'POST',
+    path: '/webhook/shopify',
+    body: '{"id":1}',
+    expectStatus: 400,
+  },
+  {
+    name: 'Webhook Shopify con acc sin configurar → 200 ignorado (no procesa)',
+    method: 'POST',
+    path: '/webhook/shopify?acc=cuenta-que-no-existe',
+    body: '{"id":1}',
+    expectStatus: 200,
+    expectBodyIncludes: 'ignored',
+  },
+  {
     name: 'Header CSP presente',
     method: 'GET',
     path: '/',

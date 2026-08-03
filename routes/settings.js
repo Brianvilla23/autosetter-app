@@ -149,6 +149,65 @@ router.delete('/mercadopago', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// ── SHOPIFY (confirmación de pedidos por WhatsApp) ──────────────────────────
+// PUT body: { accountId, shopify_webhook_secret, shopify_template_name,
+//             shopify_template_lang?, shopify_eta_dias? }
+// Con el secret guardado, el webhook POST /webhook/shopify?acc=<id> empieza a
+// aceptar pedidos: crea el lead, manda el template de confirmación y el agente
+// conversa con el pedido en contexto. El secret NUNCA vuelve al frontend.
+router.put('/shopify', async (req, res, next) => {
+  try {
+    const {
+      accountId, shopify_webhook_secret, shopify_template_name,
+      shopify_template_lang, shopify_eta_dias, shopify_topic,
+    } = req.body;
+    if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
+
+    const upd = {};
+    // Un solo topic por cuenta: escuchar create Y paid a la vez duplica el
+    // mensaje al cliente (Shopify los dispara casi simultáneos).
+    if (shopify_topic !== undefined) {
+      upd.shopify_topic = shopify_topic === 'orders/paid' ? 'orders/paid' : 'orders/create';
+    }
+    // El secret solo se pisa si viene uno nuevo real (no el masked).
+    if (shopify_webhook_secret && !shopify_webhook_secret.includes('…')) {
+      upd.shopify_webhook_secret = String(shopify_webhook_secret).trim();
+    }
+    if (shopify_template_name !== undefined) {
+      upd.shopify_template_name = String(shopify_template_name || '').trim();
+    }
+    if (shopify_template_lang !== undefined) {
+      upd.shopify_template_lang = String(shopify_template_lang || 'es').trim() || 'es';
+    }
+    if (shopify_eta_dias !== undefined) {
+      const n = parseInt(shopify_eta_dias, 10);
+      upd.shopify_eta_dias = Number.isFinite(n) && n >= 1 && n <= 30 ? n : 3;
+    }
+    if (!Object.keys(upd).length) return res.json({ ok: true, unchanged: true });
+
+    const exists = await db.findOne(db.settings, { account_id: accountId });
+    if (exists) {
+      await db.update(db.settings, { account_id: accountId }, { ...upd, updatedAt: new Date().toISOString() });
+    } else {
+      await db.insert(db.settings, { account_id: accountId, openai_key: '', ...upd });
+    }
+    res.json({ ok: true, webhook_url: `${process.env.APP_URL || 'https://atinov.com'}/webhook/shopify?acc=${accountId}` });
+  } catch (e) { next(e); }
+});
+
+// DELETE — desconectar Shopify (el webhook vuelve a rechazar todo)
+router.delete('/shopify', async (req, res, next) => {
+  try {
+    const { accountId } = req.query;
+    if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
+    await db.update(db.settings, { account_id: accountId }, {
+      shopify_webhook_secret: null, shopify_template_name: null,
+      shopify_template_lang: null, shopify_eta_dias: null, shopify_topic: null,
+    });
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+
 // ── MESSENGER (Página de Facebook / Marketplace) ────────────────────────────
 // PUT body: { accountId, fb_page_id, fb_page_token, wa_display_number }
 // El cliente pega el ID de su Página + el Page Access Token (de la Meta App,

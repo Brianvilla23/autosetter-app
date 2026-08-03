@@ -22,8 +22,10 @@ const SENSITIVE_ACCOUNT_FIELDS = [
 
 // Campos de settings que NUNCA deben salir crudos.
 const SENSITIVE_SETTINGS_FIELDS = [
-  'openai_key',         // API key de OpenAI del user (permite gastar su cuota)
-  'mp_access_token',    // token de Mercado Pago (permite crear cobros y leer pagos)
+  'openai_key',            // API key de OpenAI del user (permite gastar su cuota)
+  'mp_access_token',       // token de Mercado Pago (permite crear cobros y leer pagos)
+  'google_refresh_token',  // acceso permanente al Google Calendar del user
+  'shopify_webhook_secret',// firma los webhooks: con él se pueden falsificar pedidos
 ];
 
 /** Enmascara un secret dejando ver prefijo + últimos 4 (ej "sk-pr…wXyZ"). */
@@ -65,6 +67,8 @@ function sanitizeSettings(settings) {
   safe.openai_key_masked = maskSecret(settings.openai_key);
   safe.has_mp_access_token    = !!settings.mp_access_token;
   safe.mp_access_token_masked = maskSecret(settings.mp_access_token);
+  safe.has_google_calendar    = !!settings.google_refresh_token;
+  safe.has_shopify            = !!settings.shopify_webhook_secret;
   return safe;
 }
 

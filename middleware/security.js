@@ -56,7 +56,7 @@ function sanitizeObject(obj) {
       // valor guardado/comparado ya no sería el que el usuario escribió
       // (ej: reset-password hashearía "Pass&lt;word" y el login con
       // "Pass<word" fallaría para siempre — lockout).
-      if (key === 'password' || key === 'newPassword' || key === 'currentPassword' || key === 'token' || key === 'secret') {
+      if (key === 'password' || key === 'newPassword' || key === 'currentPassword' || key === 'token' || key === 'secret' || key === 'shopify_webhook_secret') {
         clean[key] = obj[key];
       } else {
         clean[key] = sanitizeObject(obj[key]);
