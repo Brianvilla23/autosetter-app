@@ -499,6 +499,13 @@ app.use('/api/public/chat',  require('./routes/publicChat'));
 app.use('/api/notifications', apiLimiter, requireAuth, require('./routes/notifications'));
 app.use('/api/usage',         apiLimiter, requireAuth, require('./routes/usage'));
 
+// Google Calendar (agendamiento in-chat). El callback va ANTES y SIN auth a
+// propósito: llega del redirect de Google sin sesión; lo protege el state
+// firmado con HMAC(JWT_SECRET) — ver routes/calendar.js. Inerte sin
+// GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET.
+app.get('/api/calendar/callback', apiLimiter, require('./routes/calendar').handleOAuthCallback);
+app.use('/api/calendar', apiLimiter, requireAuth, require('./routes/calendar').router);
+
 // Helper: account info from JWT
 app.get('/api/account/me', requireAuth, async (req, res, next) => {
   try {

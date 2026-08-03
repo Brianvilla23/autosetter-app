@@ -655,7 +655,15 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
     paymentContext = buildPaymentContext(settings);
   } catch (e) { /* pagos opcional */ }
 
-  const extraContext = [baseContext, messengerHandoff, magnetContext, audioContext, memoryContext, paymentContext, ragContext].filter(Boolean).join('\n\n') || null;
+  // ── Agenda in-chat: capacidad solo si la cuenta conectó Google Calendar ───
+  // (con la disponibilidad real de los próximos 7 días; fail-closed si falla)
+  let calendarContext = null;
+  try {
+    const { buildCalendarContext } = require('../services/calendar');
+    calendarContext = await buildCalendarContext(settings, account._id);
+  } catch (e) { /* agenda opcional */ }
+
+  const extraContext = [baseContext, messengerHandoff, magnetContext, audioContext, memoryContext, paymentContext, calendarContext, ragContext].filter(Boolean).join('\n\n') || null;
 
   let reply = await generateReply({
     agent, knowledge, links,
@@ -683,6 +691,20 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
       console.log(`💳 [${agent.name}] Link de pago generado para @${lead.ig_username}: $${resolved.links[0].amount} CLP`);
     }
   } catch (e) { console.warn('[pago] resolución de marcadores falló (no bloquea):', e.message); }
+
+  // ── Resolver marcadores [AGENDAR: ...] → cita real en Google Calendar ─────
+  // Mismo contrato que el pago: fail-closed, el marcador nunca rompe el mensaje.
+  try {
+    const { resolveCalendarMarkers } = require('../services/calendar');
+    const agendado = await resolveCalendarMarkers(reply, {
+      settings, accountId: account._id, leadId: lead._id,
+      leadName: lead.wa_name || lead.ig_username,
+    });
+    reply = agendado.text;
+    if (agendado.events.length) {
+      console.log(`📅 [${agent.name}] Cita agendada para @${lead.ig_username}: ${agendado.events[0].when}`);
+    }
+  } catch (e) { console.warn('[agenda] resolución de marcadores falló (no bloquea):', e.message); }
 
   // Guardar respuesta del agente
   await db.insert(db.messages, { lead_id: lead._id, role: 'agent', content: reply });

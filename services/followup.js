@@ -194,7 +194,7 @@ async function processFollowUps() {
       } catch (e) { /* memoria opcional */ }
 
       const history = messages;
-      const reply = await generateReply({
+      let reply = await generateReply({
         agent,
         knowledge,
         links,
@@ -207,6 +207,18 @@ async function processFollowUps() {
         leadPhone:     lead.wa_id || null,
         leadChannel:   lead.channel || (lead.wa_id ? 'whatsapp' : 'instagram'),
       });
+
+      // Los follow-ups NO reciben las capacidades de pago/agenda, pero el LLM
+      // puede imitar marcadores que vio en el historial. Acá no hay resolver:
+      // cualquier marcador crudo se elimina antes de guardar/enviar.
+      reply = (reply || '')
+        .replace(/\[PAGO[^\]]*\]?/gi, '')
+        .replace(/\[AGENDAR[^\]]*\]?/gi, '')
+        .replace(/[ \t]{2,}/g, ' ').trim();
+      if (!reply) {
+        await db.update(db.followups, { _id: fu._id }, { cancelled: true, reason: 'reply vacío tras scrub' });
+        continue;
+      }
 
       // Guardar el mensaje como 'agent' (marcado como followup)
       await db.insert(db.messages, {

@@ -102,6 +102,25 @@ const CHECKS = [
     expectStatus: 401,
   },
   {
+    name: '/api/calendar/status sin auth → 401',
+    method: 'GET',
+    path: '/api/calendar/status',
+    expectStatus: 401,
+  },
+  {
+    name: '/api/calendar/callback sin params → 400',
+    method: 'GET',
+    path: '/api/calendar/callback',
+    expectStatus: 400,
+  },
+  {
+    name: 'Página /conectar-calendar.html responde 200',
+    method: 'GET',
+    path: '/conectar-calendar.html',
+    expectStatus: 200,
+    expectBodyIncludes: 'Conectar Google Calendar',
+  },
+  {
     name: 'Header CSP presente',
     method: 'GET',
     path: '/',
