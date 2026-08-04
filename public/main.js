@@ -894,6 +894,24 @@ async function renderAgentBuilder(agentId) {
         </div>
 
         <div style="margin-top:16px;padding:14px;background:#0f0f1a;border:1px solid #2a2a4a;border-radius:8px">
+          <label style="font-size:0.78rem;color:#a5a5c8;font-weight:600;display:block;margin-bottom:6px">
+            💬 Respuesta pública al comentario
+          </label>
+          <input
+            type="text"
+            id="agent-comment-public-reply"
+            value="${escHtml(agentData.comment_public_reply || '')}"
+            placeholder="{usuario} te acabo de escribir al privado 📩"
+            style="width:100%;background:#1a1a2e;border:1px solid #3a3a5a;color:#e0e0e0;padding:8px 10px;border-radius:6px;font-size:0.85rem"
+          />
+          <small style="color:#666;font-size:0.72rem;display:block;margin-top:6px">
+            Cuando alguien comenta la keyword, además del DM privado el agente deja esta respuesta
+            <strong style="color:#a5a5c8">visible en el post</strong> — es lo que hace que más gente comente.
+            Usa <code>{usuario}</code> para mencionar a la persona. Vacío = no responder en público.
+          </small>
+        </div>
+
+        <div style="margin-top:16px;padding:14px;background:#0f0f1a;border:1px solid #2a2a4a;border-radius:8px">
           <label style="font-size:0.78rem;color:#a5a5c8;font-weight:600;display:block;margin-bottom:8px">
             📡 Canales que atiende este agente
           </label>
@@ -1027,10 +1045,11 @@ async function renderAgentBuilder(agentId) {
     const delay_min        = parseInt(document.getElementById('agent-delay-min').value);
     const delay_max        = parseInt(document.getElementById('agent-delay-max').value);
     const channels         = [...document.querySelectorAll('.agent-channel-check:checked')].map(c => c.value);
+    const comment_public_reply = document.getElementById('agent-comment-public-reply')?.value.trim() || '';
     await apiFetch(`/api/agents/${agentId}`, 'PUT', {
       name: currentAgent.name, avatar: currentAgent.avatar,
       instructions, enabled: currentAgent.enabled, trigger_keywords,
-      delay_min, delay_max, channels
+      delay_min, delay_max, channels, comment_public_reply
     });
     showToast('✅ Configuración guardada');
     currentAgent.instructions     = instructions;
@@ -1038,6 +1057,7 @@ async function renderAgentBuilder(agentId) {
     currentAgent.delay_min        = delay_min;
     currentAgent.delay_max        = delay_max;
     currentAgent.channels         = channels;
+    currentAgent.comment_public_reply = comment_public_reply;
   };
 
   // Save links (assign/unassign checkboxes)

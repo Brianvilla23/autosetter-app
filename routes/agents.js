@@ -84,9 +84,13 @@ router.put('/:id', enforceFollowupFeature, async (req, res, next) => {
     if (!owned) return;
     const {
       name, avatar, instructions, enabled, trigger_keywords, delay_min, delay_max,
-      followup_enabled, followup_delay_hours, role, channels,
+      followup_enabled, followup_delay_hours, role, channels, comment_public_reply,
     } = req.body;
     const upd = { name, avatar, instructions, enabled, trigger_keywords, delay_min, delay_max };
+    // Respuesta pública al comentario ("te escribí al DM 📩"). Vacío = no responder.
+    if (comment_public_reply !== undefined) {
+      upd.comment_public_reply = String(comment_public_reply || '').trim().slice(0, 280);
+    }
     if (isValidRole(role)) upd.role = role;
     const ch = sanitizeChannels(channels);
     if (ch !== undefined) upd.channels = ch;

@@ -275,17 +275,47 @@ async function handleComment(pageId, commentData) {
   const commenterIgId = commentData?.from?.id;
   const commenterName = commentData?.from?.username || commenterIgId;
   const mediaId       = commentData?.media?.id;
+  const commentId     = commentData?.id;
 
   // Find account + agent (una sola vez)
-  const account = await db.findOne(db.accounts, { ig_user_id: pageId });
+  let account = await db.findOne(db.accounts, { ig_user_id: pageId });
+  if (!account) account = await db.findOne(db.accounts, { ig_platform_id: pageId });
   if (!account) return;
   if (account.needs_reauth) {
     console.log(`🔌 Comment ignorado (account needs_reauth) para @${account.ig_username || pageId}`);
     return;
   }
-  // Seleccionar agente (nurture → auto). Para comentarios no hay lead aún,
-  // así que selectAgent decide solo por rol; prospect no auto-responde.
-  const sel = await selectAgent(account, null, 'instagram');
+
+  // BUCLE: nuestra propia respuesta pública genera otro webhook de comentario.
+  // Dos cortes independientes — si el id viene con otro scope, el parent_id
+  // salva igual: nuestras respuestas SIEMPRE son respuestas a otro comentario,
+  // y a una respuesta anidada nunca hay que contestarle.
+  if (commentData?.parent_id) return;
+  const propios = [account.ig_user_id, account.ig_platform_id, pageId].filter(Boolean);
+  const mismoUsuario = account.ig_username && commenterName &&
+    String(commenterName).toLowerCase() === String(account.ig_username).toLowerCase();
+  if (propios.includes(commenterIgId) || mismoUsuario) return;
+
+  // Meta rechaza la private reply pasados 7 días del comentario: no gastamos
+  // una llamada a OpenAI en algo que no se va a poder enviar.
+  if (commentData?.created_time) {
+    const edadMs = Date.now() - new Date(
+      typeof commentData.created_time === 'number'
+        ? commentData.created_time * 1000
+        : commentData.created_time
+    ).getTime();
+    if (Number.isFinite(edadMs) && edadMs > 7 * 24 * 3600 * 1000) {
+      console.log(`⌛ Comentario de @${commenterName} tiene más de 7 días — Meta ya no permite responder por privado`);
+      return;
+    }
+  }
+  // Cargar el lead ANTES de elegir agente: si el dueño tomó el control de esa
+  // persona (handoff_state), selectAgent tiene que verlo — si no, un comentario
+  // pisaría la conversación que el humano está trabajando.
+  const leadPrevio = commenterIgId
+    ? await db.findOne(db.leads, { account_id: account._id, ig_user_id: commenterIgId })
+    : null;
+  const sel = await selectAgent(account, leadPrevio, 'instagram');
   const agent = sel.agent;
 
   if (!commenterIgId || !agent || !sel.canAuto || !containsTrigger(commentText, agent)) {
@@ -298,7 +328,20 @@ async function handleComment(pageId, commentData) {
   const bypassed = await db.findOne(db.bypassed, { account_id: account._id, ig_user_id: commenterIgId });
   if (bypassed) return;
 
-  // Evitar duplicados: verificar si ya enviamos DM por este comentario en las últimas 2 horas
+  // Dedup por COMENTARIO: Meta permite una sola private reply por comentario,
+  // y el webhook puede reintentar. Se chequea antes que nada.
+  if (commentId) {
+    const yaRespondido = await db.findOne(db.leads, {
+      account_id: account._id, triggered_comment_id: commentId,
+    });
+    if (yaRespondido) {
+      console.log(`⏭️ Ya respondimos el comentario ${commentId} de @${commenterName}`);
+      return;
+    }
+  }
+
+  // Dedup por POST: no perseguir a la misma persona dos veces por la misma
+  // publicación aunque comente varias veces.
   const recentTrigger = await db.findOne(db.leads, {
     account_id: account._id,
     ig_user_id: commenterIgId,
@@ -311,16 +354,24 @@ async function handleComment(pageId, commentData) {
   }
 
   // Get or create lead
-  let lead = await db.findOne(db.leads, { account_id: account._id, ig_user_id: commenterIgId });
+  let lead = leadPrevio;
   if (!lead) {
-    const userInfo = await getIGUserInfo(commenterIgId, account.access_token);
+    // El handle real viene en el webhook. getIGUserInfo NO sirve acá: para
+    // alguien sin conversación previa sus dos intentos fallan y devuelve el ID
+    // numérico como "username" — que terminaría publicado en el post.
+    let username = commenterName;
+    if (!username || username === commenterIgId) {
+      const userInfo = await getIGUserInfo(commenterIgId, account.access_token);
+      username = userInfo.username || commenterIgId;
+    }
     lead = await db.insert(db.leads, {
       account_id: account._id, agent_id: agent._id,
-      ig_user_id: commenterIgId, ig_username: userInfo.username || commenterName,
+      ig_user_id: commenterIgId, ig_username: username,
       status: 'active', automation: 'automated',
       is_bypassed: false, is_converted: false, pipeline_stage: 'nuevo',
       triggered_by: 'comment',
       triggered_media_id: mediaId,
+      triggered_comment_id: commentId,   // sin esto el dedup por comentario es letra muerta
       last_message_at: new Date().toISOString()
     });
   } else {
@@ -328,19 +379,41 @@ async function handleComment(pageId, commentData) {
     await db.update(db.leads, { _id: lead._id }, {
       triggered_by: 'comment',
       triggered_media_id: mediaId,
+      triggered_comment_id: commentId,
       last_message_at: new Date().toISOString()
     });
   }
 
-  console.log(`💬→📩 Comentario "info" de @${lead.ig_username} → enviando DM automático`);
+  console.log(`💬→📩 Comentario de @${lead.ig_username} ("${commentText.slice(0, 40)}") → private reply`);
 
-  // Generar y enviar DM al comentador
-  await runConversation({
+  // Generar y encolar el DM. commentId hace que salga como private reply.
+  const encolado = await runConversation({
     account, agent, lead,
     senderId: commenterIgId,
-    text: commentText,           // Usamos el texto del comentario como mensaje inicial
-    isCommentTrigger: true       // Flag para contexto opcional
+    text: commentText,           // el comentario es el "mensaje" inicial
+    isCommentTrigger: true,
+    commentId,
   });
+
+  // Respuesta PÚBLICA — SOLO si el DM quedó encolado. Publicar "te escribí al
+  // privado" cuando el DM no va a salir (lead en manos de un humano, límite de
+  // plan) deja al cliente quedando mal en su propio post, a la vista de todos.
+  // Además exige keywords: sin ellas el agente responde a TODO comentario, y
+  // no queremos comentar bajo un reclamo.
+  if (encolado && commentId && agent.comment_public_reply && (agent.trigger_keywords || '').trim()) {
+    try {
+      const { replyToComment } = require('../services/meta');
+      const handle = commenterName && commenterName !== commenterIgId ? commenterName : lead.ig_username;
+      await replyToComment({
+        commentId,
+        text: agent.comment_public_reply.replaceAll('{usuario}', `@${handle}`),
+        accessToken: account.access_token,
+      });
+      console.log(`💬 Respuesta pública dejada en el comentario de @${handle}`);
+    } catch (e) {
+      console.warn('[comentarios] respuesta pública falló (no bloquea el DM):', e.response?.data?.error?.message || e.message);
+    }
+  }
 }
 
 // ── HANDLER: MENSAJE DE WHATSAPP ──────────────────────────────────────────────
@@ -550,14 +623,23 @@ async function handleMessengerMessage(pageId, event) {
 }
 
 // ── MOTOR PRINCIPAL: genera respuesta IA y envía DM ──────────────────────────
-async function runConversation({ account, agent, lead, senderId, text, isCommentTrigger = false, wasAudio = false, wasImage = false }) {
-  if (lead.automation !== 'automated' || lead.is_bypassed) return;
+// Devuelve true si dejó una respuesta encolada. El comment-to-DM lo necesita:
+// la respuesta PÚBLICA promete un DM, así que no puede publicarse si el DM no
+// va a salir (lead en manos de un humano, límite de plan alcanzado…).
+async function runConversation({ account, agent, lead, senderId, text, isCommentTrigger = false, commentId = null, wasAudio = false, wasImage = false }) {
+  if (lead.automation !== 'automated' || lead.is_bypassed) return false;
 
   // Guardar mensaje entrante (no cuenta al límite: son los DMs recibidos)
   // media marca el origen: 'audio' = nota de voz (content es su transcripción),
   // 'image' = foto (content es su descripción).
   const mediaTag = wasAudio ? 'audio' : wasImage ? 'image' : null;
-  await db.insert(db.messages, { lead_id: lead._id, role: 'user', content: text, ...(mediaTag ? { media: mediaTag } : {}) });
+  // via:'comment' importa: un comentario NO abre la ventana de 24h, así que el
+  // follow-up no puede tratarlo como si el lead nos hubiera escrito.
+  await db.insert(db.messages, {
+    lead_id: lead._id, role: 'user', content: text,
+    ...(mediaTag ? { media: mediaTag } : {}),
+    ...(isCommentTrigger ? { via: 'comment' } : {}),
+  });
   await db.update(db.leads, { _id: lead._id }, { last_message_at: new Date().toISOString() });
 
   // ── CHECK LÍMITE DE PLAN ─────────────────────────────────────────────────
@@ -570,7 +652,7 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
       limit_reached: true,
       limit_reason:  allowance.reason,
     }).catch(() => null);
-    return;
+    return false;
   }
 
   // Cancelar follow-ups pendientes — el lead acaba de responder (best-effort)
@@ -609,9 +691,16 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
     }
   } catch (e) { console.warn('magnetDelivery skip:', e.message); }
 
-  // Contexto extra si fue disparado por comentario
+  // Contexto extra si fue disparado por comentario.
+  // OJO: es la ÚNICA private reply que Meta permite por comentario, así que
+  // este mensaje tiene que valer por sí solo — no puede ser un "hola, ¿en qué
+  // te ayudo?" que desperdicie el tiro.
   const baseContext = isCommentTrigger
-    ? `NOTA: Este usuario comentó "info" en uno de tus posts. Inicia la conversación presentándote y preguntando cómo puedes ayudarle.`
+    ? `NOTA: Esta persona comentó "${String(text).slice(0, 80)}" en una publicación tuya y este es el PRIMER mensaje que recibe de ti, por privado.
+Reglas para este mensaje:
+- Es el único mensaje que puedes enviar hasta que la persona responda: tiene que entregar valor por sí solo, no puede ser solo un saludo.
+- Preséntate en una línea, entrega LO QUE VINO A BUSCAR según su comentario (la info, el precio, el link, lo que corresponda de tu base de conocimiento), y cierra con UNA sola pregunta que invite a responder.
+- Natural y corto, como un DM real. Nada de "gracias por comentar en nuestra publicación".`
     : null;
 
   // ── RAG: few-shot dinámico (memoria de conversaciones anteriores) ────────
@@ -787,6 +876,10 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
     pendingItem.pageId = account.fb_page_id;
   } else {
     pendingItem.igUserId = account.ig_platform_id || account.ig_user_id;
+    // Disparado por comentario: quien comentó NUNCA nos escribió, así que no
+    // hay ventana de 24h y un DM normal se rechaza. El worker tiene que usar
+    // la private reply contra el ID del comentario.
+    if (commentId) pendingItem.commentId = commentId;
   }
   await db.insert(db.pendingSends, pendingItem);
   const channelLabel = ch === 'whatsapp' ? '📱WSP' : ch === 'messenger' ? '📨FB' : '📷IG';
@@ -871,6 +964,8 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
       } catch (e) { console.error('notifyLeadEvent(tibio) error:', e.message); }
     }
   }).catch(e => console.error('classifyLead error:', e));
+
+  return true; // respuesta encolada
 }
 
 // ── WEBHOOK DE MERCADO PAGO ──────────────────────────────────────────────────

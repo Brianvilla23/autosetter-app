@@ -84,6 +84,12 @@ async function scheduleFollowUps() {
       const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
       if (!lastUserMsg) continue; // nunca respondió el user
 
+      // Un COMENTARIO no abre la ventana de 24h de Instagram: solo habilita UNA
+      // private reply, que ya se usó. Si el único "mensaje" del lead es su
+      // comentario, cualquier follow-up rebota contra la API. Recién cuando
+      // conteste el DM se abre la ventana real.
+      if (lastUserMsg.via === 'comment') continue;
+
       const lastUserAt = new Date(lastUserMsg.createdAt);
       const hoursSinceUser = (now - lastUserAt) / (1000 * 60 * 60);
 

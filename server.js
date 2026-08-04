@@ -679,6 +679,19 @@ async function processPendingSends() {
             accessToken: item.accessToken,
             accountId:   item.accountId,
           });
+        } else if (item.commentId) {
+          // Disparado por un comentario: la persona nunca nos escribió, así que
+          // no hay ventana de mensajería y un DM normal se rechaza. Meta solo
+          // permite la PRIVATE REPLY contra el id del comentario (una sola vez,
+          // dentro de 7 días).
+          const { sendPrivateReply } = require('./services/meta');
+          await sendPrivateReply({
+            commentId:   item.commentId,
+            text:        item.text,
+            accessToken: item.accessToken,
+            igUserId:    item.igUserId,
+            accountId:   item.accountId,
+          });
         } else {
           // Default: Instagram DM (igUserId + recipientId via graph.instagram.com)
           await sendIGMessage({
