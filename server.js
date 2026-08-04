@@ -489,6 +489,7 @@ app.use('/api/links',     apiLimiter, requireAuth, checkSubscription, require('.
 app.use('/api/settings',  apiLimiter, requireAuth, require('./routes/settings'));
 app.use('/api/growth',    apiLimiter, requireAuth, checkSubscription, require('./routes/growth'));
 app.use('/api/lead-magnets', apiLimiter, requireAuth, checkSubscription, require('./routes/leadMagnets'));
+app.use('/api/post-rules',   apiLimiter, requireAuth, checkSubscription, require('./routes/postRules'));
 app.use('/api/inbox',        apiLimiter, requireAuth, checkSubscription, require('./routes/inbox'));
 app.use('/api/quick-replies', apiLimiter, requireAuth, checkSubscription, require('./routes/quickReplies'));
 app.use('/api/intelligence',  apiLimiter, requireAuth, checkSubscription, require('./routes/intelligence'));

@@ -7,7 +7,8 @@ const { sendMessage, getIGUserInfo } = require('../services/meta');
 const wa = require('../services/whatsapp');
 const msgr = require('../services/messenger');
 const PIPE = require('../config/pipeline');
-const { selectAgent } = require('../services/agents');
+const { selectAgent, servesChannel } = require('../services/agents');
+const { canSendAuto } = require('../config/agentRoles');
 const { knowledgeForAgent } = require('../services/agents/knowledge');
 const { checkDMAllowance, incrementDMCount } = require('../services/limits');
 const { v4: uuidv4 } = require('uuid');
@@ -309,6 +310,20 @@ async function handleComment(pageId, commentData) {
       return;
     }
   }
+  // ── Regla de ESTA publicación (lo de ManyChat) ────────────────────────────
+  // Si el post tiene su propia palabra clave, manda esa. Si no tiene regla,
+  // todo sigue como antes: las keywords del agente.
+  let regla = mediaId
+    ? await db.findOne(db.postRules, { account_id: account._id, media_id: String(mediaId), enabled: true })
+    : null;
+  // Una regla sin keywords haría que containsTrigger devuelva true para TODO
+  // comentario de ese post. Ante la duda, se ignora la regla.
+  if (regla && !String(regla.keywords || '').trim()) {
+    console.warn(`[reglas] la regla del post ${mediaId} no tiene keywords — se ignora`);
+    regla = null;
+  }
+  if (mediaId) console.log(`💬 Comentario en media ${mediaId} — ${regla ? `regla: "${regla.keywords}"` : 'sin regla, usa las keywords del agente'}`);
+
   // Cargar el lead ANTES de elegir agente: si el dueño tomó el control de esa
   // persona (handoff_state), selectAgent tiene que verlo — si no, un comentario
   // pisaría la conversación que el humano está trabajando.
@@ -316,9 +331,30 @@ async function handleComment(pageId, commentData) {
     ? await db.findOne(db.leads, { account_id: account._id, ig_user_id: commenterIgId })
     : null;
   const sel = await selectAgent(account, leadPrevio, 'instagram');
-  const agent = sel.agent;
+  // La regla puede fijar qué agente atiende ese post; si el agente elegido no
+  // existe o está apagado, se cae al que resolvió selectAgent.
+  let agent = sel.agent;
+  if (regla?.agent_id && typeof regla.agent_id === 'string') {
+    const agenteRegla = await db.findOne(db.agents, {
+      _id: regla.agent_id, account_id: account._id, enabled: true,
+    });
+    // El agente de la regla tiene que pasar los MISMOS filtros que el que
+    // elige selectAgent: un agente 'prospect' auto-respondiendo un primer
+    // contacto frío es exactamente lo que Meta castiga con baneo, y uno de
+    // WhatsApp no debe contestar comentarios de Instagram.
+    if (agenteRegla && canSendAuto(agenteRegla) && servesChannel(agenteRegla, 'instagram')) {
+      agent = agenteRegla;
+    } else if (agenteRegla) {
+      console.warn(`[reglas] el agente fijado en la regla del post ${mediaId} no puede auto-responder por Instagram — se usa el agente por defecto`);
+    }
+  }
 
-  if (!commenterIgId || !agent || !sel.canAuto || !containsTrigger(commentText, agent)) {
+  // El disparo: la keyword de la regla si existe, si no la del agente.
+  const disparo = regla
+    ? containsTrigger(commentText, { trigger_keywords: regla.keywords })
+    : containsTrigger(commentText, agent);
+
+  if (!commenterIgId || !agent || !sel.canAuto || !disparo) {
     if (commenterIgId && agent && !sel.canAuto) console.log(`⏸️  Comentario no auto-respondido (${sel.reason}).`);
     else if (commenterIgId) console.log(`💬 Comentario ignorado (sin keyword): "${commentText}"`);
     return;
@@ -393,6 +429,7 @@ async function handleComment(pageId, commentData) {
     text: commentText,           // el comentario es el "mensaje" inicial
     isCommentTrigger: true,
     commentId,
+    entregar: regla?.entregar || null,   // qué debe entregar en ESTE post
   });
 
   // Respuesta PÚBLICA — SOLO si el DM quedó encolado. Publicar "te escribí al
@@ -400,13 +437,17 @@ async function handleComment(pageId, commentData) {
   // plan) deja al cliente quedando mal en su propio post, a la vista de todos.
   // Además exige keywords: sin ellas el agente responde a TODO comentario, y
   // no queremos comentar bajo un reclamo.
-  if (encolado && commentId && agent.comment_public_reply && (agent.trigger_keywords || '').trim()) {
+  // La regla puede traer su propia respuesta pública; si no, la del agente.
+  const textoPublico = regla?.public_reply || agent.comment_public_reply;
+  // Con regla, la keyword ya es específica de ese post: no hace falta exigir
+  // keywords al agente (esa exigencia existe para no comentar bajo cualquier cosa).
+  if (encolado && commentId && textoPublico && (regla || (agent.trigger_keywords || '').trim())) {
     try {
       const { replyToComment } = require('../services/meta');
       const handle = commenterName && commenterName !== commenterIgId ? commenterName : lead.ig_username;
       await replyToComment({
         commentId,
-        text: agent.comment_public_reply.replaceAll('{usuario}', `@${handle}`),
+        text: textoPublico.replaceAll('{usuario}', `@${handle}`),
         accessToken: account.access_token,
       });
       console.log(`💬 Respuesta pública dejada en el comentario de @${handle}`);
@@ -626,7 +667,7 @@ async function handleMessengerMessage(pageId, event) {
 // Devuelve true si dejó una respuesta encolada. El comment-to-DM lo necesita:
 // la respuesta PÚBLICA promete un DM, así que no puede publicarse si el DM no
 // va a salir (lead en manos de un humano, límite de plan alcanzado…).
-async function runConversation({ account, agent, lead, senderId, text, isCommentTrigger = false, commentId = null, wasAudio = false, wasImage = false }) {
+async function runConversation({ account, agent, lead, senderId, text, isCommentTrigger = false, commentId = null, entregar = null, wasAudio = false, wasImage = false }) {
   if (lead.automation !== 'automated' || lead.is_bypassed) return false;
 
   // Guardar mensaje entrante (no cuenta al límite: son los DMs recibidos)
@@ -699,7 +740,10 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
     ? `NOTA: Esta persona comentó "${String(text).slice(0, 80)}" en una publicación tuya y este es el PRIMER mensaje que recibe de ti, por privado.
 Reglas para este mensaje:
 - Es el único mensaje que puedes enviar hasta que la persona responda: tiene que entregar valor por sí solo, no puede ser solo un saludo.
-- Preséntate en una línea, entrega LO QUE VINO A BUSCAR según su comentario (la info, el precio, el link, lo que corresponda de tu base de conocimiento), y cierra con UNA sola pregunta que invite a responder.
+${entregar
+  ? `- ESTO ES LO QUE TIENES QUE ENTREGARLE (es lo prometido en esa publicación, va sí o sí en el mensaje): ${entregar}`
+  : '- Preséntate en una línea y entrega LO QUE VINO A BUSCAR según su comentario (la info, el precio, el link, lo que corresponda de tu base de conocimiento).'}
+- Cierra con UNA sola pregunta que invite a responder.
 - Natural y corto, como un DM real. Nada de "gracias por comentar en nuestra publicación".`
     : null;
 

@@ -401,6 +401,7 @@ function loadSection(name) {
     case 'referrals': loadReferralsPage(); break;
     case 'links':     loadLinks(); break;
     case 'magnets':   loadMagnets(); break;
+    case 'postrules': loadPostRules(); break;
     case 'growth':    loadGrowth(); break;
     case 'settings':  loadSettings(); break;
   }
@@ -2430,6 +2431,140 @@ const DELIVERY_LABEL = {
   dm:    '💬 DM',
   link:  '🔗 Link',
 };
+
+// ── COMENTARIOS: reglas por publicación ──────────────────────────────────────
+let POSTRULE_MEDIA_SEL = null;   // publicación elegida en el formulario
+
+async function loadPostRules() {
+  if (!ACCOUNT_ID) return;
+  const cont = document.getElementById('postrules-media');
+  const lista = document.getElementById('postrules-lista');
+  // Se re-dibuja el carrusel, así que la selección visual desaparece: si no
+  // limpiamos la variable, el usuario cree que no eligió nada y la regla se
+  // guardaría en la publicación elegida hace rato.
+  POSTRULE_MEDIA_SEL = null;
+
+  // 1. Publicaciones reales de la cuenta, para elegir con miniatura
+  cont.innerHTML = '<span style="color:#666;font-size:0.85rem">Cargando tus publicaciones…</span>';
+  const media = await apiFetch('/api/post-rules/media');
+  if (!media || !media.media || !media.media.length) {
+    cont.innerHTML = '<span style="color:#888;font-size:0.85rem">No pudimos cargar tus publicaciones. Revisa la conexión con Instagram en Configuración.</span>';
+  } else {
+    cont.innerHTML = '';
+    media.media.forEach(m => {
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'postrule-media-card';
+      card.dataset.id = m.id;
+      card.style.cssText = 'flex:0 0 auto;width:104px;background:#1a1a2e;border:2px solid #2a2a4a;border-radius:10px;padding:6px;cursor:pointer;text-align:left';
+      const img = document.createElement('div');
+      img.style.cssText = `width:100%;height:88px;border-radius:6px;background:#0f0f1a center/cover no-repeat${m.thumb ? `;background-image:url('${encodeURI(m.thumb)}')` : ''}`;
+      const cap = document.createElement('div');
+      cap.style.cssText = 'font-size:10.5px;color:#a5a5c8;margin-top:5px;line-height:1.3;max-height:28px;overflow:hidden';
+      cap.textContent = m.caption || (m.tipo === 'VIDEO' ? 'Reel' : 'Publicación');
+      card.appendChild(img); card.appendChild(cap);
+      card.onclick = () => {
+        POSTRULE_MEDIA_SEL = m;
+        document.querySelectorAll('.postrule-media-card').forEach(c => { c.style.borderColor = '#2a2a4a'; });
+        card.style.borderColor = '#10b981';
+      };
+      cont.appendChild(card);
+    });
+  }
+
+  // 2. Reglas ya creadas
+  const reglas = await apiFetch('/api/post-rules');
+  if (!reglas || !reglas.length) {
+    lista.innerHTML = `
+      <div style="background:#12121f;border:1px dashed #2a2a4a;border-radius:10px;padding:26px;text-align:center">
+        <div style="font-size:30px;margin-bottom:8px">💬</div>
+        <h4 style="margin:0 0 6px;color:#e0e0e0">Todavía no tienes reglas</h4>
+        <p style="color:#888;font-size:14px;margin:0">Crea la primera arriba: elige una publicación, pon la palabra clave y qué entregar.</p>
+      </div>`;
+    return;
+  }
+  lista.innerHTML = '';
+  reglas.forEach(r => {
+    const fila = document.createElement('div');
+    fila.style.cssText = 'display:flex;gap:14px;align-items:flex-start;background:#12121f;border:1px solid #2a2a4a;border-radius:10px;padding:14px;margin-bottom:10px';
+    const thumb = document.createElement('div');
+    thumb.style.cssText = `flex:0 0 auto;width:56px;height:56px;border-radius:8px;background:#0f0f1a center/cover no-repeat${r.thumb ? `;background-image:url('${encodeURI(r.thumb)}')` : ''}`;
+    const info = document.createElement('div');
+    info.style.cssText = 'flex:1;min-width:0';
+    const kw = document.createElement('div');
+    kw.style.cssText = 'font-weight:700;font-size:0.95rem;color:#e0e0e0';
+    kw.textContent = r.keywords;
+    const ent = document.createElement('div');
+    ent.style.cssText = 'font-size:0.82rem;color:#888;margin-top:3px';
+    ent.textContent = r.entregar || 'Entrega lo que corresponda según el comentario';
+    const cap = document.createElement('div');
+    cap.style.cssText = 'font-size:0.75rem;color:#5a5a7a;margin-top:5px';
+    cap.textContent = (r.caption || '') + (r.enabled ? '' : '  ·  PAUSADA');
+    info.appendChild(kw); info.appendChild(ent); info.appendChild(cap);
+
+    const acciones = document.createElement('div');
+    acciones.style.cssText = 'display:flex;gap:6px;flex-shrink:0';
+    const bToggle = document.createElement('button');
+    bToggle.className = 'btn-secondary';
+    bToggle.style.cssText = 'padding:5px 10px;font-size:0.75rem';
+    bToggle.textContent = r.enabled ? 'Pausar' : 'Activar';
+    bToggle.onclick = async () => {
+      await apiFetch(`/api/post-rules/${r.id}/toggle`, 'PATCH');
+      loadPostRules();
+    };
+    const bDel = document.createElement('button');
+    bDel.className = 'btn-secondary';
+    bDel.style.cssText = 'padding:5px 10px;font-size:0.75rem';
+    bDel.textContent = 'Borrar';
+    bDel.onclick = async () => {
+      if (!confirm('¿Borrar esta regla? La publicación volverá a usar las palabras clave generales del agente.')) return;
+      await apiFetch(`/api/post-rules/${r.id}`, 'DELETE');
+      showToast('Regla borrada');
+      loadPostRules();
+    };
+    acciones.appendChild(bToggle); acciones.appendChild(bDel);
+
+    fila.appendChild(thumb); fila.appendChild(info); fila.appendChild(acciones);
+    lista.appendChild(fila);
+  });
+}
+
+// onclick por asignación: loadPostRules() puede correr varias veces
+document.addEventListener('DOMContentLoaded', () => {
+  const b = document.getElementById('btn-save-postrule');
+  if (b) b.onclick = async () => {
+    if (!POSTRULE_MEDIA_SEL) { showToast('⚠️ Elige primero una publicación'); return; }
+    const keywords = document.getElementById('postrule-keywords').value.trim();
+    if (!keywords) { showToast('⚠️ Escribe al menos una palabra clave'); return; }
+    b.disabled = true;
+    const r = await apiFetch('/api/post-rules', 'POST', {
+      accountId: ACCOUNT_ID,
+      media_id:  POSTRULE_MEDIA_SEL.id,
+      keywords,
+      entregar:     document.getElementById('postrule-entregar').value.trim(),
+      public_reply: document.getElementById('postrule-public').value.trim(),
+      permalink:    POSTRULE_MEDIA_SEL.permalink,
+      thumb:        POSTRULE_MEDIA_SEL.thumb,
+      caption:      POSTRULE_MEDIA_SEL.caption,
+    });
+    b.disabled = false;
+    if (!r) {
+      // apiFetch devuelve null en cualquier error: sin este aviso el botón
+      // parecería no hacer nada.
+      showToast('⚠️ No se pudo guardar la regla. Revisa los datos e intenta de nuevo.');
+      return;
+    }
+    if (r) {
+      showToast(r.actualizada ? '✅ Regla actualizada' : '✅ Regla creada');
+      document.getElementById('postrule-keywords').value = '';
+      document.getElementById('postrule-entregar').value = '';
+      document.getElementById('postrule-public').value = '';
+      POSTRULE_MEDIA_SEL = null;
+      document.querySelectorAll('.postrule-media-card').forEach(c => { c.style.borderColor = '#2a2a4a'; });
+      loadPostRules();
+    }
+  };
+});
 
 async function loadMagnets() {
   if (!ACCOUNT_ID) return;

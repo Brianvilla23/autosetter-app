@@ -86,6 +86,10 @@
       <span class="nav-icon"><svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-11.25a.75.75 0 00-1.5 0v4.59L7.3 9.24a.75.75 0 00-1.1 1.02l3.25 3.5a.75.75 0 001.1 0l3.25-3.5a.75.75 0 10-1.1-1.02l-1.95 2.1V6.75z" clip-rule="evenodd"/></svg></span>
       Lead Magnets
     </a>
+    <a class="nav-item" data-section="postrules">
+      <span class="nav-icon"><svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.84 8.84 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7z" clip-rule="evenodd"/></svg></span>
+      Comentarios
+    </a>
     <!-- "Growth" y "Referidos" retirados del menú (2026-06-09): Growth
          duplicaba Lead Magnets + export (ya en CRM/Analytics); Referidos
          se reactiva cuando haya 5+ clientes. APIs y secciones intactas. -->
@@ -719,6 +723,50 @@
   </section>
 
   <!-- LEAD MAGNETS ─────────────────────────────────────────────────────────── -->
+  <section id="section-postrules" class="section">
+    <div class="page-header">
+      <div>
+        <h1>Comentarios que se convierten en conversaciones</h1>
+        <p>Elige una publicación, define la palabra clave y qué entregar. Quien la comente recibe un privado automático.</p>
+      </div>
+    </div>
+
+    <div class="links-info">
+      💬 Ejemplo: en un reel pones la palabra <strong>PRECIO</strong> y "la lista de precios y que agende evaluación".
+      Quien comente "precio" recibe eso al privado y el agente sigue la conversación.
+      <br>Las publicaciones sin regla siguen usando las palabras clave generales del agente.
+      <br><strong>Instagram permite un solo mensaje privado por comentario</strong>, así que ese mensaje debe entregar lo prometido — no un simple saludo.
+    </div>
+
+    <div id="postrules-nueva" style="background:#12121f;border:1px solid #2a2a4a;border-radius:12px;padding:20px;margin-bottom:22px">
+      <h3 style="margin:0 0 14px;font-size:1rem">Nueva regla</h3>
+
+      <label style="font-size:0.8rem;color:#a5a5c8;font-weight:600;display:block;margin-bottom:8px">1. Elige la publicación</label>
+      <div id="postrules-media" style="display:flex;gap:10px;overflow-x:auto;padding-bottom:10px;margin-bottom:16px">
+        <span style="color:#666;font-size:0.85rem">Cargando tus publicaciones…</span>
+      </div>
+
+      <div class="form-row" style="margin-bottom:12px">
+        <label style="font-size:0.8rem;color:#a5a5c8;font-weight:600;display:block;margin-bottom:6px">2. Palabra clave de esta publicación</label>
+        <input type="text" id="postrule-keywords" class="form-input" placeholder="precio, valor, cuanto  (separadas por coma)">
+      </div>
+
+      <div class="form-row" style="margin-bottom:12px">
+        <label style="font-size:0.8rem;color:#a5a5c8;font-weight:600;display:block;margin-bottom:6px">3. Qué debe entregar en el privado</label>
+        <textarea id="postrule-entregar" class="form-input" rows="2" placeholder="La lista de precios y el link para agendar evaluación"></textarea>
+      </div>
+
+      <div class="form-row" style="margin-bottom:14px">
+        <label style="font-size:0.8rem;color:#a5a5c8;font-weight:600;display:block;margin-bottom:6px">4. Respuesta pública bajo el comentario (opcional)</label>
+        <input type="text" id="postrule-public" class="form-input" placeholder="{usuario} te lo acabo de mandar al privado 📩">
+      </div>
+
+      <button class="btn-primary" id="btn-save-postrule">Guardar regla</button>
+    </div>
+
+    <div id="postrules-lista"></div>
+  </section>
+
   <section id="section-magnets" class="section">
     <div class="page-header">
       <div>
