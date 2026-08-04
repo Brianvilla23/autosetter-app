@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Demo de voz — Atinov</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0a0a0a; color: #fff; min-height: 100vh;
+      display: flex; align-items: center; justify-content: center; padding: 24px;
+    }
+    .card {
+      width: 100%; max-width: 520px; text-align: center;
+      border: 1px solid rgba(255,255,255,.12); border-radius: 16px; padding: 40px 32px;
+    }
+    h1 { font-size: 1.5rem; font-weight: 800; margin-bottom: 8px; letter-spacing: -.02em; }
+    .sub { color: rgba(255,255,255,.55); font-size: 14.5px; line-height: 1.6; margin-bottom: 28px; }
+
+    .orbe {
+      width: 130px; height: 130px; border-radius: 50%; margin: 0 auto 26px;
+      background: radial-gradient(circle at 30% 30%, #fff, #666);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 46px; transition: transform .12s ease, box-shadow .25s ease;
+      box-shadow: 0 0 0 0 rgba(255,255,255,.25);
+    }
+    .orbe.idle    { background: radial-gradient(circle at 30% 30%, #3a3a3a, #1a1a1a); }
+    .orbe.conectando { animation: pulso 1.1s ease-in-out infinite; }
+    .orbe.escuchando { box-shadow: 0 0 0 14px rgba(255,255,255,.06); }
+    .orbe.hablando   { box-shadow: 0 0 0 20px rgba(255,255,255,.12); }
+    @keyframes pulso { 0%,100% { opacity:.45 } 50% { opacity:1 } }
+
+    button {
+      background: #fff; color: #0a0a0a; border: 0; border-radius: 10px;
+      padding: 15px 34px; font-size: 15.5px; font-weight: 700; cursor: pointer;
+      transition: opacity .15s;
+    }
+    button:disabled { opacity: .35; cursor: default; }
+    button.colgar { background: #ef4444; color: #fff; }
+
+    .estado { margin-top: 18px; font-size: 14px; color: rgba(255,255,255,.7); min-height: 22px; }
+    .meta { margin-top: 10px; font-size: 12px; color: rgba(255,255,255,.35); }
+
+    .transcripcion {
+      margin-top: 26px; text-align: left; max-height: 260px; overflow-y: auto;
+      border-top: 1px solid rgba(255,255,255,.1); padding-top: 18px;
+    }
+    .linea { margin-bottom: 12px; font-size: 14.5px; line-height: 1.55; }
+    .linea .quien { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: rgba(255,255,255,.35); margin-bottom: 3px; }
+    .linea.yo .quien { color: #60a5fa; }
+    .aviso { margin-top: 22px; font-size: 12.5px; color: rgba(255,255,255,.4); line-height: 1.6; }
+    a { color: rgba(255,255,255,.8); }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🎙️ Habla con tu agente</h1>
+    <p class="sub">Es el mismo agente que responde por WhatsApp — con tus instrucciones y tu base de conocimiento — pero hablando. Así se va a sentir cuando las llamadas entren por WhatsApp.</p>
+
+    <div class="orbe idle" id="orbe">🎙️</div>
+
+    <button id="btn">Llamar al agente</button>
+    <div class="estado" id="estado"></div>
+    <div class="meta" id="meta"></div>
+
+    <div class="transcripcion" id="transcripcion" style="display:none"></div>
+
+    <p class="aviso">Necesita permiso del micrófono. Si no pasa nada, revisa que hayas iniciado sesión en <a href="/app">tu panel</a>.</p>
+  </div>
+
+<script>
+const btn    = document.getElementById('btn');
+const estado = document.getElementById('estado');
+const metaEl = document.getElementById('meta');
+const orbe   = document.getElementById('orbe');
+const trans  = document.getElementById('transcripcion');
+
+let pc = null, micStream = null, dc = null, enLlamada = false;
+let audioEl = null, temporizador = null;
+
+// Cada minuto de sesión se factura. Una pestaña olvidada abierta es plata que
+// se quema sola: se corta a los 5 minutos de silencio total.
+const INACTIVIDAD_MS = 5 * 60 * 1000;
+function reiniciarInactividad() {
+  clearTimeout(temporizador);
+  temporizador = setTimeout(function () {
+    if (enLlamada) { colgar(); setEstado('Llamada cerrada por inactividad.'); }
+  }, INACTIVIDAD_MS);
+}
+
+function setEstado(t)  { estado.textContent = t; }
+function setOrbe(clase, emoji) {
+  orbe.className = 'orbe ' + clase;
+  if (emoji) orbe.textContent = emoji;
+}
+function linea(quien, texto, esYo) {
+  trans.style.display = 'block';
+  const d = document.createElement('div');
+  d.className = 'linea' + (esYo ? ' yo' : '');
+  const q = document.createElement('span');
+  q.className = 'quien'; q.textContent = quien;
+  const p = document.createElement('div');
+  p.textContent = texto;               // textContent: nunca innerHTML con texto del modelo
+  d.appendChild(q); d.appendChild(p);
+  trans.appendChild(d);
+  trans.scrollTop = trans.scrollHeight;
+}
+
+async function colgar() {
+  enLlamada = false;
+  clearTimeout(temporizador);
+  try { if (dc) dc.close(); } catch (e) {}
+  try { if (pc) pc.close(); } catch (e) {}
+  try { if (micStream) micStream.getTracks().forEach(t => t.stop()); } catch (e) {}
+  try { if (audioEl) { audioEl.srcObject = null; audioEl.remove(); } } catch (e) {}
+  pc = null; dc = null; micStream = null; audioEl = null;
+  btn.textContent = 'Llamar al agente';
+  btn.classList.remove('colgar');
+  btn.disabled = false;
+  setOrbe('idle', '🎙️');
+  setEstado('Llamada terminada.');
+}
+
+async function llamar() {
+  btn.disabled = true;
+  setEstado('Preparando la sesión…');
+  setOrbe('conectando', '⏳');
+
+  try {
+    // 1. Token efímero desde NUESTRO servidor (la API key nunca llega acá)
+    const token = localStorage.getItem('autosetter_token');
+    if (!token) throw new Error('Inicia sesión en /app y vuelve a esta página');
+
+    const rt = await fetch('/api/voice/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: '{}',
+    });
+    const datos = await rt.json().catch(() => ({}));
+    if (!rt.ok || !datos.value) throw new Error(datos.error || 'No se pudo iniciar la sesión');
+
+    metaEl.textContent = `${datos.agent.avatar} ${datos.agent.name} · voz ${datos.voz}`;
+
+    // 2. Micrófono
+    setEstado('Pidiendo el micrófono…');
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+    // 3. WebRTC contra OpenAI
+    setEstado('Conectando…');
+    pc = new RTCPeerConnection();
+
+    // Listener ANTES de negociar: si el ICE muere durante el handshake, la UI
+    // no puede quedar diciendo "conectado" con el micrófono abierto.
+    pc.addEventListener('connectionstatechange', () => {
+      if (!pc) return;
+      if (['failed', 'disconnected', 'closed'].includes(pc.connectionState)) {
+        const estabaEnLlamada = enLlamada;
+        colgar();
+        setEstado(estabaEnLlamada ? 'Se cortó la conexión.' : 'No se pudo conectar.');
+      }
+    });
+
+    // El <audio> DEBE estar en el DOM: detached, iOS Safari no reproduce.
+    audioEl = document.createElement('audio');
+    audioEl.autoplay = true;
+    audioEl.setAttribute('playsinline', '');
+    audioEl.style.display = 'none';
+    document.body.appendChild(audioEl);
+    pc.ontrack = (e) => {
+      audioEl.srcObject = e.streams[0];
+      audioEl.play().catch(() => {});   // iOS puede exigir el intento explícito
+    };
+    pc.addTrack(micStream.getTracks()[0], micStream);
+
+    dc = pc.createDataChannel('oai-events');
+    dc.addEventListener('message', (e) => {
+      let ev; try { ev = JSON.parse(e.data); } catch (err) { return; }
+      // Lo que dijo el usuario (transcripción del micrófono)
+      if (ev.type === 'conversation.item.input_audio_transcription.completed' && ev.transcript) {
+        linea('Tú', ev.transcript.trim(), true);
+      }
+      // Lo que respondió el agente
+      if (ev.type === 'response.output_audio_transcript.done' && ev.transcript) {
+        linea(metaEl.textContent || 'Agente', ev.transcript.trim(), false);
+      }
+      if (ev.type === 'input_audio_buffer.speech_started') { setOrbe('escuchando', '👂'); reiniciarInactividad(); }
+      if (ev.type === 'response.output_audio.delta') setOrbe('hablando', '💬');
+      if (ev.type === 'response.done') { setOrbe('escuchando', '👂'); reiniciarInactividad(); }
+      if (ev.type === 'error') setEstado('⚠️ ' + (ev.error?.message || 'error en la sesión'));
+    });
+
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+
+    const resp = await fetch('https://api.openai.com/v1/realtime/calls', {
+      method: 'POST',
+      body: offer.sdp,
+      headers: { 'Authorization': 'Bearer ' + datos.value, 'Content-Type': 'application/sdp' },
+    });
+    if (!resp.ok) throw new Error('OpenAI rechazó la conexión (' + resp.status + ')');
+    const answer = await resp.text();
+    await pc.setRemoteDescription({ type: 'answer', sdp: answer });
+
+    enLlamada = true;
+    btn.textContent = 'Colgar';
+    btn.classList.add('colgar');
+    btn.disabled = false;
+    setOrbe('escuchando', '👂');
+    setEstado('Conectado — habla cuando quieras.');
+    reiniciarInactividad();
+  } catch (e) {
+    await colgar();
+    setEstado('⚠️ ' + e.message);
+  }
+}
+
+btn.addEventListener('click', () => { enLlamada ? colgar() : llamar(); });
+// Cerrar la pestaña con la sesión viva deja el micrófono tomado hasta que el
+// browser recoge la basura: cortamos explícito.
+window.addEventListener('pagehide', () => { if (enLlamada) colgar(); });
+</script>
+</body>
+</html>

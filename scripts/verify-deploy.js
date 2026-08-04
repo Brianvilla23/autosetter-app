@@ -121,6 +121,26 @@ const CHECKS = [
     expectBodyIncludes: 'Conectar Google Calendar',
   },
   {
+    name: '/api/voice/token sin auth → 401 (no es canilla libre de OpenAI)',
+    method: 'POST',
+    path: '/api/voice/token',
+    body: '{}',
+    expectStatus: 401,
+  },
+  {
+    name: 'Demo de voz: página 200 y micrófono habilitado solo ahí',
+    method: 'GET',
+    path: '/demo-voz.html',
+    expectStatus: 200,
+    expectHeaderIncludes: { 'permissions-policy': 'microphone=(self)' },
+  },
+  {
+    name: 'Micrófono BLOQUEADO en el resto del sitio',
+    method: 'GET',
+    path: '/',
+    expectHeaderIncludes: { 'permissions-policy': 'microphone=()' },
+  },
+  {
     name: 'Webhook Shopify sin acc → 400',
     method: 'POST',
     path: '/webhook/shopify',

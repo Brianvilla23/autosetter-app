@@ -26,6 +26,20 @@ const apiLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+/**
+ * Voz (OpenAI Realtime): cada sesión cuesta plata REAL de la key de la
+ * plataforma y no tiene tope natural de duración. El límite general de 100/min
+ * es absurdo acá: 100 sesiones concurrentes de audio arruinan la factura.
+ * Máx 8 sesiones por hora por IP.
+ */
+const voiceLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 8,
+  message: { error: 'Alcanzaste el límite de sesiones de voz por hora. Intenta más tarde.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 /** Webhook Meta: más permisivo (mensajes en ráfaga) */
 const webhookLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -116,6 +130,7 @@ function blockAttackPaths(req, res, next) {
 module.exports = {
   authLimiter,
   apiLimiter,
+  voiceLimiter,
   webhookLimiter,
   sanitizeBody,
   preventParamPollution,

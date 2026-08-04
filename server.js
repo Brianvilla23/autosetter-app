@@ -10,6 +10,7 @@ const checkSubscription    = require('./middleware/checkSubscription');
 const {
   authLimiter,
   apiLimiter,
+  voiceLimiter,
   webhookLimiter,
   sanitizeBody,
   preventParamPollution,
@@ -58,9 +59,13 @@ app.use(helmet({
 // 1.b Permissions-Policy: deshabilita features de browser que Atinov no usa.
 // Reduce surface de ataque si alguna vulnerabilidad permitiera ejecutar scripts.
 app.use((req, res, next) => {
+  // El micrófono se habilita SOLO en la página del demo de voz (y solo para
+  // este mismo origen). En el resto del sitio sigue prohibido: si algún día
+  // hay un XSS, no puede abrir el mic desde el dashboard.
+  const micro = req.path === '/demo-voz.html' ? 'microphone=(self)' : 'microphone=()';
   res.setHeader(
     'Permissions-Policy',
-    'camera=(), microphone=(), geolocation=(), payment=(), usb=(), accelerometer=(), gyroscope=(), magnetometer=(), midi=(), interest-cohort=()'
+    `camera=(), ${micro}, geolocation=(), payment=(), usb=(), accelerometer=(), gyroscope=(), magnetometer=(), midi=(), interest-cohort=()`
   );
   next();
 });
@@ -505,6 +510,18 @@ app.use('/api/usage',         apiLimiter, requireAuth, require('./routes/usage')
 // GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET.
 app.get('/api/calendar/callback', apiLimiter, require('./routes/calendar').handleOAuthCallback);
 app.use('/api/calendar', apiLimiter, requireAuth, require('./routes/calendar').router);
+
+// Demo de voz en vivo (OpenAI Realtime). Cada sesión gasta plata real de la
+// key de la plataforma, así que va con TODOS los candados: rate limit propio
+// (8/hora por IP, no los 100/min genéricos), sesión obligatoria, y
+// checkSubscription — sin él, un JWT de 30 días seguiría acuñando sesiones
+// mucho después de que el trial venció.
+app.use('/api/voice', voiceLimiter, requireAuth, checkSubscription, require('./routes/voice'));
+
+// La URL sin .html es la que la gente tipea; el catch-all serviría el
+// dashboard en silencio y el micrófono quedaría bloqueado (el permiso se
+// concede por path exacto).
+app.get('/demo-voz', (req, res) => res.redirect(301, '/demo-voz.html'));
 
 // Helper: account info from JWT
 app.get('/api/account/me', requireAuth, async (req, res, next) => {
