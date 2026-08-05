@@ -402,6 +402,7 @@ function loadSection(name) {
     case 'links':     loadLinks(); break;
     case 'magnets':   loadMagnets(); break;
     case 'postrules': loadPostRules(); break;
+    case 'fuentes':   loadFuentes(); break;
     case 'growth':    loadGrowth(); break;
     case 'settings':  loadSettings(); break;
   }
@@ -2431,6 +2432,188 @@ const DELIVERY_LABEL = {
   dm:    '💬 DM',
   link:  '🔗 Link',
 };
+
+// ── FUENTES DE CONOCIMIENTO ──────────────────────────────────────────────────
+let FUENTE_TIPO = null;
+let FUENTE_PDF_B64 = null;
+let FUENTES_POLL = null;
+
+const FUENTE_CAMPOS = {
+  url:       { label: 'Dirección de tu sitio web', ph: 'https://tunegocio.cl/precios', tipo: 'input' },
+  youtube:   { label: 'Link del video de YouTube', ph: 'https://youtube.com/watch?v=...', tipo: 'input' },
+  texto:     { label: 'Pega acá lo que sepas de tu negocio', ph: 'Precios, horarios, formas de pago, lo que más te preguntan…', tipo: 'textarea' },
+  pdf:       { label: 'Sube tu PDF (catálogo, lista de precios, protocolo)', tipo: 'file' },
+  instagram: { label: null, tipo: 'ninguno', nota: 'Vamos a leer tu bio y las últimas 30 publicaciones de tu cuenta conectada.' },
+};
+
+function renderCamposFuente(tipo) {
+  const cont = document.getElementById('fuente-campos');
+  const btn  = document.getElementById('btn-add-fuente');
+  const cfg  = FUENTE_CAMPOS[tipo];
+  cont.innerHTML = '';
+  FUENTE_PDF_B64 = null;
+  if (!cfg) { btn.style.display = 'none'; return; }
+
+  if (cfg.nota) {
+    const p = document.createElement('p');
+    p.style.cssText = 'color:#888;font-size:0.85rem;margin:0 0 6px';
+    p.textContent = cfg.nota;
+    cont.appendChild(p);
+  }
+  if (cfg.label) {
+    const l = document.createElement('label');
+    l.style.cssText = 'font-size:0.8rem;color:#a5a5c8;font-weight:600;display:block;margin-bottom:6px';
+    l.textContent = cfg.label;
+    cont.appendChild(l);
+  }
+  if (cfg.tipo === 'input' || cfg.tipo === 'textarea') {
+    const el = document.createElement(cfg.tipo === 'input' ? 'input' : 'textarea');
+    el.id = 'fuente-valor';
+    el.className = 'form-input';
+    el.placeholder = cfg.ph || '';
+    if (cfg.tipo === 'textarea') el.rows = 5;
+    cont.appendChild(el);
+  }
+  if (cfg.tipo === 'file') {
+    const el = document.createElement('input');
+    el.type = 'file'; el.accept = 'application/pdf'; el.id = 'fuente-pdf';
+    el.style.cssText = 'color:#a5a5c8;font-size:0.85rem';
+    const aviso = document.createElement('div');
+    aviso.style.cssText = 'font-size:0.75rem;color:#666;margin-top:6px';
+    aviso.textContent = 'Máximo 8 MB. Debe tener texto seleccionable: un PDF escaneado como imagen no se puede leer.';
+    el.onchange = () => {
+      const f = el.files?.[0];
+      FUENTE_PDF_B64 = null;
+      if (!f) return;
+      if (f.size > 8 * 1024 * 1024) { showToast('⚠️ El PDF pesa más de 8 MB'); el.value = ''; return; }
+      const lector = new FileReader();
+      lector.onload = () => { FUENTE_PDF_B64 = String(lector.result); aviso.textContent = `Listo: ${f.name}`; };
+      lector.onerror = () => showToast('⚠️ No se pudo leer el archivo');
+      lector.readAsDataURL(f);
+    };
+    cont.appendChild(el); cont.appendChild(aviso);
+  }
+  btn.style.display = '';
+}
+
+async function loadFuentes() {
+  if (!ACCOUNT_ID) return;
+  const lista = document.getElementById('fuentes-lista');
+
+  document.querySelectorAll('.fuente-tipo').forEach(b => {
+    b.onclick = () => {
+      FUENTE_TIPO = b.dataset.tipo;
+      document.querySelectorAll('.fuente-tipo').forEach(x => x.classList.remove('btn-primary'));
+      b.classList.add('btn-primary');
+      renderCamposFuente(FUENTE_TIPO);
+    };
+  });
+
+  const btn = document.getElementById('btn-add-fuente');
+  if (btn) btn.onclick = async () => {
+    if (!FUENTE_TIPO) { showToast('⚠️ Elige primero de dónde sacar la información'); return; }
+    const valor = document.getElementById('fuente-valor')?.value.trim() || '';
+    const cuerpo = { accountId: ACCOUNT_ID, tipo: FUENTE_TIPO };
+    if (FUENTE_TIPO === 'url' || FUENTE_TIPO === 'youtube') {
+      if (!valor) { showToast('⚠️ Falta la dirección'); return; }
+      cuerpo.origen = valor;
+    } else if (FUENTE_TIPO === 'texto') {
+      if (!valor) { showToast('⚠️ Pega el texto'); return; }
+      cuerpo.contenido_crudo = valor;
+    } else if (FUENTE_TIPO === 'pdf') {
+      if (!FUENTE_PDF_B64) { showToast('⚠️ Elige un archivo PDF'); return; }
+      cuerpo.contenido_crudo = FUENTE_PDF_B64;
+    }
+    btn.disabled = true;
+    // fetch directo (no apiFetch): apiFetch devuelve null en cualquier error y
+    // se perderían los mensajes útiles del servidor ("Esa dirección apunta a
+    // una red interna", "Llegaste al máximo de 40 fuentes"…).
+    let r = null, errMsg = null;
+    try {
+      const resp = await fetch(API + '/api/knowledge-sources', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + AUTH_TOKEN },
+        body: JSON.stringify(cuerpo),
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (resp.ok) r = data; else errMsg = data.error || `Error ${resp.status}`;
+    } catch (e) { errMsg = 'No se pudo conectar'; }
+    btn.disabled = false;
+    if (!r) { showToast('⚠️ ' + (errMsg || 'No se pudo agregar la fuente')); return; }
+    showToast('⏳ Procesando… la ficha aparece en unos segundos');
+    const v = document.getElementById('fuente-valor'); if (v) v.value = '';
+    FUENTE_PDF_B64 = null;
+    loadFuentes();
+  };
+
+  const fuentes = await apiFetch('/api/knowledge-sources');
+  clearTimeout(FUENTES_POLL);
+  if (!fuentes || !fuentes.length) {
+    lista.innerHTML = `
+      <div style="background:#12121f;border:1px dashed #2a2a4a;border-radius:10px;padding:26px;text-align:center">
+        <div style="font-size:30px;margin-bottom:8px">📚</div>
+        <h4 style="margin:0 0 6px;color:#e0e0e0">Todavía no cargaste ninguna fuente</h4>
+        <p style="color:#888;font-size:14px;margin:0">Empieza por tu sitio web o tu propio Instagram: son los que menos trabajo te dan.</p>
+      </div>`;
+    return;
+  }
+
+  const ETIQUETA = { url: '🌐 Sitio web', instagram: '📷 Instagram', pdf: '📄 PDF', youtube: '▶️ YouTube', texto: '✍️ Texto' };
+  const ESTADO = {
+    pendiente:  { t: '⏳ En cola',    c: '#f59e0b' },
+    procesando: { t: '⚙️ Leyendo…',  c: '#f59e0b' },
+    listo:      { t: '✅ Ficha lista', c: '#10b981' },
+    error:      { t: '⚠️ Falló',      c: '#ef4444' },
+  };
+
+  lista.innerHTML = '';
+  fuentes.forEach(f => {
+    const fila = document.createElement('div');
+    fila.style.cssText = 'display:flex;gap:14px;align-items:flex-start;background:#12121f;border:1px solid #2a2a4a;border-radius:10px;padding:14px;margin-bottom:10px';
+    const info = document.createElement('div');
+    info.style.cssText = 'flex:1;min-width:0';
+    const t1 = document.createElement('div');
+    t1.style.cssText = 'font-weight:700;font-size:0.92rem;color:#e0e0e0';
+    t1.textContent = `${ETIQUETA[f.tipo] || f.tipo}${f.titulo ? ' · ' + f.titulo : ''}`;
+    const t2 = document.createElement('div');
+    t2.style.cssText = 'font-size:0.8rem;color:#888;margin-top:3px;word-break:break-all';
+    t2.textContent = f.origen || '';
+    const est = ESTADO[f.estado] || ESTADO.pendiente;
+    const t3 = document.createElement('div');
+    t3.style.cssText = `font-size:0.78rem;margin-top:6px;color:${est.c}`;
+    t3.textContent = est.t + (f.estado === 'error' && f.error ? ` — ${f.error}` : '');
+    info.appendChild(t1); if (f.origen) info.appendChild(t2); info.appendChild(t3);
+
+    const acc = document.createElement('div');
+    acc.style.cssText = 'display:flex;gap:6px;flex-shrink:0';
+    if (f.estado === 'error') {
+      const b = document.createElement('button');
+      b.className = 'btn-secondary'; b.style.cssText = 'padding:5px 10px;font-size:0.75rem';
+      b.textContent = 'Reintentar';
+      b.onclick = async () => { await apiFetch(`/api/knowledge-sources/${f.id}/reprocesar`, 'POST', {}); loadFuentes(); };
+      acc.appendChild(b);
+    }
+    const bd = document.createElement('button');
+    bd.className = 'btn-secondary'; bd.style.cssText = 'padding:5px 10px;font-size:0.75rem';
+    bd.textContent = 'Borrar';
+    bd.onclick = async () => {
+      if (!confirm('¿Borrar esta fuente? La ficha que generó queda en Conocimiento.')) return;
+      await apiFetch(`/api/knowledge-sources/${f.id}`, 'DELETE');
+      loadFuentes();
+    };
+    acc.appendChild(bd);
+
+    fila.appendChild(info); fila.appendChild(acc);
+    lista.appendChild(fila);
+  });
+
+  // Mientras haya algo procesándose, refrescar solo (el trabajo es en segundo plano)
+  if (fuentes.some(f => f.estado === 'pendiente' || f.estado === 'procesando')) {
+    FUENTES_POLL = setTimeout(() => {
+      if (document.getElementById('section-fuentes')?.classList.contains('active')) loadFuentes();
+    }, 4000);
+  }
+}
 
 // ── COMENTARIOS: reglas por publicación ──────────────────────────────────────
 let POSTRULE_MEDIA_SEL = null;   // publicación elegida en el formulario

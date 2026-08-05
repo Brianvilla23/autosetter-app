@@ -272,10 +272,16 @@ app.post('/api/billing/polar-webhook', express.raw({ type: 'application/json' })
 // 3. Limitar tamaño de payload (previene ataques de payload gigante)
 //    `verify` preserva el raw body en req.rawBody — necesario para validar
 //    HMAC del webhook de Meta (X-Hub-Signature-256).
-app.use(express.json({
-  limit: '1mb',
-  verify: (req, res, buf) => { req.rawBody = buf; },
-}));
+// La subida de PDFs va en base64 y no entra en 1 MB. Esa ruta NO se parsea
+// acá: su parser grande corre más abajo, DESPUÉS de requireAuth, para que un
+// anónimo no pueda hacer que el servidor lea y parsee 12 MB por request.
+const guardarRaw = (req, res, buf) => { req.rawBody = buf; };
+const parserNormal = express.json({ limit: '1mb', verify: guardarRaw });
+const parserGrande = express.json({ limit: '12mb', verify: guardarRaw });
+const esRutaFuentes = (p) => p === '/api/knowledge-sources' || p.startsWith('/api/knowledge-sources/');
+app.use((req, res, next) => (
+  esRutaFuentes(req.path) ? next() : parserNormal(req, res, next)
+));
 app.use(express.urlencoded({ extended: false, limit: '1mb' }));
 
 // 4. Bloquear bots y paths de ataque antes de procesar nada
@@ -490,6 +496,10 @@ app.use('/api/settings',  apiLimiter, requireAuth, require('./routes/settings'))
 app.use('/api/growth',    apiLimiter, requireAuth, checkSubscription, require('./routes/growth'));
 app.use('/api/lead-magnets', apiLimiter, requireAuth, checkSubscription, require('./routes/leadMagnets'));
 app.use('/api/post-rules',   apiLimiter, requireAuth, checkSubscription, require('./routes/postRules'));
+// Fuentes de conocimiento. El parser de 12 MB va DESPUÉS de la autenticación:
+// el body recién se lee cuando ya sabemos quién es.
+app.use('/api/knowledge-sources', apiLimiter, requireAuth, checkSubscription,
+  parserGrande, require('./routes/knowledgeSources'));
 app.use('/api/inbox',        apiLimiter, requireAuth, checkSubscription, require('./routes/inbox'));
 app.use('/api/quick-replies', apiLimiter, requireAuth, checkSubscription, require('./routes/quickReplies'));
 app.use('/api/intelligence',  apiLimiter, requireAuth, checkSubscription, require('./routes/intelligence'));
@@ -591,6 +601,10 @@ app.use(require('./middleware/errorResponse'));
 
 // Captura crashes async fuera de Express
 installProcessHandlers();
+
+// Fuentes que quedaron a medio procesar por un redeploy: se marcan para que el
+// dueño pueda reintentarlas en vez de quedar colgadas en "Leyendo…" para siempre.
+require('./services/knowledgeSources').rescatarFuentesColgadas();
 
 // ── PUBLIC PAGES (sin .html en la URL) ────────────────────────────────────────
 // Necesario porque Meta App Review valida que /privacy y /terms devuelvan

@@ -57,6 +57,7 @@ const db = {
   improvements:  new Datastore({ filename: path.join(dir, 'improvements.db'),  autoload: true }),
   billableEvents: new Datastore({ filename: path.join(dir, 'billableEvents.db'), autoload: true }),
   postRules:     new Datastore({ filename: path.join(dir, 'postRules.db'),     autoload: true }),
+  knowledgeSources: new Datastore({ filename: path.join(dir, 'knowledgeSources.db'), autoload: true }),
 };
 
 // Compact on load

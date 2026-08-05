@@ -57,11 +57,21 @@ router.post('/', async (req, res, next) => {
       try { origenLimpio = validarUrlPublica(origen); }
       catch (e) { return res.status(400).json({ error: e.message }); }
     }
-    if (tipo === 'texto' && !String(contenido_crudo || '').trim()) {
-      return res.status(400).json({ error: 'Pega el texto que quieres cargar' });
+    // Topes del lado del servidor: los del navegador no protegen de un curl.
+    // NeDB carga TODA la base en memoria, así que un documento gigante pesa
+    // en cada arranque, para siempre.
+    const MAX_TEXTO = 200_000;          // ~200 KB de texto pegado
+    const MAX_PDF_B64 = 11 * 1024 * 1024;
+    let crudo = null;
+    if (tipo === 'texto') {
+      crudo = String(contenido_crudo || '').trim();
+      if (!crudo) return res.status(400).json({ error: 'Pega el texto que quieres cargar' });
+      crudo = crudo.slice(0, MAX_TEXTO);
     }
-    if (tipo === 'pdf' && !String(contenido_crudo || '').trim()) {
-      return res.status(400).json({ error: 'Falta el archivo PDF' });
+    if (tipo === 'pdf') {
+      crudo = String(contenido_crudo || '');
+      if (!crudo.trim()) return res.status(400).json({ error: 'Falta el archivo PDF' });
+      if (crudo.length > MAX_PDF_B64) return res.status(400).json({ error: 'El PDF pesa más de 8 MB' });
     }
     if (tipo === 'instagram') {
       const cuenta = await db.findOne(db.accounts, { _id: accountId });
@@ -75,7 +85,7 @@ router.post('/', async (req, res, next) => {
       tipo,
       origen: origenLimpio,
       titulo: String(titulo || '').trim().slice(0, 90) || null,
-      contenido_crudo: (tipo === 'texto' || tipo === 'pdf') ? String(contenido_crudo) : null,
+      contenido_crudo: crudo,
       estado: 'pendiente',
       error: null,
       knowledge_id: null,

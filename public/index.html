@@ -86,6 +86,10 @@
       <span class="nav-icon"><svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-11.25a.75.75 0 00-1.5 0v4.59L7.3 9.24a.75.75 0 00-1.1 1.02l3.25 3.5a.75.75 0 001.1 0l3.25-3.5a.75.75 0 10-1.1-1.02l-1.95 2.1V6.75z" clip-rule="evenodd"/></svg></span>
       Lead Magnets
     </a>
+    <a class="nav-item" data-section="fuentes">
+      <span class="nav-icon"><svg viewBox="0 0 20 20"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z"/></svg></span>
+      Fuentes
+    </a>
     <a class="nav-item" data-section="postrules">
       <span class="nav-icon"><svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.84 8.84 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7z" clip-rule="evenodd"/></svg></span>
       Comentarios
@@ -723,6 +727,38 @@
   </section>
 
   <!-- LEAD MAGNETS ─────────────────────────────────────────────────────────── -->
+  <section id="section-fuentes" class="section">
+    <div class="page-header">
+      <div>
+        <h1>Fuentes</h1>
+        <p>Dinos de dónde sacar la información de tu negocio y la convertimos en conocimiento para tu agente.</p>
+      </div>
+    </div>
+
+    <div class="links-info">
+      📚 En vez de escribir todo desde cero, pega tu sitio web, sube tu lista de precios en PDF o carga tu propio Instagram.
+      El sistema lo lee y redacta una ficha que tú solo <strong>corriges</strong>.
+      <br>Cada ficha llega a <strong>Conocimiento</strong> sin asignar: revísala ahí y actívala cuando esté correcta. <strong>Nada llega al agente sin que lo apruebes.</strong>
+    </div>
+
+    <div style="background:#12121f;border:1px solid #2a2a4a;border-radius:12px;padding:20px;margin-bottom:22px">
+      <h3 style="margin:0 0 14px;font-size:1rem">Agregar fuente</h3>
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px" id="fuente-tipos">
+        <button type="button" class="fuente-tipo btn-secondary" data-tipo="url">🌐 Sitio web</button>
+        <button type="button" class="fuente-tipo btn-secondary" data-tipo="instagram">📷 Mi Instagram</button>
+        <button type="button" class="fuente-tipo btn-secondary" data-tipo="pdf">📄 PDF</button>
+        <button type="button" class="fuente-tipo btn-secondary" data-tipo="youtube">▶️ Video de YouTube</button>
+        <button type="button" class="fuente-tipo btn-secondary" data-tipo="texto">✍️ Pegar texto</button>
+      </div>
+
+      <div id="fuente-campos"></div>
+      <button class="btn-primary" id="btn-add-fuente" style="margin-top:12px;display:none">Procesar fuente</button>
+    </div>
+
+    <div id="fuentes-lista"></div>
+  </section>
+
   <section id="section-postrules" class="section">
     <div class="page-header">
       <div>
