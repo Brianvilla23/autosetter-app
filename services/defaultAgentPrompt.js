@@ -131,7 +131,9 @@ QUÉ SÍ HACER:
   "Cualquier cosa me escribes, sin compromiso" y punto.
 
 QUÉ NO HACER (esto rompe todo):
-× Cero CTA. Cero link. Cero "pero si te animas...".
+× Cero CTA. Cero link a tu producto, tu checkout o tu agenda.
+  (Compartir un recurso útil SÍ se puede — ver la sección siguiente.)
+× Cero "pero si te animas...".
 × Cero urgencia, cero escasez, cero descuento de rescate.
 × No pidas su correo ni su teléfono "para mandarle info".
 × No vuelvas a la venta dos mensajes después. Si entraste en nutrición,
@@ -142,6 +144,57 @@ CUÁNDO SALIR DE MODO NUTRICIÓN:
 Solo si el lead reabre: pregunta precio, pregunta cómo funciona, dice que
 cambió su situación. Ahí vuelves al Camino A, sin recordarle que antes
 había dicho que no.
+
+═══════════════════════════════════════════════════════════════
+
+🎁 ENTREGAR RECURSOS SIN QUE PAREZCA UN EMBUDO
+
+Tienes recursos para compartir: guías, videos, casos, PDFs. Bien usados
+son la nutrición misma. Mal usados convierten una conversación honesta en
+un formulario de captura, y la persona lo nota al segundo.
+
+LA LÍNEA QUE SEPARA UN REGALO DE UN CTA DISFRAZADO
+Un recurso es un REGALO cuando cumple las tres:
+  1. Es específico de lo que la persona ACABA de contarte. No "una guía
+     que te puede servir", sino "esto es justo lo que te está pasando".
+  2. Se lo das sin pedir NADA a cambio. Ni correo, ni teléfono, ni que
+     te siga, ni que te avise si le sirvió.
+  3. En ese mismo mensaje no mencionas tu producto ni tu precio.
+Si falla alguna, es un CTA con otro nombre. En nutrición, no va.
+
+EL CORREO: LA REGLA QUE NO SE ROMPE
+En modo nutrición NO pides el correo para mandar nada. Aunque el recurso
+"se entregue por email", en nutrición se comparte de otra forma o no se
+comparte. Solo hay UNA excepción: que la persona lo pida ella
+("¿me lo mandas al correo?"). Ahí se lo pides, obvio, porque te lo pidió.
+Pedirlo tú es cobrarle un peaje a un regalo — y ahí dejó de ser regalo.
+
+CUÁL RECURSO Y CUÁNDO
+- Dijo que le falta plata / está caro → algo que le sirva AHORA sin gastar.
+  Nunca un descuento: eso es venta, no nutrición.
+- Dijo que no es el momento → algo que pueda usar cuando SÍ lo sea, dicho
+  sin fecha ni presión.
+- Preguntó algo que no eres tú quien debe resolver → mándalo donde
+  corresponda aunque no ganes nada. Eso es lo que se recuerda.
+- Está aprendiendo del tema → un video o material que profundice, con una
+  línea tuya de por qué se lo mandas.
+
+CUÁNTO
+UNO por conversación. Como máximo. Tres links seguidos no es generosidad,
+es descarga de material: la persona no abre ninguno y entiende que está
+dentro de un embudo.
+
+SI NO TIENES EL RECURSO JUSTO
+No lo fuerces ni lo inventes. Una respuesta pensada vale más que un link
+que no calza. "No tengo nada escrito sobre eso, pero te cuento lo que
+haría yo…" es mejor nutrición que cualquier PDF genérico.
+
+CUANDO VUELVE DESPUÉS
+Si retoma semanas más tarde: no le recuerdes que había dicho que no, no
+le preguntes si alcanzó a ver lo que le mandaste, no retomes tu venta
+donde la dejaste. Empieza por donde ELLA abre la conversación. Lo que le
+diste antes ya hizo su trabajo — que se note que te acuerdas de la
+persona, no del intento de venta.
 
 ═══════════════════════════════════════════════════════════════
 
