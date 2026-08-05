@@ -204,8 +204,28 @@ router.post('/', async (req, res) => {
 // ── HANDLER: DM DIRECTO ───────────────────────────────────────────────────────
 async function handleDM(pageId, event) {
   const senderId = event.sender?.id;
-  const text     = event.message?.text;
-  if (!senderId || !text || event.message?.is_echo) return;
+  if (!senderId || event.message?.is_echo) return;
+
+  // Instagram manda por el MISMO canal de DMs tres cosas distintas:
+  //  · un mensaje normal (trae text)
+  //  · una RESPUESTA a una historia tuya (trae text + reply_to.story)
+  //  · una MENCIÓN en la historia de otra persona (SIN text, solo el adjunto
+  //    story_mention) → antes se descartaba en seco y se perdía a alguien que
+  //    te está mostrando a su audiencia gratis.
+  const adjuntos   = event.message?.attachments || [];
+  const tieneMencion = adjuntos.some(a => a.type === 'story_mention');
+  const respuestaHistoria = !!event.message?.reply_to?.story;
+  let text = event.message?.text;
+
+  // Solo tratamos como "mención pura" la que NO trae texto. Si la persona
+  // etiquetó Y escribió ("te etiqueté, ¿tienes el negro?"), lo que manda es su
+  // pregunta — decirle al agente "no te escribió" lo haría ignorarla.
+  const esMencion = tieneMencion && !text;
+  if (esMencion) {
+    // Sin texto no hay nada que "responder": el propio evento es el mensaje.
+    text = '[TE MENCIONÓ EN SU HISTORIA]';
+  }
+  if (!text) return;
 
   // Find account.
   // Instagram identifica la misma cuenta con dos IDs distintos: el que llega en
@@ -243,12 +263,28 @@ async function handleDM(pageId, event) {
     return;
   }
 
-  if (!lead) {
+  // Una mención en historia no se filtra por keywords: nadie va a etiquetarte
+  // escribiendo "precio". Que alguien te muestre a su audiencia YA es la señal.
+  if (esMencion) {
+    // Anti-spam: una historia suele tener varios frames y cada uno dispara su
+    // propio webhook. Sin esto, 4 frames = 4 "gracias por mencionarme"
+    // seguidos, 4 llamadas a OpenAI y 4 mensajes contra el plan.
+    const desde = new Date(Date.now() - 6 * 3600 * 1000).toISOString();
+    if (lead?.ultima_mencion_at && lead.ultima_mencion_at > desde) {
+      console.log(`⏭️ Mención de @${lead.ig_username} ignorada — ya se agradeció hace menos de 6h`);
+      return;
+    }
+  }
+
+  if (!lead && !esMencion) {
     // ── KEYWORD GATE: Si es el primer mensaje, verificar keywords del agente ──
     if (!containsTrigger(text, agent)) {
       console.log(`🔒 DM ignorado (sin keyword) de ${senderId}: "${text}"`);
       return;
     }
+  }
+
+  if (!lead) {
     // Keyword detectada → crear lead y activar bot
     const userInfo = await getIGUserInfo(senderId, account.access_token);
     lead = await db.insert(db.leads, {
@@ -256,15 +292,21 @@ async function handleDM(pageId, event) {
       ig_user_id: senderId, ig_username: userInfo.username || senderId,
       status: 'active', automation: 'automated',
       is_bypassed: false, is_converted: false, pipeline_stage: 'nuevo',
-      triggered_by: 'dm_keyword',
+      triggered_by: esMencion ? 'story_mention' : 'dm_keyword',
       last_message_at: new Date().toISOString()
     });
-    console.log(`🔑 Bot activado por keyword "info" en DM de @${lead.ig_username}`);
+    console.log(esMencion
+      ? `📣 Lead creado por mención en historia de @${lead.ig_username}`
+      : `🔑 Bot activado por keyword "info" en DM de @${lead.ig_username}`);
   }
 
   if (lead.automation !== 'automated' || lead.is_bypassed) return;
 
-  await runConversation({ account, agent, lead, senderId, text });
+  if (esMencion) {
+    await db.update(db.leads, { _id: lead._id }, { ultima_mencion_at: new Date().toISOString() }).catch(() => null);
+  }
+
+  await runConversation({ account, agent, lead, senderId, text, esMencion, respuestaHistoria });
 }
 
 // ── HANDLER: COMENTARIO EN POST/CARRUSEL → DM ─────────────────────────────────
@@ -667,7 +709,7 @@ async function handleMessengerMessage(pageId, event) {
 // Devuelve true si dejó una respuesta encolada. El comment-to-DM lo necesita:
 // la respuesta PÚBLICA promete un DM, así que no puede publicarse si el DM no
 // va a salir (lead en manos de un humano, límite de plan alcanzado…).
-async function runConversation({ account, agent, lead, senderId, text, isCommentTrigger = false, commentId = null, entregar = null, wasAudio = false, wasImage = false }) {
+async function runConversation({ account, agent, lead, senderId, text, isCommentTrigger = false, commentId = null, entregar = null, esMencion = false, respuestaHistoria = false, wasAudio = false, wasImage = false }) {
   if (lead.automation !== 'automated' || lead.is_bypassed) return false;
 
   // Guardar mensaje entrante (no cuenta al límite: son los DMs recibidos)
@@ -680,6 +722,9 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
     lead_id: lead._id, role: 'user', content: text,
     ...(mediaTag ? { media: mediaTag } : {}),
     ...(isCommentTrigger ? { via: 'comment' } : {}),
+    // Una mención tampoco es un mensaje que la persona escribió: marcarla
+    // evita que el follow-up la persiga como si hubiera iniciado conversación.
+    ...(esMencion ? { via: 'story_mention' } : {}),
   });
   await db.update(db.leads, { _id: lead._id }, { last_message_at: new Date().toISOString() });
 
@@ -736,6 +781,13 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
   // OJO: es la ÚNICA private reply que Meta permite por comentario, así que
   // este mensaje tiene que valer por sí solo — no puede ser un "hola, ¿en qué
   // te ayudo?" que desperdicie el tiro.
+  const contextoHistoria = esMencion
+    ? `NOTA: Esta persona te MENCIONÓ EN SU HISTORIA — te está mostrando a su audiencia, gratis. No te escribió un mensaje: la mención ES el evento.
+Tu respuesta: agradécele de verdad, corto y humano (una o dos líneas), sin sonar a plantilla y sin venderle nada en este mensaje. Si su historia da pie a algo concreto (mostró tu producto, fue a tu local), menciónalo. Termina con una pregunta simple y abierta solo si fluye; si no, deja el agradecimiento solo.`
+    : respuestaHistoria
+    ? `NOTA: Esta persona está RESPONDIENDO A UNA HISTORIA TUYA (no escribió de la nada). Responde en ese contexto, natural, como sigue una conversación que ya empezó — no la saludes como si fuera un primer contacto.`
+    : null;
+
   const baseContext = isCommentTrigger
     ? `NOTA: Esta persona comentó "${String(text).slice(0, 80)}" en una publicación tuya y este es el PRIMER mensaje que recibe de ti, por privado.
 Reglas para este mensaje:
@@ -796,6 +848,18 @@ ${entregar
     calendarContext = await buildCalendarContext(settings, account._id);
   } catch (e) { /* agenda opcional */ }
 
+  // ── ¿Te sigue? Cambia el guion: a quien ya te sigue no le explicas quién
+  // eres ni le pides que te siga. Meta solo entrega el dato de quien TE
+  // ESCRIBIÓ (un comentario no basta), así que no se consulta en ese caso.
+  let followerContext = null;
+  if (!isCommentTrigger) {
+    try {
+      const fs = require('../services/followerStatus');
+      if (fs.necesitaChequeo(lead)) lead = await fs.refrescarEstado(lead, account);
+      followerContext = fs.buildFollowerContext(lead, { esMencion });
+    } catch (e) { /* dato opcional, nunca bloquea */ }
+  }
+
   // ── Pedido de Shopify pendiente: el agente confirma el despacho ───────────
   let orderContext = null;
   try {
@@ -803,7 +867,7 @@ ${entregar
     orderContext = buildOrderContext(lead);
   } catch (e) { /* pedidos opcional */ }
 
-  const extraContext = [baseContext, messengerHandoff, magnetContext, audioContext, memoryContext, paymentContext, calendarContext, orderContext, ragContext].filter(Boolean).join('\n\n') || null;
+  const extraContext = [baseContext, contextoHistoria, messengerHandoff, magnetContext, audioContext, memoryContext, followerContext, paymentContext, calendarContext, orderContext, ragContext].filter(Boolean).join('\n\n') || null;
 
   let reply = await generateReply({
     agent, knowledge, links,

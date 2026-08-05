@@ -88,7 +88,9 @@ async function scheduleFollowUps() {
       // private reply, que ya se usó. Si el único "mensaje" del lead es su
       // comentario, cualquier follow-up rebota contra la API. Recién cuando
       // conteste el DM se abre la ventana real.
-      if (lastUserMsg.via === 'comment') continue;
+      // Igual con una mención en historia: la persona te etiquetó, no te
+      // escribió. Perseguirla con follow-ups es outreach no solicitado.
+      if (lastUserMsg.via === 'comment' || lastUserMsg.via === 'story_mention') continue;
 
       const lastUserAt = new Date(lastUserMsg.createdAt);
       const hoursSinceUser = (now - lastUserAt) / (1000 * 60 * 60);

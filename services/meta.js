@@ -160,4 +160,52 @@ async function replyToComment({ commentId, text, accessToken }) {
   return res.data;
 }
 
-module.exports = { sendMessage, sendPrivateReply, replyToComment, getIGUserInfo, isTokenError };
+/**
+ * PERFIL COMPLETO del usuario que escribió — incluye si te sigue.
+ *
+ * Meta solo entrega estos datos si la persona TE ESCRIBIÓ (eso cuenta como
+ * consentimiento). Si solo comentó un post y nunca mandó un DM, la API
+ * devuelve error — por eso esto se consulta al recibir un mensaje, no al
+ * recibir un comentario.
+ *
+ * Devuelve null ante cualquier problema: es información que MEJORA la
+ * respuesta, nunca un requisito para responder.
+ */
+const CAMPOS_PERFIL = 'name,username,follower_count,is_user_follow_business,is_business_follow_user,is_verified_user';
+
+async function getUserProfileFull({ igsid, accessToken, igUserId, pageToken }) {
+  const intentos = [{ base: IG_BASE, token: accessToken, via: 'instagram' }];
+  // Meta documenta estos campos sobre graph.facebook.com con token de Página.
+  // Si la cuenta tiene Messenger conectado, ese token es un segundo intento
+  // gratis en vez de quedarnos sin el dato.
+  if (pageToken) intentos.push({ base: FB_BASE, token: pageToken, via: 'facebook' });
+
+  let ultimoError = null;
+  for (const intento of intentos) {
+    try {
+      const res = await axios.get(`${intento.base}/${igsid}`, {
+        params: { fields: CAMPOS_PERFIL, access_token: intento.token },
+        timeout: 10000,
+      });
+      const d = res.data || {};
+      return {
+        username:      d.username || null,
+        name:          d.name || null,
+        followerCount: Number.isFinite(d.follower_count) ? d.follower_count : null,
+        teSigue:       typeof d.is_user_follow_business === 'boolean' ? d.is_user_follow_business : null,
+        loSigues:      typeof d.is_business_follow_user === 'boolean' ? d.is_business_follow_user : null,
+        verificado:    !!d.is_verified_user,
+        via:           intento.via,
+      };
+    } catch (err) {
+      ultimoError = err.response?.data?.error?.message || err.message;
+    }
+  }
+  // Causas normales: la persona solo comentó (sin consentimiento), bloqueó a
+  // la cuenta, o el host/permiso no aplica a este tipo de login. El prefijo
+  // [perfil] permite filtrarlo en los logs para diagnosticar de una.
+  console.warn(`[perfil] sin datos de ${igsid} (${intentos.map(i => i.via).join(' → ')}): ${ultimoError}`);
+  return null;
+}
+
+module.exports = { sendMessage, sendPrivateReply, replyToComment, getIGUserInfo, getUserProfileFull, isTokenError };
