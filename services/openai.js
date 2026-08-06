@@ -383,8 +383,13 @@ Ejemplo: "mira, te mando la guía que uso con los que están arrancando — ¿a 
 
   const messages = [
     { role: 'system', content: systemPrompt },
+    // 'manual' = lo escribió el DUEÑO a mano (desde el panel o desde su
+    // celular). Va como 'assistant', no como 'user': mapearlo a 'user' hacía
+    // que el modelo leyera las palabras del dueño como si las hubiera dicho el
+    // prospecto — y respondía a su propio mensaje. Era la causa de que la
+    // conversación se descarrilara apenas alguien contestaba a mano.
     ...dialogHistory.map(m => ({
-      role: m.role === 'agent' ? 'assistant' : 'user',
+      role: (m.role === 'agent' || m.role === 'manual') ? 'assistant' : 'user',
       content: m.content
     })),
     { role: 'user', content: newMessage }

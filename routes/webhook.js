@@ -202,9 +202,70 @@ router.post('/', async (req, res) => {
 });
 
 // ── HANDLER: DM DIRECTO ───────────────────────────────────────────────────────
+/**
+ * ECHO: un mensaje que salió DESDE la cuenta del negocio — típicamente porque
+ * el dueño lo escribió a mano desde su celular.
+ *
+ * Antes se descartaba en seco, y por eso la prospección en frío no funcionaba:
+ * Brayan mandaba el primer DM desde Instagram, el sistema nunca se enteraba, y
+ * cuando el prospecto respondía el agente veía una conversación VACÍA → creía
+ * que era el primer contacto → volvía a saludar desde cero.
+ *
+ * Guardándolo como 'manual', el agente hereda la conversación que empezó un
+ * humano y la continúa en vez de reiniciarla.
+ */
+async function handleEcho(pageId, event) {
+  const text = event.message?.text;
+  if (!text) return;                          // adjuntos sin texto: nada que heredar
+  const destinatario = event.recipient?.id;   // en un echo, el lead es el RECEPTOR
+  if (!destinatario) return;
+
+  let account = await db.findOne(db.accounts, { ig_user_id: pageId });
+  if (!account) account = await db.findOne(db.accounts, { ig_platform_id: pageId });
+  if (!account) return;
+
+  let lead = await db.findOne(db.leads, { account_id: account._id, ig_user_id: destinatario });
+
+  // Dedup: los mensajes que manda el BOT también vuelven como echo, y ya
+  // quedaron guardados como 'agent' antes de enviarse. Sin esto, cada
+  // respuesta del agente quedaría duplicada en el historial.
+  if (lead) {
+    const desde = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+    const recientes = await db.find(db.messages, { lead_id: lead._id, createdAt: { $gte: desde } });
+    const yaEsta = recientes.some(m => (m.role === 'agent' || m.role === 'manual') && m.content === text);
+    if (yaEsta) return;
+  }
+
+  // Sin lead = primer contacto saliente escrito a mano. Este es EL caso de la
+  // prospección en frío: se crea el lead para que exista la conversación.
+  if (!lead) {
+    const info = await getIGUserInfo(destinatario, account.access_token);
+    const sel = await selectAgent(account, null, 'instagram');
+    lead = await db.insert(db.leads, {
+      account_id: account._id,
+      agent_id: sel.agent?._id || null,
+      ig_user_id: destinatario,
+      ig_username: info.username || destinatario,
+      status: 'active',
+      automation: 'automated',
+      is_bypassed: false, is_converted: false,
+      pipeline_stage: 'nuevo',
+      triggered_by: 'outbound_manual',
+      last_message_at: new Date().toISOString(),
+    });
+    console.log(`📤 Primer mensaje saliente manual a @${lead.ig_username} — lead creado`);
+  }
+
+  await db.insert(db.messages, { lead_id: lead._id, role: 'manual', content: text });
+  await db.update(db.leads, { _id: lead._id }, { last_message_at: new Date().toISOString() });
+}
+
+// ── HANDLER: DM DIRECTO ───────────────────────────────────────────────────────
 async function handleDM(pageId, event) {
   const senderId = event.sender?.id;
-  if (!senderId || event.message?.is_echo) return;
+  // Los echoes van por su propio camino: son mensajes NUESTROS, no del lead.
+  if (event.message?.is_echo) return handleEcho(pageId, event);
+  if (!senderId) return;
 
   // Instagram manda por el MISMO canal de DMs tres cosas distintas:
   //  · un mensaje normal (trae text)
