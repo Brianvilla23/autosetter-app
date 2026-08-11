@@ -6,7 +6,7 @@
  *   node scripts/verify-deploy.js
  *   node scripts/verify-deploy.js https://otra-url.up.railway.app
  *
- * Sin argumento usa https://dmcloser-app.up.railway.app
+ * Sin argumento usa https://atinov.com
  *
  * Sale con código 0 si todos los checks pasan, 1 si alguno falla.
  * Diseñado para correrse manualmente o como step de CI.
@@ -15,7 +15,7 @@
 const https = require('https');
 const url = require('url');
 
-const BASE = process.argv[2] || 'https://dmcloser-app.up.railway.app';
+const BASE = process.argv[2] || 'https://atinov.com';
 
 const CHECKS = [
   {

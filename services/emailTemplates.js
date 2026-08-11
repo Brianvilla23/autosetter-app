@@ -13,7 +13,10 @@
  * la misma narrativa por todo el funnel.
  */
 
-const APP_URL = process.env.APP_URL || 'https://dmcloser-app.up.railway.app';
+// Fallback = dominio propio. Si APP_URL faltara, este valor sale impreso en los
+// correos que reciben los clientes, así que nunca debe apuntar a la URL interna
+// de Railway ni al nombre viejo del producto.
+const APP_URL = process.env.APP_URL || 'https://atinov.com';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LAYOUT BASE
