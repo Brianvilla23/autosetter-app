@@ -529,6 +529,13 @@ app.use('/api/calendar', apiLimiter, requireAuth, require('./routes/calendar').r
 // mucho después de que el trial venció.
 app.use('/api/voice', voiceLimiter, requireAuth, checkSubscription, require('./routes/voice'));
 
+// Closer en vivo para LEADS. Va SIN requireAuth a propósito: quien entra es un
+// prospecto sin cuenta. La autorización es una invitación firmada con HMAC,
+// atada a ese lead, de un solo uso y con vencimiento (services/voiceInvite.js).
+// Mantiene el mismo voiceLimiter por IP y el mismo tope diario por cuenta que
+// la demo, para que las dos vías no sumen el doble sin que nadie lo note.
+app.use('/api/closer', voiceLimiter, require('./routes/closer'));
+
 // La URL sin .html es la que la gente tipea; el catch-all serviría el
 // dashboard en silencio y el micrófono quedaría bloqueado (el permiso se
 // concede por path exacto).

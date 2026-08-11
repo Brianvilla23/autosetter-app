@@ -23,39 +23,16 @@ const axios   = require('axios');
 const db      = require('../db/database');
 const { knowledgeForAgent } = require('../services/agents/knowledge');
 
-// Voces soportadas por Realtime (distintas de las de TTS clásico).
-const VOCES_REALTIME = ['alloy', 'ash', 'ballad', 'coral', 'echo', 'sage', 'shimmer', 'verse', 'marin', 'cedar'];
-// Las voces de TTS clásico (services/audio.js) no existen todas en Realtime.
-// Mapear en vez de caer en silencio a la default: el agente debe sonar igual
-// que en sus notas de voz.
-const EQUIV_VOZ = { nova: 'shimmer', onyx: 'ash', fable: 'ballad' };
-const VOZ_DEFAULT = 'marin';
-const MODELO = process.env.OPENAI_REALTIME_MODEL || 'gpt-realtime-2.1';
-const MODELO_TRANSCRIPCION = process.env.OPENAI_TRANSCRIBE_MODEL || 'whisper-1';
+// Constantes y reglas de voz compartidas con el closer en vivo
+// (routes/closer.js). Viven en services/voiceCommon.js para que afinar el
+// comportamiento por voz se haga en UN solo lugar y las dos vías no se
+// desincronicen.
+const {
+  VOCES_REALTIME, EQUIV_VOZ, VOZ_DEFAULT, MODELO, MODELO_TRANSCRIPCION,
+  SECRETO_SEGUNDOS, MAX_TOKENS_SALIDA, REGLAS_VOZ,
+} = require('../services/voiceCommon');
 
-// Topes de gasto. El secreto efímero dura 600s por defecto en OpenAI (no 60):
-// suficiente para que alguien lo copie y lo use aparte. 60s alcanza de sobra
-// para abrir la sesión desde la página.
-const SECRETO_SEGUNDOS = 60;
-const MAX_SESIONES_DIA  = 20;   // por cuenta
-const MAX_TOKENS_SALIDA = 4096; // techo por respuesta, corta un loop infinito
-
-/**
- * Reglas que convierten a un agente de CHAT en uno de VOZ. Sin esto el agente
- * lee emojis en voz alta, larga párrafos que por audio son eternos y suena a
- * robot leyendo un documento.
- */
-const REGLAS_VOZ = `
---- ESTÁS HABLANDO POR TELÉFONO (no escribiendo) ---
-- Respuestas CORTAS: 1-2 frases. Por voz, un párrafo es una eternidad. Si necesitas explicar algo largo, dilo en partes y pregunta "¿te sigo contando?".
-- CERO emojis, cero asteriscos, cero markdown, cero listas numeradas: todo eso se escucha como ruido o se lee en voz alta.
-- Números y precios en palabras naturales: "ciento treinta y cinco mil pesos", no "$135.000".
-- Habla como chileno real, con tuteo (tú, tienes, puedes). Nunca voseo argentino.
-- Si te interrumpen, PARA y escucha. No retomes lo que ibas diciendo salvo que te lo pidan.
-- Si no entendiste, dilo simple: "perdona, no te escuché bien, ¿me repites?".
-- Silencios cortos son normales: no rellenes con muletillas ni repitas la pregunta.
-- Nunca digas que eres una IA ni un asistente virtual salvo que te pregunten directo. Si preguntan, sé honesto y breve, y sigue ayudando.
-- No inventes datos que no estén en tu información: si no sabes algo, dilo y ofrece averiguarlo.`;
+const MAX_SESIONES_DIA = 20;   // por cuenta — compartido con el closer
 
 /**
  * POST /api/voice/token

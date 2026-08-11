@@ -750,6 +750,118 @@ router.post('/suscribir-waba', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── LLAMADAS POR WHATSAPP (Calling API) ──────────────────────────────────────
+// El número viene con las llamadas APAGADAS de fábrica. Estos dos instrumentos
+// leen y cambian esa configuración usando el token que ya está guardado en la
+// cuenta — el token nunca sale del servidor ni pasa por una terminal.
+//
+// ⚠️ SIP y webhook son EXCLUYENTES. La doc de Meta: "When SIP is enabled, you
+// cannot use calling related endpoints and will not receive calling webhooks".
+// Con SIP el control de la llamada lo toma el servidor SIP; sin SIP, llega por
+// el webhook `calls` y hay que responder la oferta SDP desde acá.
+
+/** Resuelve la cuenta con WhatsApp configurado (la del body, o la primera). */
+async function cuentaConWhatsapp(accountId) {
+  const cuenta = accountId
+    ? await db.findOne(db.accounts, { _id: accountId })
+    : (await db.find(db.accounts, {})).find(a => a.wa_phone_number_id && a.wa_access_token);
+  if (!cuenta) return { error: 'cuenta con WhatsApp no encontrada' };
+  if (!cuenta.wa_phone_number_id) return { error: 'la cuenta no tiene wa_phone_number_id' };
+  if (!cuenta.wa_access_token) return { error: 'la cuenta no tiene wa_access_token' };
+  return { cuenta };
+}
+
+/**
+ * GET /api/admin/config-llamadas?accountId=...
+ * Lee la configuración de llamadas del número. Sirve para saber si están
+ * habilitadas ANTES de tocar nada, y para confirmar después.
+ */
+router.get('/config-llamadas', async (req, res) => {
+  try {
+    const axios = require('axios');
+    const { cuenta, error } = await cuentaConWhatsapp(req.query.accountId);
+    if (error) return res.status(400).json({ error });
+
+    const r = await axios.get(
+      `https://graph.facebook.com/v21.0/${cuenta.wa_phone_number_id}/settings`,
+      { params: { access_token: cuenta.wa_access_token }, timeout: 15000 });
+
+    const calling = r.data?.calling || null;
+    res.json({
+      phone_number_id: cuenta.wa_phone_number_id,
+      llamadas_habilitadas: calling?.status === 'ENABLED',
+      sip_habilitado: calling?.sip?.status === 'ENABLED',
+      calling,
+    });
+  } catch (e) {
+    // El error de Meta puede traer el prefijo del token: al log sí, al cliente no.
+    console.error('[config-llamadas]', e.response?.data?.error?.message || e.message);
+    res.status(500).json({ error: 'No se pudo leer la configuración de llamadas. Revisa el log del servidor.' });
+  }
+});
+
+/**
+ * POST /api/admin/habilitar-llamadas
+ * Body: { accountId?, status?: 'ENABLED'|'DISABLED' }
+ *
+ * Enciende (o apaga) las llamadas en el número. No toca SIP: eso es una
+ * decisión aparte y se configura después, cuando exista el servidor.
+ *
+ * ⏱️ Meta avisa que los cambios pueden tardar HASTA 7 DÍAS en verse en todos
+ * los chats. En los chats activos y en los contactos que ya te tienen agendado
+ * se refleja casi de inmediato.
+ */
+router.post('/habilitar-llamadas', async (req, res) => {
+  try {
+    const axios = require('axios');
+    const { accountId } = req.body || {};
+    const status = req.body?.status === 'DISABLED' ? 'DISABLED' : 'ENABLED';
+
+    const { cuenta, error } = await cuentaConWhatsapp(accountId);
+    if (error) return res.status(400).json({ error });
+
+    const body = {
+      calling: {
+        status,
+        call_icon_visibility: 'DEFAULT',      // muestra el ícono de llamar en el chat
+        callback_permission_status: 'ENABLED', // permite pedir permiso para devolver la llamada
+      },
+    };
+
+    const r = await axios.post(
+      `https://graph.facebook.com/v21.0/${cuenta.wa_phone_number_id}/settings`,
+      body, { params: { access_token: cuenta.wa_access_token }, timeout: 15000 });
+
+    // Releer para confirmar contra el servidor de Meta, no contra lo que
+    // creemos haber mandado.
+    let confirmado = null;
+    try {
+      const check = await axios.get(
+        `https://graph.facebook.com/v21.0/${cuenta.wa_phone_number_id}/settings`,
+        { params: { access_token: cuenta.wa_access_token }, timeout: 15000 });
+      confirmado = check.data?.calling?.status || null;
+    } catch { /* la confirmación es informativa, no bloquea */ }
+
+    await db.insert(db.auditLog, {
+      action: 'whatsapp_calling_' + status.toLowerCase(),
+      target: cuenta.wa_phone_number_id,
+      at: new Date().toISOString(),
+    }).catch(() => null);
+
+    console.log(`📞 [llamadas] ${status} en el número ${cuenta.wa_phone_number_id} — confirmado: ${confirmado}`);
+    res.json({
+      ok: true,
+      pedido: status,
+      confirmado_por_meta: confirmado,
+      respuesta: r.data,
+      nota: 'Meta puede tardar hasta 7 días en reflejar el cambio en todos los chats. En conversaciones activas es casi inmediato.',
+    });
+  } catch (e) {
+    console.error('[habilitar-llamadas]', e.response?.data?.error?.message || e.message);
+    res.status(500).json({ error: 'No se pudo cambiar la configuración de llamadas. Revisa el log del servidor.' });
+  }
+});
+
 /**
  * POST /api/admin/probar-envio-ig
  * Intenta enviar un mensaje de prueba por Instagram probando las dos formas de
