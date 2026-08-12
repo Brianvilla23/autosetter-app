@@ -34,40 +34,69 @@ router.get('/magnet-links', async (req, res) => {
     }
 
     const base = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+    const { buildMagnetTarget, CANALES } = require('../services/accessLinks');
     res.json(links.map(l => ({
       id:           l._id,
       slug:         l.slug,
       label:        l.label,
       source:       l.source,
+      channel:      CANALES.includes(l.channel) ? l.channel : 'instagram',
       preset_text:  l.preset_text,
       clicks:       countBySlug[l.slug] || 0,
       createdAt:    l.createdAt,
       redirect_url: `${base}/go/${l.slug}`,
+      target_url:   buildMagnetTarget(l),
     })));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 /**
  * POST /api/growth/magnet-links
- * Crea un magnet link. Body: { accountId, label, source, preset_text }
+ * Crea un link de acceso directo al agente, con tracking.
+ * Body: { accountId, label, source, preset_text, channel?, wa_number?, fb_page? }
+ *  - channel: 'instagram' (default) | 'whatsapp' | 'messenger'
+ *  - whatsapp: usa wa_number o cae al wa_display_number de la cuenta
+ *  - messenger: usa fb_page (usuario o ID de la Página) o cae al fb_page_id
  * El slug se genera automáticamente (hash corto).
  */
 router.post('/magnet-links', enforceMaxMagnets, async (req, res) => {
   try {
-    const { accountId, label, source = 'bio', preset_text } = req.body;
+    const { accountId, label, source = 'bio', preset_text, channel = 'instagram', wa_number, fb_page } = req.body;
     if (!accountId || !label) return res.status(400).json({ error: 'accountId y label requeridos' });
     if (accountId !== req.user.accountId) return res.status(403).json({ error: 'Prohibido' });
 
-    // Verificar que la cuenta tenga username
+    const { digitosWhatsapp, buildMagnetTarget, CANALES } = require('../services/accessLinks');
+    const canal = CANALES.includes(channel) ? channel : 'instagram';
     const account = await db.findOne(db.accounts, { _id: accountId });
-    if (!account?.ig_username) return res.status(400).json({ error: 'Cuenta sin username de Instagram' });
+
+    // Datos del destino según el canal — fail-closed: sin destino válido no
+    // se crea un link que redirigiría a cualquier parte.
+    const extra = {};
+    if (canal === 'instagram') {
+      if (!account?.ig_username) return res.status(400).json({ error: 'Cuenta sin username de Instagram' });
+      extra.ig_username = account.ig_username;
+    } else if (canal === 'whatsapp') {
+      const digitos = digitosWhatsapp(wa_number || account?.wa_display_number);
+      if (!digitos) {
+        return res.status(400).json({ error: 'Falta el número de WhatsApp (ej +56 9 1234 5678). Escríbelo acá o guárdalo en Configuración → Messenger como "número visible".' });
+      }
+      extra.wa_digits = digitos;
+    } else if (canal === 'messenger') {
+      const pagina = String(fb_page || account?.fb_page_id || '').trim().replace(/^@/, '');
+      if (!pagina || !/^[\w.\-]+$/.test(pagina)) {
+        return res.status(400).json({ error: 'Falta el usuario o ID de tu Página de Facebook (ej "atinov.cl"). Escríbelo acá o conecta Messenger en Configuración.' });
+      }
+      extra.fb_page = pagina;
+    }
 
     // Generar slug corto y único
     const slug = Math.random().toString(36).slice(2, 8);
 
     const link = await db.insert(db.magnetLinks, {
       account_id:  accountId,
-      ig_username: account.ig_username,
+      ig_username: account?.ig_username || null,
+      channel:     canal,
+      ...extra,
       slug,
       label:       String(label).slice(0, 80),
       source:      String(source).slice(0, 40),
@@ -80,10 +109,33 @@ router.post('/magnet-links', enforceMaxMagnets, async (req, res) => {
       slug:         link.slug,
       label:        link.label,
       source:       link.source,
+      channel:      canal,
       preset_text:  link.preset_text,
       clicks:       0,
       redirect_url: `${base}/go/${link.slug}`,
+      target_url:   buildMagnetTarget(link),
     });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
+ * GET /api/growth/magnet-links/:id/qr
+ * Código QR del link CON tracking (/go/<slug>): el que escanea también
+ * cuenta como click. Devuelve { svg } listo para mostrar o descargar —
+ * pensado para el mostrador de una tienda o el empaque de un pedido.
+ */
+router.get('/magnet-links/:id/qr', async (req, res) => {
+  try {
+    const link = await db.findOne(db.magnetLinks, { _id: req.params.id });
+    if (!link) return res.status(404).json({ error: 'No encontrado' });
+    if (link.account_id !== req.user.accountId) return res.status(403).json({ error: 'Prohibido' });
+
+    const base = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+    const QRCode = require('qrcode');
+    const svg = await QRCode.toString(`${base}/go/${link.slug}`, {
+      type: 'svg', errorCorrectionLevel: 'M', margin: 2, width: 480,
+    });
+    res.json({ svg, slug: link.slug, label: link.label });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

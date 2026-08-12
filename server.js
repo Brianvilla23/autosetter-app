@@ -569,8 +569,10 @@ app.get('/api/account/first', requireAuth, async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-// ── MAGNET LINK REDIRECT (público, con tracking) ──────────────────────────────
-// /go/:slug → registra click y redirige a ig.me/m/USERNAME?text=PRESET
+// ── ACCESO DIRECTO AL AGENTE (público, con tracking) ─────────────────────────
+// /go/:slug → registra el click y redirige a la puerta del canal del link:
+// ig.me (Instagram), wa.me (WhatsApp) o m.me (Messenger). Un solo link/QR
+// sirve en bio, ads o impreso — y el contador funciona igual en los tres.
 app.get('/go/:slug', async (req, res) => {
   try {
     const dbW = require('./db/database');
@@ -585,15 +587,16 @@ app.get('/go/:slug', async (req, res) => {
       slug,
       account_id: link.account_id,
       source:     link.source,
+      channel:    link.channel || 'instagram',
       referer:    (req.headers['referer'] || '').slice(0, 200),
       userAgent:  (req.headers['user-agent'] || '').slice(0, 200),
       ip:         (req.headers['x-forwarded-for'] || req.ip || '').toString().split(',')[0].trim(),
     }).catch(() => {});
 
-    const username = encodeURIComponent(link.ig_username.replace(/^@/, ''));
-    let target = `https://ig.me/m/${username}`;
-    if (link.preset_text) target += `?text=${encodeURIComponent(link.preset_text)}`;
-    return res.redirect(302, target);
+    // Los links viejos no tienen channel → Instagram, como siempre.
+    const { buildMagnetTarget } = require('./services/accessLinks');
+    const target = buildMagnetTarget(link);
+    return res.redirect(302, target || '/');
   } catch (e) {
     console.error('magnet redirect error:', e.message);
     return res.redirect(302, '/');

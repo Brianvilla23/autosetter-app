@@ -940,17 +940,35 @@
       </small>
     </div>
 
-    <!-- MAGNET LINKS -->
+    <!-- LINKS DE ACCESO DIRECTO AL AGENTE -->
     <div class="settings-card" style="margin-bottom:20px">
-      <h3>🎯 Lead magnet links</h3>
-      <p>Crea links con tracking que abren DM directo a tu cuenta con un mensaje pre-escrito. Úsalos en tu bio, ads, posts o stories.</p>
-      <div style="display:grid;grid-template-columns:2fr 1fr 2fr auto;gap:10px;margin-top:14px">
-        <input type="text" id="ml-label" placeholder="Etiqueta (ej: Link bio)" class="form-input">
-        <input type="text" id="ml-source" placeholder="Fuente (bio, ads, story)" class="form-input">
+      <h3>🎯 Links de acceso a tu agente</h3>
+      <p>Un link (o QR) que abre el chat con tu agente en un toque — Instagram, <strong>WhatsApp</strong> o <strong>Messenger</strong> — con contador de clicks. Úsalo en tu bio, ads, stories o impreso en el mostrador.</p>
+      <div style="display:grid;grid-template-columns:1fr 2fr 1fr 2fr auto;gap:10px;margin-top:14px">
+        <select id="ml-channel" class="form-input">
+          <option value="instagram">📷 Instagram</option>
+          <option value="whatsapp">📱 WhatsApp</option>
+          <option value="messenger">📨 Messenger</option>
+        </select>
+        <input type="text" id="ml-label" placeholder="Etiqueta (ej: QR mostrador)" class="form-input">
+        <input type="text" id="ml-source" placeholder="Fuente (bio, ads, qr)" class="form-input">
         <input type="text" id="ml-preset" placeholder="Mensaje pre-escrito (opcional)" class="form-input" maxlength="280">
         <button class="btn-primary" id="btn-create-magnet">+ Crear</button>
       </div>
+      <div id="ml-destino-row" style="display:none;margin-top:10px">
+        <input type="text" id="ml-destino" placeholder="" class="form-input">
+        <p id="ml-destino-hint" style="font-size:12px;color:var(--text-2);margin-top:6px"></p>
+      </div>
+      <p id="ml-preset-hint" style="font-size:12px;color:var(--text-2);margin-top:8px">💡 El mensaje pre-escrito puede ser la palabra clave de un agente: el lead llega escribiéndola y cae directo al flujo correcto. (Messenger no soporta mensaje pre-escrito.)</p>
       <div id="magnet-links-list" style="margin-top:16px"></div>
+      <div id="ml-qr-panel" style="display:none;margin-top:16px;padding:16px;border:1px solid var(--border);border-radius:10px;background:var(--bg-2);text-align:center">
+        <div style="font-weight:700;margin-bottom:10px" id="ml-qr-title"></div>
+        <div id="ml-qr-svg" style="max-width:260px;margin:0 auto;background:#fff;padding:10px;border-radius:8px"></div>
+        <div style="margin-top:12px;display:flex;gap:10px;justify-content:center">
+          <a class="btn-secondary" id="ml-qr-download" download="qr-atinov.svg">⬇️ Descargar SVG</a>
+          <button class="btn-ghost" onclick="document.getElementById('ml-qr-panel').style.display='none'">Cerrar</button>
+        </div>
+      </div>
     </div>
   </section>
 

@@ -2304,6 +2304,7 @@ async function loadGrowth() {
     magnetBtn.dataset.wired = '1';
     magnetBtn.addEventListener('click', createMagnetLink);
   }
+  wireMagnetChannelSelector();
 }
 
 async function loadFollowupAgents() {
@@ -2370,11 +2371,13 @@ async function loadMagnetLinks() {
   if (mlClicksEl) mlClicksEl.textContent = totalClicks;
 
   if (!links || !links.length) {
-    container.innerHTML = '<div style="color:var(--text-3);font-size:13px;padding:8px 0">Aún no has creado ningún magnet link</div>';
+    container.innerHTML = '<div style="color:var(--text-3);font-size:13px;padding:8px 0">Aún no has creado ningún link de acceso</div>';
     return;
   }
+  const CANAL_ICON = { instagram: '📷', whatsapp: '📱', messenger: '📨' };
   container.innerHTML = links.map(l => `
     <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--bg-2)">
+      <div style="font-size:18px" title="${escHtmlSafe(l.channel || 'instagram')}">${CANAL_ICON[l.channel] || '📷'}</div>
       <div style="flex:1;min-width:0">
         <div style="font-weight:600;font-size:13px">${escHtmlSafe(l.label)} <span style="font-weight:400;font-size:11px;color:var(--text-3);margin-left:6px">[${escHtmlSafe(l.source)}]</span></div>
         <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
@@ -2387,25 +2390,79 @@ async function loadMagnetLinks() {
         <div style="font-weight:700;font-size:18px;color:var(--accent)">${l.clicks}</div>
         <div style="font-size:10px;color:var(--text-3)">clicks</div>
       </div>
+      <button class="btn-ghost" style="padding:4px 8px;font-size:12px" title="Ver código QR" onclick="showMagnetQR('${l.id}')">🔳</button>
       <button class="btn-ghost" style="padding:4px 8px;font-size:12px" onclick="deleteMagnetLink('${l.id}')">🗑</button>
     </div>`).join('');
 }
 
+// QR del link con tracking: lo que se imprime en el mostrador o el empaque.
+async function showMagnetQR(id) {
+  const r = await apiFetch(`/api/growth/magnet-links/${id}/qr`);
+  if (!r?.svg) { showToast('⚠️ No se pudo generar el QR'); return; }
+  const panel = document.getElementById('ml-qr-panel');
+  const holder = document.getElementById('ml-qr-svg');
+  const title = document.getElementById('ml-qr-title');
+  const dl = document.getElementById('ml-qr-download');
+  if (!panel || !holder) return;
+  holder.innerHTML = r.svg;                      // SVG generado por nuestro propio servidor
+  const svgEl = holder.querySelector('svg');
+  if (svgEl) { svgEl.style.width = '100%'; svgEl.style.height = 'auto'; }
+  if (title) title.textContent = `QR — ${r.label || ''}`;
+  if (dl) {
+    dl.href = URL.createObjectURL(new Blob([r.svg], { type: 'image/svg+xml' }));
+    dl.setAttribute('download', `qr-${(r.slug || 'atinov')}.svg`);
+  }
+  panel.style.display = '';
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
 async function createMagnetLink() {
-  const label  = document.getElementById('ml-label').value.trim();
-  const source = document.getElementById('ml-source').value.trim() || 'bio';
-  const preset = document.getElementById('ml-preset').value.trim();
+  const label   = document.getElementById('ml-label').value.trim();
+  const source  = document.getElementById('ml-source').value.trim() || 'bio';
+  const preset  = document.getElementById('ml-preset').value.trim();
+  const channel = document.getElementById('ml-channel')?.value || 'instagram';
+  const destino = document.getElementById('ml-destino')?.value.trim() || '';
   if (!label) { showToast('❌ Ingresa una etiqueta'); return; }
-  const res = await apiFetch('/api/growth/magnet-links', 'POST', {
-    accountId: ACCOUNT_ID, label, source, preset_text: preset || null,
-  });
+  const body = { accountId: ACCOUNT_ID, label, source, preset_text: preset || null, channel };
+  if (channel === 'whatsapp' && destino)  body.wa_number = destino;
+  if (channel === 'messenger' && destino) body.fb_page = destino;
+  const res = await apiFetch('/api/growth/magnet-links', 'POST', body);
   if (res?.id) {
     document.getElementById('ml-label').value  = '';
     document.getElementById('ml-source').value = '';
     document.getElementById('ml-preset').value = '';
-    showToast('✅ Magnet link creado');
+    const d = document.getElementById('ml-destino'); if (d) d.value = '';
+    showToast('✅ Link de acceso creado');
     loadMagnetLinks();
   }
+}
+
+// El campo "destino" solo aparece cuando el canal lo necesita, con la pista
+// correcta (WhatsApp: número; Messenger: usuario/ID de la Página). Para
+// Instagram el destino es siempre la cuenta conectada.
+function wireMagnetChannelSelector() {
+  const sel = document.getElementById('ml-channel');
+  if (!sel || sel.dataset.wired) return;
+  sel.dataset.wired = '1';
+  const row  = document.getElementById('ml-destino-row');
+  const inp  = document.getElementById('ml-destino');
+  const hint = document.getElementById('ml-destino-hint');
+  const preset = document.getElementById('ml-preset');
+  sel.onchange = () => {
+    const ch = sel.value;
+    if (row) row.style.display = ch === 'instagram' ? 'none' : '';
+    if (ch === 'whatsapp') {
+      if (inp)  inp.placeholder = 'Número de WhatsApp (ej +56 9 1234 5678)';
+      if (hint) hint.textContent = 'Si lo dejas vacío se usa el número visible guardado en Configuración → Messenger.';
+      if (preset) preset.disabled = false;
+    } else if (ch === 'messenger') {
+      if (inp)  inp.placeholder = 'Usuario o ID de tu Página de Facebook (ej atinov.cl)';
+      if (hint) hint.textContent = 'Si lo dejas vacío se usa la Página conectada en Configuración → Messenger. Messenger no admite mensaje pre-escrito.';
+      if (preset) { preset.disabled = true; preset.value = ''; }
+    } else {
+      if (preset) preset.disabled = false;
+    }
+  };
 }
 
 async function deleteMagnetLink(id) {
@@ -3993,6 +4050,7 @@ try { _safeExpose('switchProvider', switchProvider); } catch {}
 try { _safeExpose('upgradePlan', upgradePlan); } catch {}
 try { _safeExpose('switchTab', switchTab); } catch {}
 try { _safeExpose('createMagnetLink', createMagnetLink); } catch {}
+try { _safeExpose('showMagnetQR', showMagnetQR); } catch {}
 try { _safeExpose('showLeadDetail', showLeadDetail); } catch {}
 
 // ── CRM ───────────────────────────────────────────────────────────────────────

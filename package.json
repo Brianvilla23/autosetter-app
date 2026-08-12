@@ -22,6 +22,7 @@
     "jsonwebtoken": "^9.0.3",
     "openai": "^4.28.4",
     "pdf-parse": "^1.1.4",
+    "qrcode": "^1.5.4",
     "uuid": "^9.0.1",
     "write-excel-file": "^4.1.1",
     "ws": "^8.21.3",

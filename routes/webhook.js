@@ -877,7 +877,16 @@ ${entregar
   // calidez pero sin insistir.
   let messengerHandoff = null;
   if (lead.channel === 'messenger') {
-    const waHint = account.wa_display_number ? ` (escríbeme al ${account.wa_display_number})` : '';
+    // Con link clickeable la derivación convierte más que dictar el número:
+    // en Messenger un wa.me se abre con un toque.
+    let waHint = '';
+    if (account.wa_display_number) {
+      const { digitosWhatsapp } = require('../services/accessLinks');
+      const digitos = digitosWhatsapp(account.wa_display_number);
+      waHint = digitos
+        ? ` (pásale este link para seguir por WhatsApp: https://wa.me/${digitos})`
+        : ` (escríbeme al ${account.wa_display_number})`;
+    }
     messengerHandoff = `CANAL MESSENGER / MARKETPLACE. Tu trabajo acá es SALUDAR y CALIFICAR, no cerrar la venta. Descubre si hay intención real (pregunta precio, disponibilidad para ver el producto, forma de pago, o señales claras de compra). Si el lead es un prospecto real, invítalo a seguir la conversación por WhatsApp${waHint} para coordinar los detalles/la visita — ahí se cierra. Si solo está curioseando, responde cálido y breve, sin empujar. Nunca copies datos sensibles ni cierres el trato en este canal.`;
   }
 
