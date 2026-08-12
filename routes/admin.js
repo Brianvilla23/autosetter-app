@@ -700,7 +700,20 @@ router.get('/emails', async (req, res) => {
       logOnly:  all.filter(e => e.mode === 'log').length,
       sent:     all.filter(e => e.mode === 'resend' && e.ok).length,
     };
-    res.json({ emails: sorted, stats });
+    // Config de envío: los remitentes NO son secretos y son la causa #1 de que
+    // un correo no llegue (dominio o dirección sin verificar en Resend). Acá
+    // se ven los DOS que usa la app — si son distintos, los dos tienen que
+    // estar verificados o la mitad de los correos se cae en silencio.
+    const config = {
+      resend_key_configurada: !!process.env.RESEND_API_KEY,
+      remitente_transaccional: process.env.EMAIL_FROM || 'Atinov <soporte@atinov.com>',
+      remitente_notificaciones: process.env.RESEND_FROM || 'Atinov <notificaciones@atinov.com>',
+      reply_to: process.env.EMAIL_REPLY_TO || 'soporte@atinov.com',
+      aviso: !process.env.RESEND_API_KEY
+        ? '⚠️ Sin RESEND_API_KEY no sale NINGÚN correo (incluido el de restablecer contraseña).'
+        : null,
+    };
+    res.json({ emails: sorted, stats, config });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -1224,10 +1237,37 @@ router.post('/probar-voces', async (req, res) => {
         });
         resultados.push({ voz, ok: true, bytes: ogg.length });
       } catch (err) {
-        resultados.push({ voz, ok: false, error: err.response?.data?.error?.message || err.message });
+        const meta = err.response?.data?.error || {};
+        resultados.push({
+          voz, ok: false,
+          error: meta.message || err.message,
+          codigo: meta.code || null,
+        });
       }
     }
-    res.json({ enviadas: resultados.filter(r => r.ok).length, frase, resultados });
+
+    // Traducir el fallo típico a algo accionable. La ventana de 24 h de
+    // WhatsApp es LA causa de que esto "no llegue": Meta solo deja mandar
+    // mensajes libres (texto y audio) dentro de las 24 h desde el último
+    // mensaje que TÚ le escribiste al número del negocio. Sin eso rechaza los
+    // 10 con el mismo error y el panel mostraba solo el texto crudo de Meta.
+    const fallos = resultados.filter(r => !r.ok);
+    const fueraDeVentana = fallos.some(r =>
+      r.codigo === 131047 || /24 hours|24 horas|re-engagement|reengagement/i.test(r.error || ''));
+    let diagnostico = null;
+    if (fueraDeVentana) {
+      diagnostico = `Ninguna llegó porque se cerró la ventana de 24 horas de WhatsApp: Meta solo permite mensajes libres si TÚ le escribiste al número del negocio (${cuenta.wa_display_number || 'el WhatsApp de la cuenta'}) en las últimas 24 h. Mándale un "hola" desde tu teléfono a ese número y reintenta al tiro.`;
+    } else if (fallos.length === resultados.length && fallos.length) {
+      diagnostico = `Fallaron las ${fallos.length}. Error de Meta: "${fallos[0].error}".`;
+    }
+
+    res.json({
+      enviadas: resultados.filter(r => r.ok).length,
+      frase,
+      destinatario: to,
+      diagnostico,
+      resultados,
+    });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -1999,7 +2039,9 @@ router.get('/self-test', async (req, res) => {
       tests.push({ id: 'resend', name: 'Resend API', status: 'fail', message: e.response?.data?.message || e.message });
     }
   } else {
-    tests.push({ id: 'resend', name: 'Resend API', status: 'skip', message: 'RESEND_API_KEY no configurada — emails en log-only' });
+    // No es un "skip": sin la key NO sale ningún correo, y el de restablecer
+    // contraseña es el que deja al dueño fuera del panel cuando falla.
+    tests.push({ id: 'resend', name: 'Resend API', status: 'fail', message: 'RESEND_API_KEY no configurada — NO se envía ningún correo (incluido el de restablecer contraseña)' });
   }
 
   // 4. Lemon Squeezy

@@ -356,12 +356,18 @@ app.get('/health/ready', async (req, res) => {
   }
 
   // 2. Config crítica presente (no exponemos valores, solo booleans)
+  //    `resend_key` está acá a propósito: sin ella NO sale el correo de
+  //    "olvidé mi contraseña", y justo cuando eso pasa el dueño está fuera del
+  //    panel y no puede consultar nada que exija sesión. Este es el único
+  //    lugar donde puede verificarlo estando bloqueado.
   checks.config = {
     openai_key:     !!process.env.OPENAI_API_KEY,
     meta_app_id:    !!process.env.META_APP_ID,
     jwt_secret:     !!process.env.JWT_SECRET,
+    resend_key:     !!process.env.RESEND_API_KEY,  // correos: reset de clave, bienvenida, avisos
     ls_api_key:     !!process.env.LS_API_KEY,      // opcional
     mp_token:       !!process.env.MP_ACCESS_TOKEN, // opcional
+    twilio:         !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER),
   };
   if (!checks.config.openai_key || !checks.config.meta_app_id || !checks.config.jwt_secret) {
     allOk = false;

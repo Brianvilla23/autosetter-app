@@ -778,11 +778,14 @@ async function probarVoces() {
     const body = { to };   // accountId lo resuelve el backend desde la sesión
     if (txt) body.texto = txt;
     const r = await api('POST', '/api/admin/probar-voces', body);
-    st.innerHTML = `<span style="color:#22c55e">✅ ${r.enviadas}/${r.resultados.length} enviadas — revisa tu WhatsApp</span>`;
-    out.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Voz</th><th>Estado</th></tr></thead><tbody>${
+    st.innerHTML = r.enviadas
+      ? `<span style="color:#22c55e">✅ ${r.enviadas}/${r.resultados.length} enviadas — revisa tu WhatsApp</span>`
+      : `<span style="color:#ef4444">❌ No se envió ninguna (0/${r.resultados.length})</span>`;
+    out.innerHTML = `${r.diagnostico ? `<div style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.4);border-radius:8px;padding:12px;margin-bottom:10px;font-size:0.88rem;line-height:1.5">${escHtml(r.diagnostico)}</div>` : ''}
+    <div class="table-wrap"><table><thead><tr><th>Voz</th><th>Estado</th></tr></thead><tbody>${
       r.resultados.map(x => `<tr><td><strong>${escHtml(x.voz)}</strong></td><td>${
         x.ok ? '<span style="color:#22c55e">enviada</span>'
-             : `<span style="color:#ef4444">${escHtml(x.error || 'error')}</span>`
+             : `<span style="color:#ef4444">${escHtml(x.error || 'error')}${x.codigo ? ` (código ${escHtml(String(x.codigo))})` : ''}</span>`
       }</td></tr>`).join('')
     }</tbody></table></div>
     <p style="font-size:0.82rem;color:#a0a0c0;margin-top:8px">Cuando elijas la que más te guste, guárdala en el campo <code>voice</code> del agente.</p>`;

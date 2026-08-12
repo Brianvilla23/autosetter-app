@@ -20,36 +20,34 @@ const THROTTLE_MINUTES = 30;
 const APP_URL = () => process.env.APP_URL || 'https://atinov.com';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// EMAIL (Resend)
+// EMAIL (Resend) — delega en services/email.js para que TODO envío quede
+// registrado en db.emailLog y sea visible en /api/admin/emails.
+//
+// Antes este módulo hablaba con Resend por su cuenta y sus fallos solo salían
+// por consola. El correo de "olvidé mi contraseña" usa esta función: cuando no
+// llegaba, no quedaba rastro en ninguna parte y era imposible saber si faltaba
+// la API key, si el remitente no estaba verificado o si el correo no tenía
+// cuenta. Ese agujero es lo que se cierra acá.
+//
+// El remitente por defecto se mantiene tal cual (RESEND_FROM) a propósito: si
+// en Resend está verificado ese y no el de los transaccionales, cambiarlo
+// rompería las notificaciones que hoy SÍ llegan. La diferencia entre ambos
+// remitentes se expone en GET /api/admin/emails para poder revisarla.
 // ─────────────────────────────────────────────────────────────────────────────
-async function sendEmail({ to, subject, html, from }) {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    console.warn('⚠️  RESEND_API_KEY no configurado — email skip');
-    return { ok: false, reason: 'no_api_key' };
-  }
-  try {
-    const res = await axios.post(
-      'https://api.resend.com/emails',
-      {
-        from:    from || process.env.RESEND_FROM || 'Atinov <notificaciones@atinov.com>',
-        to:      [to],
-        subject, html,
-      },
-      {
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type':  'application/json',
-        },
-        timeout: 8000,
-      }
-    );
-    return { ok: true, id: res.data?.id };
-  } catch (e) {
-    const msg = e.response?.data?.message || e.message;
-    console.error('Resend email error:', msg);
-    return { ok: false, reason: msg };
-  }
+const FROM_NOTIFICACIONES = () =>
+  process.env.RESEND_FROM || 'Atinov <notificaciones@atinov.com>';
+
+async function sendEmail({ to, subject, html, from, userId, tag }) {
+  const { sendEmail: enviar } = require('./email');
+  const r = await enviar({
+    to, subject, html,
+    from: from || FROM_NOTIFICACIONES(),
+    userId,
+    tag: tag || 'notificacion',
+  });
+  // Compatibilidad: los llamadores de este módulo leen `reason`, los de
+  // services/email.js leen `error`. Se devuelven los dos.
+  return { ...r, reason: r.ok ? undefined : (r.error || 'no_api_key') };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
