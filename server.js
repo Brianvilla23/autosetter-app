@@ -282,7 +282,10 @@ const esRutaFuentes = (p) => p === '/api/knowledge-sources' || p.startsWith('/ap
 app.use((req, res, next) => (
   esRutaFuentes(req.path) ? next() : parserNormal(req, res, next)
 ));
-app.use(express.urlencoded({ extended: false, limit: '1mb' }));
+// El raw body también se preserva para form-urlencoded: la firma de Twilio
+// se valida sobre los valores ORIGINALES, antes de que sanitizeBody los toque
+// (xss() escaparía un "&" en un valor y la firma legítima dejaría de calzar).
+app.use(express.urlencoded({ extended: false, limit: '1mb', verify: guardarRaw }));
 
 // 4. Bloquear bots y paths de ataque antes de procesar nada
 app.use(blockSuspiciousAgents);
@@ -536,6 +539,11 @@ app.use('/api/voice', voiceLimiter, requireAuth, checkSubscription, require('./r
 // la demo, para que las dos vías no sumen el doble sin que nadie lo note.
 app.use('/api/closer', voiceLimiter, require('./routes/closer'));
 
+// Llamadas telefónicas salientes (Twilio): historial y costos por cuenta.
+// Los webhooks públicos de Twilio viven en /webhook/twilio/* (routes/webhook.js)
+// y el puente de audio en el WebSocket /twilio-media (ver al final).
+app.use('/api/llamadas', apiLimiter, requireAuth, checkSubscription, require('./routes/llamadas'));
+
 // La URL sin .html es la que la gente tipea; el catch-all serviría el
 // dashboard en silencio y el micrófono quedaría bloqueado (el permiso se
 // concede por path exacto).
@@ -773,6 +781,15 @@ async function processPendingSends() {
 
 setInterval(processPendingSends, 10000); // cada 10 segundos
 
+// ── LLAMADAS PROGRAMADAS WORKER ───────────────────────────────────────────────
+// El agente avisa por el chat y la llamada se marca ~45s después: este worker
+// toma las llamadas vencidas de la cola y le pide a Twilio que marque.
+// Inerte sin credenciales de Twilio (fail-closed adentro del servicio).
+const { procesarLlamadasProgramadas } = require('./services/telefonia');
+setInterval(() => {
+  procesarLlamadasProgramadas().catch(e => console.error('procesarLlamadasProgramadas:', e.message));
+}, 10000);
+
 // ── META TOKEN REFRESH WORKER ────────────────────────────────────────────────
 // Renueva tokens de Instagram antes de que caduquen (60 días).
 // Corre al arranque + cada 6 horas. Los clientes nunca tienen que re-loguearse.
@@ -870,7 +887,7 @@ setInterval(() => {
 }, 60 * 60 * 1000);
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`\n🚀 Atinov running   → http://localhost:${PORT}`);
   console.log(`📡 Webhook URL        → http://localhost:${PORT}/webhook`);
   console.log(`🔐 Auth URL           → http://localhost:${PORT}/auth/instagram`);
@@ -880,3 +897,9 @@ app.listen(PORT, () => {
   console.log(`💳 LS Webhook         → http://localhost:${PORT}/api/billing/ls-webhook (legacy, rechazado 2026-05-01)`);
   console.log(`💳 MP Webhook         → http://localhost:${PORT}/api/billing/mp-webhook\n`);
 });
+
+// ── PUENTE DE LLAMADAS (WebSocket /twilio-media) ─────────────────────────────
+// Twilio Media Streams entrega el audio de la llamada por WebSocket (TCP puro,
+// por eso corre en este mismo Railway sin infraestructura nueva) y el puente
+// lo releva a OpenAI Realtime. Necesita el http.Server crudo para el upgrade.
+require('./services/llamadaBridge').attach(server);

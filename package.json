@@ -24,6 +24,7 @@
     "pdf-parse": "^1.1.4",
     "uuid": "^9.0.1",
     "write-excel-file": "^4.1.1",
+    "ws": "^8.21.3",
     "xss": "^1.0.15"
   },
   "devDependencies": {

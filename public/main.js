@@ -1872,6 +1872,59 @@ async function loadSettings() {
     if (r?.ok) { loadSettings(); showToast('Calendario desconectado'); }
   };
 
+  // ── Llamadas telefónicas (Twilio) ─────────────────────────────────────────
+  // Los llamadas_* NO son secretos (booleans y horas): llegan enteros en
+  // settings. Las credenciales de Twilio son de la plataforma y nunca pasan
+  // por acá — solo el flag twilio_configurado que devuelve el PUT.
+  const cfgLl = data.settings || {};
+  const offLl = document.getElementById('llamadas-twilio-off');
+  if (offLl) offLl.style.display = data.twilio_configurado ? 'none' : '';
+  const setLl = (id, v, def) => { const el = document.getElementById(id); if (el) el.value = (v ?? def); };
+  const chkLl = document.getElementById('llamadas-enabled');
+  if (chkLl) chkLl.checked = cfgLl.llamadas_enabled === true;
+  setLl('llamadas-inicio',  cfgLl.llamadas_hora_inicio, 9);
+  setLl('llamadas-fin',     cfgLl.llamadas_hora_fin, 21);
+  setLl('llamadas-max-dia', cfgLl.llamadas_max_dia, 10);
+  setLl('llamadas-max-min', cfgLl.llamadas_max_min, 10);
+
+  // Interruptor por agente (calls_enabled, como followup_enabled)
+  const llAgentsEl = document.getElementById('llamadas-agents-list');
+  if (llAgentsEl) {
+    const agentes = await apiFetch(`/api/agents?accountId=${ACCOUNT_ID}`) || [];
+    llAgentsEl.innerHTML = agentes.length ? agentes.map(a => `
+      <label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;user-select:none">
+        <input type="checkbox" class="llamadas-agent-toggle" data-agent-id="${a._id}" ${a.calls_enabled === true ? 'checked' : ''}>
+        <span style="font-size:13px">${a.avatar || '🤖'} ${escHtmlSafe(a.name)}</span>
+      </label>`).join('')
+      : '<div style="color:var(--text-3);font-size:13px">No hay agentes creados todavía</div>';
+    llAgentsEl.querySelectorAll('.llamadas-agent-toggle').forEach(cb => {
+      cb.onchange = async (e) => {
+        const id = e.target.dataset.agentId;
+        const r = await apiFetch(`/api/agents/${id}`, 'PUT', { calls_enabled: e.target.checked });
+        if (r) showToast(e.target.checked ? '📞 Este agente ya puede llamar' : 'Llamadas apagadas en el agente');
+      };
+    });
+  }
+
+  const btnLl = document.getElementById('btn-save-llamadas');
+  if (btnLl) btnLl.onclick = async () => {
+    const num = (id) => { const v = parseInt(document.getElementById(id)?.value, 10); return Number.isFinite(v) ? v : undefined; };
+    const r = await apiFetch('/api/settings/llamadas', 'PUT', {
+      accountId: ACCOUNT_ID,
+      llamadas_enabled: !!document.getElementById('llamadas-enabled')?.checked,
+      llamadas_hora_inicio: num('llamadas-inicio'),
+      llamadas_hora_fin:    num('llamadas-fin'),
+      llamadas_max_dia:     num('llamadas-max-dia'),
+      llamadas_max_min:     num('llamadas-max-min'),
+    });
+    if (r?.ok) {
+      showToast('✅ Llamadas guardadas');
+      const off = document.getElementById('llamadas-twilio-off');
+      if (off) off.style.display = r.twilio_configurado ? 'none' : '';
+      if (!r.twilio_configurado) showToast('⏳ Ojo: el número saliente aún no está configurado en la plataforma');
+    }
+  };
+
   // ── Notificaciones ────────────────────────────────────────────────────────
   await loadNotifications();
 }

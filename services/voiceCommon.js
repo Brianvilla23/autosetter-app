@@ -58,6 +58,59 @@ const REGLAS_CLOSER = `
 - Si aparece una objeción que no puedes resolver con lo que sabes, no improvises ni prometas: dile que lo confirmas y que le escribes por el chat.
 - Si pregunta algo que no está en tu información, dilo derecho. Inventar en una llamada se nota más que por texto.`;
 
+/**
+ * Reglas EXTRA cuando el que marca es EL AGENTE (llamada saliente por
+ * teléfono). La diferencia con el closer web: acá la persona contesta un
+ * teléfono que suena — hay que confirmar que puede hablar, y puede caer un
+ * buzón de voz o contestar otra persona.
+ */
+const REGLAS_LLAMADA_SALIENTE = `
+--- TÚ HICISTE ESTA LLAMADA (saliente, avisada por el chat) ---
+- Le avisaste por el chat hace un minuto y la persona ACEPTÓ que la llamaras. No es una llamada en frío.
+- Cuando conteste, preséntate en UNA frase natural ("hola, soy [tu nombre], te dije por el chat que te llamaba") y confirma que puede hablar ("¿me escuchas bien? ¿puedes hablar ahora?").
+- Si dice que ahora no puede: ofrécele seguir por el chat, despídete corto y amable. No la retengas.
+- Si contesta OTRA persona: pregunta por quien buscas UNA vez; si no está, di que llamas de parte del negocio, que le escribes por el chat, y despídete. No des detalles de la conversación a terceros.
+- Si cae un BUZÓN DE VOZ o contestadora: deja UN mensaje de una frase (quién eres y que le escribiste por el chat) y no digas nada más.
+- La llamada tiene tiempo limitado: ve al grano del tema pendiente. Si el tiempo se acaba, cierra con el siguiente paso concreto acordado.
+- Nunca menciones "sistemas", "marcadores" ni cómo se coordinó la llamada por dentro.`;
+
+/**
+ * Bloques de instrucciones para una sesión de voz CON un lead (closer web o
+ * llamada telefónica). Vive acá para que las dos vías armen el prompt IGUAL
+ * y afinar el comportamiento sea un cambio en un solo lugar.
+ * Devuelve un array de bloques; el caller hace .filter(Boolean).join('\n').
+ */
+function construirBloquesLead({ agent, kbTexto, lead, messages, buildMemoryContext, turnos = 14 }) {
+  return [
+    agent.instructions || '',
+    kbTexto || '',
+    REGLAS_VOZ,
+    REGLAS_CLOSER,
+    lead?.name ? `\n--- QUIÉN ES ---\nSe llama ${lead.name}. Te escribió por ${lead.channel || 'el chat'}.` : null,
+    typeof buildMemoryContext === 'function' ? buildMemoryContext(lead) : null,
+    construirHistorialVoz(messages, turnos),
+  ];
+}
+
+/**
+ * Historial reciente en texto plano para el prompt de voz. Texto y no formato
+ * de mensajes porque Realtime recibe UN bloque de instrucciones.
+ */
+function construirHistorialVoz(messages, turnos = 14) {
+  const visibles = (messages || []).filter(m => m.role === 'user' || m.role === 'agent' || m.role === 'manual' || m.role === 'assistant');
+  const recientes = visibles.slice(-turnos);
+  if (!recientes.length) return null;
+  const lineas = recientes.map(m => {
+    const quien = m.role === 'user' ? 'LEAD' : 'TÚ';
+    return `${quien}: ${String(m.content || '').slice(0, 400)}`;
+  });
+  return [
+    '--- LO QUE YA CONVERSARON POR TEXTO (lo más reciente al final) ---',
+    ...lineas,
+    'Retoma DESDE acá. No repitas preguntas ya respondidas arriba.',
+  ].join('\n');
+}
+
 module.exports = {
   VOCES_REALTIME,
   EQUIV_VOZ,
@@ -68,4 +121,7 @@ module.exports = {
   MAX_TOKENS_SALIDA,
   REGLAS_VOZ,
   REGLAS_CLOSER,
+  REGLAS_LLAMADA_SALIENTE,
+  construirBloquesLead,
+  construirHistorialVoz,
 };

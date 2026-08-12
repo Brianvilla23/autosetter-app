@@ -58,6 +58,11 @@ const db = {
   billableEvents: new Datastore({ filename: path.join(dir, 'billableEvents.db'), autoload: true }),
   postRules:     new Datastore({ filename: path.join(dir, 'postRules.db'),     autoload: true }),
   knowledgeSources: new Datastore({ filename: path.join(dir, 'knowledgeSources.db'), autoload: true }),
+  // Llamadas telefónicas salientes (Twilio). El teléfono y la transcripción
+  // son dato personal: la colección cae en las cascadas de supresión 21.719
+  // (DELETE lead / clear-messages / clear-all / DELETE user). El costo
+  // sobrevive aparte en billableEvents (retención legítima).
+  llamadas:      new Datastore({ filename: path.join(dir, 'llamadas.db'),      autoload: true }),
 };
 
 // Compact on load

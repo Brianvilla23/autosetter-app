@@ -210,6 +210,7 @@ router.delete('/users/:id', async (req, res) => {
       await db.remove(db.followups,    { account_id: accId });
       await db.remove(db.pendingSends, { accountId: accId });
       await db.remove(db.failedSends,  { accountId: accId });
+      await db.remove(db.llamadas,     { account_id: accId });
       await db.remove(db.leads,        { account_id: accId });
       await db.remove(db.agents,       { account_id: accId });
       await db.remove(db.knowledge,    { account_id: accId });

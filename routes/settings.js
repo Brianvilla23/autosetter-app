@@ -29,6 +29,9 @@ router.get('/', async (req, res, next) => {
       account:  sanitizeAccount(account),
       settings: sanitizeSettings(settings),
       stats,
+      // Solo el flag (nunca credenciales): la UI muestra "en preparación"
+      // mientras la plataforma no tenga las TWILIO_* en el entorno.
+      twilio_configurado: require('../services/telefonia').telefoniaHabilitada(),
     });
   } catch (e) { next(e); }
 });
@@ -204,6 +207,62 @@ router.delete('/shopify', async (req, res, next) => {
       shopify_webhook_secret: null, shopify_template_name: null,
       shopify_template_lang: null, shopify_eta_dias: null, shopify_topic: null,
     });
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+
+// ── LLAMADAS TELEFÓNICAS (Twilio) ────────────────────────────────────────────
+// PUT body: { accountId, llamadas_enabled?, llamadas_hora_inicio?,
+//             llamadas_hora_fin?, llamadas_max_dia?, llamadas_max_min? }
+// Interruptor y candados POR CUENTA. Las credenciales de Twilio NO viven acá:
+// son de la plataforma (env vars en Railway) — sin ellas todo esto queda
+// inerte aunque el interruptor esté prendido (fail-closed en el servicio).
+// Además cada agente tiene su propio interruptor (calls_enabled, como
+// followup_enabled): los DOS deben estar prendidos para que el agente ofrezca.
+router.put('/llamadas', async (req, res, next) => {
+  try {
+    const {
+      accountId, llamadas_enabled, llamadas_hora_inicio, llamadas_hora_fin,
+      llamadas_max_dia, llamadas_max_min,
+    } = req.body;
+    if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
+
+    const upd = {};
+    if (typeof llamadas_enabled === 'boolean') upd.llamadas_enabled = llamadas_enabled;
+    const hora = (v) => Number.isInteger(Number(v)) && Number(v) >= 0 && Number(v) <= 23 ? Number(v) : undefined;
+    if (llamadas_hora_inicio !== undefined && hora(llamadas_hora_inicio) !== undefined) {
+      upd.llamadas_hora_inicio = hora(llamadas_hora_inicio);
+    }
+    if (llamadas_hora_fin !== undefined && hora(llamadas_hora_fin) !== undefined) {
+      upd.llamadas_hora_fin = hora(llamadas_hora_fin);
+    }
+    if (llamadas_max_dia !== undefined) {
+      const n = parseInt(llamadas_max_dia, 10);
+      upd.llamadas_max_dia = Number.isFinite(n) && n >= 1 && n <= 50 ? n : 10;
+    }
+    if (llamadas_max_min !== undefined) {
+      const n = parseInt(llamadas_max_min, 10);
+      upd.llamadas_max_min = Number.isFinite(n) && n >= 3 && n <= 15 ? n : 10;
+    }
+    if (!Object.keys(upd).length) return res.json({ ok: true, unchanged: true });
+
+    const exists = await db.findOne(db.settings, { account_id: accountId });
+    if (exists) {
+      await db.update(db.settings, { account_id: accountId }, { ...upd, updatedAt: new Date().toISOString() });
+    } else {
+      await db.insert(db.settings, { account_id: accountId, openai_key: '', ...upd });
+    }
+    const { telefoniaHabilitada } = require('../services/telefonia');
+    res.json({ ok: true, twilio_configurado: telefoniaHabilitada() });
+  } catch (e) { next(e); }
+});
+
+// DELETE — apagar llamadas en la cuenta (los candados de horario/tope quedan)
+router.delete('/llamadas', async (req, res, next) => {
+  try {
+    const { accountId } = req.query;
+    if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
+    await db.update(db.settings, { account_id: accountId }, { llamadas_enabled: false });
     res.json({ ok: true });
   } catch (e) { next(e); }
 });

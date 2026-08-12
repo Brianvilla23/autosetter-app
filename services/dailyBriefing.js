@@ -84,9 +84,18 @@ async function buildDailyStats(accountId) {
   const followupsEnviados = (await db.find(db.followups, { account_id: accountId }))
     .filter(f => f.sent_at && f.sent_at >= since).length;
 
+  // Llamadas telefónicas de la ventana (batch llamadas): el dueño se entera
+  // en el mismo briefing donde ya mira todo lo demás.
+  const llamadasRecientes = (await db.find(db.llamadas, { account_id: accountId }))
+    .filter(l => l.createdAt >= since);
+  const llamadasHechas = llamadasRecientes.filter(l => l.status === 'terminada').length;
+  const llamadasSinContestar = llamadasRecientes.filter(l => l.status === 'no_contesto').length;
+  const llamadasMin = Math.round(llamadasRecientes.reduce((s, l) => s + (l.duracion_seg || 0), 0) / 60);
+
   return {
     conversaciones, fueraDeHorario, respuestaMedianaSeg,
     leadsNuevos, hotPendientes, notasDeVoz, fotos, followupsEnviados,
+    llamadasHechas, llamadasSinContestar, llamadasMin,
     respuestasAgente: agentMsgs.length,
   };
 }
@@ -119,6 +128,8 @@ function briefingTexts(stats) {
   if (stats.fotos)      media.push(`🖼️ ${stats.fotos} foto${stats.fotos === 1 ? '' : 's'}`);
   if (media.length)     lines.push(`${media.join(' · ')} entendida${(stats.notasDeVoz + stats.fotos) === 1 ? '' : 's'} y respondida${(stats.notasDeVoz + stats.fotos) === 1 ? '' : 's'}`);
   if (stats.followupsEnviados) lines.push(`📅 ${stats.followupsEnviados} follow-up${stats.followupsEnviados === 1 ? '' : 's'} enviado${stats.followupsEnviados === 1 ? '' : 's'} a leads que no respondían`);
+  if (stats.llamadasHechas) lines.push(`📞 ${stats.llamadasHechas} llamada${stats.llamadasHechas === 1 ? '' : 's'} telefónica${stats.llamadasHechas === 1 ? '' : 's'} a leads calientes (${stats.llamadasMin} min en total)`);
+  if (stats.llamadasSinContestar) lines.push(`📵 ${stats.llamadasSinContestar} llamada${stats.llamadasSinContestar === 1 ? '' : 's'} sin contestar — el agente retomó por el chat`);
   return lines;
 }
 

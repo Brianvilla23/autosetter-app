@@ -85,6 +85,7 @@ router.put('/:id', enforceFollowupFeature, async (req, res, next) => {
     const {
       name, avatar, instructions, enabled, trigger_keywords, delay_min, delay_max,
       followup_enabled, followup_delay_hours, role, channels, comment_public_reply,
+      calls_enabled,
     } = req.body;
     const upd = { name, avatar, instructions, enabled, trigger_keywords, delay_min, delay_max };
     // Respuesta pública al comentario ("te escribí al DM 📩"). Vacío = no responder.
@@ -99,6 +100,10 @@ router.put('/:id', enforceFollowupFeature, async (req, res, next) => {
       const h = Math.max(1, Math.min(23, Number(followup_delay_hours) || 3));
       upd.followup_delay_hours = h;
     }
+    // Llamadas telefónicas: interruptor POR AGENTE (como followup_enabled).
+    // Solo con este switch + el de la cuenta + Twilio configurado el agente
+    // recibe la capacidad [LLAMAR] en su prompt.
+    if (typeof calls_enabled === 'boolean') upd.calls_enabled = calls_enabled;
     await db.update(db.agents, { _id: req.params.id }, upd);
     const agent = await db.findOne(db.agents, { _id: req.params.id });
     res.json({ ...agent, id: agent._id });

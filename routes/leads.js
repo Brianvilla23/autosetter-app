@@ -306,6 +306,9 @@ router.delete('/:id', async (req, res, next) => {
     const extIds = [lead.wa_id, lead.ig_user_id].filter(Boolean);
     await db.remove(db.messages,     { lead_id: lead._id }, { multi: true });
     await db.remove(db.followups,    { lead_id: lead._id }, { multi: true });
+    // Llamadas telefónicas: teléfono + transcripción son dato personal.
+    // El costo ya quedó en billableEvents (retención legítima).
+    await db.remove(db.llamadas,     { lead_id: lead._id }, { multi: true });
     for (const store of [db.pendingSends, db.failedSends]) {
       await db.remove(store, { lead_id: lead._id }, { multi: true });
       if (extIds.length) {
@@ -327,6 +330,8 @@ router.post('/:id/clear-messages', async (req, res, next) => {
     if (!lead) return;
     const extIds = [lead.wa_id, lead.ig_user_id].filter(Boolean);
     await db.remove(db.messages,     { lead_id: lead._id }, { multi: true });
+    // La transcripción de una llamada es conversación: cae con el clear.
+    await db.remove(db.llamadas,     { lead_id: lead._id }, { multi: true });
     for (const store of [db.pendingSends, db.failedSends]) {
       await db.remove(store, { lead_id: lead._id }, { multi: true });
       if (extIds.length) {
@@ -361,6 +366,7 @@ router.post('/clear-all', async (req, res, next) => {
     await db.remove(db.pendingSends, { accountId }, { multi: true });
     await db.remove(db.failedSends,  { accountId }, { multi: true });
     await db.remove(db.followups,    { account_id: accountId }, { multi: true });
+    await db.remove(db.llamadas,     { account_id: accountId }, { multi: true });
     await db.remove(db.leads,        { account_id: accountId }, { multi: true });
     console.warn(`🗑️🗑️ CLEAR-ALL: ${leads.length} leads borrados para account ${accountId}`);
     res.json({ ok: true, deleted: leads.length });

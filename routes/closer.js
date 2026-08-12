@@ -31,7 +31,7 @@ const { buildMemoryContext } = require('../services/leadMemory');
 const { verifyInvite, matchesStoredHash } = require('../services/voiceInvite');
 const {
   VOCES_REALTIME, EQUIV_VOZ, VOZ_DEFAULT, MODELO, MODELO_TRANSCRIPCION,
-  SECRETO_SEGUNDOS, MAX_TOKENS_SALIDA, REGLAS_VOZ, REGLAS_CLOSER,
+  SECRETO_SEGUNDOS, MAX_TOKENS_SALIDA, construirBloquesLead,
 } = require('../services/voiceCommon');
 
 const MAX_SESIONES_DIA = 20;  // por cuenta, compartido con la demo del dueño
@@ -41,25 +41,6 @@ const TURNOS_CONTEXTO  = 14;  // últimos mensajes que se le pasan al closer
 // "no existe", "venció" y "ya se usó" le diría a alguien que prueba links si
 // acertó el formato.
 const INVITACION_INVALIDA = 'Este enlace ya no es válido. Pídele uno nuevo al asistente por el chat.';
-
-/**
- * Historial reciente en texto plano para el prompt de voz. Se usa texto y no
- * el formato de mensajes porque Realtime recibe UN bloque de instrucciones,
- * no un historial estructurado.
- */
-function construirHistorial(messages) {
-  const recientes = messages.slice(-TURNOS_CONTEXTO);
-  if (!recientes.length) return null;
-  const lineas = recientes.map(m => {
-    const quien = m.role === 'user' ? 'LEAD' : 'TÚ';
-    return `${quien}: ${String(m.content || '').slice(0, 400)}`;
-  });
-  return [
-    '--- LO QUE YA CONVERSARON POR TEXTO (lo más reciente al final) ---',
-    ...lineas,
-    'Retoma DESDE acá. No repitas preguntas ya respondidas arriba.',
-  ].join('\n');
-}
 
 /**
  * POST /api/closer/token   Body: { invite }
@@ -119,15 +100,11 @@ router.post('/token', async (req, res) => {
     const messages = await db.find(db.messages, { lead_id: lead._id },
       (a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
-    const bloques = [
-      agent.instructions || '',
-      kbTexto,
-      REGLAS_VOZ,
-      REGLAS_CLOSER,
-      lead.name ? `\n--- QUIÉN ES ---\nSe llama ${lead.name}. Te escribió por ${lead.channel || 'el chat'}.` : null,
-      buildMemoryContext(lead),
-      construirHistorial(messages),
-    ].filter(Boolean);
+    // Bloques compartidos con la llamada telefónica (services/voiceCommon.js):
+    // afinar el comportamiento del closer por voz se hace en UN solo lugar.
+    const bloques = construirBloquesLead({
+      agent, kbTexto, lead, messages, buildMemoryContext, turnos: TURNOS_CONTEXTO,
+    }).filter(Boolean);
 
     const vozPedida = EQUIV_VOZ[agent.voice] || agent.voice;
     const voz = VOCES_REALTIME.includes(vozPedida) ? vozPedida : VOZ_DEFAULT;

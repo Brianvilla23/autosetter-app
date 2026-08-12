@@ -197,6 +197,28 @@ const CHECKS = [
     path: '/api/user/check',
     expectHeaderIncludes: { 'cache-control': 'no-store' },
   },
+  {
+    // Sin token HMAC válido responde 403 — tanto si Twilio está configurado
+    // (token inválido) como si no (fail-closed). Nunca 200.
+    name: 'Webhook Twilio twiml sin token/firma → 403',
+    method: 'POST',
+    path: '/webhook/twilio/twiml?ll=fake&t=fake',
+    body: '{}',
+    expectStatus: 403,
+  },
+  {
+    name: 'Webhook Twilio status sin token/firma → 403',
+    method: 'POST',
+    path: '/webhook/twilio/status?ll=fake&t=fake',
+    body: '{}',
+    expectStatus: 403,
+  },
+  {
+    name: '/api/llamadas sin auth → 401 (historial de llamadas protegido)',
+    method: 'GET',
+    path: '/api/llamadas',
+    expectStatus: 401,
+  },
 ];
 
 function request(method, path, body) {

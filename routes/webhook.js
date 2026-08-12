@@ -928,7 +928,16 @@ ${entregar
     orderContext = buildOrderContext(lead);
   } catch (e) { /* pedidos opcional */ }
 
-  const extraContext = [baseContext, contextoHistoria, messengerHandoff, magnetContext, audioContext, memoryContext, followerContext, paymentContext, calendarContext, orderContext, ragContext].filter(Boolean).join('\n\n') || null;
+  // ── Llamada telefónica: capacidad solo si TODO está dado ──────────────────
+  // (Twilio configurado + interruptores cuenta/agente + horario + topes +
+  //  lead CALIENTE o que pidió la llamada). Fail-closed en cada condición.
+  let llamadaContext = null;
+  try {
+    const { buildLlamadaContext } = require('../services/telefonia');
+    llamadaContext = await buildLlamadaContext({ settings, agent, lead, incomingText: text });
+  } catch (e) { /* telefonía opcional */ }
+
+  const extraContext = [baseContext, contextoHistoria, messengerHandoff, magnetContext, audioContext, memoryContext, followerContext, paymentContext, calendarContext, orderContext, llamadaContext, ragContext].filter(Boolean).join('\n\n') || null;
 
   let reply = await generateReply({
     agent, knowledge, links,
@@ -977,6 +986,20 @@ ${entregar
     const pedido = await resolveOrderMarkers(reply, { lead, accountId: account._id });
     reply = pedido.text;
   } catch (e) { console.warn('[shopify] resolución de marcadores falló (no bloquea):', e.message); }
+
+  // ── Resolver marcadores [LLAMAR: ...] → llamada telefónica programada ─────
+  // El modelo propone, el servidor decide: acá se re-validan TODOS los
+  // candados (consentimiento, horario, topes, teléfono dicho por el lead).
+  // La llamada se marca ~45s después, para que el aviso llegue antes que el
+  // timbre. Fail-closed: el marcador jamás rompe el mensaje.
+  try {
+    const { resolveLlamadaMarkers } = require('../services/telefonia');
+    const llamado = await resolveLlamadaMarkers(reply, { settings, account, agent, lead });
+    reply = llamado.text;
+    if (llamado.llamadas.length) {
+      console.log(`📞 [${agent.name}] Llamada programada para @${lead.ig_username || lead.wa_name}: ${llamado.llamadas[0].telefono}`);
+    }
+  } catch (e) { console.warn('[llamada] resolución de marcadores falló (no bloquea):', e.message); }
 
   // Red de seguridad: si el LLM respondió SOLO con un marcador, el scrub deja
   // el texto vacío y el envío moriría en failedSends tras 5 reintentos — la
@@ -1339,6 +1362,108 @@ router.post('/shopify', async (req, res) => {
     }
   } catch (e) {
     console.error('[shopify] webhook error:', e.response?.data || e.message);
+  }
+});
+
+// ── WEBHOOKS DE TWILIO (llamadas telefónicas salientes) ──────────────────────
+// Dos endpoints públicos, los dos con DOBLE candado: el token HMAC por
+// llamada (?ll & ?t, acuñado con JWT_SECRET) y la firma X-Twilio-Signature.
+// Fail-closed: sin credenciales de Twilio en el entorno responden 403 seco.
+// Twilio manda form-urlencoded — el parser global ya lo cubre.
+
+// POST /webhook/twilio/twiml?ll=<llamadaId>&t=<token>
+// Twilio lo llama cuando el lead CONTESTA: devolvemos el TwiML que conecta
+// el audio de la llamada al WebSocket del puente.
+router.post('/twilio/twiml', async (req, res) => {
+  try {
+    const telefonia = require('../services/telefonia');
+    if (!telefonia.telefoniaHabilitada()) return res.status(403).send('Forbidden');
+
+    const llamadaId = String(req.query.ll || '');
+    if (!llamadaId || !telefonia.tokenValido(llamadaId, req.query.t)) {
+      return res.status(403).send('Forbidden');
+    }
+    if (!telefonia.firmaTwilioValida(req)) {
+      console.warn(`[twilio] twiml con firma inválida para ${llamadaId}`);
+      return res.status(403).send('Forbidden');
+    }
+
+    const ll = await db.findOne(db.llamadas, { _id: llamadaId });
+    // 'en_curso' también vale: el status callback "in-progress" puede llegar
+    // ANTES que este fetch de TwiML (carrera real de Twilio).
+    if (!ll || !['marcando', 'sonando', 'en_curso'].includes(ll.status)) {
+      // Llamada finalizada, cancelada o inexistente: TwiML de colgado.
+      return res.type('text/xml').send('<?xml version="1.0" encoding="UTF-8"?><Response><Hangup/></Response>');
+    }
+    if (ll.ws_lock) {
+      // Ya hay un stream conectado para esta llamada: un segundo TwiML es
+      // un replay — colgado seco.
+      return res.type('text/xml').send('<?xml version="1.0" encoding="UTF-8"?><Response><Hangup/></Response>');
+    }
+
+    res.type('text/xml').send(telefonia.twimlParaLlamada(llamadaId));
+  } catch (e) {
+    console.error('[twilio] twiml error:', e.message);
+    res.status(500).send('Error');
+  }
+});
+
+// POST /webhook/twilio/status?ll=<llamadaId>&t=<token>
+// Ciclo de vida de la llamada. En `completed` Twilio manda CallDuration —
+// la duración OFICIAL que manda sobre el cronómetro del puente.
+router.post('/twilio/status', async (req, res) => {
+  // Twilio reintenta ante non-2xx: se responde 200 salvo fallo de auth.
+  try {
+    const telefonia = require('../services/telefonia');
+    if (!telefonia.telefoniaHabilitada()) return res.status(403).send('Forbidden');
+
+    const llamadaId = String(req.query.ll || '');
+    if (!llamadaId || !telefonia.tokenValido(llamadaId, req.query.t)) {
+      return res.status(403).send('Forbidden');
+    }
+    if (!telefonia.firmaTwilioValida(req)) {
+      console.warn(`[twilio] status con firma inválida para ${llamadaId}`);
+      return res.status(403).send('Forbidden');
+    }
+    res.sendStatus(200);
+
+    const ll = await db.findOne(db.llamadas, { _id: llamadaId });
+    if (!ll) return;
+
+    const st  = String(req.body?.CallStatus || '');
+    const dur = Number(req.body?.CallDuration || 0);
+
+    if (st === 'ringing' && ll.status === 'marcando') {
+      await db.update(db.llamadas, { _id: llamadaId }, { status: 'sonando' }).catch(() => null);
+    } else if (st === 'in-progress' && ['marcando', 'sonando'].includes(ll.status)) {
+      await db.update(db.llamadas, { _id: llamadaId }, {
+        status: 'en_curso', answered_at: ll.answered_at || new Date().toISOString(),
+      }).catch(() => null);
+    } else if (st === 'completed') {
+      // Si el puente ya finalizó, esto solo corrige la duración con la oficial.
+      const conecto = !!ll.answered_at || dur > 0;
+      const finalizo = await telefonia.finalizarLlamada(llamadaId, {
+        resultado: conecto ? 'terminada' : 'no_contesto',
+        duracionSeg: dur,
+      });
+      if (!finalizo && dur > 0) {
+        await db.update(db.llamadas, { _id: llamadaId }, { duracion_seg: dur }).catch(() => null);
+        const costo = telefonia.costoEstimadoUSD(dur);
+        await db.update(db.llamadas, { _id: llamadaId }, { costo_usd: costo }).catch(() => null);
+      }
+    } else if (['busy', 'no-answer', 'failed', 'canceled'].includes(st)) {
+      const resultado = st === 'busy' || st === 'no-answer' ? 'no_contesto' : 'fallida';
+      const finalizo = await telefonia.finalizarLlamada(llamadaId, {
+        resultado, duracionSeg: 0, motivo: st,
+      });
+      // Volver al chat con un mensaje natural, sin insistir (decisión del batch).
+      if (finalizo && resultado === 'no_contesto') {
+        await telefonia.encolarMensajeNoContesto(ll);
+      }
+    }
+  } catch (e) {
+    console.error('[twilio] status error:', e.message);
+    if (!res.headersSent) res.sendStatus(200);
   }
 });
 

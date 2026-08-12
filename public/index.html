@@ -1304,6 +1304,46 @@
       </div>
 
       <div class="settings-card">
+        <h3>📞 Llamadas telefónicas <span style="font-size:11px;background:rgba(16,185,129,.15);color:#10b981;padding:2px 8px;border-radius:6px;vertical-align:middle;margin-left:6px;">Nuevo</span></h3>
+        <p>Cuando un lead está listo y acepta, el agente lo llama por teléfono de verdad — con tu voz elegida y todo el contexto del chat. Siempre avisa por el chat antes de marcar.</p>
+
+        <div id="llamadas-twilio-off" style="display:none;font-size:13px;color:var(--text-2);border:1px dashed var(--border);border-radius:8px;padding:12px;margin-bottom:12px">
+          ⏳ Función en preparación — el número saliente aún no está configurado en la plataforma.
+        </div>
+
+        <div class="form-row" style="display:flex;align-items:center;gap:10px">
+          <label style="margin:0;flex:1">Llamadas activadas en esta cuenta</label>
+          <input type="checkbox" id="llamadas-enabled" style="width:18px;height:18px">
+        </div>
+        <div style="display:flex;gap:10px">
+          <div class="form-row" style="flex:1">
+            <label>Desde (hora Chile)</label>
+            <input type="number" id="llamadas-inicio" min="0" max="23" placeholder="9" class="form-input">
+          </div>
+          <div class="form-row" style="flex:1">
+            <label>Hasta</label>
+            <input type="number" id="llamadas-fin" min="0" max="23" placeholder="21" class="form-input">
+          </div>
+        </div>
+        <div style="display:flex;gap:10px">
+          <div class="form-row" style="flex:1">
+            <label>Máx. llamadas por día</label>
+            <input type="number" id="llamadas-max-dia" min="1" max="50" placeholder="10" class="form-input">
+          </div>
+          <div class="form-row" style="flex:1">
+            <label>Máx. minutos por llamada</label>
+            <input type="number" id="llamadas-max-min" min="3" max="15" placeholder="10" class="form-input">
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Agentes que pueden llamar</label>
+          <div id="llamadas-agents-list"></div>
+        </div>
+        <button class="btn-primary" id="btn-save-llamadas">Guardar llamadas</button>
+        <p style="font-size:12px;color:var(--text-2);margin-top:10px">Candados fijos: el lead debe aceptar en el chat, máximo 1 llamada por lead al día, y cada llamada queda registrada con duración y costo.</p>
+      </div>
+
+      <div class="settings-card">
         <h3>🛒 Tienda Shopify <span style="font-size:11px;background:rgba(16,185,129,.15);color:#10b981;padding:2px 8px;border-radius:6px;vertical-align:middle;margin-left:6px;">Nuevo</span></h3>
         <p>Cada pedido nuevo dispara el WhatsApp de confirmación solo, y el agente conversa sabiendo qué pidió, a qué dirección y cuándo llega.</p>
 
