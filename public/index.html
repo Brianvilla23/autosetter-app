@@ -1222,9 +1222,27 @@
 
         <!-- No conectado -->
         <div id="wa-not-connected">
-          <p style="font-size:13px;color:var(--text-2);margin-bottom:14px">
+
+          <!-- Conexión con un clic (Embedded Signup). Solo aparece si el
+               servidor la tiene configurada; si no, queda el alta manual. -->
+          <div id="wa-es-box" style="display:none;margin-bottom:18px">
+            <button class="btn-primary" id="btn-wa-embedded" style="background:#25D366;border-color:#25D366;font-size:15px;padding:12px 20px">
+              📱 Conectar mi WhatsApp
+            </button>
+            <p style="font-size:12px;color:var(--text-2);margin-top:10px">
+              Se abre una ventana de Meta donde inicias sesión y eliges tu número. <strong>No tienes que copiar ningún dato ni token.</strong> Si todavía no tienes WhatsApp Business API, la creas ahí mismo.
+            </p>
+            <div id="wa-es-status" style="font-size:13px;margin-top:10px"></div>
+            <details style="margin-top:14px">
+              <summary style="cursor:pointer;font-size:13px;color:var(--text-2)">Prefiero pegar los datos a mano</summary>
+              <div id="wa-manual-wrap" style="margin-top:12px"></div>
+            </details>
+          </div>
+
+          <p style="font-size:13px;color:var(--text-2);margin-bottom:14px" id="wa-manual-intro">
             Pega los 3 datos de tu WABA (Meta Business → WhatsApp → API Setup). El token nunca se muestra de vuelta por seguridad.
           </p>
+          <div id="wa-manual-fields">
           <div class="form-row">
             <label>Phone Number ID</label>
             <input type="text" id="wa-phone-number-id" placeholder="ID numérico del número (NO el número visible)" class="form-input">
@@ -1241,6 +1259,7 @@
           <p style="font-size:12px;color:var(--text-2);margin-top:10px">
             Requiere: <strong>WABA verificada</strong> + <strong>display name aprobado</strong> por Meta (1-3 días). El webhook ya está configurado.
           </p>
+          </div>
         </div>
       </div>
 

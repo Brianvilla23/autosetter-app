@@ -156,6 +156,19 @@ const CHECKS = [
     expectBodyIncludes: 'ignored',
   },
   {
+    name: 'Embedded Signup: config sin auth → 401 (no filtra app id ni config id)',
+    method: 'GET',
+    path: '/api/settings/whatsapp/embedded-signup',
+    expectStatus: 401,
+  },
+  {
+    name: 'Embedded Signup: conectar sin auth → 401 (nadie conecta un WABA ajeno)',
+    method: 'POST',
+    path: '/api/settings/whatsapp/embedded-signup',
+    body: '{"accountId":"fake","code":"x","waba_id":"1","phone_number_id":"1"}',
+    expectStatus: 401,
+  },
+  {
     name: 'Header CSP presente',
     method: 'GET',
     path: '/',

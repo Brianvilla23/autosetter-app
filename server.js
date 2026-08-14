@@ -34,16 +34,27 @@ app.set('trust proxy', 1);
 // handlers inline que tiene la UI (Editar/Eliminar/etc en knowledge, links,
 // agents, lead detail). Sin esto, los botones quedan visualmente OK pero el
 // click no dispara nada (bug que tuvimos hasta el commit 8e23d12).
+// El SDK de Facebook (Embedded Signup) se carga desde connect.facebook.net y
+// abre un iframe/popup contra facebook.com. Esos permisos se agregan a la CSP
+// SOLO si la función está configurada: sin META_ES_CONFIG_ID el botón no
+// existe, y entonces tampoco hay razón para ensanchar la política.
+const embeddedSignupOn = !!(process.env.META_APP_ID && process.env.META_APP_SECRET && process.env.META_ES_CONFIG_ID);
+const FB_SDK    = ['https://connect.facebook.net'];
+const FB_FRAMES = ['https://www.facebook.com', 'https://web.facebook.com', 'https://staticxx.facebook.com'];
+
 app.use(helmet({
   contentSecurityPolicy: {
     useDefaults: true,
     directives: {
       defaultSrc:    ["'self'"],
-      scriptSrc:     ["'self'", "'unsafe-inline'", 'https://plausible.io'],   // <script> blocks + Plausible
+      scriptSrc:     ["'self'", "'unsafe-inline'", 'https://plausible.io',      // <script> blocks + Plausible
+                      ...(embeddedSignupOn ? FB_SDK : [])],
       scriptSrcAttr: ["'unsafe-inline'"],                                      // onclick="..." inline (CRÍTICO)
       styleSrc:      ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       imgSrc:        ["'self'", 'data:', 'https:'],
-      connectSrc:    ["'self'", 'https://api.openai.com', 'https://graph.facebook.com', 'https://graph.instagram.com', 'https://plausible.io'],
+      connectSrc:    ["'self'", 'https://api.openai.com', 'https://graph.facebook.com', 'https://graph.instagram.com', 'https://plausible.io',
+                      ...(embeddedSignupOn ? [...FB_SDK, ...FB_FRAMES] : [])],
+      frameSrc:      ["'self'", ...(embeddedSignupOn ? FB_FRAMES : [])],       // el popup/iframe del signup
       fontSrc:       ["'self'", 'data:', 'https://fonts.gstatic.com'],
       frameAncestors:["'none'"],                          // clickjacking
       objectSrc:     ["'none'"],

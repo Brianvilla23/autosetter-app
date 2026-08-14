@@ -1757,6 +1757,8 @@ async function loadSettings() {
     if (r?.ok) { loadSettings(); showToast('WhatsApp desconectado'); }
   });
 
+  if (!waConnected) initEmbeddedSignup();
+
   // ── Messenger / Marketplace (Página de Facebook) ──────────────────────────
   const fbConnected = !!(data.account?.fb_page_id && data.account?.has_fb_page_token);
   const fbConnEl = document.getElementById('fb-connected');
@@ -2305,6 +2307,139 @@ async function loadGrowth() {
     magnetBtn.addEventListener('click', createMagnetLink);
   }
   wireMagnetChannelSelector();
+}
+
+// ── EMBEDDED SIGNUP v4 — conectar WhatsApp con un clic ───────────────────────
+// El popup de Meta devuelve los datos por DOS vías distintas y asíncronas:
+//  · un `message` con phone_number_id + waba_id (cuando el flujo termina bien)
+//  · el callback de FB.login con el `code` que canjea el servidor
+// El orden entre ambas no está garantizado, así que se guardan por separado y
+// se envía recién cuando están las dos. El código dura 30 s: nada de pasos
+// intermedios entre recibirlo y mandarlo.
+let _esDatos = null, _esCode = null, _esEnviado = false;
+
+function esStatus(msg, color) {
+  const el = document.getElementById('wa-es-status');
+  if (!el) return;
+  el.textContent = msg || '';
+  el.style.color = color || 'var(--text-2)';
+}
+
+async function initEmbeddedSignup() {
+  const box = document.getElementById('wa-es-box');
+  if (!box || box.dataset.wired) return;
+
+  let cfg = null;
+  try { cfg = await apiFetch('/api/settings/whatsapp/embedded-signup'); } catch { return; }
+  if (!cfg?.enabled || !cfg.appId || !cfg.configId) return;  // sin configurar → queda el alta manual de siempre
+
+  box.dataset.wired = '1';
+  box.style.display = '';
+
+  // El alta manual pasa a ser el plan B, dentro del desplegable.
+  const wrap = document.getElementById('wa-manual-wrap');
+  const intro = document.getElementById('wa-manual-intro');
+  const fields = document.getElementById('wa-manual-fields');
+  if (wrap && fields) { if (intro) wrap.appendChild(intro); wrap.appendChild(fields); }
+
+  // Escuchar el popup. Filtrar por origen: sin esto, cualquier iframe de otra
+  // página podría inyectar un waba_id falso (igual el servidor lo revalida).
+  window.addEventListener('message', (event) => {
+    let host;
+    try { host = new URL(event.origin).hostname; } catch { return; }  // origin "null" u opaco
+    if (!/(^|\.)facebook\.com$/.test(host)) return;
+    let data;
+    try { data = JSON.parse(event.data); } catch { return; }
+    if (data?.type !== 'WA_EMBEDDED_SIGNUP') return;
+
+    if (data.event === 'FINISH' || data.event === 'FINISH_ONLY_WABA') {
+      _esDatos = { waba_id: data.data?.waba_id, phone_number_id: data.data?.phone_number_id };
+      esEnviarSiListo();
+    } else if (data.event === 'CANCEL') {
+      esStatus(`Cerraste la ventana en el paso "${data.data?.current_step || 'inicial'}". Puedes reintentar cuando quieras.`, 'var(--text-2)');
+    } else if (data.event === 'ERROR') {
+      esStatus(`Meta reportó un error: ${data.data?.error_message || 'desconocido'}`, '#ef4444');
+    }
+  });
+
+  // Cargar el SDK de Meta (solo acá: si la función no está configurada, el
+  // script ni se pide).
+  await new Promise((resolve) => {
+    if (window.FB) return resolve();
+    const s = document.createElement('script');
+    s.src = 'https://connect.facebook.net/en_US/sdk.js';
+    s.async = true; s.defer = true; s.crossOrigin = 'anonymous';
+    s.onload = () => {
+      window.FB.init({ appId: cfg.appId, autoLogAppEvents: true, xfbml: true, version: cfg.graphVersion || 'v21.0' });
+      resolve();
+    };
+    s.onerror = () => resolve();
+    document.head.appendChild(s);
+  });
+
+  document.getElementById('btn-wa-embedded')?.addEventListener('click', () => {
+    if (!window.FB) { esStatus('No se pudo cargar la ventana de Meta. Revisa tu conexión o usa el formulario manual.', '#ef4444'); return; }
+    _esDatos = null; _esCode = null; _esEnviado = false;
+    esStatus('Abriendo la ventana de Meta…');
+    window.FB.login((response) => {
+      if (response?.authResponse?.code) {
+        _esCode = response.authResponse.code;
+        esEnviarSiListo();
+      } else {
+        esStatus('No se completó la autorización. Puedes reintentar.', 'var(--text-2)');
+      }
+    }, {
+      config_id: cfg.configId,
+      response_type: 'code',
+      override_default_response_type: true,
+      extras: { setup: {} },
+    });
+  });
+}
+
+async function esEnviarSiListo() {
+  if (_esEnviado || !_esCode || !_esDatos?.waba_id || !_esDatos?.phone_number_id) return;
+  _esEnviado = true;
+  esStatus('Conectando tu número…');
+
+  const payload = {
+    accountId: ACCOUNT_ID,
+    code: _esCode,
+    waba_id: _esDatos.waba_id,
+    phone_number_id: _esDatos.phone_number_id,
+  };
+  _esCode = null; _esDatos = null;   // el código ya se usó: no dejarlo en memoria
+
+  // fetch directo en vez de apiFetch: acá el mensaje de error del servidor SÍ
+  // sirve ("ese número no pertenece a la cuenta autorizada" le dice al cliente
+  // qué hacer), y apiFetch devuelve null en cualquier error.
+  let r = null, ok = false;
+  try {
+    const res = await fetch(API + '/api/settings/whatsapp/embedded-signup', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(AUTH_TOKEN ? { Authorization: `Bearer ${AUTH_TOKEN}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+    ok = res.ok;
+    r = await res.json().catch(() => null);
+  } catch {
+    r = null;
+  }
+
+  if (ok && r?.ok) {
+    showToast('✅ WhatsApp conectado');
+    esStatus(r.registrado === false
+      ? 'Conectado. El número ya estaba registrado en Meta, así que se omitió ese paso — no necesitas hacer nada.'
+      : `Conectado${r.numero ? ` — ${r.numero}` : ''}. Ya puedes escribirle y el agente responde.`,
+      r.registrado === false ? 'var(--text-2)' : '#22c55e');
+    loadSettings();
+  } else {
+    _esEnviado = false;                                  // dejar reintentar
+    esStatus(r?.error || 'No se pudo completar la conexión. Intenta de nuevo.', '#ef4444');
+  }
 }
 
 async function loadFollowupAgents() {

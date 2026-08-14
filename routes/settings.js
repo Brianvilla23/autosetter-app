@@ -211,6 +211,67 @@ router.delete('/shopify', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// ── EMBEDDED SIGNUP v4 — conectar WhatsApp con UN botón ─────────────────────
+// El cliente ya no extrae nada de su WABA: el popup de Meta hace todo y acá
+// solo llega un código de un solo uso. Ver services/embeddedSignup.js.
+
+/**
+ * GET /api/settings/whatsapp/embedded-signup
+ * Datos públicos para abrir el popup (app id y config id no son secretos).
+ * Si devuelve enabled:false, el frontend muestra el alta manual de siempre.
+ */
+router.get('/whatsapp/embedded-signup', async (req, res, next) => {
+  try {
+    const { configPublica } = require('../services/embeddedSignup');
+    res.json(configPublica());
+  } catch (e) { next(e); }
+});
+
+/**
+ * POST /api/settings/whatsapp/embedded-signup
+ * Body: { accountId, code, waba_id, phone_number_id }
+ *
+ * `code` dura 30 segundos — se canjea al tiro. `waba_id` y `phone_number_id`
+ * vienen del navegador del cliente y NO se creen: se validan contra Meta con
+ * el token recién canjeado antes de guardar nada.
+ */
+router.post('/whatsapp/embedded-signup', async (req, res, next) => {
+  try {
+    const { accountId, code, waba_id, phone_number_id } = req.body || {};
+    if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
+
+    const es = require('../services/embeddedSignup');
+    if (!es.estaHabilitado()) {
+      return res.status(503).json({ error: 'La conexión con un clic todavía no está disponible. Usa el formulario manual.' });
+    }
+    if (!code || typeof code !== 'string') {
+      return res.status(400).json({ error: 'Falta el código de autorización de Meta' });
+    }
+    if (!/^\d{5,25}$/.test(String(waba_id || '')) || !/^\d{5,25}$/.test(String(phone_number_id || ''))) {
+      return res.status(400).json({ error: 'Meta no devolvió la cuenta o el número. Reintenta la conexión.' });
+    }
+
+    const r = await es.conectarCuenta({
+      accountId, code,
+      wabaId: String(waba_id),
+      phoneNumberId: String(phone_number_id),
+    });
+    res.json({ ok: true, ...r });
+  } catch (e) {
+    const es = require('../services/embeddedSignup');
+    // Fallo de propiedad: es culpa del dato, no del servidor — se le dice al
+    // cliente qué pasó (no filtra nada: solo confirma que ese WABA no es suyo).
+    if (e instanceof es.PropiedadInvalida) {
+      console.warn(`[embedded-signup] rechazado para cuenta ${req.body?.accountId}: ${e.message}`);
+      return res.status(403).json({ error: `No se pudo conectar: ${e.message}.` });
+    }
+    // El error de Meta puede traer el app secret o fragmentos del token: al
+    // log del servidor sí, al cliente NUNCA (middleware/errorResponse.js).
+    console.error('[embedded-signup] error:', e.response?.data?.error?.message || e.message);
+    res.status(500).json({ error: 'No se pudo completar la conexión con WhatsApp. Intenta de nuevo en un minuto.' });
+  }
+});
+
 // ── LLAMADAS TELEFÓNICAS (Twilio) ────────────────────────────────────────────
 // PUT body: { accountId, llamadas_enabled?, llamadas_hora_inicio?,
 //             llamadas_hora_fin?, llamadas_max_dia?, llamadas_max_min? }

@@ -18,6 +18,7 @@ const SENSITIVE_ACCOUNT_FIELDS = [
   'wa_business_token',  // por si se agrega
   'fb_page_token',      // Page Access Token de Messenger (permite enviar como la Página)
   'token_last_error',   // puede contener fragmentos del token en el mensaje de error
+  'wa_register_pin',    // PIN de 2 pasos del número (Embedded Signup): con él se re-registra el número en otra app
 ];
 
 // Campos de settings que NUNCA deben salir crudos.
