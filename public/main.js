@@ -3153,10 +3153,47 @@ window.toggleMagnet = toggleMagnet;
 window.deleteMagnet = deleteMagnet;
 
 // ── ANALYTICS DASHBOARD ─────────────────────────────────────────────────────
+// Dashboard de gasto de voz: hoy / semana / mes, valor del minuto y serie
+// diaria. Solo aparece si la cuenta tuvo alguna llamada — sin llamadas la
+// card no ocupa espacio. Todo viene calculado del servidor (/api/llamadas/gasto).
+async function loadVozGasto(days) {
+  const card = document.getElementById('voz-gasto-card');
+  if (!card) return;
+  const g = await apiFetch(`/api/llamadas/gasto?dias=${Math.min(Math.max(days || 30, 7), 90)}`);
+  if (!g || !g.periodo || (g.periodo.llamadas === 0 && g.no_contestadas_periodo === 0)) {
+    card.style.display = 'none';
+    return;
+  }
+  card.style.display = '';
+  const usd = (n) => 'US$' + Number(n || 0).toFixed(2);
+  const det = (a) => `${a.llamadas} llamada${a.llamadas === 1 ? '' : 's'} · ${a.minutos} min`;
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('voz-hoy-usd', usd(g.hoy.costo_usd));    set('voz-hoy-det', det(g.hoy));
+  set('voz-sem-usd', usd(g.semana.costo_usd)); set('voz-sem-det', det(g.semana));
+  set('voz-mes-usd', usd(g.mes.costo_usd));    set('voz-mes-det', det(g.mes));
+  set('voz-min-usd', g.periodo.usd_por_min != null ? `US$${g.periodo.usd_por_min.toFixed(3)}/min` : '—');
+  set('voz-gasto-tarifa', `Tarifa de referencia: US$${g.tarifa_referencia.total_usd_min_est}/min (Twilio ${g.tarifa_referencia.twilio_usd_min} + IA ~${g.tarifa_referencia.openai_usd_min_est})`);
+  const via = g.por_via || {};
+  set('voz-por-via', `Por vía — 📞 teléfono: ${via.telefono?.llamadas || 0} llamadas, ${usd(via.telefono?.costo_usd)} · 📱 WhatsApp: ${via.whatsapp?.llamadas || 0} llamadas, ${usd(via.whatsapp?.costo_usd)}${g.no_contestadas_periodo ? ` · sin contestar: ${g.no_contestadas_periodo}` : ''}`);
+
+  // Serie diaria en barras (altura proporcional al costo del día)
+  const serieEl = document.getElementById('voz-serie');
+  if (serieEl && Array.isArray(g.serie)) {
+    const max = Math.max(0.01, ...g.serie.map(d => d.costo_usd));
+    serieEl.innerHTML = g.serie.map(d => {
+      const h = Math.max(d.costo_usd > 0 ? 3 : 1, Math.round((d.costo_usd / max) * 66));
+      return `<div title="${d.fecha}: ${usd(d.costo_usd)} · ${d.llamadas} llamada(s), ${d.minutos} min" style="flex:1;height:${h}px;background:${d.costo_usd > 0 ? 'var(--accent, #10b981)' : 'var(--border)'};border-radius:2px 2px 0 0;min-width:2px"></div>`;
+    }).join('');
+    set('voz-serie-desde', g.serie[0]?.fecha || '');
+    set('voz-serie-hasta', g.serie[g.serie.length - 1]?.fecha || '');
+  }
+}
+
 async function loadAnalytics() {
   if (!ACCOUNT_ID) return;
   const winSel = document.getElementById('analytics-window');
   const days = winSel ? parseInt(winSel.value) || 30 : 30;
+  loadVozGasto(days).catch(() => null);
 
   // Bind window selector + export button (una sola vez)
   if (!window.__analyticsBound) {

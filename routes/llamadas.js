@@ -38,6 +38,84 @@ router.get('/', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+/**
+ * GET /api/llamadas/gasto?dias=30
+ * Dashboard de gasto de voz: serie por DÍA (hora Chile), agregados de hoy /
+ * esta semana / este mes, valor real del minuto y desglose por vía
+ * (teléfono vs WhatsApp). Todo sale de db.llamadas — no consulta a Twilio ni
+ * a OpenAI, así que es instantáneo y no gasta.
+ *
+ * "Valor del minuto" = costo estimado total / minutos conectados. Es la
+ * cifra que el dueño compara contra lo que le cobra el plan.
+ */
+router.get('/gasto', async (req, res, next) => {
+  try {
+    const accountId = req.user.accountId;
+    const dias = Math.min(Math.max(parseInt(req.query.dias, 10) || 30, 7), 90);
+    const desde = new Date(Date.now() - dias * 86400e3);
+    const todas = await db.find(db.llamadas, { account_id: accountId });
+    const conectadas = todas.filter(l => l.status === 'terminada' && new Date(l.createdAt) >= desde);
+
+    const TZ = 'America/Santiago';
+    const fechaCL = (d) => new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date(d));
+    const hoy = fechaCL(new Date());
+    const mes = hoy.slice(0, 7);
+    // Lunes de esta semana (hora Chile)
+    const ahoraCL = new Date(new Date().toLocaleString('en-US', { timeZone: TZ }));
+    const dow = (ahoraCL.getDay() + 6) % 7; // lunes=0
+    const lunes = new Date(ahoraCL); lunes.setDate(ahoraCL.getDate() - dow); lunes.setHours(0, 0, 0, 0);
+    const lunesStr = new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(lunes);
+
+    const agg = (arr) => {
+      const seg = arr.reduce((s, l) => s + (l.duracion_seg || 0), 0);
+      const usd = arr.reduce((s, l) => s + (l.costo_usd?.total_est || 0), 0);
+      const min = seg / 60;
+      return {
+        llamadas: arr.length,
+        minutos: Number(min.toFixed(1)),
+        costo_usd: Number(usd.toFixed(2)),
+        usd_por_min: min > 0 ? Number((usd / min).toFixed(3)) : null,
+      };
+    };
+
+    // Serie diaria completa (con ceros) para graficar sin huecos
+    const porDia = {};
+    for (let i = dias - 1; i >= 0; i--) {
+      porDia[fechaCL(new Date(Date.now() - i * 86400e3))] = [];
+    }
+    for (const l of conectadas) {
+      const k = l.fecha_chile || fechaCL(l.createdAt);
+      if (porDia[k]) porDia[k].push(l);
+    }
+    const serie = Object.entries(porDia).map(([fecha, arr]) => ({ fecha, ...agg(arr) }));
+
+    const deHoy    = conectadas.filter(l => (l.fecha_chile || fechaCL(l.createdAt)) === hoy);
+    const deSemana = conectadas.filter(l => (l.fecha_chile || fechaCL(l.createdAt)) >= lunesStr);
+    const deMes    = conectadas.filter(l => (l.fecha_chile || fechaCL(l.createdAt)).startsWith(mes));
+
+    const { USD_MIN_TWILIO_MOVIL, USD_MIN_OPENAI_EST } = require('../services/telefonia');
+    res.json({
+      dias,
+      hoy:    { fecha: hoy, ...agg(deHoy) },
+      semana: { desde: lunesStr, ...agg(deSemana) },
+      mes:    { mes, ...agg(deMes) },
+      periodo: agg(conectadas),
+      por_via: {
+        telefono: agg(conectadas.filter(l => (l.via || 'telefono') === 'telefono')),
+        whatsapp: agg(conectadas.filter(l => l.via === 'whatsapp')),
+      },
+      tarifa_referencia: {
+        twilio_usd_min: USD_MIN_TWILIO_MOVIL,
+        openai_usd_min_est: USD_MIN_OPENAI_EST,
+        total_usd_min_est: Number((USD_MIN_TWILIO_MOVIL + USD_MIN_OPENAI_EST).toFixed(4)),
+        nota: 'Twilio factura por minuto redondeado hacia arriba; OpenAI es estimación media (US$0.02-0.06/min).',
+      },
+      no_contestadas_periodo: todas.filter(l => l.status === 'no_contesto' && new Date(l.createdAt) >= desde).length,
+      serie,
+    });
+  } catch (e) { next(e); }
+});
+
 // GET /api/llamadas/:id — detalle con transcripción completa
 router.get('/:id', async (req, res, next) => {
   try {
@@ -55,6 +133,7 @@ function resumir(ll) {
     id: ll._id,
     lead_id: ll.lead_id,
     status: ll.status,
+    via: ll.via || 'telefono',
     telefono: enmascarar(ll.telefono),
     tema: ll.tema || null,
     dial_at: ll.dial_at || null,
