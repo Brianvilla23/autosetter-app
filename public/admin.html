@@ -484,6 +484,23 @@
 
     <!-- ── SISTEMA ── -->
     <div id="tab-agente" class="section">
+      <div class="card" style="border:1px solid rgba(201,162,39,.45)">
+        <h3 style="margin-top:0">🧪 Cuenta demo para el App Review de Meta</h3>
+        <p style="font-size:0.85rem;color:#a0a0c0;margin-top:0">
+          Crea (o resetea) <code>demo@atinov.com</code>: "Clínica Demo Sonrisa" con 10 conversaciones realistas
+          (audio, foto, memoria, deal ganado, una llamada registrada). Dura 365 días. Devuelve la contraseña
+          <strong style="color:#f0f0ff">una sola vez</strong> y el <strong style="color:#f0f0ff">texto listo para pegar</strong>
+          en "Instrucciones para el revisor" del formulario de Meta. Volver a apretar resetea los datos.
+        </p>
+        <div class="form-row" style="margin-bottom:10px">
+          <label style="display:block;font-size:0.8rem;color:#a0a0c0;margin-bottom:4px">Contraseña para el revisor (opcional, mín. 8; si la dejas vacía se genera una)</label>
+          <input type="text" id="demo-pass" placeholder="Ej: Revisor2026!" style="width:100%;max-width:320px" autocomplete="off">
+        </div>
+        <button class="btn" id="btn-crear-demo" onclick="crearDemo()">🧪 Crear / resetear cuenta demo</button>
+        <span id="demo-status" style="margin-left:10px;font-size:0.85rem"></span>
+        <div id="demo-result" style="margin-top:12px"></div>
+      </div>
+
       <div class="card">
         <h3 style="margin-top:0">🎙️ Probar las 10 voces</h3>
         <p style="font-size:0.85rem;color:#a0a0c0;margin-top:0">
@@ -759,6 +776,37 @@ async function loadAgenteTab() {
     _agenteLoaded = true;
   } catch (e) {
     document.getElementById('prompt-status').innerHTML = `<span style="color:#ef4444">${escHtml(e.message)}</span>`;
+  }
+}
+
+async function crearDemo() {
+  const st  = document.getElementById('demo-status');
+  const out = document.getElementById('demo-result');
+  const btn = document.getElementById('btn-crear-demo');
+  const pass = document.getElementById('demo-pass').value.trim();
+  if (pass && pass.length < 8) { st.innerHTML = '<span style="color:#ef4444">La contraseña debe tener al menos 8 caracteres</span>'; return; }
+  if (!confirm('Esto crea o RESETEA la cuenta demo@atinov.com (borra sus datos anteriores). ¿Continuar?')) return;
+  btn.disabled = true;
+  st.innerHTML = '<span style="color:#a0a0c0">Creando la cuenta demo…</span>';
+  out.innerHTML = '';
+  try {
+    const r = await api('POST', '/api/admin/crear-demo', pass ? { password: pass } : {});
+    st.innerHTML = `<span style="color:#22c55e">✅ Lista — ${r.leads} conversaciones</span>`;
+    out.innerHTML = `
+      <div style="background:rgba(201,162,39,.08);border:1px solid rgba(201,162,39,.35);border-radius:8px;padding:12px;margin-bottom:10px">
+        <div style="font-size:0.85rem;margin-bottom:6px"><strong>Email:</strong> <code>${escHtml(r.email)}</code> &nbsp; <strong>Contraseña:</strong> <code id="demo-pass-out">${escHtml(r.password)}</code>
+          <button class="btn" style="padding:2px 8px;font-size:0.75rem;margin-left:6px" onclick="navigator.clipboard.writeText(document.getElementById('demo-pass-out').textContent)">copiar</button></div>
+        <div style="font-size:0.78rem;color:#f0c674">⚠️ Guárdala ahora: no se vuelve a mostrar. Prueba entrar en /app con ella ANTES de enviar el App Review.</div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <strong style="font-size:0.85rem">Texto para "Instrucciones para el revisor" (Meta)</strong>
+        <button class="btn" style="padding:4px 10px;font-size:0.8rem" onclick="navigator.clipboard.writeText(document.getElementById('demo-instr').value).then(()=>{this.textContent='✓ copiado'})">📋 Copiar todo</button>
+      </div>
+      <textarea id="demo-instr" readonly style="width:100%;height:260px;font-family:monospace;font-size:0.78rem;background:#0e0e18;color:#e7e7f5;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:10px">${escHtml(r.app_review_instrucciones || '')}</textarea>`;
+  } catch (e) {
+    st.innerHTML = `<span style="color:#ef4444">${escHtml(e.message)}</span>`;
+  } finally {
+    btn.disabled = false;
   }
 }
 

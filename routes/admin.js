@@ -1122,10 +1122,14 @@ router.post('/crear-demo', async (req, res) => {
     await db.insert(db.auditLog, {
       action: 'demo_seed', target: DEMO_EMAIL, at: new Date().toISOString(),
     }).catch(() => null);
+    const { instruccionesRevisor } = require('../services/demoSeed');
     res.json({
       ...r,
       password,
       aviso: 'Guarda la contraseña — no se vuelve a mostrar. Entra en /app con demo@atinov.com. Volver a llamar este endpoint resetea los datos del demo.',
+      // Listo para pegar en el campo "Instrucciones para el revisor" del App
+      // Review de Meta: credenciales + cómo llegar a la pantalla de cada permiso.
+      app_review_instrucciones: instruccionesRevisor({ password }),
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

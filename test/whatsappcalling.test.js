@@ -107,6 +107,40 @@ test('respuesta al permiso: aceptó → la llamada en espera queda programada; r
   assert.strictEqual(ll2.status, 'cancelada', 'rechazo = se cancela, sin insistir');
 });
 
+test('permiso SIN botón: el lead llamó al negocio (callback) → queda autorizado y la llamada en espera se destraba', async () => {
+  // Cuenta con WhatsApp para que findAccountByPhoneNumberId la resuelva
+  await db.insert(db.accounts, { _id: 'acc-cb', wa_phone_number_id: 'PN-CB', wa_access_token: 'tok' });
+  const lead = await db.insert(db.leads, { account_id: 'acc-cb', wa_id: '56922223333', channel: 'whatsapp' });
+  await db.insert(db.llamadas, { account_id: 'acc-cb', lead_id: lead._id, status: 'esperando_permiso', via: 'whatsapp' });
+
+  await wa.procesarWebhookCalls({
+    phoneNumberId: 'PN-CB',
+    value: {
+      metadata: { phone_number_id: 'PN-CB' },
+      user_call_permissions: [{ wa_id: '56922223333', status: 'temporary', expiration_timestamp: String(Math.floor(Date.now() / 1000) + 7 * 86400) }],
+    },
+  });
+  const l = await db.findOne(db.leads, { _id: lead._id });
+  assert.strictEqual(l.wa_call_permission.status, 'accepted');
+  assert.strictEqual(l.wa_call_permission.source, 'callback', 'origen: el lead llamó, no el botón');
+  assert.ok(wa.permisoVigente(l), 'vigente → el agente puede llamar sin pedir');
+  const ll = await db.findOne(db.llamadas, { lead_id: lead._id });
+  assert.strictEqual(ll.status, 'programada', 'la llamada que esperaba el botón se destraba sola');
+});
+
+test('permiso PERMANENTE desde el perfil: sin vencimiento', async () => {
+  await db.insert(db.accounts, { _id: 'acc-perm', wa_phone_number_id: 'PN-PERM', wa_access_token: 'tok' });
+  const lead = await db.insert(db.leads, { account_id: 'acc-perm', wa_id: '56933334444', channel: 'whatsapp' });
+  await wa.procesarWebhookCalls({
+    phoneNumberId: 'PN-PERM',
+    value: { metadata: { phone_number_id: 'PN-PERM' }, user_call_permissions: [{ wa_id: '56933334444', status: 'granted', type: 'permanent' }] },
+  });
+  const l = await db.findOne(db.leads, { _id: lead._id });
+  assert.strictEqual(l.wa_call_permission.status, 'accepted');
+  assert.strictEqual(l.wa_call_permission.expires_at, null, 'permanente = no vence');
+  assert.ok(wa.permisoVigente(l));
+});
+
 test('las credenciales SIP de Meta NUNCA salen al frontend', () => {
   const safe = sanitizeSettings({ account_id: 'a', openai_key: '', ...settingsOk });
   const s = JSON.stringify(safe);

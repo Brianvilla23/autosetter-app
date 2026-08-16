@@ -229,7 +229,68 @@ async function seedDemo({ password }) {
     created++;
   }
 
+  // 5. Una llamada telefónica de muestra (terminada) sobre el lead caliente:
+  //    así el revisor de Meta y las llamadas de venta ven el dashboard de
+  //    gasto de voz con datos y la nota 📞 en el hilo — sin haber marcado a
+  //    nadie. Se limpia junto con el resto al resetear.
+  try {
+    await db.remove(db.llamadas, { account_id: accountId });
+    const caliente = await db.findOne(db.leads, { account_id: accountId, qualification: 'hot', channel: 'whatsapp' });
+    if (caliente) {
+      const hoyCL = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Santiago' }).format(new Date());
+      await db.insert(db.llamadas, {
+        account_id: accountId, lead_id: caliente._id, agent_id: agent._id,
+        status: 'terminada', via: 'telefono', telefono: '+56912345678',
+        tema: 'resolver si el tratamiento le sirve y dejar la hora tomada',
+        fecha_chile: hoyCL, dial_at: haceHoras(2), answered_at: haceHoras(2), ended_at: haceHoras(2),
+        duracion_seg: 187, max_min: 10,
+        costo_usd: { minutos: 4, twilio: 0.2984, openai_est: 0.16, total_est: 0.4584 },
+        consent_texto: 'ya po, llámame no más', consent_at: haceHoras(2),
+        transcript: [
+          { quien: 'agente', texto: 'Hola Carolina, soy la recepcionista de Sonrisa, te dije por el chat que te llamaba. ¿Puedes hablar un minutito?', t: 0 },
+          { quien: 'lead', texto: 'Sí, dime.', t: 0 },
+          { quien: 'agente', texto: 'Quedamos en lo del implante. Te propongo la evaluación con radiografía el jueves a las cuatro y media, y ahí te dicen si va implante o se rescata la pieza. ¿Te la dejo tomada?', t: 0 },
+          { quien: 'lead', texto: 'Ya, el jueves está perfecto.', t: 0 },
+          { quien: 'agente', texto: 'Listo, jueves cuatro y media. Te llega la confirmación por el chat. ¡Nos vemos!', t: 0 },
+        ],
+        finalized_at: haceHoras(2), ws_lock: 'demo', demo: true,
+      });
+      await db.insert(db.messages, {
+        lead_id: caliente._id, account_id: accountId, role: 'sistema',
+        content: '📞 Llamada realizada (3m 07s, ~US$0.46). Último tramo: la lead confirmó la evaluación del jueves 16:30.',
+        createdAt: haceHoras(2),
+      });
+    }
+  } catch (e) { console.warn('[demo] llamada de muestra no creada:', e.message); }
+
   return { ok: true, email: DEMO_EMAIL, accountId, leads: created };
 }
 
-module.exports = { seedDemo, DEMO_EMAIL };
+/**
+ * Paquete listo para pegar en el formulario de App Review de Meta: las
+ * credenciales del revisor + los pasos en inglés para que llegue a cada
+ * pantalla que prueba cada permiso. La contraseña la pasa el caller (solo
+ * se conoce en el momento de crear/resetear el demo).
+ */
+function instruccionesRevisor({ password, appUrl }) {
+  const base = (appUrl || process.env.APP_URL || 'https://atinov.com').replace(/\/$/, '');
+  return [
+    `TEST CREDENTIALS`,
+    `URL: ${base}/app`,
+    `Email: ${DEMO_EMAIL}`,
+    `Password: ${password}`,
+    ``,
+    `HOW TO REVIEW (the account is pre-loaded with realistic sample conversations; no real customer data):`,
+    `1) Log in at ${base}/app with the credentials above.`,
+    `2) INBOX (left menu "Inbox"): open any conversation to see the AI assistant replying to Instagram / WhatsApp messages on behalf of the business (instagram_business_manage_messages, whatsapp_business_messaging, pages_messaging). Voice notes and photos from customers are understood and answered.`,
+    `3) TEMPLATES (left menu "Plantillas"): create, list with approval status, and delete the business's WhatsApp message templates (whatsapp_business_management).`,
+    `4) COMMENTS (left menu "Comentarios"): per-post keyword rules — a public reply plus a private message to the commenter (instagram_business_manage_comments).`,
+    `5) SETTINGS (left menu "Ajustes"): the connected Instagram account, WhatsApp number and Facebook Page; the "Connect" buttons use Meta's official login dialogs; disconnect is one click.`,
+    `6) ANALYTICS: qualification, conversion and — under "Gasto de voz" — the phone calls the assistant made with the customer's prior consent.`,
+    `Data deletion instructions: ${base}/data-deletion · Privacy: ${base}/privacy · Terms: ${base}/terms`,
+    ``,
+    `NOTE: the Instagram sub-app still shows the legacy name "DMCloser-IG" in the permissions dialog; we rebranded to "Atinov" and kindly ask for the display name to be updated.`,
+  ].join('\n');
+}
+
+module.exports = { seedDemo, DEMO_EMAIL, instruccionesRevisor };

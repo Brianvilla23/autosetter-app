@@ -23,11 +23,18 @@
  *     negocio del 10-08 lo destrabó.
  *  3. Suscripción al webhook `calls` (o `webhook_delivery` en la config SIP).
  *  4. PERMISO PREVIO DEL LEAD: el negocio no puede llamar sin que la persona
- *     acepte una "solicitud de llamada" (mensaje interactivo
- *     `call_permission_request`). Límites: 1 solicitud/24h y 2 por semana por
- *     lead; el permiso aprobado dura 7 días. Encaja perfecto con el diseño de
- *     Atinov: el consentimiento ya era la pieza clave — acá además lo aplica
- *     Meta por su cuenta.
+ *     lo autorice. NO se puede omitir ni con verificación: lo aplica Meta en
+ *     su servidor (error 138006 si se intenta sin permiso). Lo que SÍ existe
+ *     son TRES formas de obtenerlo, y solo una es "el botón":
+ *       a) Botón `call_permission_request` en el chat (1/24h, 2/semana, dura
+ *          7 días). La que se usa cuando el lead no ha llamado nunca.
+ *       b) `callback_permission_status: ENABLED` (config del número): si el
+ *          LEAD llama al negocio, Meta otorga permiso automático de devolverle
+ *          la llamada. Sin botón. Se activa acá abajo.
+ *       c) Permiso PERMANENTE que el propio lead concede desde el perfil de
+ *          la empresa en WhatsApp. Lo decide él, una vez.
+ *     Encaja con el diseño de Atinov: el consentimiento era la pieza clave —
+ *     acá además lo aplica Meta por su cuenta.
  *  5. Salientes bloqueadas en USA, Canadá, Egipto, Vietnam y Nigeria. Chile OK.
  *
  * SIP en el número: POST /{phone_number_id}/settings con
@@ -103,6 +110,12 @@ async function activarSipEnNumero({ account, accountId }) {
       // Que el lead también pueda llamar AL negocio desde el chat: entra por
       // el mismo SIP y el agente contesta. Sin costo de permiso.
       call_icon_visibility: 'DEFAULT',
+      // LA VÍA PARA NO PEDIR PERMISO CADA VEZ (doc oficial de Meta): si el
+      // lead llama al negocio, Meta le otorga a la empresa el permiso de
+      // devolverle la llamada AUTOMÁTICAMENTE — sin botón. Es la manera
+      // natural: "¿te llamo?" → "llámame tú por acá" → el lead toca el ícono
+      // de llamar → desde ahí el agente puede llamarlo cuando haga falta.
+      callback_permission_status: 'ENABLED',
     },
   }, { headers, timeout: 15000 });
 
@@ -244,6 +257,72 @@ async function procesarRespuestaPermiso({ account, lead, interactive }) {
   return { acepto: true };
 }
 
+/**
+ * Webhook `calls` de Meta. Dos cosas nos importan:
+ *  1. Un permiso otorgado sin botón — el lead LLAMÓ al negocio (callback) o
+ *     concedió permiso permanente desde el perfil. Meta lo informa en
+ *     `user_call_permission` / `permission` con expiración (o sin ella).
+ *  2. Llamadas ENTRANTES del lead: por ahora solo se registra en el hilo (el
+ *     audio va por SIP → Twilio → el mismo bridge, si el número lo tiene).
+ * Tolerante al esquema: Meta ha nombrado estos campos de más de una forma.
+ */
+async function procesarWebhookCalls({ phoneNumberId, value }) {
+  const wa = require('./whatsapp');
+  const account = await wa.findAccountByPhoneNumberId(phoneNumberId);
+  if (!account) return;
+
+  // 1) Permisos informados por Meta (callback o permanente)
+  const permisos = []
+    .concat(value.user_call_permissions || [])
+    .concat(value.call_permissions || [])
+    .concat(value.permissions || []);
+  for (const p of permisos) {
+    const waId = p.wa_id || p.user || p.from || p.recipient_id;
+    if (!waId) continue;
+    const lead = await db.findOne(db.leads, { account_id: account._id, wa_id: String(waId) });
+    if (!lead) continue;
+    const estado = String(p.status || p.permission_status || '').toLowerCase();
+    const permanente = /permanent|forever/i.test(String(p.type || p.scope || '')) || p.expiration_timestamp === 0;
+    if (/temporary|granted|accept|allowed|permanent/.test(estado) || permanente) {
+      const expira = permanente ? null
+        : p.expiration_timestamp ? new Date(Number(p.expiration_timestamp) * 1000).toISOString()
+        : new Date(Date.now() + PERMISO_VIGENCIA_DIAS * 24 * 3600e3).toISOString();
+      await db.update(db.leads, { _id: lead._id }, {
+        wa_call_permission: { status: 'accepted', replied_at: new Date().toISOString(), expires_at: expira, source: permanente ? 'permanente' : 'callback' },
+      });
+      await db.insert(db.messages, {
+        lead_id: lead._id, account_id: account._id, role: 'sistema',
+        content: permanente
+          ? '✅ El lead concedió permiso PERMANENTE para llamarlo por WhatsApp (desde el perfil del negocio). El agente puede llamarlo sin pedir de nuevo.'
+          : '✅ El lead llamó al negocio: Meta otorgó permiso para devolverle la llamada por WhatsApp (7 días), sin botón.',
+      }).catch(() => null);
+      // Si había una llamada esperando el botón, se destraba con este permiso.
+      await db.update(db.llamadas, { lead_id: lead._id, status: 'esperando_permiso' }, {
+        status: 'programada', dial_at: new Date(Date.now() + 30_000).toISOString(), permiso_aceptado_at: new Date().toISOString(),
+      }).catch(() => null);
+    } else if (/revoke|reject|denied/.test(estado)) {
+      await db.update(db.leads, { _id: lead._id }, {
+        wa_call_permission: { status: 'rejected', replied_at: new Date().toISOString(), expires_at: null },
+      });
+    }
+  }
+
+  // 2) Llamadas entrantes: dejar rastro en el hilo (una vez por call id)
+  for (const c of value.calls || []) {
+    if (c.direction !== 'USER_INITIATED' || c.event !== 'connect') continue;
+    const waId = c.from;
+    if (!waId) continue;
+    const lead = await db.findOne(db.leads, { account_id: account._id, wa_id: String(waId) });
+    if (!lead) continue;
+    const yaRegistrada = await db.findOne(db.messages, { lead_id: lead._id, wa_call_id: c.id }).catch(() => null);
+    if (yaRegistrada) continue;
+    await db.insert(db.messages, {
+      lead_id: lead._id, account_id: account._id, role: 'sistema', wa_call_id: c.id,
+      content: '📲 El lead te LLAMÓ por WhatsApp.' + (account.wa_calling_activo ? '' : ' (Con la vía SIP activa, el agente contesta esta llamada.)'),
+    }).catch(() => null);
+  }
+}
+
 // ── Cómo marca Twilio hacia WhatsApp ──────────────────────────────────────────
 
 /**
@@ -268,11 +347,15 @@ function paramsTwilioParaWhatsapp({ telefonoE164, settings }) {
 function contextoLlamadaWhatsapp(lead) {
   const vigente = permisoVigente(lead);
   if (vigente) {
-    return 'Este lead YA autorizó llamadas por WhatsApp (permiso vigente): si acepta que lo llames, usa "whatsapp-app" como teléfono en el marcador y la llamada le entra por WhatsApp, no por celular.';
+    return 'Este lead YA autorizó llamadas por WhatsApp (permiso vigente): si acepta que lo llames, usa "whatsapp-app" como teléfono en el marcador y la llamada le entra por WhatsApp, no por celular. No hace falta ningún botón.';
   }
   const check = puedePedirPermiso(lead);
   if (!check.ok) return null;
-  return 'Si el lead acepta que lo llames, puedes usar "whatsapp-app" como teléfono en el marcador: el sistema le manda primero un botón oficial de WhatsApp para autorizar la llamada y, cuando lo toca, lo llamas por WhatsApp mismo (más cómodo para él que un número desconocido). Si prefieres seguro y directo, usa "whatsapp" (llamada normal a su celular).';
+  return [
+    'Si el lead acepta que lo llames, puedes usar "whatsapp-app" como teléfono en el marcador: el sistema le manda primero un botón oficial de WhatsApp para autorizar la llamada y, cuando lo toca, lo llamas por WhatsApp mismo (más cómodo para él que un número desconocido).',
+    'ATAJO SIN BOTÓN: si el lead prefiere, puede LLAMARTE ÉL desde el ícono de llamada del chat — cuando lo hace, queda autorizado automáticamente y desde ahí puedes llamarlo tú cuando haga falta. Ofrécelo natural ("si quieres me llamas tú por acá mismo y lo vemos").',
+    'Si prefieres seguro y directo, usa "whatsapp" (llamada normal a su celular).',
+  ].join(' ');
 }
 
 module.exports = {
@@ -284,6 +367,7 @@ module.exports = {
   puedePedirPermiso,
   pedirPermisoLlamada,
   procesarRespuestaPermiso,
+  procesarWebhookCalls,
   paramsTwilioParaWhatsapp,
   contextoLlamadaWhatsapp,
   PERMISO_MAX_24H,

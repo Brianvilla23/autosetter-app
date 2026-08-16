@@ -153,6 +153,21 @@ router.post('/', async (req, res) => {
     if (body.object === 'whatsapp_business_account') {
       for (const entry of body.entry || []) {
         for (const change of entry.changes || []) {
+          // Campo `calls`: ciclo de vida de llamadas de WhatsApp. Lo que nos
+          // importa acá es el PERMISO: si el lead llamó al negocio (con
+          // callback_permission_status activo, Meta nos deja devolverle la
+          // llamada) o concedió permiso permanente desde el perfil. Se guarda
+          // en el lead para que el agente pueda llamar sin volver a pedir.
+          if (change.field === 'calls') {
+            const value = change.value || {};
+            const phoneNumberId = value.metadata?.phone_number_id;
+            if (phoneNumberId) {
+              const { procesarWebhookCalls } = require('../services/whatsappCalling');
+              await procesarWebhookCalls({ phoneNumberId, value })
+                .catch(e => console.error('[wa] webhook calls error:', e.message));
+            }
+            continue;
+          }
           if (change.field !== 'messages') continue;
           const value = change.value || {};
           const phoneNumberId = value.metadata?.phone_number_id;
