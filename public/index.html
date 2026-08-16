@@ -1378,6 +1378,24 @@
         </div>
         <button class="btn-primary" id="btn-save-llamadas">Guardar llamadas</button>
         <p style="font-size:12px;color:var(--text-2);margin-top:10px">Candados fijos: el lead debe aceptar en el chat, máximo 1 llamada por lead al día, y cada llamada queda registrada con duración y costo.</p>
+
+        <!-- Vía WhatsApp: la misma llamada, pero entra por la app de WhatsApp -->
+        <div style="border-top:1px solid var(--border);margin-top:16px;padding-top:14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+            <div>
+              <div style="font-weight:600;font-size:14px">📱 Llamadas por WhatsApp</div>
+              <div style="font-size:12px;color:var(--text-2);margin-top:2px">La llamada le entra al lead <strong>dentro de WhatsApp</strong>, desde tu mismo número — no un teléfono desconocido. WhatsApp le pide permiso con un botón oficial antes de que suene.</div>
+            </div>
+            <span id="llamadas-wa-estado" class="chip" style="font-size:11px;padding:3px 10px;border:1px solid var(--border);border-radius:999px;white-space:nowrap">Inactivo</span>
+          </div>
+          <div id="llamadas-wa-off" style="display:none;font-size:12px;color:var(--text-2);border:1px dashed var(--border);border-radius:8px;padding:10px;margin-top:10px">
+            ⏳ Disponible cuando la app de Atinov pase el App Review de Meta (modo Live). Mientras tanto la llamada al celular funciona igual.
+          </div>
+          <div style="display:flex;gap:10px;margin-top:10px">
+            <button class="btn-secondary" id="btn-activar-llamadas-wa">Activar llamadas por WhatsApp</button>
+            <button class="btn-ghost" id="btn-desactivar-llamadas-wa" style="display:none">Desactivar</button>
+          </div>
+        </div>
       </div>
 
       <div class="settings-card">

@@ -27,6 +27,8 @@ const SENSITIVE_SETTINGS_FIELDS = [
   'mp_access_token',       // token de Mercado Pago (permite crear cobros y leer pagos)
   'google_refresh_token',  // acceso permanente al Google Calendar del user
   'shopify_webhook_secret',// firma los webhooks: con él se pueden falsificar pedidos
+  'wa_sip_password',       // credencial SIP de Meta: permite hacer llamadas de WhatsApp a nombre del número
+  'wa_sip_username',       // junto con la password es la identidad SIP del número — no sale
 ];
 
 /** Enmascara un secret dejando ver prefijo + últimos 4 (ej "sk-pr…wXyZ"). */

@@ -328,6 +328,54 @@ router.delete('/llamadas', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// ── LLAMADAS DENTRO DE WHATSAPP (Meta Calling API vía SIP de Twilio) ────────
+// POST: activa SIP en el número de WhatsApp de la cuenta apuntando al dominio
+// SIP de la plataforma y guarda las credenciales digest que Meta genera (nunca
+// vuelven al frontend). Exige: WhatsApp conectado + app en modo Live + Twilio.
+// Fail-closed: sin TWILIO_SIP_DOMAIN el endpoint responde que no está
+// disponible y no toca nada.
+router.post('/llamadas/whatsapp', async (req, res, next) => {
+  try {
+    const { accountId } = req.body;
+    if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
+    if (!process.env.TWILIO_SIP_DOMAIN || !process.env.TWILIO_ACCOUNT_SID) {
+      return res.status(503).json({ error: 'Las llamadas por WhatsApp aún no están habilitadas en la plataforma.' });
+    }
+    const account = await db.findOne(db.accounts, { _id: accountId });
+    if (!account?.wa_phone_number_id || !account?.wa_access_token) {
+      return res.status(400).json({ error: 'Primero conecta tu WhatsApp (Configuración → WhatsApp Business).' });
+    }
+    const exists = await db.findOne(db.settings, { account_id: accountId });
+    if (!exists) await db.insert(db.settings, { account_id: accountId, openai_key: '' });
+
+    const { activarSipEnNumero } = require('../services/whatsappCalling');
+    const r = await activarSipEnNumero({ account, accountId });
+    res.json({ ok: true, hostname: r.hostname });
+  } catch (e) {
+    // El error de Meta puede traer detalle interno: al log sí, al cliente un
+    // mensaje útil. El caso típico es la app en modo desarrollo.
+    const detalle = e.response?.data?.error?.message || e.message;
+    console.error('[llamadas-wa] activar SIP falló:', detalle);
+    const esLive = /live|development|mode|permission/i.test(String(detalle));
+    res.status(400).json({
+      error: esLive
+        ? 'Meta rechazó la activación: las llamadas por WhatsApp exigen que la app esté en modo Live (App Review aprobado).'
+        : 'No se pudo activar la llamada por WhatsApp en tu número. Intenta de nuevo o sigue con la llamada al celular, que ya funciona.',
+    });
+  }
+});
+
+router.delete('/llamadas/whatsapp', async (req, res, next) => {
+  try {
+    const { accountId } = req.query;
+    if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
+    const account = await db.findOne(db.accounts, { _id: accountId });
+    const { desactivarSipEnNumero } = require('../services/whatsappCalling');
+    await desactivarSipEnNumero({ account, accountId });
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+
 // ── MESSENGER (Página de Facebook / Marketplace) ────────────────────────────
 // PUT body: { accountId, fb_page_id, fb_page_token, wa_display_number }
 // El cliente pega el ID de su Página + el Page Access Token (de la Meta App,

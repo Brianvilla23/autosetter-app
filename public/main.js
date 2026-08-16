@@ -1927,6 +1927,37 @@ async function loadSettings() {
     }
   };
 
+  // ── Llamadas por WhatsApp (Meta Calling API vía SIP) ──────────────────────
+  // Solo se muestra activa si la cuenta ya activó SIP en su número (flag
+  // wa_calling_enabled). Las credenciales SIP nunca llegan al frontend.
+  const waOn = cfgLl.wa_calling_enabled === true;
+  const waEstado = document.getElementById('llamadas-wa-estado');
+  if (waEstado) {
+    waEstado.textContent = waOn ? 'Activo' : 'Inactivo';
+    waEstado.style.borderColor = waOn ? 'var(--accent)' : 'var(--border)';
+  }
+  const btnWaOn  = document.getElementById('btn-activar-llamadas-wa');
+  const btnWaOff = document.getElementById('btn-desactivar-llamadas-wa');
+  const waOffMsg = document.getElementById('llamadas-wa-off');
+  if (btnWaOn)  btnWaOn.style.display  = waOn ? 'none' : '';
+  if (btnWaOff) btnWaOff.style.display = waOn ? '' : 'none';
+  if (btnWaOn) btnWaOn.onclick = async () => {
+    btnWaOn.disabled = true; btnWaOn.textContent = 'Activando…';
+    const r = await apiFetch('/api/settings/llamadas/whatsapp', 'POST', { accountId: ACCOUNT_ID });
+    btnWaOn.disabled = false; btnWaOn.textContent = 'Activar llamadas por WhatsApp';
+    if (r?.ok) { showToast('📱 Llamadas por WhatsApp activadas'); loadSettings(); }
+    else {
+      // El backend explica el motivo típico (app no Live) en castellano.
+      if (waOffMsg && /App Review|Live/i.test(r?.error || '')) waOffMsg.style.display = '';
+      showToast('⚠️ ' + (r?.error || 'No se pudo activar'));
+    }
+  };
+  if (btnWaOff) btnWaOff.onclick = async () => {
+    if (!confirm('¿Desactivar las llamadas por WhatsApp? El agente seguirá pudiendo llamar al celular.')) return;
+    const r = await apiFetch(`/api/settings/llamadas/whatsapp?accountId=${ACCOUNT_ID}`, 'DELETE');
+    if (r?.ok) { showToast('Llamadas por WhatsApp desactivadas'); loadSettings(); }
+  };
+
   // ── Notificaciones ────────────────────────────────────────────────────────
   await loadNotifications();
 }

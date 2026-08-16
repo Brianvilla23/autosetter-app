@@ -570,6 +570,24 @@ async function handleWhatsAppMessage(phoneNumberId, msg, value) {
   const isText  = msg.type === 'text'  && !!msg.text?.body;
   const isAudio = msg.type === 'audio' && !!msg.audio?.id;
   const isImage = msg.type === 'image' && !!msg.image?.id;
+
+  // Respuesta al PERMISO DE LLAMADA por WhatsApp (botón oficial de Meta):
+  // no es un mensaje para el agente, es el consentimiento que Meta exige
+  // antes de que el negocio pueda llamar. Se registra y, si aceptó, la
+  // llamada que estaba esperando se programa sola.
+  if (msg.type === 'interactive' && msg.interactive?.type === 'call_permission_reply') {
+    try {
+      const account = await wa.findAccountByPhoneNumberId(phoneNumberId);
+      if (!account) return;
+      const lead = await db.findOne(db.leads, { account_id: account._id, wa_id: msg.from });
+      if (!lead) return;
+      const { procesarRespuestaPermiso } = require('../services/whatsappCalling');
+      const r = await procesarRespuestaPermiso({ account, lead, interactive: msg.interactive });
+      console.log(`📲 [wa] permiso de llamada ${r.acepto ? 'ACEPTADO' : 'rechazado'} por ${msg.from}`);
+    } catch (e) { console.error('[wa] call_permission_reply error:', e.message); }
+    return;
+  }
+
   if (!isText && !isAudio && !isImage) {
     console.log(`[wa] tipo no soportado: ${msg.type} de ${msg.from}`);
     return;
@@ -943,7 +961,7 @@ ${entregar
   let llamadaContext = null;
   try {
     const { buildLlamadaContext } = require('../services/telefonia');
-    llamadaContext = await buildLlamadaContext({ settings, agent, lead, incomingText: text });
+    llamadaContext = await buildLlamadaContext({ settings, agent, lead, incomingText: text, account });
   } catch (e) { /* telefonía opcional */ }
 
   const extraContext = [baseContext, contextoHistoria, messengerHandoff, magnetContext, audioContext, memoryContext, followerContext, paymentContext, calendarContext, orderContext, llamadaContext, ragContext].filter(Boolean).join('\n\n') || null;

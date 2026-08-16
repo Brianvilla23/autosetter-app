@@ -105,7 +105,13 @@ function telefonoE164(raw) {
 
 // ── Contadores de los candados ────────────────────────────────────────────────
 
+// 'esperando_permiso' NO cuenta: no gastó nada ni sonó — solo se le mandó al
+// lead el botón de Meta. Si acepta, pasa a 'programada' y ahí sí cuenta.
 const ESTADOS_QUE_CUENTAN = ['programada', 'marcando', 'sonando', 'en_curso', 'terminada', 'no_contesto', 'fallida'];
+
+// Una llamada esperando el permiso de WhatsApp que el lead nunca contesta no
+// puede quedar viva para siempre: a las 6 horas se cancela y vuelve al chat.
+const ESPERA_PERMISO_MAX_MS = 6 * 3600e3;
 
 /** Llamadas de HOY (hora Chile) de la cuenta que cuentan contra los topes. */
 async function llamadasHoy(accountId, leadId = null) {
@@ -139,7 +145,7 @@ async function topesOk({ settings, accountId, leadId }) {
  * dentro de horario + topes con espacio + (lead CALIENTE o pidió la llamada).
  * Así el agente jamás ofrece algo que el sistema no va a cumplir.
  */
-async function buildLlamadaContext({ settings, agent, lead, incomingText }) {
+async function buildLlamadaContext({ settings, agent, lead, incomingText, account = null }) {
   if (!telefoniaHabilitada()) return null;
   if (settings?.llamadas_enabled !== true) return null;
   if (agent?.calls_enabled !== true) return null;
@@ -155,9 +161,21 @@ async function buildLlamadaContext({ settings, agent, lead, incomingText }) {
   if (!topes.ok) return null;
 
   const esWhatsapp = lead.channel === 'whatsapp' && !!lead.wa_id;
-  const comoIndicarNumero = esWhatsapp
+  let comoIndicarNumero = esWhatsapp
     ? 'Este lead escribe por WhatsApp: usa la palabra "whatsapp" como teléfono para llamarlo a ese mismo número.'
     : 'Este lead NO escribe por WhatsApp: solo puedes usar un número que el lead te haya dictado EN esta conversación (nunca lo inventes ni lo saques de otra parte).';
+
+  // Vía WhatsApp (la llamada entra por la app, no por el celular): solo se
+  // ofrece si la cuenta la tiene activa. Si no, el agente ni se entera.
+  if (esWhatsapp) {
+    try {
+      const waCalling = require('./whatsappCalling');
+      if (waCalling.llamadasWaHabilitadas(account, settings) && !waCalling.destinoBloqueado(lead.wa_id)) {
+        const extra = waCalling.contextoLlamadaWhatsapp(lead);
+        if (extra) comoIndicarNumero += `\n   ${extra}`;
+      }
+    } catch { /* vía WhatsApp opcional */ }
+  }
 
   return [
     '--- CAPACIDAD DE LLAMADA TELEFÓNICA ---',
@@ -241,9 +259,27 @@ async function prepararLlamada({ settings, account, agent, lead, telefonoPedido,
   const topes = await topesOk({ settings, accountId: lead.account_id, leadId: lead._id });
   if (!topes.ok) throw new SinLlamada(topes.motivo, true);
 
-  // Teléfono: "whatsapp" = el número del chat; si no, el que dictó el lead.
+  // Teléfono: "whatsapp" = el número del chat (llamada al celular);
+  // "whatsapp-app" = la misma persona pero la llamada ENTRA POR WHATSAPP
+  // (Meta Calling API vía SIP de Twilio; exige permiso previo del lead);
+  // si no, el número que dictó el lead.
   let telefono = null;
-  if (/^(whatsapp|este|este n[uú]mero)$/i.test(telefonoPedido)) {
+  let viaWhatsappApp = false;
+  if (/^whatsapp[-_ ]?app$/i.test(telefonoPedido)) {
+    if (lead.channel !== 'whatsapp' || !lead.wa_id) {
+      throw new SinLlamada('el marcador dice "whatsapp-app" pero el lead no escribe por WhatsApp');
+    }
+    const waCalling = require('./whatsappCalling');
+    if (!waCalling.llamadasWaHabilitadas(account, settings)) {
+      // Degradación limpia: sin la vía WhatsApp activa, se llama al celular.
+      console.warn('[llamada] "whatsapp-app" pedido pero la vía WhatsApp no está activa — se llama al celular');
+    } else if (waCalling.destinoBloqueado(lead.wa_id)) {
+      console.warn('[llamada] Meta bloquea llamadas salientes a ese país — se llama al celular');
+    } else {
+      viaWhatsappApp = true;
+    }
+    telefono = telefonoE164(lead.wa_id);
+  } else if (/^(whatsapp|este|este n[uú]mero)$/i.test(telefonoPedido)) {
     if (lead.channel !== 'whatsapp' || !lead.wa_id) {
       throw new SinLlamada('el marcador dice "whatsapp" pero el lead no escribe por WhatsApp');
     }
@@ -281,13 +317,32 @@ async function prepararLlamada({ settings, account, agent, lead, telefonoPedido,
     HARD_MAX_MIN
   );
 
+  // Vía WhatsApp: si el lead ya autorizó (permiso de Meta vigente) se programa
+  // directo; si no, la llamada queda ESPERANDO y se le manda el botón oficial
+  // de permiso — al aceptar, procesarRespuestaPermiso la pasa a 'programada'.
+  let esperaPermiso = false;
+  if (viaWhatsappApp) {
+    const waCalling = require('./whatsappCalling');
+    if (!waCalling.permisoVigente(lead)) {
+      const check = waCalling.puedePedirPermiso(lead);
+      if (!check.ok) {
+        // Meta no dejaría pedirlo de nuevo: se degrada a celular sin drama.
+        console.warn(`[llamada] ${check.motivo} — se llama al celular en vez de WhatsApp`);
+        viaWhatsappApp = false;
+      } else {
+        esperaPermiso = true;
+      }
+    }
+  }
+
   const ahora  = new Date();
   const dialAt = new Date(ahora.getTime() + DIAL_DELAY_SEG * 1000);
   const doc = await db.insert(db.llamadas, {
     account_id:  lead.account_id,
     lead_id:     lead._id,
     agent_id:    agent._id,
-    status:      'programada',
+    status:      esperaPermiso ? 'esperando_permiso' : 'programada',
+    via:         viaWhatsappApp ? 'whatsapp' : 'telefono',
     telefono,                              // E.164, dato personal (Ley 21.719: cae con el lead)
     tema,
     fecha_chile: fechaChile(ahora),
@@ -301,16 +356,33 @@ async function prepararLlamada({ settings, account, agent, lead, telefonoPedido,
     transcript:  [],
   });
 
+  if (esperaPermiso) {
+    const waCalling = require('./whatsappCalling');
+    try {
+      await waCalling.pedirPermisoLlamada({ account, lead });
+    } catch (e) {
+      // Si Meta rechaza la solicitud (límite, país, app no Live), no dejar la
+      // llamada colgada: pasa a celular al tiro.
+      console.warn('[llamada] no se pudo pedir el permiso de WhatsApp — se llama al celular:', e.response?.data?.error?.message || e.message);
+      await db.update(db.llamadas, { _id: doc._id }, { status: 'programada', via: 'telefono' }).catch(() => null);
+      esperaPermiso = false;
+      viaWhatsappApp = false;
+    }
+  }
+
   const horaAviso = new Intl.DateTimeFormat('es-CL', {
     timeZone: 'America/Santiago', hour: '2-digit', minute: '2-digit',
   }).format(dialAt);
+  const viaTxt = viaWhatsappApp ? 'por WhatsApp' : `al ${telefono}`;
   await db.insert(db.messages, {
     lead_id: lead._id, account_id: lead.account_id, role: 'sistema',
-    content: `📞 Llamada programada a las ${horaAviso} al ${telefono}. Consentimiento del lead: "${doc.consent_texto}" (${new Date(doc.consent_at).toLocaleTimeString('es-CL', { timeZone: 'America/Santiago', hour: '2-digit', minute: '2-digit' })}).`,
+    content: esperaPermiso
+      ? `📞 Llamada por WhatsApp lista — sale apenas el lead toque "Aceptar" en el botón de permiso. Consentimiento en el chat: "${doc.consent_texto}".`
+      : `📞 Llamada programada a las ${horaAviso} ${viaTxt}. Consentimiento del lead: "${doc.consent_texto}" (${new Date(doc.consent_at).toLocaleTimeString('es-CL', { timeZone: 'America/Santiago', hour: '2-digit', minute: '2-digit' })}).`,
   }).catch(() => null);
 
-  console.log(`📞 [llamada] programada ${doc._id} → ${telefono} (cuenta ${lead.account_id}, marca a las ${horaAviso})`);
-  return { id: doc._id, telefono, dialAt: doc.dial_at };
+  console.log(`📞 [llamada] ${esperaPermiso ? 'esperando permiso WA' : 'programada'} ${doc._id} → ${viaTxt} (cuenta ${lead.account_id})`);
+  return { id: doc._id, telefono, dialAt: doc.dial_at, via: viaWhatsappApp ? 'whatsapp' : 'telefono', esperaPermiso };
 }
 
 // ── Worker: marcar las llamadas programadas ───────────────────────────────────
@@ -328,6 +400,17 @@ async function procesarLlamadasProgramadas() {
   _marcando = true;
   try {
     const ahora = new Date().toISOString();
+
+    // Caducar las que esperan permiso de WhatsApp desde hace demasiado.
+    const esperando = await db.find(db.llamadas, { status: 'esperando_permiso' });
+    for (const ll of esperando) {
+      if (Date.now() - new Date(ll.createdAt).getTime() > ESPERA_PERMISO_MAX_MS) {
+        await db.update(db.llamadas, { _id: ll._id, status: 'esperando_permiso' }, {
+          status: 'cancelada', error: 'el lead no respondió el permiso de WhatsApp',
+        }).catch(() => null);
+      }
+    }
+
     const programadas = await db.find(db.llamadas, { status: 'programada' });
     for (const ll of programadas.filter(l => l.dial_at <= ahora)) {
       // Lock optimista: si dos ticks compiten, solo uno pasa a 'marcando'.
@@ -353,9 +436,23 @@ async function procesarLlamadasProgramadas() {
         if (deLaCuenta > maxDia) throw new SinLlamada(`tope diario de la cuenta al momento de marcar (${deLaCuenta}/${maxDia})`);
         if (delLead > 1)         throw new SinLlamada('el lead ya tiene otra llamada hoy');
 
-        const sid = await crearLlamadaTwilio(ll);
+        // Vía WhatsApp: Twilio marca al SIP de Meta con las credenciales del
+        // número. Si al momento de marcar la vía WA se apagó o el permiso
+        // venció, se degrada a celular — la persona ya dijo que sí.
+        let viaWa = ll.via === 'whatsapp';
+        if (viaWa) {
+          const waCalling = require('./whatsappCalling');
+          const account = await db.findOne(db.accounts, { _id: ll.account_id });
+          const lead    = await db.findOne(db.leads,    { _id: ll.lead_id });
+          if (!waCalling.llamadasWaHabilitadas(account, settings) || !waCalling.permisoVigente(lead)) {
+            console.warn(`[llamada] ${ll._id}: vía WhatsApp no disponible al marcar — se llama al celular`);
+            viaWa = false;
+            await db.update(db.llamadas, { _id: ll._id }, { via: 'telefono' }).catch(() => null);
+          }
+        }
+        const sid = await crearLlamadaTwilio(ll, viaWa ? settings : null);
         await db.update(db.llamadas, { _id: ll._id }, { twilio_call_sid: sid });
-        console.log(`📞 [llamada] marcando ${ll._id} → ${ll.telefono} (CallSid ${sid})`);
+        console.log(`📞 [llamada] marcando ${ll._id} → ${viaWa ? 'WhatsApp de ' : ''}${ll.telefono} (CallSid ${sid})`);
       } catch (e) {
         const motivo = e.response?.data?.message || e.message || 'error';
         console.error(`❌ [llamada] no se pudo marcar ${ll._id}: ${motivo}`);
@@ -375,16 +472,24 @@ async function procesarLlamadasProgramadas() {
   }
 }
 
-/** POST a la API de Twilio para iniciar la llamada. Devuelve el CallSid. */
-async function crearLlamadaTwilio(llamada) {
+/**
+ * POST a la API de Twilio para iniciar la llamada. Devuelve el CallSid.
+ * Con `settingsWa` (vía WhatsApp), el destino es el SIP de Meta y van las
+ * credenciales digest del número — el resto (TwiML, stream, bridge) es
+ * IDÉNTICO a la llamada telefónica: por eso la vía WhatsApp reusa todo.
+ */
+async function crearLlamadaTwilio(llamada, settingsWa = null) {
   const sid   = process.env.TWILIO_ACCOUNT_SID;
   const token = process.env.TWILIO_AUTH_TOKEN;
   const t     = tokenLlamada(llamada._id);
   const base  = APP_URL();
 
+  const destino = settingsWa
+    ? require('./whatsappCalling').paramsTwilioParaWhatsapp({ telefonoE164: llamada.telefono, settings: settingsWa })
+    : { To: llamada.telefono, From: process.env.TWILIO_PHONE_NUMBER };
+
   const params = new URLSearchParams({
-    To:   llamada.telefono,
-    From: process.env.TWILIO_PHONE_NUMBER,
+    ...destino,
     Url:            `${base}/webhook/twilio/twiml?ll=${encodeURIComponent(llamada._id)}&t=${t}`,
     Method:         'POST',
     StatusCallback: `${base}/webhook/twilio/status?ll=${encodeURIComponent(llamada._id)}&t=${t}`,
