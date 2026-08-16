@@ -402,6 +402,7 @@ function loadSection(name) {
     case 'links':     loadLinks(); break;
     case 'magnets':   loadMagnets(); break;
     case 'postrules': loadPostRules(); break;
+    case 'watemplates': loadWaTemplates(); break;
     case 'fuentes':   loadFuentes(); break;
     case 'growth':    loadGrowth(); break;
     case 'settings':  loadSettings(); break;
@@ -3151,6 +3152,127 @@ window.editMagnet = editMagnet;
 window.saveMagnet = saveMagnet;
 window.toggleMagnet = toggleMagnet;
 window.deleteMagnet = deleteMagnet;
+
+// ── PLANTILLAS DE WHATSAPP (message templates del cliente) ──────────────────
+const WAT_STATUS = {
+  APPROVED: { txt: 'Aprobada',   bg: '#dcfce7', fg: '#166534' },
+  PENDING:  { txt: 'En revisión', bg: '#fef9c3', fg: '#854d0e' },
+  REJECTED: { txt: 'Rechazada',  bg: '#fee2e2', fg: '#991b1b' },
+  PAUSED:   { txt: 'Pausada',    bg: '#e5e7eb', fg: '#374151' },
+  DISABLED: { txt: 'Deshabilitada', bg: '#e5e7eb', fg: '#374151' },
+};
+
+// apiFetch devuelve null ante cualquier error y se pierde el motivo. Acá el
+// motivo importa (Meta explica POR QUÉ rechazó la plantilla), así que se lee
+// el body de error y se devuelve { error } para mostrarlo tal cual.
+async function watFetch(path, method = 'GET', body) {
+  try {
+    const res = await fetch(API + path, {
+      method,
+      headers: { 'Content-Type': 'application/json', ...(AUTH_TOKEN ? { 'Authorization': `Bearer ${AUTH_TOKEN}` } : {}) },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+    if (res.status === 401) { logout(); return null; }
+    if (res.status === 402) { showUpgradeModal(true); return null; }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return { error: data.error || `Error ${res.status}` };
+    return data;
+  } catch (e) { return { error: 'Sin conexión con el servidor' }; }
+}
+
+function watPreview() {
+  const h = document.getElementById('wat-header')?.value.trim() || '';
+  const b = document.getElementById('wat-body-text')?.value || '';
+  const f = document.getElementById('wat-footer')?.value.trim() || '';
+  const btns = (document.getElementById('wat-buttons')?.value || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 3);
+  const pvH = document.getElementById('wat-pv-header'), pvB = document.getElementById('wat-pv-body'),
+        pvF = document.getElementById('wat-pv-footer'), pvBt = document.getElementById('wat-pv-buttons');
+  if (pvH) { pvH.textContent = h; pvH.style.display = h ? '' : 'none'; }
+  if (pvB) pvB.textContent = b || 'Escribe el cuerpo para ver la vista previa…';
+  if (pvF) { pvF.textContent = f; pvF.style.display = f ? '' : 'none'; }
+  if (pvBt) pvBt.innerHTML = btns.map(t => `<div style="background:#fff;border-radius:8px;padding:8px;text-align:center;color:#0369a1;font-size:14px;box-shadow:0 1px 1px rgba(0,0,0,.08)">${escHtmlSafe(t)}</div>`).join('');
+}
+
+async function loadWaTemplates() {
+  const list = document.getElementById('wat-list');
+  const sinWa = document.getElementById('wat-sin-wa');
+  const body = document.getElementById('wat-body');
+  if (!list) return;
+
+  if (!window.__watBound) {
+    window.__watBound = true;
+    ['wat-header', 'wat-body-text', 'wat-footer', 'wat-buttons'].forEach(id => {
+      document.getElementById(id)?.addEventListener('input', watPreview);
+    });
+    document.getElementById('btn-wat-create')?.addEventListener('click', createWaTemplate);
+  }
+  watPreview();
+
+  list.textContent = 'Cargando…';
+  const r = await watFetch('/api/wa-templates');
+  if (!r || r.error) {
+    const sinConexion = /Conecta tu WhatsApp|WABA/i.test(r?.error || '');
+    if (sinWa) sinWa.style.display = sinConexion ? '' : 'none';
+    if (body) body.style.display = sinConexion ? 'none' : '';
+    list.textContent = r?.error || 'No se pudieron cargar las plantillas';
+    return;
+  }
+  if (sinWa) sinWa.style.display = 'none';
+  if (body) body.style.display = '';
+  const ts = r.templates || [];
+  const cnt = document.getElementById('wat-count');
+  if (cnt) cnt.textContent = `${ts.length} plantilla${ts.length === 1 ? '' : 's'} · ${ts.filter(t => t.status === 'APPROVED').length} aprobadas`;
+  if (!ts.length) { list.textContent = 'Todavía no tienes plantillas. Crea la primera con el formulario.'; return; }
+  list.innerHTML = ts.map(t => {
+    const st = WAT_STATUS[t.status] || { txt: t.status, bg: '#e5e7eb', fg: '#374151' };
+    return `<div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+        <div><code style="font-size:13px">${escHtmlSafe(t.name)}</code> <span style="font-size:11px;color:var(--text-3);margin-left:6px">${escHtmlSafe(t.category)} · ${escHtmlSafe(t.language)}${t.variables ? ` · ${t.variables} variable${t.variables === 1 ? '' : 's'}` : ''}</span></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span style="font-size:11px;padding:2px 8px;border-radius:999px;background:${st.bg};color:${st.fg};font-weight:600">${st.txt}</span>
+          <button class="btn-ghost" style="padding:2px 8px;font-size:12px" title="Borrar plantilla" onclick="deleteWaTemplate('${escHtmlSafe(t.name)}')">🗑</button>
+        </div>
+      </div>
+      <div style="font-size:13px;color:var(--text-2);margin-top:6px;white-space:pre-wrap">${escHtmlSafe(t.body)}</div>
+      ${t.buttons?.length ? `<div style="font-size:12px;color:var(--text-3);margin-top:4px">Botones: ${t.buttons.map(escHtmlSafe).join(' · ')}</div>` : ''}
+      ${t.rejected_reason ? `<div style="font-size:12px;color:#991b1b;margin-top:4px">Motivo del rechazo: ${escHtmlSafe(t.rejected_reason)}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+async function createWaTemplate() {
+  const btn = document.getElementById('btn-wat-create');
+  const body = {
+    name: document.getElementById('wat-name')?.value.trim(),
+    category: document.getElementById('wat-category')?.value,
+    language: document.getElementById('wat-language')?.value,
+    header: document.getElementById('wat-header')?.value.trim() || null,
+    body: document.getElementById('wat-body-text')?.value,
+    footer: document.getElementById('wat-footer')?.value.trim() || null,
+    buttons: (document.getElementById('wat-buttons')?.value || '').split(',').map(s => s.trim()).filter(Boolean),
+  };
+  if (!body.name || !body.body) { showToast('❌ Nombre y cuerpo son obligatorios'); return; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Enviando a Meta…'; }
+  const r = await watFetch('/api/wa-templates', 'POST', body);
+  if (btn) { btn.disabled = false; btn.textContent = 'Enviar a aprobación de Meta'; }
+  if (r?.ok) {
+    showToast(`✅ Plantilla "${r.name}" enviada — estado: ${WAT_STATUS[r.status]?.txt || r.status}`);
+    ['wat-name', 'wat-header', 'wat-body-text', 'wat-footer', 'wat-buttons'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    watPreview();
+    loadWaTemplates();
+  } else {
+    showToast('❌ ' + (r?.error || 'No se pudo crear'));
+  }
+}
+
+async function deleteWaTemplate(name) {
+  if (!confirm(`¿Borrar la plantilla "${name}"? Meta borra todas sus versiones de idioma y no se puede deshacer.`)) return;
+  const r = await watFetch(`/api/wa-templates/${encodeURIComponent(name)}`, 'DELETE');
+  if (r?.ok) { showToast('🗑 Plantilla borrada'); loadWaTemplates(); }
+  else showToast('❌ ' + (r?.error || 'No se pudo borrar'));
+}
+try { _safeExpose('loadWaTemplates', loadWaTemplates); } catch {}
+try { _safeExpose('deleteWaTemplate', deleteWaTemplate); } catch {}
 
 // ── ANALYTICS DASHBOARD ─────────────────────────────────────────────────────
 // Dashboard de gasto de voz: hoy / semana / mes, valor del minuto y serie

@@ -561,6 +561,11 @@ app.use('/api/closer', voiceLimiter, require('./routes/closer'));
 // y el puente de audio en el WebSocket /twilio-media (ver al final).
 app.use('/api/llamadas', apiLimiter, requireAuth, checkSubscription, require('./routes/llamadas'));
 
+// Plantillas de WhatsApp del cliente (crear / estado de aprobación / borrar).
+// Opera con el WABA y el token de la propia cuenta. Es además la evidencia
+// visible del permiso whatsapp_business_management para el App Review.
+app.use('/api/wa-templates', apiLimiter, requireAuth, checkSubscription, require('./routes/waTemplates'));
+
 // La URL sin .html es la que la gente tipea; el catch-all serviría el
 // dashboard en silencio y el micrófono quedaría bloqueado (el permiso se
 // concede por path exacto).

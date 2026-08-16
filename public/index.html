@@ -94,6 +94,10 @@
       <span class="nav-icon"><svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.84 8.84 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7z" clip-rule="evenodd"/></svg></span>
       Comentarios
     </a>
+    <a class="nav-item" data-section="watemplates">
+      <span class="nav-icon"><svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.5 2A1.5 1.5 0 003 3.5v13A1.5 1.5 0 004.5 18h11a1.5 1.5 0 001.5-1.5V7.621a1.5 1.5 0 00-.44-1.06l-4.12-4.122A1.5 1.5 0 0011.378 2H4.5zm2.25 8.5a.75.75 0 000 1.5h6.5a.75.75 0 000-1.5h-6.5zm0 3a.75.75 0 000 1.5h6.5a.75.75 0 000-1.5h-6.5z" clip-rule="evenodd"/></svg></span>
+      Plantillas
+    </a>
     <!-- "Growth" y "Referidos" retirados del menú (2026-06-09): Growth
          duplicaba Lead Magnets + export (ya en CRM/Analytics); Referidos
          se reactiva cuando haya 5+ clientes. APIs y secciones intactas. -->
@@ -793,6 +797,91 @@
     </div>
 
     <div id="fuentes-lista"></div>
+  </section>
+
+  <!-- PLANTILLAS DE WHATSAPP — administración de message templates del cliente -->
+  <section id="section-watemplates" class="section">
+    <div class="page-header">
+      <div>
+        <h1>Plantillas de WhatsApp</h1>
+        <p>Los mensajes que WhatsApp deja enviar <strong>fuera de las 24 horas</strong>: confirmaciones, recordatorios, "¿seguimos?". Cada una la aprueba Meta (minutos a horas). Créalas acá y mira su estado sin salir de Atinov.</p>
+      </div>
+      <button class="btn-ghost" onclick="loadWaTemplates()" title="Refrescar" style="padding:7px 12px">↻</button>
+    </div>
+
+    <div id="wat-sin-wa" style="display:none;background:#fff;border:1px dashed var(--border);border-radius:12px;padding:18px;color:var(--text-2);font-size:14px">
+      Conecta tu WhatsApp Business (Ajustes → WhatsApp) para administrar tus plantillas.
+    </div>
+
+    <div id="wat-body" style="display:grid;grid-template-columns:minmax(300px,380px) 1fr;gap:18px;align-items:start">
+      <div class="settings-card">
+        <h3>Nueva plantilla</h3>
+        <div class="form-row">
+          <label>Nombre <span style="color:var(--text-3);font-weight:400">(minúsculas y guion bajo)</span></label>
+          <input type="text" id="wat-name" class="form-input" placeholder="recordatorio_cita" maxlength="120">
+        </div>
+        <div style="display:flex;gap:10px">
+          <div class="form-row" style="flex:1">
+            <label>Categoría</label>
+            <select id="wat-category" class="form-input">
+              <option value="UTILITY">Utilidad (confirmaciones, avisos)</option>
+              <option value="MARKETING">Marketing (promos, reenganche)</option>
+              <option value="AUTHENTICATION">Autenticación (códigos)</option>
+            </select>
+          </div>
+          <div class="form-row" style="flex:1">
+            <label>Idioma</label>
+            <select id="wat-language" class="form-input">
+              <option value="es">Español</option>
+              <option value="es_CL">Español (Chile)</option>
+              <option value="es_AR">Español (Argentina)</option>
+              <option value="es_MX">Español (México)</option>
+              <option value="en_US">English (US)</option>
+              <option value="pt_BR">Português (Brasil)</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Encabezado <span style="color:var(--text-3);font-weight:400">(opcional, 60 car.)</span></label>
+          <input type="text" id="wat-header" class="form-input" placeholder="Recordatorio de tu hora" maxlength="60">
+        </div>
+        <div class="form-row">
+          <label>Cuerpo <span style="color:var(--text-3);font-weight:400">— usa {{1}}, {{2}} para datos variables</span></label>
+          <textarea id="wat-body-text" class="form-input" rows="5" maxlength="1024" placeholder="Hola {{1}}, te recordamos tu hora el {{2}} a las {{3}}. ¿Confirmas?"></textarea>
+        </div>
+        <div class="form-row">
+          <label>Pie <span style="color:var(--text-3);font-weight:400">(opcional, 60 car.)</span></label>
+          <input type="text" id="wat-footer" class="form-input" placeholder="Responde este mensaje si necesitas cambiarla" maxlength="60">
+        </div>
+        <div class="form-row">
+          <label>Botones de respuesta rápida <span style="color:var(--text-3);font-weight:400">(hasta 3, separados por coma)</span></label>
+          <input type="text" id="wat-buttons" class="form-input" placeholder="Confirmar, Cambiar hora, Cancelar">
+        </div>
+        <button class="btn-primary" id="btn-wat-create">Enviar a aprobación de Meta</button>
+        <p style="font-size:12px;color:var(--text-2);margin-top:10px">Meta revisa cada plantilla. Las de <strong>Utilidad</strong> se aprueban casi siempre en minutos; las de Marketing tardan más y se rechazan si parecen spam.</p>
+      </div>
+
+      <div>
+        <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px">
+          <div style="font-weight:700;margin-bottom:4px">Vista previa</div>
+          <div id="wat-preview" style="background:#e5ddd5;border-radius:10px;padding:14px;min-height:80px">
+            <div style="background:#fff;border-radius:8px;padding:10px 12px;max-width:340px;font-size:14px;line-height:1.45;box-shadow:0 1px 1px rgba(0,0,0,.08)">
+              <div id="wat-pv-header" style="font-weight:700;margin-bottom:4px;display:none"></div>
+              <div id="wat-pv-body" style="white-space:pre-wrap;color:#111">Escribe el cuerpo para ver la vista previa…</div>
+              <div id="wat-pv-footer" style="font-size:12px;color:#667;margin-top:6px;display:none"></div>
+            </div>
+            <div id="wat-pv-buttons" style="display:flex;flex-direction:column;gap:6px;max-width:340px;margin-top:6px"></div>
+          </div>
+        </div>
+        <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <div style="font-weight:700">Tus plantillas</div>
+            <div id="wat-count" style="font-size:12px;color:var(--text-2)"></div>
+          </div>
+          <div id="wat-list" style="color:var(--text-2);font-size:13px">Cargando…</div>
+        </div>
+      </div>
+    </div>
   </section>
 
   <section id="section-postrules" class="section">
