@@ -2044,6 +2044,50 @@ router.get('/self-test', async (req, res) => {
     tests.push({ id: 'resend', name: 'Resend API', status: 'fail', message: 'RESEND_API_KEY no configurada — NO se envía ningún correo (incluido el de restablecer contraseña)' });
   }
 
+  // 3b. Twilio (llamadas telefónicas del agente). Verifica las 3 credenciales
+  //     contra la API real y que el número tenga capacidad de VOZ — sin
+  //     exponer ningún valor. Es el "¿quedó bien Twilio?" que Brayan puede
+  //     mirar después de pegar las variables en Railway.
+  {
+    const sid = process.env.TWILIO_ACCOUNT_SID, tok = process.env.TWILIO_AUTH_TOKEN, num = process.env.TWILIO_PHONE_NUMBER;
+    if (!sid || !tok || !num) {
+      const faltan = [!sid && 'TWILIO_ACCOUNT_SID', !tok && 'TWILIO_AUTH_TOKEN', !num && 'TWILIO_PHONE_NUMBER'].filter(Boolean);
+      tests.push({ id: 'twilio', name: 'Twilio (llamadas)', status: 'skip', message: `Sin configurar — faltan ${faltan.join(', ')}. Las llamadas quedan inertes (esperado hasta que se active).` });
+    } else {
+      try {
+        // Credenciales: GET de la cuenta (401 si el token está mal)
+        const acc = await axios.get(`https://api.twilio.com/2010-04-01/Accounts/${sid}.json`, {
+          auth: { username: sid, password: tok }, timeout: 8000,
+        });
+        // Número: ¿existe en la cuenta y tiene voz?
+        const nums = await axios.get(`https://api.twilio.com/2010-04-01/Accounts/${sid}/IncomingPhoneNumbers.json`, {
+          auth: { username: sid, password: tok }, params: { PhoneNumber: num }, timeout: 8000,
+        });
+        const mio = (nums.data?.incoming_phone_numbers || [])[0];
+        const voz = mio?.capabilities?.voice === true;
+        const status = acc.data?.status;
+        const problemas = [];
+        if (status && status !== 'active') problemas.push(`cuenta en estado ${status}`);
+        if (!mio) problemas.push('el número no está en esta cuenta de Twilio');
+        else if (!voz) problemas.push('el número NO tiene capacidad de voz');
+        const trial = acc.data?.type === 'Trial';
+        tests.push({
+          id: 'twilio', name: 'Twilio (llamadas)',
+          status: problemas.length ? 'fail' : (trial ? 'warn' : 'pass'),
+          message: problemas.length
+            ? problemas.join(' · ')
+            : `OK · credenciales válidas · número con voz${trial ? ' · ⚠️ cuenta TRIAL: solo puede llamar a números verificados en Twilio y antepone un aviso grabado — subir a cuenta pagada antes de llamar a leads reales' : ''}${process.env.TWILIO_SIP_DOMAIN ? ' · SIP configurado (vía WhatsApp lista para cuando la app esté Live)' : ' · sin TWILIO_SIP_DOMAIN (vía WhatsApp inactiva; la telefónica funciona igual)'}`,
+        });
+      } catch (e) {
+        const code = e.response?.status;
+        tests.push({
+          id: 'twilio', name: 'Twilio (llamadas)', status: 'fail',
+          message: code === 401 ? 'Twilio rechazó las credenciales (SID o Auth Token incorrectos)' : `No se pudo verificar Twilio: ${e.response?.data?.message || e.message}`,
+        });
+      }
+    }
+  }
+
   // 4. Lemon Squeezy
   if (process.env.LS_API_KEY) {
     try {
