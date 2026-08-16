@@ -31,11 +31,17 @@ const { normalizePhoneCL } = require('./shopify');
 
 const APP_URL = () => process.env.APP_URL || 'https://atinov.com';
 
-// La llamada se marca este tiempo DESPUÉS de resolver el marcador: cubre el
-// delay humanizador del chat (5-15s) + el tick del worker de envío (10s) +
-// tiempo real de leer "te llamo al tiro". Sin esto, el teléfono suena ANTES
-// de que llegue el aviso y se rompe la pieza clave del diseño.
-const DIAL_DELAY_SEG = 45;
+// La llamada se marca este tiempo DESPUÉS DE QUE EL AVISO SALE por el chat
+// (no después de resolver el marcador). El aviso tiene su propio delay
+// humanizador (5-15 s por defecto, 20-60 s en el preset Atinov) y lo mueve
+// el worker cada 10 s: si se contara desde "ahora" con un número fijo chico,
+// el teléfono sonaría ANTES de que llegue "te llamo al tiro" — y esa es la
+// pieza clave del diseño. Anclado al envío real, 20 s es lo que tarda leer
+// el aviso: la llamada llega esperada, sin ese vacío raro de casi un minuto.
+const DIAL_DELAY_SEG = 20;
+// Cuando no se conoce el momento del envío (vía WhatsApp tras el permiso, o
+// llamadas creadas fuera del webhook) se usa este margen conservador.
+const DIAL_DELAY_SIN_ANCLA_SEG = 30;
 
 // Defaults de los candados configurables por cuenta (settings.llamadas_*).
 const DEFAULT_MAX_DIA     = 10;   // llamadas por cuenta por día
@@ -201,7 +207,7 @@ async function buildLlamadaContext({ settings, agent, lead, incomingText, accoun
  * timbre). Re-valida TODOS los candados del lado del servidor: el modelo
  * propone, el servidor decide. Fail-closed en cada rama.
  */
-async function resolveLlamadaMarkers(text, { settings, account, agent, lead }) {
+async function resolveLlamadaMarkers(text, { settings, account, agent, lead, avisoSaleAt = null }) {
   if (!text || !/\[LLAMAR/i.test(text)) return { text, llamadas: [] };
   MARKER_RE.lastIndex = 0;
 
@@ -217,6 +223,7 @@ async function resolveLlamadaMarkers(text, { settings, account, agent, lead }) {
         settings, account, agent, lead,
         telefonoPedido: telRaw.trim(),
         tema: temaRaw.trim().slice(0, 120),
+        avisoSaleAt,
       });
       llamadas.push(prep);
     } catch (e) {
@@ -246,7 +253,7 @@ class SinLlamada extends Error {
   constructor(msg, avisarEnHilo = false) { super(msg); this.avisarEnHilo = avisarEnHilo; }
 }
 
-async function prepararLlamada({ settings, account, agent, lead, telefonoPedido, tema }) {
+async function prepararLlamada({ settings, account, agent, lead, telefonoPedido, tema, avisoSaleAt = null }) {
   // Candado 6: fail-closed total.
   if (!telefoniaHabilitada())            throw new SinLlamada('Twilio no está configurado');
   if (settings?.llamadas_enabled !== true) throw new SinLlamada('las llamadas están apagadas en la cuenta');
@@ -336,7 +343,12 @@ async function prepararLlamada({ settings, account, agent, lead, telefonoPedido,
   }
 
   const ahora  = new Date();
-  const dialAt = new Date(ahora.getTime() + DIAL_DELAY_SEG * 1000);
+  // Ancla: el momento en que el aviso SALE por el chat (lo calcula el webhook
+  // con el delay humanizador del agente). Sin ancla, margen conservador.
+  const anclaMs = avisoSaleAt && !isNaN(new Date(avisoSaleAt)) ? new Date(avisoSaleAt).getTime() : null;
+  const dialAt = anclaMs
+    ? new Date(Math.max(anclaMs, ahora.getTime()) + DIAL_DELAY_SEG * 1000)
+    : new Date(ahora.getTime() + DIAL_DELAY_SIN_ANCLA_SEG * 1000);
   const doc = await db.insert(db.llamadas, {
     account_id:  lead.account_id,
     lead_id:     lead._id,
@@ -750,6 +762,7 @@ module.exports = {
   // constantes exportadas para tests y para el bridge
   MARKER_RE,
   DIAL_DELAY_SEG,
+  DIAL_DELAY_SIN_ANCLA_SEG,
   DEFAULT_MAX_DIA,
   DEFAULT_MAX_MIN,
   HARD_MAX_MIN,

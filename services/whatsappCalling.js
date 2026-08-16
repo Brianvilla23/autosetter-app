@@ -234,9 +234,10 @@ async function procesarRespuestaPermiso({ account, lead, interactive }) {
   }
 
   // Aceptó: la llamada que estaba esperando pasa a 'programada' y el worker
-  // de telefonia.js la marca en el próximo tick (con su DIAL_DELAY normal).
-  const { DIAL_DELAY_SEG } = require('./telefonia');
-  const dialAt = new Date(Date.now() + DIAL_DELAY_SEG * 1000).toISOString();
+  // de telefonia.js la marca en el próximo tick. Acá el lead ACABA de tocar
+  // el botón: no hay aviso pendiente que esperar, se usa el margen sin ancla.
+  const { DIAL_DELAY_SIN_ANCLA_SEG } = require('./telefonia');
+  const dialAt = new Date(Date.now() + DIAL_DELAY_SIN_ANCLA_SEG * 1000).toISOString();
   await db.update(db.llamadas, { lead_id: lead._id, status: 'esperando_permiso' }, {
     status: 'programada', dial_at: dialAt, permiso_aceptado_at: new Date().toISOString(),
   }).catch(() => null);

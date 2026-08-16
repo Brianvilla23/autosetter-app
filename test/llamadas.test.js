@@ -168,12 +168,30 @@ test('camino feliz: programa la llamada, registra consentimiento con cita y hora
   assert.strictEqual(doc.tema, 'resolver dudas del plan founder');
   assert.strictEqual(doc.consent_texto, 'ya po, llámame no más', 'la cita textual del lead queda registrada');
   assert.ok(doc.consent_at, 'la hora del consentimiento queda registrada');
+  // Sin ancla (nadie dijo cuándo sale el aviso) → margen conservador de 30 s.
   const dialMs = new Date(doc.dial_at).getTime() - antes;
-  assert.ok(dialMs > 30_000 && dialMs < 90_000, `la llamada se marca DESPUÉS del aviso (~45s), fue ${Math.round(dialMs / 1000)}s`);
+  assert.ok(dialMs >= 29_000 && dialMs <= 40_000, `sin ancla marca a los ~30s, fue ${Math.round(dialMs / 1000)}s`);
 
   const sistema = (await db.find(db.messages, { lead_id: lead._id }))
     .filter(m => m.role === 'sistema');
   assert.ok(sistema.some(m => m.content.includes('Llamada programada')), 'nota de sistema en el hilo');
+});
+
+test('la llamada suena 20 s DESPUÉS de que el aviso sale, aunque el agente tenga delay largo', async () => {
+  conCredenciales();
+  const { agent, lead, settings } = await armarLead();
+  // El preset Atinov manda el aviso 20-60 s después: si la llamada se contara
+  // desde "ahora", sonaría antes del mensaje. Anclada al envío, siempre después.
+  const avisoSaleAt = new Date(Date.now() + 60_000).toISOString();
+  const r = await telefonia.resolveLlamadaMarkers(
+    'te llamo altiro [LLAMAR: whatsapp | cerrar]',
+    { settings, account: {}, agent, lead, avisoSaleAt }
+  );
+  assert.strictEqual(r.llamadas.length, 1);
+  const doc = await db.findOne(db.llamadas, { _id: r.llamadas[0].id });
+  const gap = new Date(doc.dial_at).getTime() - new Date(avisoSaleAt).getTime();
+  assert.ok(gap >= 19_000 && gap <= 21_000, `debe ser aviso + 20 s, fue aviso + ${Math.round(gap / 1000)}s`);
+  assert.ok(new Date(doc.dial_at) > new Date(avisoSaleAt), 'NUNCA antes del aviso');
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

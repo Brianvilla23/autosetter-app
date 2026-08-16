@@ -1014,14 +1014,31 @@ ${entregar
     reply = pedido.text;
   } catch (e) { console.warn('[shopify] resolución de marcadores falló (no bloquea):', e.message); }
 
+  // Calcular delay humanizador (5-15s default, configurable por agente)
+  // Bajamos default de 30-90s a 5-15s tras feedback: setters/closers necesitan
+  // respuesta rápida para no perder leads HOT. 5-15s sigue siendo "humano-like"
+  // (un humano tipea en ~10s) sin parecer bot instantáneo.
+  // Se calcula ACÁ (antes de resolver [LLAMAR]) porque la llamada se ancla al
+  // momento real en que este mensaje sale: el aviso siempre llega primero.
+  const delayMin = agent.delay_min ?? 5;
+  const delayMax = agent.delay_max ?? 15;
+  const stepSize = (delayMax - delayMin) >= 30 ? 10 : 5; // pasos de 10s para ranges grandes, 5s para chicos
+  const steps = Math.floor((delayMax - delayMin) / stepSize) + 1;
+  const delaySeconds = delayMin + Math.floor(Math.random() * steps) * stepSize;
+  const sendAt = new Date(Date.now() + delaySeconds * 1000).toISOString();
+
   // ── Resolver marcadores [LLAMAR: ...] → llamada telefónica programada ─────
   // El modelo propone, el servidor decide: acá se re-validan TODOS los
   // candados (consentimiento, horario, topes, teléfono dicho por el lead).
-  // La llamada se marca ~45s después, para que el aviso llegue antes que el
-  // timbre. Fail-closed: el marcador jamás rompe el mensaje.
+  // La llamada se marca 20 s DESPUÉS de que este aviso sale (sendAt + tick
+  // del worker), para que llegue antes que el timbre. Fail-closed: el
+  // marcador jamás rompe el mensaje.
   try {
     const { resolveLlamadaMarkers } = require('../services/telefonia');
-    const llamado = await resolveLlamadaMarkers(reply, { settings, account, agent, lead });
+    // +10 s: el worker de envíos corre cada 10 s; el mensaje sale en el primer
+    // tick posterior a sendAt. Anclar al peor caso evita que suene antes.
+    const avisoSaleAt = new Date(new Date(sendAt).getTime() + 10_000).toISOString();
+    const llamado = await resolveLlamadaMarkers(reply, { settings, account, agent, lead, avisoSaleAt });
     reply = llamado.text;
     if (llamado.llamadas.length) {
       console.log(`📞 [${agent.name}] Llamada programada para @${lead.ig_username || lead.wa_name}: ${llamado.llamadas[0].telefono}`);
@@ -1052,16 +1069,7 @@ ${entregar
     updateLeadMemory({ leadId: lead._id, apiKey }).catch(() => {});
   } catch (e) { /* memoria opcional */ }
 
-  // Calcular delay humanizador (5-15s default, configurable por agente)
-  // Bajamos default de 30-90s a 5-15s tras feedback: setters/closers necesitan
-  // respuesta rápida para no perder leads HOT. 5-15s sigue siendo "humano-like"
-  // (un humano tipea en ~10s) sin parecer bot instantáneo.
-  const delayMin = agent.delay_min ?? 5;
-  const delayMax = agent.delay_max ?? 15;
-  const stepSize = (delayMax - delayMin) >= 30 ? 10 : 5; // pasos de 10s para ranges grandes, 5s para chicos
-  const steps = Math.floor((delayMax - delayMin) / stepSize) + 1;
-  const delaySeconds = delayMin + Math.floor(Math.random() * steps) * stepSize;
-  const sendAt = new Date(Date.now() + delaySeconds * 1000).toISOString();
+  // (delaySeconds / sendAt ya calculados arriba, antes de resolver [LLAMAR])
 
   // Guardar en queue persistente — sobrevive reinicios de Railway
   // Channel-aware: el worker dispatchea a Instagram, WhatsApp o Messenger según `channel`.
