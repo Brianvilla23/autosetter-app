@@ -141,6 +141,29 @@ test('permiso PERMANENTE desde el perfil: sin vencimiento', async () => {
   assert.ok(wa.permisoVigente(l));
 });
 
+test('el botón deja elegir PERMANENTE: se guarda sin vencimiento y no se vuelve a pedir', async () => {
+  const account = { _id: 'acc-perm2', ...accountOk };
+  const lead = await db.insert(db.leads, { account_id: 'acc-perm2', wa_id: '56944445555', channel: 'whatsapp' });
+  const r = await wa.procesarRespuestaPermiso({
+    account, lead,
+    interactive: { type: 'call_permission_reply', call_permission_reply: { response: 'accept', is_permanent: true } },
+  });
+  assert.strictEqual(r.acepto, true);
+  const l = await db.findOne(db.leads, { _id: lead._id });
+  assert.strictEqual(l.wa_call_permission.status, 'accepted');
+  assert.strictEqual(l.wa_call_permission.expires_at, null, 'permanente = sin vencimiento');
+  assert.strictEqual(l.wa_call_permission.source, 'permanente');
+  assert.ok(wa.permisoVigente(l), 'vigente para siempre → el agente no vuelve a pedir');
+});
+
+test('2 llamadas seguidas sin contestar: el permiso deja de usarse (Meta revoca a las 4)', () => {
+  const futuro = new Date(Date.now() + 3 * 86400e3).toISOString();
+  const base = { wa_call_permission: { status: 'accepted', expires_at: futuro } };
+  assert.ok(wa.permisoVigente({ ...base, wa_call_sin_contestar: 1 }), 'con 1 sin contestar aún se puede');
+  assert.strictEqual(wa.permisoVigente({ ...base, wa_call_sin_contestar: 2 }), null, 'con 2 se frena: no insistir');
+  assert.ok(wa.permisoVigente({ ...base, wa_call_sin_contestar: 0 }), 'una conectada reinicia el contador');
+});
+
 test('las credenciales SIP de Meta NUNCA salen al frontend', () => {
   const safe = sanitizeSettings({ account_id: 'a', openai_key: '', ...settingsOk });
   const s = JSON.stringify(safe);

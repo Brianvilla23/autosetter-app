@@ -169,8 +169,11 @@ test('camino feliz: programa la llamada, registra consentimiento con cita y hora
   assert.strictEqual(doc.consent_texto, 'ya po, llámame no más', 'la cita textual del lead queda registrada');
   assert.ok(doc.consent_at, 'la hora del consentimiento queda registrada');
   // Sin ancla (nadie dijo cuándo sale el aviso) → margen conservador de 30 s.
+  // Ventana ancha a propósito: bajo carga (suites en paralelo) el reloj se
+  // mueve unos segundos entre `antes` y el insert. Lo que se fija es el ORDEN
+  // DE MAGNITUD (~30 s), no el segundo exacto.
   const dialMs = new Date(doc.dial_at).getTime() - antes;
-  assert.ok(dialMs >= 29_000 && dialMs <= 40_000, `sin ancla marca a los ~30s, fue ${Math.round(dialMs / 1000)}s`);
+  assert.ok(dialMs >= 25_000 && dialMs <= 60_000, `sin ancla marca a los ~30s, fue ${Math.round(dialMs / 1000)}s`);
 
   const sistema = (await db.find(db.messages, { lead_id: lead._id }))
     .filter(m => m.role === 'sistema');

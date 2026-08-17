@@ -156,11 +156,16 @@ async function desactivarSipEnNumero({ account, accountId }) {
 
 // ── Permiso de llamada (el consentimiento que Meta exige) ─────────────────────
 
-/** Permiso vigente (aceptado y no vencido) del lead, si existe. */
+/**
+ * Permiso vigente (aceptado y no vencido) del lead, si existe. Con 2 o más
+ * llamadas seguidas sin contestar se considera NO usable aunque siga vigente:
+ * Meta avisa a las 2 y revoca a las 4 — insistir solo quema el permiso.
+ */
 function permisoVigente(lead) {
   const p = lead?.wa_call_permission;
   if (!p || p.status !== 'accepted') return null;
   if (p.expires_at && new Date(p.expires_at) < new Date()) return null;
+  if (Number(lead.wa_call_sin_contestar || 0) >= 2) return null;
   return p;
 }
 
@@ -193,7 +198,10 @@ async function pedirPermisoLlamada({ account, lead, texto }) {
     interactive: {
       type: 'call_permission_request',
       action: { name: 'call_permission_request' },
-      body: { text: String(texto || '¿Te acomoda si te llamo por acá mismo un minuto y lo vemos hablando?').slice(0, 1024) },
+      // El botón de Meta muestra "Permitir llamadas" (permanente) y "Permitir
+      // temporalmente". El texto invita a la permanente sin presionar: es la
+      // que elimina la barrera para las próximas veces.
+      body: { text: String(texto || '¿Te acomoda si te llamo por acá mismo un minuto y lo vemos hablando? Si eliges "Permitir llamadas" no te lo vuelvo a pedir; y lo puedes cambiar cuando quieras desde el perfil.').slice(0, 1024) },
     },
   }, {
     headers: { Authorization: `Bearer ${account.wa_access_token}`, 'Content-Type': 'application/json' },
@@ -213,29 +221,43 @@ async function pedirPermisoLlamada({ account, lead, texto }) {
 
 /**
  * Webhook: el lead aceptó o rechazó. Meta lo manda como mensaje interactivo
- * `call_permission_reply` con `response: "accept" | "reject"` y una
- * `expiration_timestamp` (7 días). Se guarda en el lead. Si aceptó y había
- * una llamada esperando ese permiso, se programa al tiro.
+ * `call_permission_reply` con `response: "accept" | "reject"`. Desde el
+ * 3-nov-2025 el MISMO botón le deja elegir al lead entre "Permitir llamadas"
+ * (PERMANENTE, sin vencimiento — la que elimina la barrera) y "Permitir
+ * temporalmente" (7 días): Meta lo informa en `is_permanent` (o sin
+ * `expiration_timestamp`). Se guarda en el lead con esa distinción. Si aceptó
+ * y había una llamada esperando ese permiso, se programa al tiro.
  */
 async function procesarRespuestaPermiso({ account, lead, interactive }) {
   const reply = interactive?.call_permission_reply || {};
   const acepto = String(reply.response || '').toLowerCase() === 'accept';
-  const expira = reply.expiration_timestamp
-    ? new Date(Number(reply.expiration_timestamp) * 1000).toISOString()
-    : new Date(Date.now() + PERMISO_VIGENCIA_DIAS * 24 * 3600e3).toISOString();
+  const permanente = acepto && (
+    reply.is_permanent === true
+    || /permanent/i.test(String(reply.permission_type || reply.type || reply.duration || ''))
+    || (reply.expiration_timestamp === undefined && reply.response_source !== undefined && !reply.expiration_timestamp)
+  );
+  const expira = permanente ? null
+    : reply.expiration_timestamp
+      ? new Date(Number(reply.expiration_timestamp) * 1000).toISOString()
+      : new Date(Date.now() + PERMISO_VIGENCIA_DIAS * 24 * 3600e3).toISOString();
 
   await db.update(db.leads, { _id: lead._id }, {
     wa_call_permission: {
       status: acepto ? 'accepted' : 'rejected',
       replied_at: new Date().toISOString(),
       expires_at: acepto ? expira : null,
+      source: acepto ? (permanente ? 'permanente' : 'boton') : null,
     },
+    // Al aceptar se reinicia el contador de "sin contestar" (Meta lo revoca a las 4)
+    ...(acepto ? { wa_call_sin_contestar: 0 } : {}),
   });
   await db.insert(db.messages, {
     lead_id: lead._id, account_id: account._id, role: 'sistema',
-    content: acepto
-      ? `✅ El lead ACEPTÓ recibir llamadas por WhatsApp (permiso vigente hasta ${new Date(expira).toLocaleDateString('es-CL')}).`
-      : '❌ El lead rechazó la llamada por WhatsApp. El agente sigue por el chat, sin insistir.',
+    content: !acepto
+      ? '❌ El lead rechazó la llamada por WhatsApp. El agente sigue por el chat, sin insistir.'
+      : permanente
+        ? '✅ El lead concedió permiso PERMANENTE para llamarlo por WhatsApp. No hay que volver a pedirlo (él puede revocarlo desde el perfil del negocio).'
+        : `✅ El lead ACEPTÓ recibir llamadas por WhatsApp (permiso temporal, vigente hasta ${new Date(expira).toLocaleDateString('es-CL')}).`,
   }).catch(() => null);
 
   if (!acepto) {

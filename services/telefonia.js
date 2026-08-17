@@ -646,6 +646,27 @@ async function finalizarLlamada(llamadaId, { resultado, duracionSeg, motivo = nu
   const dur = Math.max(0, Math.round(Number(duracionSeg || 0)));
   const costo = conectada ? costoEstimadoUSD(dur) : { minutos: 0, twilio: 0, openai_est: 0, total_est: 0 };
 
+  // Regla de Meta para la vía WhatsApp: 2 llamadas seguidas sin contestar →
+  // aviso al lead; 4 seguidas → Meta REVOCA el permiso solo. Se lleva el
+  // contador en el lead y se corta antes: a las 2 sin contestar, el agente
+  // deja de ofrecer llamadas por WhatsApp hasta que el lead vuelva a escribir
+  // o a llamar (una llamada conectada reinicia el contador).
+  if (ll.via === 'whatsapp') {
+    try {
+      const lead = await db.findOne(db.leads, { _id: ll.lead_id });
+      if (lead) {
+        const prev = Number(lead.wa_call_sin_contestar || 0);
+        const nuevo = conectada ? 0 : prev + 1;
+        const upd = { wa_call_sin_contestar: nuevo };
+        if (nuevo >= 4 && lead.wa_call_permission?.status === 'accepted') {
+          // Meta ya lo revocó por su lado; reflejarlo para no intentar en vano.
+          upd.wa_call_permission = { ...lead.wa_call_permission, status: 'revoked', revoked_at: new Date().toISOString(), motivo: '4 llamadas sin contestar' };
+        }
+        await db.update(db.leads, { _id: lead._id }, upd).catch(() => null);
+      }
+    } catch { /* contador best-effort */ }
+  }
+
   await db.update(db.llamadas, { _id: llamadaId }, {
     status: resultado,
     duracion_seg: dur,
