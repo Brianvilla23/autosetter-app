@@ -281,15 +281,13 @@ function instruccionesRevisor({ password, appUrl }) {
     `Password: ${password}`,
     ``,
     `HOW TO REVIEW (the account is pre-loaded with realistic sample conversations; no real customer data):`,
-    `1) Log in at ${base}/app with the credentials above.`,
+    `1) Log in at ${base}/app with the credentials above — or simply click "Ver la cuenta demo (sin registro)" on the login screen (no typing needed).`,
     `2) INBOX (left menu "Inbox"): open any conversation to see the AI assistant replying to Instagram / WhatsApp messages on behalf of the business (instagram_business_manage_messages, whatsapp_business_messaging, pages_messaging). Voice notes and photos from customers are understood and answered.`,
     `3) TEMPLATES (left menu "Plantillas"): create, list with approval status, and delete the business's WhatsApp message templates (whatsapp_business_management).`,
     `4) COMMENTS (left menu "Comentarios"): per-post keyword rules — a public reply plus a private message to the commenter (instagram_business_manage_comments).`,
     `5) SETTINGS (left menu "Ajustes"): the connected Instagram account, WhatsApp number and Facebook Page; the "Connect" buttons use Meta's official login dialogs; disconnect is one click.`,
     `6) ANALYTICS: qualification, conversion and — under "Gasto de voz" — the phone calls the assistant made with the customer's prior consent.`,
     `Data deletion instructions: ${base}/data-deletion · Privacy: ${base}/privacy · Terms: ${base}/terms`,
-    ``,
-    `NOTE: the Instagram sub-app still shows the legacy name "DMCloser-IG" in the permissions dialog; we rebranded to "Atinov" and kindly ask for the display name to be updated.`,
   ].join('\n');
 }
 
