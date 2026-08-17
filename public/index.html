@@ -8,7 +8,7 @@
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <script>
   // Aplica el tema guardado ANTES del primer render (sin parpadeo).
@@ -18,6 +18,7 @@
     if (_th && _th.vars) {
       var _r = document.documentElement;
       for (var _k in _th.vars) _r.style.setProperty(_k, _th.vars[_k]);
+      if (_th.bgKey === 'oscuro') _r.classList.add('theme-dark');
       if (_th.bodyImage) document.addEventListener('DOMContentLoaded', function () {
         document.body.style.backgroundImage = _th.bodyImage;
       });

@@ -66,9 +66,12 @@ function showDashboard() {
     const b = document.createElement('div');
     b.id = 'demo-banner';
     b.setAttribute('role', 'status');
-    b.style.cssText = 'position:sticky;top:0;z-index:60;background:#0a0a0a;color:#f5f2ea;font-size:12.5px;padding:7px 14px;text-align:center;letter-spacing:.02em;border-bottom:1px solid rgba(245,242,234,.2)';
+    // Capa FIJA arriba, no dentro del flex del app-shell (ahí empujaba todo el
+    // contenido a una columna). Se compensa con padding-top en el shell.
+    b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:60;background:#0a0a0a;color:#f5f5f5;font-size:12.5px;padding:7px 14px;text-align:center;letter-spacing:.02em;border-bottom:1px solid rgba(255,255,255,.14)';
     b.innerHTML = '🧪 <strong>Cuenta demo</strong> — Clínica Demo Sonrisa. Datos ficticios para revisión y demostración · sesión de 2 horas · <a href="#" id="demo-banner-exit" style="color:#c9a227;text-decoration:underline">salir</a>';
-    document.getElementById('app-shell').prepend(b);
+    document.body.prepend(b);
+    document.getElementById('app-shell').style.paddingTop = '32px';
     document.getElementById('demo-banner-exit').onclick = (e) => { e.preventDefault(); logout(); };
   }
   initNav();
@@ -120,7 +123,7 @@ function renderAuthForm(mode) {
 
   if (mode === 'login') {
     box.innerHTML = `
-      <div class="auth-logo">⚡ Atinov</div>
+      <div class="auth-logo" style="display:inline-flex;flex-direction:column;align-items:center;gap:5px"><span>ATINOV</span><span style="display:flex;align-items:center;gap:5px;width:100%"><i style="flex:1;height:1px;background:currentColor;display:block"></i><b style="width:5px;height:5px;border:1.1px solid currentColor;transform:rotate(45deg);display:block"></b><i style="flex:1;height:1px;background:currentColor;display:block"></i></span></div>
       <h2 class="auth-title">Iniciar sesión</h2>
       <p class="auth-sub">Accede a tu panel de control</p>
       <input class="auth-input" id="auth-email" type="email" placeholder="Email" autocomplete="email">
@@ -165,7 +168,7 @@ function renderAuthForm(mode) {
 
   } else if (mode === 'forgot') {
     box.innerHTML = `
-      <div class="auth-logo">⚡ Atinov</div>
+      <div class="auth-logo" style="display:inline-flex;flex-direction:column;align-items:center;gap:5px"><span>ATINOV</span><span style="display:flex;align-items:center;gap:5px;width:100%"><i style="flex:1;height:1px;background:currentColor;display:block"></i><b style="width:5px;height:5px;border:1.1px solid currentColor;transform:rotate(45deg);display:block"></b><i style="flex:1;height:1px;background:currentColor;display:block"></i></span></div>
       <h2 class="auth-title">Recuperar contraseña</h2>
       <p class="auth-sub">Te enviamos un link a tu correo para crear una nueva</p>
       <input class="auth-input" id="auth-email" type="email" placeholder="Email de tu cuenta" autocomplete="email">
@@ -201,7 +204,7 @@ function renderAuthForm(mode) {
     const rToken = urlParams.get('reset_token') || '';
     const rEmail = urlParams.get('reset_email') || '';
     box.innerHTML = `
-      <div class="auth-logo">⚡ Atinov</div>
+      <div class="auth-logo" style="display:inline-flex;flex-direction:column;align-items:center;gap:5px"><span>ATINOV</span><span style="display:flex;align-items:center;gap:5px;width:100%"><i style="flex:1;height:1px;background:currentColor;display:block"></i><b style="width:5px;height:5px;border:1.1px solid currentColor;transform:rotate(45deg);display:block"></b><i style="flex:1;height:1px;background:currentColor;display:block"></i></span></div>
       <h2 class="auth-title">Nueva contraseña</h2>
       <p class="auth-sub">Para ${rEmail ? rEmail.replace(/</g, '&lt;') : 'tu cuenta'}</p>
       <input class="auth-input" id="auth-password" type="password" placeholder="Contraseña nueva (mín. 8, letra y número)" autocomplete="new-password">
@@ -245,7 +248,7 @@ function renderAuthForm(mode) {
 
   } else if (mode === 'register') {
     box.innerHTML = `
-      <div class="auth-logo">⚡ Atinov</div>
+      <div class="auth-logo" style="display:inline-flex;flex-direction:column;align-items:center;gap:5px"><span>ATINOV</span><span style="display:flex;align-items:center;gap:5px;width:100%"><i style="flex:1;height:1px;background:currentColor;display:block"></i><b style="width:5px;height:5px;border:1.1px solid currentColor;transform:rotate(45deg);display:block"></b><i style="flex:1;height:1px;background:currentColor;display:block"></i></span></div>
       <h2 class="auth-title">Crear cuenta gratis</h2>
       <p class="auth-sub">3 días de prueba gratuita. Sin tarjeta de crédito.</p>
       <input class="auth-input" id="auth-name" type="text" placeholder="Tu nombre" autocomplete="name">
@@ -293,7 +296,7 @@ function renderAuthForm(mode) {
   } else {
     // mode === 'setup' (first admin user)
     box.innerHTML = `
-      <div class="auth-logo">⚡ Atinov</div>
+      <div class="auth-logo" style="display:inline-flex;flex-direction:column;align-items:center;gap:5px"><span>ATINOV</span><span style="display:flex;align-items:center;gap:5px;width:100%"><i style="flex:1;height:1px;background:currentColor;display:block"></i><b style="width:5px;height:5px;border:1.1px solid currentColor;transform:rotate(45deg);display:block"></b><i style="flex:1;height:1px;background:currentColor;display:block"></i></span></div>
       <h2 class="auth-title">🎉 Bienvenido</h2>
       <p class="auth-sub">Primera vez en el sistema. Crea tu cuenta de administrador.</p>
       <input class="auth-input" id="auth-name" type="text" placeholder="Tu nombre" autocomplete="name">
@@ -618,6 +621,33 @@ const ATINOV_BGS = {
   calido:  { label: 'Cálido',  color: '#faf9f7', image: '' },
   azulado: { label: 'Azulado', color: '#f3f5f9', image: '' },
   puntos:  { label: 'Puntos',  color: '#f7f8fa', image: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22'%3E%3Ccircle cx='1.5' cy='1.5' r='1.1' fill='%23d9dee6'/%3E%3C/svg%3E")` },
+  // Modo OSCURO — la paleta del dashboard que Brayan pidió replicar (16-08):
+  // página #0a0a0a, tarjetas #161616, texto #f5f5f5, bordes casi invisibles,
+  // verde #4ade80 para deltas y estados. No es solo un fondo: redefine
+  // superficies, texto, bordes y sidebar (`dark: true`).
+  oscuro:  { label: 'Oscuro', color: '#0a0a0a', image: '', dark: true },
+};
+
+// Variables que cambia el modo oscuro (además del fondo). Todo lo que en
+// styles.css usa var(--surface|--text-*|--border*|--sidebar-*) se adapta solo.
+const DARK_VARS = {
+  '--bg': '#0a0a0a', '--surface': '#161616', '--surface-2': '#1c1c1c',
+  '--border': 'rgba(255,255,255,.08)', '--border-2': 'rgba(255,255,255,.05)',
+  '--text-1': '#f5f5f5', '--text-2': '#a3a3a3', '--text-3': '#737373',
+  '--sidebar-bg': '#0a0a0a', '--sidebar-border': 'rgba(255,255,255,.08)', '--sidebar-text': '#a3a3a3',
+  '--sidebar-hover-bg': 'rgba(255,255,255,.05)',
+  '--green': '#4ade80',
+  '--shadow-sm': '0 1px 2px rgba(0,0,0,.4)', '--shadow': '0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35)',
+  '--shadow-md': '0 4px 8px rgba(0,0,0,.4), 0 20px 48px rgba(0,0,0,.5)', '--shadow-lg': '0 8px 16px rgba(0,0,0,.5), 0 32px 64px rgba(0,0,0,.6)',
+};
+// Valores claros por defecto, para volver limpio al desactivar el oscuro.
+const LIGHT_VARS = {
+  '--surface': '#ffffff', '--surface-2': '#f8fafc', '--border': '#e7eaee', '--border-2': '#f1f5f9',
+  '--text-1': '#0f172a', '--text-2': '#64748b', '--text-3': '#94a3b8',
+  '--sidebar-bg': '#ffffff', '--sidebar-border': '#eceef2', '--sidebar-text': '#5d6b82', '--sidebar-hover-bg': '#f4f6f8',
+  '--green': '#10b981',
+  '--shadow-sm': '0 1px 2px rgba(16,24,40,.04)', '--shadow': '0 1px 2px rgba(16,24,40,.04), 0 8px 24px rgba(16,24,40,.05)',
+  '--shadow-md': '0 4px 8px rgba(0,0,0,.06), 0 20px 48px rgba(0,0,0,.10)', '--shadow-lg': '0 8px 16px rgba(0,0,0,.08), 0 32px 64px rgba(0,0,0,.14)',
 };
 
 function getThemePref() {
@@ -633,7 +663,16 @@ function setTheme(accentKey, bgKey) {
     '--accent': t.accent, '--accent-dark': t.dark, '--accent-bg': t.bg,
     '--orange': t.brand, '--orange-2': t.brand2, '--orange-bg': t.brandBg,
     '--grad': t.grad, '--bg': g.color,
+    ...(g.dark ? DARK_VARS : LIGHT_VARS),
   };
+  // En oscuro, el acento negro (monocroma) desaparece sobre negro: se invierte
+  // a hueso para que botones y estados sigan visibles. Los demás acentos
+  // (esmeralda, azul, violeta…) ya contrastan y se quedan como están.
+  if (g.dark && a === 'monocroma') {
+    Object.assign(vars, { '--accent': '#f5f5f5', '--accent-dark': '#ffffff', '--accent-bg': 'rgba(245,245,245,.10)',
+      '--orange': '#f5f5f5', '--orange-2': '#a3a3a3', '--orange-bg': 'rgba(245,245,245,.08)', '--grad': 'linear-gradient(135deg,#f5f5f5 0%,#d4d4d4 100%)' });
+  }
+  document.documentElement.classList.toggle('theme-dark', !!g.dark);
   const r = document.documentElement;
   for (const k of Object.keys(vars)) r.style.setProperty(k, vars[k]);
   document.body.style.backgroundImage = g.image || '';
@@ -654,7 +693,7 @@ function renderThemeSwatches() {
   const bw = document.getElementById('bg-swatches');
   if (bw) {
     bw.innerHTML = Object.entries(ATINOV_BGS).map(([key, g]) => `
-      <button onclick="setTheme(null, '${key}')" title="${g.label}" style="width:58px;height:38px;border-radius:9px;cursor:pointer;background:${g.color} ${g.image ? g.image : ''};border:1px solid var(--border);outline:${key === activeB ? '3px solid var(--accent)' : 'none'};outline-offset:2px;font-size:10px;color:var(--text-3)">${g.label}</button>`).join('');
+      <button onclick="setTheme(null, '${key}')" title="${g.label}" style="width:58px;height:38px;border-radius:9px;cursor:pointer;background:${g.color} ${g.image ? g.image : ''};border:1px solid var(--border);outline:${key === activeB ? '3px solid var(--accent)' : 'none'};outline-offset:2px;font-size:10px;color:${g.dark ? '#f5f5f5' : 'var(--text-3)'}">${g.label}</button>`).join('');
   }
 }
 window.renderThemeSwatches = renderThemeSwatches;

@@ -137,7 +137,7 @@ async function seedDemo({ password }) {
   let accountId;
   if (user) {
     accountId = user.account_id;
-    await db.update(db.users, { _id: user._id }, { password_hash: passHash });
+    await db.update(db.users, { _id: user._id }, { password_hash: passHash, onboardingCompleted: true, onboardingStep: 4 });
     // Limpiar datos anteriores de la cuenta demo (nunca otras cuentas).
     // messages no tiene account_id → primero se resuelven los lead_id del demo.
     const oldLeads = await db.find(db.leads, { account_id: accountId });
@@ -162,6 +162,9 @@ async function seedDemo({ password }) {
       account_id: accountId,
       demo: true,
       membershipExpiresAt: new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString(),
+      // El revisor de Meta (y cualquier demo) entra directo al panel: sin el
+      // asistente de bienvenida encima, que en una cuenta ya poblada no aporta.
+      onboardingCompleted: true, onboardingStep: 4,
     });
     await db.insert(db.settings, { account_id: accountId, openai_key: '' });
   }

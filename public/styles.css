@@ -768,7 +768,7 @@ body { display: flex; }
 /* ══ AUTH SCREEN ══════════════════════════════════════════════════════════════ */
 .auth-screen {
   position: fixed; inset: 0;
-  background: #0f172a;
+  background: #0a0a0a;
   display: flex; align-items: center; justify-content: center;
   z-index: 9999;
   overflow: hidden;
@@ -777,14 +777,14 @@ body { display: flex; }
   content: '';
   position: absolute; inset: 0;
   background:
-    radial-gradient(ellipse 60% 50% at 30% 40%, rgba(16,185,129,.25) 0%, transparent 70%),
-    radial-gradient(ellipse 50% 60% at 75% 65%, rgba(6,182,212,.18) 0%, transparent 70%);
+    radial-gradient(ellipse 60% 50% at 30% 40%, rgba(255,255,255,.05) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 60% at 75% 65%, rgba(255,255,255,.035) 0%, transparent 70%);
   pointer-events: none;
 }
 
 .auth-box {
-  background: rgba(15,23,42,.85);
-  border: 1px solid rgba(255,255,255,.1);
+  background: #161616;
+  border: 1px solid rgba(255,255,255,.08);
   border-radius: 20px;
   padding: 42px 44px;
   width: 100%;
@@ -795,11 +795,11 @@ body { display: flex; }
   -webkit-backdrop-filter: blur(20px);
 }
 .auth-logo {
-  font-size: 26px;
-  font-weight: 800;
-  background: var(--grad);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: .34em;
+  color: #f5f5f5;
   background-clip: text;
   margin-bottom: 8px;
   letter-spacing: -.5px;
@@ -832,11 +832,15 @@ body { display: flex; }
 }
 .auth-input::placeholder { color: #475569; }
 .auth-input:focus {
-  border-color: var(--orange);
-  box-shadow: 0 0 0 3px rgba(16,185,129,.2);
-  background: rgba(16,185,129,.05);
+  border-color: rgba(255,255,255,.35);
+  box-shadow: 0 0 0 3px rgba(255,255,255,.08);
+  background: rgba(255,255,255,.04);
 }
-.auth-btn { width: 100%; padding: 13px; font-size: 15px; font-weight: 700; margin-top: 6px; }
+.auth-btn { width: 100%; padding: 14px; font-size: 15px; font-weight: 600; margin-top: 6px; border-radius: 36px; }
+.auth-screen .btn-primary { background: #f5f5f5; color: #0a0a0a; border: none; }
+.auth-screen .btn-primary:hover { background: #ffffff; }
+.auth-screen .btn-secondary { background: transparent; color: #f5f5f5; border: 1px solid rgba(255,255,255,.22); border-radius: 36px; }
+.auth-screen .btn-secondary:hover { background: rgba(255,255,255,.06); }
 .auth-error {
   background: rgba(239,68,68,.1);
   border: 1px solid rgba(239,68,68,.3);
@@ -1523,3 +1527,74 @@ textarea.form-input { resize: vertical; line-height: 1.65; }
 .crm-tl-empty { color:var(--text-3); font-size:12.5px; text-align:center; padding:16px; }
 .crm-drawer-foot { margin-top:22px; padding-top:16px; border-top:1px solid var(--border); }
 @media (max-width:760px){ .crm-col{flex:0 0 240px;} .crm-drawer{width:100%;} }
+
+/* ══ MODO OSCURO (Ajustes → Apariencia → Fondo "Oscuro") ═══════════════════════
+   La paleta del dashboard de referencia (16-08-2026): página #0a0a0a,
+   tarjetas #161616, texto #f5f5f5, verde #4ade80. Las variables las setea
+   main.js (DARK_VARS); acá solo se cubren los colores que quedaron FIJOS en
+   el CSS/HTML (background:#fff en tarjetas inline, inputs, bandeja) para que
+   no queden parches blancos sobre negro. Reversible: sin la clase no aplica. */
+.theme-dark .settings-card,
+.theme-dark .stat-card,
+.theme-dark .inbox-item:hover,
+.theme-dark .thread-header,
+.theme-dark .thread-input,
+.theme-dark .bubble.user,
+.theme-dark #analytics-kpis .stat-card,
+.theme-dark #voz-gasto-card,
+.theme-dark [style*="background:#fff"],
+.theme-dark [style*="background: #fff"],
+.theme-dark [style*="background:#ffffff"] { background: var(--surface) !important; }
+
+.theme-dark #voz-gasto-card > div > div,
+.theme-dark [style*="background:var(--bg-2)"],
+.theme-dark [style*="background: var(--bg-2)"],
+.theme-dark [style*="background:var(--bg-1)"] { background: var(--surface-2) !important; }
+
+.theme-dark input, .theme-dark select, .theme-dark textarea, .theme-dark .form-input, .theme-dark .auth-input {
+  background: var(--surface-2); color: var(--text-1); border-color: var(--border);
+}
+.theme-dark input::placeholder, .theme-dark textarea::placeholder { color: var(--text-3); }
+.theme-dark code { background: rgba(255,255,255,.08); color: var(--text-1); }
+.theme-dark .btn-ghost, .theme-dark .btn-secondary { color: var(--text-1); border-color: var(--border); background: transparent; }
+.theme-dark .btn-ghost:hover, .theme-dark .btn-secondary:hover { background: var(--surface-2); }
+.theme-dark .btn-primary { background: var(--accent); color: #0a0a0a; }
+.theme-dark .nav-item.active { background: rgba(255,255,255,.08); }
+.theme-dark .nav-item svg { fill: currentColor; }
+.theme-dark table th { color: var(--text-3); }
+.theme-dark table td, .theme-dark table th { border-color: var(--border); }
+.theme-dark .toast { background: var(--surface); color: var(--text-1); border: 1px solid var(--border); }
+.theme-dark .modal, .theme-dark .modal-content, .theme-dark .modal-box { background: var(--surface); color: var(--text-1); }
+/* Deltas y estados positivos en el verde del dashboard de referencia */
+.theme-dark .stat-val[style*="#22c55e"], .theme-dark [style*="color:#22c55e"], .theme-dark [style*="color:#16a34a"], .theme-dark [style*="color:#10b981"] { color: #4ade80 !important; }
+/* Chips de estado con fondo claro (aprobada/en revisión/rechazada) → versión oscura */
+.theme-dark [style*="background:#dcfce7"] { background: rgba(74,222,128,.15) !important; color: #4ade80 !important; }
+.theme-dark [style*="background:#fef9c3"] { background: rgba(250,204,21,.15) !important; color: #facc15 !important; }
+.theme-dark [style*="background:#fee2e2"] { background: rgba(248,113,113,.15) !important; color: #f87171 !important; }
+.theme-dark [style*="background:#e5e7eb"] { background: rgba(255,255,255,.1) !important; color: var(--text-2) !important; }
+/* Vista previa de WhatsApp en Plantillas: se mantiene clara a propósito (es el teléfono del cliente) */
+.theme-dark #wat-preview { background: #e5ddd5 !important; }
+.theme-dark #wat-preview > div, .theme-dark #wat-pv-buttons > div { background: #fff !important; color: #111 !important; }
+/* Home en oscuro: la card de uso (fondo #fff inline) y el checklist de setup (gradiente naranja claro) */
+.theme-dark #usage-card { background: var(--surface) !important; }
+.theme-dark #onboarding-card { background: var(--surface) !important; border-color: rgba(251,146,60,.35) !important; }
+.theme-dark #onboarding-card h3 { color: #fdba74 !important; }
+.theme-dark #onboarding-card [style*="background:#fff"], .theme-dark #onboarding-card [style*="background: #fff"] { background: var(--surface-2) !important; }
+.theme-dark [style*="background:#fef2f2"], .theme-dark [style*="background:#fff7ed"], .theme-dark [style*="background:#fffbeb"], .theme-dark [style*="background:#eff6ff"], .theme-dark [style*="background:#ecfdf5"], .theme-dark [style*="background:#f0fdf4"] { background: var(--surface-2) !important; }
+.theme-dark .stat-icon { filter: saturate(.9); }
+/* Inbox en oscuro: lista, filtros, hilo (fondos #fafafa/#fff inline y en css) */
+.theme-dark #inbox-list, .theme-dark .thread-body { background: var(--bg) !important; }
+.theme-dark [style*="background:#fafafa"], .theme-dark [style*="background: #fafafa"] { background: var(--bg) !important; }
+.theme-dark .inbox-item { border-color: var(--border); }
+.theme-dark .inbox-item:hover { background: var(--surface) !important; }
+.theme-dark .inbox-item.selected { background: rgba(255,255,255,.06) !important; }
+.theme-dark .inbox-filter { background: var(--surface); color: var(--text-2); border-color: var(--border); }
+.theme-dark .inbox-filter:hover { background: var(--surface-2); color: var(--text-1); }
+.theme-dark .inbox-filter.active { background: var(--accent); color: #0a0a0a; border-color: var(--accent); }
+.theme-dark .inbox-filter .cnt { background: rgba(255,255,255,.12); }
+.theme-dark .inbox-item .badge-q.hot  { background: rgba(248,113,113,.15); color: #fca5a5; }
+.theme-dark .inbox-item .badge-q.warm { background: rgba(250,204,21,.15); color: #fde68a; }
+.theme-dark .inbox-item .badge-q.cold { background: rgba(147,197,253,.15); color: #bfdbfe; }
+.theme-dark .bubble.agent, .theme-dark .bubble.assistant { background: rgba(255,255,255,.08); color: var(--text-1); }
+.theme-dark .bubble.user { background: var(--surface) !important; color: var(--text-1); }
+.theme-dark .bubble.sistema { background: transparent; color: var(--text-3); }
