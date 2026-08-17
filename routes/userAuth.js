@@ -244,6 +244,71 @@ router.post('/login', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// ── ACCESO A LA CUENTA DEMO (revisor de Meta / demos de venta) ────────────────
+/**
+ * POST /api/user/demo-login
+ *
+ * Entra a la cuenta demo (demo@atinov.com, "Clínica Demo Sonrisa") con un
+ * clic desde la pantalla de inicio — pensado para el revisor del App Review
+ * de Meta (motivo #1 de rechazo: el revisor no puede entrar) y para mostrar
+ * el panel en llamadas de venta.
+ *
+ * Candados:
+ *  - FAIL-CLOSED: solo funciona si la cuenta demo EXISTE (la crea el admin con
+ *    POST /api/admin/crear-demo) y está marcada `demo: true`. Sin demo → 404.
+ *  - Sesión de solo 2 horas (no los 30 días de un login normal).
+ *  - Rate limit propio (10 por 15 min por IP): es una puerta pública.
+ *  - El JWT lleva `demo: true` — el frontend muestra el aviso "cuenta demo".
+ * Nunca da acceso a otra cuenta que no sea la demo.
+ */
+const demoLimiter = require('express-rate-limit')({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiados intentos. Espera 15 minutos.' },
+});
+
+/** GET /api/user/demo-available → { available } — para mostrar u ocultar el botón. */
+router.get('/demo-available', async (req, res, next) => {
+  try {
+    const { DEMO_EMAIL } = require('../services/demoSeed');
+    const user = await db.findOne(db.users, { email: DEMO_EMAIL });
+    const ok = !!(user && user.demo === true && user.isActive !== false
+      && (!user.membershipExpiresAt || new Date(user.membershipExpiresAt) > new Date()));
+    res.json({ available: ok });
+  } catch (e) { next(e); }
+});
+
+router.post('/demo-login', demoLimiter, async (req, res, next) => {
+  try {
+    const { DEMO_EMAIL } = require('../services/demoSeed');
+    const user = await db.findOne(db.users, { email: DEMO_EMAIL });
+    if (!user || user.demo !== true || user.isActive === false) {
+      return res.status(404).json({ error: 'La cuenta demo no está disponible en este momento.' });
+    }
+    if (user.membershipExpiresAt && new Date(user.membershipExpiresAt) < new Date()) {
+      return res.status(404).json({ error: 'La cuenta demo no está disponible en este momento.' });
+    }
+    const token = jwt.sign(
+      { userId: user._id, email: user.email, name: user.name, accountId: user.account_id, role: user.role, demo: true },
+      SECRET,
+      { expiresIn: '2h' }
+    );
+    await db.insert(db.auditLog, {
+      action: 'demo_login', target: DEMO_EMAIL, ip: req.ip || null, at: new Date().toISOString(),
+    }).catch(() => null);
+    res.json({
+      token,
+      user: {
+        id: user._id, email: user.email, name: user.name, role: user.role,
+        accountId: user.account_id, membershipPlan: user.membershipPlan || 'demo',
+        membershipExpiresAt: user.membershipExpiresAt || null, demo: true,
+      },
+    });
+  } catch (e) { next(e); }
+});
+
 // ── CHANGE PASSWORD ───────────────────────────────────────────────────────────
 router.post('/change-password', async (req, res, next) => {
   try {

@@ -60,6 +60,17 @@ function showDashboard() {
   // Update user info in sidebar
   const nameEl = document.getElementById('sidebar-user-name');
   if (nameEl && CURRENT_USER) nameEl.textContent = CURRENT_USER.name;
+  // Sesión demo (revisor de Meta / demostración): franja visible arriba para
+  // que nadie confunda los datos ficticios con datos reales.
+  if (CURRENT_USER?.demo === true && !document.getElementById('demo-banner')) {
+    const b = document.createElement('div');
+    b.id = 'demo-banner';
+    b.setAttribute('role', 'status');
+    b.style.cssText = 'position:sticky;top:0;z-index:60;background:#0a0a0a;color:#f5f2ea;font-size:12.5px;padding:7px 14px;text-align:center;letter-spacing:.02em;border-bottom:1px solid rgba(245,242,234,.2)';
+    b.innerHTML = '🧪 <strong>Cuenta demo</strong> — Clínica Demo Sonrisa. Datos ficticios para revisión y demostración · sesión de 2 horas · <a href="#" id="demo-banner-exit" style="color:#c9a227;text-decoration:underline">salir</a>';
+    document.getElementById('app-shell').prepend(b);
+    document.getElementById('demo-banner-exit').onclick = (e) => { e.preventDefault(); logout(); };
+  }
   initNav();
   loadSection('home');
 
@@ -118,12 +129,39 @@ function renderAuthForm(mode) {
       <button class="btn-primary auth-btn" id="auth-submit">Entrar</button>
       <p class="auth-footer" style="margin-top:10px"><a href="#" id="auth-to-forgot" style="color:var(--text-3,#888);font-size:12.5px">¿Olvidaste tu contraseña?</a></p>
       <p class="auth-footer">¿Nuevo aquí? <a href="#" id="auth-to-register" style="color:var(--orange);font-weight:600">Crear cuenta gratis →</a></p>
+      <div id="auth-demo-box" style="display:none;margin-top:18px;padding-top:14px;border-top:1px solid var(--border,#333)">
+        <button class="btn-secondary auth-btn" id="auth-demo" style="width:100%">Ver la cuenta demo (sin registro)</button>
+        <p class="auth-footer" style="margin-top:6px;font-size:12px;color:var(--text-3,#888)">Clínica Demo Sonrisa · datos ficticios · sesión de 2 horas · para revisores y demostraciones</p>
+      </div>
     `;
     document.getElementById('auth-submit').onclick = () => submitAuth('login');
     document.getElementById('auth-password').addEventListener('keydown', e => { if (e.key === 'Enter') submitAuth('login'); });
     document.getElementById('auth-to-register').onclick = (e) => { e.preventDefault(); showAuthScreen('register'); };
     document.getElementById('auth-to-forgot').onclick = (e) => { e.preventDefault(); showAuthScreen('forgot'); };
     document.getElementById('auth-email')?.focus();
+
+    // Acceso demo con un clic — solo se muestra si la cuenta demo existe en
+    // el servidor (fail-closed: el botón no aparece si no hay demo).
+    fetch('/api/user/demo-available').then(r => r.ok ? r.json() : null).then(d => {
+      const box = document.getElementById('auth-demo-box');
+      if (d?.available && box) box.style.display = '';
+    }).catch(() => null);
+    document.getElementById('auth-demo').onclick = async () => {
+      const btn = document.getElementById('auth-demo');
+      const err = document.getElementById('auth-error');
+      btn.disabled = true; btn.textContent = 'Abriendo la demo…';
+      try {
+        const r = await fetch('/api/user/demo-login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        const d = await r.json();
+        if (!r.ok || !d.token) { err.style.display = 'block'; err.textContent = d.error || 'La demo no está disponible'; btn.disabled = false; btn.textContent = 'Ver la cuenta demo (sin registro)'; return; }
+        localStorage.setItem('autosetter_token', d.token);
+        localStorage.setItem('autosetter_user', JSON.stringify(d.user));
+        window.location.href = '/app';
+      } catch {
+        err.style.display = 'block'; err.textContent = 'Error de conexión — intenta de nuevo';
+        btn.disabled = false; btn.textContent = 'Ver la cuenta demo (sin registro)';
+      }
+    };
 
   } else if (mode === 'forgot') {
     box.innerHTML = `
