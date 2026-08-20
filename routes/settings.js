@@ -84,6 +84,51 @@ router.put('/account', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// ── PAUSAR / REANUDAR UN CANAL ──────────────────────────────────────────────
+// PUT /api/settings/canal/:canal/pausa  body: { accountId, pausado }
+//
+// Pausar NO borra credenciales: apaga la atención automática de ese canal y
+// deja todo guardado, para que reanudar sea un clic. Es la respuesta al
+// problema real de que "desconectar" fuera un viaje de ida — recuperar un
+// WhatsApp exigía generar un System User token de nuevo en Meta.
+// Para borrar de verdad están los DELETE de cada canal ("olvidar credenciales").
+router.put('/canal/:canal/pausa', async (req, res, next) => {
+  try {
+    const { canal } = req.params;
+    const { accountId, pausado } = req.body || {};
+    if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
+
+    const { esPausable, flagPausa, PAUSABLES } = require('../services/channels/core');
+    if (!esPausable(canal)) {
+      return res.status(400).json({ error: `Canal desconocido: "${canal}". Válidos: ${Object.keys(PAUSABLES).join(', ')}.` });
+    }
+
+    const flag = flagPausa(canal);
+    await db.update(db.accounts, { _id: accountId }, { [flag]: !!pausado });
+    res.json({ ok: true, canal, pausado: !!pausado, label: PAUSABLES[canal].label });
+  } catch (e) { next(e); }
+});
+
+// ── Instagram — olvidar credenciales de verdad ──────────────────────────────
+// DELETE /api/settings/instagram?accountId=...
+//
+// Antes esto no existía: el panel "desconectaba" haciendo un PUT que escribía
+// los valores de la semilla encima (ig_user_id: 'demo_ig_id', access_token:
+// 'demo_token'). Eso dejaba credenciales inventadas que fallaban contra Meta y,
+// peor, hacía que dos cuentas desconectadas compartieran el mismo ig_user_id
+// — y el webhook busca la cuenta justamente por ese campo.
+router.delete('/instagram', async (req, res, next) => {
+  try {
+    const { accountId } = req.query;
+    if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
+    await db.update(db.accounts, { _id: accountId }, {
+      ig_user_id: null, ig_platform_id: null, ig_username: null, access_token: null,
+      ig_pausado: false, needs_reauth: false,
+    });
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+
 // ── WhatsApp Cloud API — conectar / desconectar número ───────────────────────
 // PUT body: { accountId, wa_phone_number_id, wa_business_account_id, wa_access_token }
 // El cliente pega los 3 datos de su WABA (de Meta Business → API Setup).
@@ -105,13 +150,17 @@ router.put('/whatsapp', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-// DELETE — desconectar WhatsApp (limpia los campos wa_*)
+// DELETE — olvidar credenciales de WhatsApp (limpia los campos wa_*)
+// Ojo: esto SÍ es irreversible — para volver hay que generar otro token de
+// System User en Meta. Si lo que se quiere es apagar el canal un rato, va
+// PUT /canal/whatsapp/pausa, que conserva todo.
 router.delete('/whatsapp', async (req, res, next) => {
   try {
     const { accountId } = req.query;
     if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
     await db.update(db.accounts, { _id: accountId }, {
       wa_phone_number_id: null, wa_business_account_id: null, wa_access_token: null,
+      wa_pausado: false,
     });
     res.json({ ok: true });
   } catch (e) { next(e); }
@@ -399,13 +448,14 @@ router.put('/messenger', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-// DELETE — desconectar Messenger (limpia los campos fb_*)
+// DELETE — olvidar credenciales de Messenger (limpia los campos fb_*)
+// Para apagarlo sin perder el token: PUT /canal/messenger/pausa.
 router.delete('/messenger', async (req, res, next) => {
   try {
     const { accountId } = req.query;
     if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
     await db.update(db.accounts, { _id: accountId }, {
-      fb_page_id: null, fb_page_token: null,
+      fb_page_id: null, fb_page_token: null, fb_pausado: false,
     });
     res.json({ ok: true });
   } catch (e) { next(e); }

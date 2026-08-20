@@ -1760,6 +1760,7 @@ async function loadSettings() {
 
   if (isConnected) {
     document.getElementById('ig-connected-name').textContent = '@' + data.account.ig_username;
+    pintarEstadoCanal('ig', !!data.account.ig_pausado, 'Cuenta conectada y activa');
   }
 
   // Pre-fill manual fields if they exist in DOM
@@ -1774,15 +1775,18 @@ async function loadSettings() {
     window.location.href = `/auth/instagram?accountId=${ACCOUNT_ID}&token=${encodeURIComponent(token)}`;
   });
 
-  // Disconnect
-  document.getElementById('btn-disconnect-ig')?.addEventListener('click', async () => {
-    if (!confirm('¿Desconectar la cuenta de Instagram?')) return;
-    await apiFetch('/api/settings/account', 'PUT', {
-      accountId: ACCOUNT_ID, ig_username: 'sin.conectar', ig_user_id: 'demo_ig_id', access_token: 'demo_token'
-    });
+  // Pausar / reanudar Instagram — conserva la conexión.
+  document.getElementById('btn-pausa-ig')?.addEventListener('click', () =>
+    alternarPausaCanal('instagram', !!data.account?.ig_pausado));
+
+  // Olvidar credenciales de Instagram — esto sí borra.
+  document.getElementById('btn-olvidar-ig')?.addEventListener('click', async () => {
+    if (!confirm('¿Olvidar las credenciales de Instagram?\n\nSe borra el acceso y hay que reconectar desde cero.\nSi solo quieres que el agente deje de responder, usa "Pausar canal".')) return;
+    const r = await apiFetch(`/api/settings/instagram?accountId=${ACCOUNT_ID}`, 'DELETE', null, { conError: true });
+    if (!r?.ok) { showToast(`⚠️ No se pudo desconectar Instagram: ${r?.error || 'error del servidor'}`); return; }
     document.getElementById('sidebar-username').textContent = '@sin.conectar';
     loadSettings();
-    showToast('Cuenta desconectada');
+    showToast('Instagram desconectado');
   });
 
   // Save OpenAI
@@ -1811,9 +1815,11 @@ async function loadSettings() {
   if (waNotEl)  waNotEl.style.display  = waConnected ? 'none' : '';
   if (waConnected) {
     const n = document.getElementById('wa-connected-number');
-    if (n) n.textContent = 'Phone Number ID: ' + data.account.wa_phone_number_id;
+    if (n) n.textContent = data.account.wa_display_number || 'Número conectado';
     const biz = document.getElementById('wa-business-account-id');
     if (biz) biz.value = data.account.wa_business_account_id || '';
+    pintarEstadoCanal('wa', !!data.account.wa_pausado, 'WhatsApp Cloud API activo');
+    pintarIdsWa(data.account);
   }
 
   document.getElementById('btn-save-wa')?.addEventListener('click', async () => {
@@ -1829,10 +1835,17 @@ async function loadSettings() {
     if (r?.ok) { loadSettings(); showToast('✅ WhatsApp conectado'); }
   });
 
-  document.getElementById('btn-disconnect-wa')?.addEventListener('click', async () => {
-    if (!confirm('¿Desconectar WhatsApp? El agente dejará de atender ese canal.')) return;
-    const r = await apiFetch(`/api/settings/whatsapp?accountId=${ACCOUNT_ID}`, 'DELETE');
-    if (r?.ok) { loadSettings(); showToast('WhatsApp desconectado'); }
+  // Pausar / reanudar WhatsApp — conserva número y token.
+  document.getElementById('btn-pausa-wa')?.addEventListener('click', () =>
+    alternarPausaCanal('whatsapp', !!data.account?.wa_pausado));
+
+  // Olvidar credenciales de WhatsApp — irreversible sin pasar por Meta.
+  document.getElementById('btn-olvidar-wa')?.addEventListener('click', async () => {
+    if (!confirm('¿Olvidar las credenciales de WhatsApp?\n\nSe borra el token. Para volver a conectar hay que generar otro token de System User en Meta, que son varios pasos.\n\nSi solo quieres que el agente deje de responder, cancela y usa "Pausar canal".')) return;
+    const r = await apiFetch(`/api/settings/whatsapp?accountId=${ACCOUNT_ID}`, 'DELETE', null, { conError: true });
+    if (!r?.ok) { showToast(`⚠️ No se pudo desconectar WhatsApp: ${r?.error || 'error del servidor'}`); return; }
+    loadSettings();
+    showToast('WhatsApp desconectado');
   });
 
   if (!waConnected) initEmbeddedSignup();
@@ -1846,6 +1859,7 @@ async function loadSettings() {
   if (fbConnected) {
     const n = document.getElementById('fb-connected-page');
     if (n) n.textContent = 'Página ID: ' + data.account.fb_page_id;
+    pintarEstadoCanal('fb', !!data.account.fb_pausado, 'Messenger activo — deriva prospectos a WhatsApp');
   }
 
   document.getElementById('btn-save-fb')?.addEventListener('click', async () => {
@@ -1861,10 +1875,17 @@ async function loadSettings() {
     if (r?.ok) { loadSettings(); showToast('✅ Messenger conectado'); }
   });
 
-  document.getElementById('btn-disconnect-fb')?.addEventListener('click', async () => {
-    if (!confirm('¿Desconectar Messenger? El agente dejará de atender la Página.')) return;
-    const r = await apiFetch(`/api/settings/messenger?accountId=${ACCOUNT_ID}`, 'DELETE');
-    if (r?.ok) { loadSettings(); showToast('Messenger desconectado'); }
+  // Pausar / reanudar Messenger — conserva la Página y el token.
+  document.getElementById('btn-pausa-fb')?.addEventListener('click', () =>
+    alternarPausaCanal('messenger', !!data.account?.fb_pausado));
+
+  // Olvidar credenciales de Messenger.
+  document.getElementById('btn-olvidar-fb')?.addEventListener('click', async () => {
+    if (!confirm('¿Olvidar las credenciales de Messenger?\n\nSe borra el token de la Página y hay que reconectar desde cero.\nSi solo quieres que el agente deje de responder, usa "Pausar canal".')) return;
+    const r = await apiFetch(`/api/settings/messenger?accountId=${ACCOUNT_ID}`, 'DELETE', null, { conError: true });
+    if (!r?.ok) { showToast(`⚠️ No se pudo desconectar Messenger: ${r?.error || 'error del servidor'}`); return; }
+    loadSettings();
+    showToast('Messenger desconectado');
   });
 
   // ── Shopify (confirmación de pedidos) ─────────────────────────────────────
@@ -1903,8 +1924,9 @@ async function loadSettings() {
   const btnShopOff = document.getElementById('btn-disconnect-shopify');
   if (btnShopOff) btnShopOff.onclick = async () => {
     if (!confirm('¿Desconectar la tienda? Los pedidos nuevos dejarán de confirmarse solos.')) return;
-    const r = await apiFetch(`/api/settings/shopify?accountId=${ACCOUNT_ID}`, 'DELETE');
-    if (r?.ok) { loadSettings(); showToast('Tienda desconectada'); }
+    const r = await apiFetch(`/api/settings/shopify?accountId=${ACCOUNT_ID}`, 'DELETE', null, { conError: true });
+    if (!r?.ok) { showToast(`⚠️ No se pudo desconectar la tienda: ${r?.error || 'error del servidor'}`); return; }
+    loadSettings(); showToast('Tienda desconectada');
   };
 
   // ── Google Calendar (agendamiento in-chat) ────────────────────────────────
@@ -1948,8 +1970,9 @@ async function loadSettings() {
   const btnGcalOff = document.getElementById('btn-disconnect-gcal');
   if (btnGcalOff) btnGcalOff.onclick = async () => {
     if (!confirm('¿Desconectar Google Calendar? El agente dejará de ofrecer horarios y agendar citas.')) return;
-    const r = await apiFetch('/api/calendar/disconnect', 'POST', {});
-    if (r?.ok) { loadSettings(); showToast('Calendario desconectado'); }
+    const r = await apiFetch('/api/calendar/disconnect', 'POST', {}, { conError: true });
+    if (!r?.ok) { showToast(`⚠️ No se pudo desconectar el calendario: ${r?.error || 'error del servidor'}`); return; }
+    loadSettings(); showToast('Calendario desconectado');
   };
 
   // ── Llamadas telefónicas (Twilio) ─────────────────────────────────────────
@@ -2185,8 +2208,86 @@ function wireTestButton(btnId, channel, resultId) {
   };
 }
 
+// ── PAUSA POR CANAL ───────────────────────────────────────────────────────────
+// Pausar no es desconectar: apaga las respuestas automáticas y conserva las
+// credenciales, para que reanudar sea un clic. Antes el único botón borraba el
+// token, y recuperar un WhatsApp exigía generar otro System User token en Meta.
+
+const CANAL_UI = {
+  instagram: { pre: 'ig', label: 'Instagram' },
+  whatsapp:  { pre: 'wa', label: 'WhatsApp' },
+  messenger: { pre: 'fb', label: 'Messenger' },
+};
+
+/** Pinta el punto de color, el texto de estado y el botón según la pausa. */
+function pintarEstadoCanal(pre, pausado, textoActivo) {
+  const txt = document.getElementById(`${pre}-estado-txt`);
+  if (txt) {
+    txt.textContent = pausado ? 'En pausa — el agente no está respondiendo' : textoActivo;
+    txt.style.color = pausado ? 'var(--orange, #f97316)' : 'var(--text-2)';
+  }
+  const dot = document.getElementById(`${pre}-dot`);
+  if (dot) dot.style.background = pausado ? 'var(--orange, #f97316)' : 'var(--green)';
+
+  const btn = document.getElementById(`btn-pausa-${pre}`);
+  if (btn) btn.textContent = pausado ? '▶ Reanudar canal' : '⏸ Pausar canal';
+}
+
+/** Los IDs de WhatsApp, visibles y copiables: es lo que hace falta para volver. */
+function pintarIdsWa(account) {
+  const box = document.getElementById('wa-ids');
+  if (!box) return;
+  const filas = [
+    ['Phone Number ID', account.wa_phone_number_id],
+    ['WhatsApp Business Account ID', account.wa_business_account_id],
+  ].filter(([, v]) => v);
+  if (!filas.length) { box.innerHTML = ''; return; }
+  box.innerHTML = filas.map(([k, v]) => `
+    <div>${escHtmlSafe(k)}: <code style="background:var(--bg-2,#f3f4f6);padding:2px 6px;border-radius:4px">${escHtmlSafe(String(v))}</code>
+    <button class="btn-ghost" style="padding:1px 7px;font-size:11px" onclick="copiarAlPortapapeles('${escHtmlSafe(String(v))}')">copiar</button></div>`).join('');
+}
+
+function copiarAlPortapapeles(txt) {
+  navigator.clipboard?.writeText(txt)
+    .then(() => showToast('Copiado'))
+    .catch(() => showToast('⚠️ No se pudo copiar — selecciónalo a mano'));
+}
+
+/**
+ * Cambia la pausa de un canal. `pausadoAhora` es el estado actual: se invierte.
+ * A diferencia de los botones viejos, si falla lo DICE en vez de quedarse mudo.
+ */
+async function alternarPausaCanal(canal, pausadoAhora) {
+  const cfg = CANAL_UI[canal];
+  if (!cfg) return;
+  const nuevo = !pausadoAhora;
+  const btn = document.getElementById(`btn-pausa-${cfg.pre}`);
+  if (btn) btn.disabled = true;
+
+  const r = await apiFetch(`/api/settings/canal/${canal}/pausa`, 'PUT', {
+    accountId: ACCOUNT_ID, pausado: nuevo,
+  }, { conError: true });
+  if (btn) btn.disabled = false;
+
+  if (!r?.ok) {
+    showToast(`⚠️ No se pudo ${nuevo ? 'pausar' : 'reanudar'} ${cfg.label}: ${r?.error || 'error del servidor'}`);
+    return;
+  }
+  loadSettings();
+  showToast(nuevo
+    ? `⏸ ${cfg.label} en pausa — tus credenciales quedan guardadas`
+    : `▶ ${cfg.label} reanudado — el agente vuelve a responder`);
+}
+
 // ── UTILS ─────────────────────────────────────────────────────────────────────
-async function apiFetch(path, method = 'GET', body) {
+/**
+ * @param {object} [opciones]
+ * @param {boolean} [opciones.conError]  Con `true`, un error HTTP vuelve como
+ *   { ok:false, error, status } en vez de `null`, para poder decirle al usuario
+ *   QUÉ falló. Es opt-in a propósito: hay ~120 llamadas que distinguen éxito de
+ *   fracaso por `null`, y cambiarlo para todas de golpe rompería esos guardias.
+ */
+async function apiFetch(path, method = 'GET', body, opciones = {}) {
   try {
     const opts = {
       method,
@@ -2216,9 +2317,18 @@ async function apiFetch(path, method = 'GET', body) {
       }
       return null;
     }
-    if (!res.ok) return null;
+    if (!res.ok) {
+      if (!opciones.conError) return null;
+      // Con conError: devolvemos el motivo real del servidor para poder
+      // mostrarlo. Sin esto el botón se queda mudo y parece roto.
+      const err = await res.json().catch(() => ({}));
+      return { ok: false, error: err.error || `Error ${res.status}`, status: res.status };
+    }
     return await res.json();
-  } catch { return null; }
+  } catch (e) {
+    if (opciones.conError) return { ok: false, error: 'Sin conexión con el servidor', status: 0 };
+    return null;
+  }
 }
 
 function escHtml(str) {

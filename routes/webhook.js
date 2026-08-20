@@ -11,6 +11,8 @@ const { selectAgent, servesChannel } = require('../services/agents');
 const { canSendAuto } = require('../config/agentRoles');
 const { knowledgeForAgent } = require('../services/agents/knowledge');
 const { checkDMAllowance, incrementDMCount } = require('../services/limits');
+// Pausa por canal: el dueño apagó ese canal desde Ajustes sin borrar credenciales.
+const { estaPausado } = require('../services/channels/core');
 const { v4: uuidv4 } = require('uuid');
 
 // ── Bitácora en memoria de los últimos webhooks ─────────────────────────────
@@ -315,6 +317,14 @@ async function handleDM(pageId, event) {
     return;
   }
 
+  // Canal pausado desde Ajustes: el mensaje se recibe pero el agente no atiende.
+  // Las credenciales siguen guardadas — reanudar es un clic.
+  if (estaPausado(account, 'instagram')) {
+    console.log(`⏸️ IG pausado por el dueño — no se responde a ${pageId}`);
+    anotar({ canal: 'instagram', resultado: 'PAUSADO', detalle: 'el dueño pausó Instagram en Ajustes' });
+    return;
+  }
+
   // Si la cuenta necesita reconexión (token caducado e irrenovable), no generar
   // respuesta — al cliente ya le mandamos email needsReauth desde metaRefresh.
   // Generar reply quemaría OpenAI credits que no se pueden enviar.
@@ -402,6 +412,10 @@ async function handleComment(pageId, commentData) {
   if (!account) return;
   if (account.needs_reauth) {
     console.log(`🔌 Comment ignorado (account needs_reauth) para @${account.ig_username || pageId}`);
+    return;
+  }
+  if (estaPausado(account, 'instagram')) {
+    console.log(`⏸️ Comment ignorado (IG pausado por el dueño) para @${account.ig_username || pageId}`);
     return;
   }
 
@@ -627,6 +641,12 @@ async function handleWhatsAppMessage(phoneNumberId, msg, value) {
     return;
   }
 
+  // Canal pausado desde Ajustes: se recibe, no se responde, no se pierde nada.
+  if (estaPausado(account, 'whatsapp')) {
+    console.log(`⏸️ WSP pausado por el dueño — no se responde a phone ${phoneNumberId}`);
+    return;
+  }
+
   // ── Media entrante → texto para el pipeline ──────────────────────────────
   // Audio: transcripción Whisper; el flag wasAudio hace que la respuesta
   // salga también como nota de voz (espejo del lead).
@@ -748,6 +768,12 @@ async function handleMessengerMessage(pageId, event) {
   // Messenger usa el Page Access Token (fb_page_token), independiente de IG/WSP.
   if (!account.fb_page_token) {
     console.log(`🔌 FB ignorado (sin fb_page_token) para page ${pageId}`);
+    return;
+  }
+
+  // Canal pausado desde Ajustes.
+  if (estaPausado(account, 'messenger')) {
+    console.log(`⏸️ FB pausado por el dueño — no se responde a page ${pageId}`);
     return;
   }
 
