@@ -461,6 +461,77 @@ router.delete('/messenger', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// ── ELIMINAR MI CUENTA Y TODOS MIS DATOS ────────────────────────────────────
+// POST /api/settings/eliminar-cuenta   body: { confirm: "ELIMINAR MIS DATOS" }
+//
+// La página pública /data-deletion ya prometía esto ("También puedes pedirlo
+// desde el panel: Ajustes → Eliminar cuenta") pero el botón no existía: la
+// única cascada estaba detrás de requireAdmin. Meta revisa esa página en el
+// App Review, y la Ley 21.719 exige que el titular pueda ejercer la supresión
+// sin depender de que alguien le conteste un correo.
+//
+// Solo puede borrar SU propia cuenta: el accountId sale del JWT, no del body.
+const FRASE_CONFIRMACION = 'ELIMINAR MIS DATOS';
+
+router.post('/eliminar-cuenta', async (req, res, next) => {
+  try {
+    const { confirm } = req.body || {};
+    if (String(confirm || '').trim().toUpperCase() !== FRASE_CONFIRMACION) {
+      return res.status(400).json({ error: `Para confirmar, escribe exactamente: ${FRASE_CONFIRMACION}` });
+    }
+
+    const { userId, accountId, email, name, role } = req.user || {};
+    if (!accountId || !userId) return res.status(400).json({ error: 'Tu sesión no tiene una cuenta asociada.' });
+
+    // El admin es la cuenta de operación del servicio: si se borra a sí mismo
+    // nadie puede volver a entrar al panel de administración.
+    if (role === 'admin') {
+      return res.status(403).json({ error: 'La cuenta de administrador no se elimina desde acá. Escribe a soporte@atinov.com.' });
+    }
+
+    // El rastro va ANTES: auditLog sobrevive a la supresión justamente para
+    // poder demostrar que ocurrió, y después de borrar ya no hay de dónde
+    // sacar el email ni la cuenta.
+    try {
+      await db.insert(db.auditLog, {
+        adminId: userId, adminEmail: email || null,
+        action: 'cuenta.autosupresion', target: accountId,
+        detail: { nombre: name || null, via: 'panel' },
+        ip: (req.headers['x-forwarded-for'] || req.ip || '').toString().split(',')[0].trim(),
+        userAgent: (req.headers['user-agent'] || '').slice(0, 200),
+      });
+    } catch (e) { console.warn('[eliminar-cuenta] audit skip:', e.message); }
+
+    // El aviso también sale ANTES de borrar: así el registro que deja en
+    // emailLog (que incluye la dirección, o sea dato personal) se va con la
+    // misma cascada, en vez de quedar como resto de una cuenta ya eliminada.
+    if (email) {
+      try {
+        const { sendEmail } = require('../services/email');
+        await sendEmail({
+          to: email,
+          subject: 'Tus datos de Atinov fueron eliminados',
+          userId,
+          tag: 'account_deleted',
+          html: `<div style="font-family:system-ui,-apple-system,sans-serif;max-width:560px;margin:auto;padding:24px">
+            <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:32px">
+              <h1 style="font-size:20px;margin:0 0 12px">Listo: tus datos fueron eliminados</h1>
+              <p style="color:#475569;line-height:1.6">Ejecutamos la eliminación que pediste desde el panel. Se borraron tus conversaciones, tus prospectos, tu configuración de agentes, tu base de conocimiento y los accesos a Instagram, WhatsApp y Messenger.</p>
+              <p style="color:#475569;line-height:1.6">Conservamos únicamente los registros de facturación que exige la ley tributaria chilena, sin contenido de conversaciones, y el registro administrativo de esta misma eliminación.</p>
+              <p style="color:#475569;line-height:1.6">Las copias de seguridad se purgan en un máximo de 90 días.</p>
+              <p style="color:#94a3b8;font-size:13px;margin-top:20px">Si no fuiste tú, escríbenos a soporte@atinov.com de inmediato.</p>
+            </div></div>`,
+        });
+      } catch (e) { console.warn('[eliminar-cuenta] email skip:', e.message); }
+    }
+
+    const { suprimirCuenta } = require('../services/supresion');
+    const r = await suprimirCuenta({ accountId, userId, borrarUsuario: true });
+
+    res.json({ ok: true, total: r.total, detalle: r.detalle, conservado: r.conservado });
+  } catch (e) { next(e); }
+});
+
 // ── ONBOARDING STATUS ───────────────────────────────────────────────────────
 // Devuelve el estado real del onboarding del usuario (qué pasos completó y cuál sigue).
 // Se usa para renderizar el checklist dinámico del home del dashboard.

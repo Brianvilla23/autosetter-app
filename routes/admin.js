@@ -202,24 +202,16 @@ router.delete('/users/:id', async (req, res) => {
     // Cascada completa de la cuenta (Ley 21.719): eliminar el usuario no puede
     // dejar leads, conversaciones ni colas huérfanas con datos personales.
     // billableEvents y auditLog se CONSERVAN (retención contable/administrativa).
+    //
+    // La cascada vive en services/supresion.js, compartida con el borrado
+    // autoservicio del dueño (Ajustes → Eliminar mi cuenta). Estaba escrita a
+    // mano acá y le faltaban colecciones con dato personal —knowledgeSources,
+    // leadMagnets, magnetDeliveries, linkClicks, postRules, improvements,
+    // aiUsage, emailLog—; en un solo lugar los dos caminos no pueden divergir.
     const accId = user.account_id;
     if (accId) {
-      const leads = await db.find(db.leads, { account_id: accId });
-      const leadIds = leads.map(l => l._id);
-      if (leadIds.length) await db.remove(db.messages, { lead_id: { $in: leadIds } });
-      await db.remove(db.followups,    { account_id: accId });
-      await db.remove(db.pendingSends, { accountId: accId });
-      await db.remove(db.failedSends,  { accountId: accId });
-      await db.remove(db.llamadas,     { account_id: accId });
-      await db.remove(db.leads,        { account_id: accId });
-      await db.remove(db.agents,       { account_id: accId });
-      await db.remove(db.knowledge,    { account_id: accId });
-      await db.remove(db.links,        { account_id: accId });
-      await db.remove(db.bypassed,     { account_id: accId });
-      await db.remove(db.settings,     { account_id: accId });
-      await db.remove(db.magnetLinks,  { account_id: accId });
-      await db.remove(db.quickReplies, { account_id: accId });
-      await db.remove(db.accounts,     { _id: accId });
+      const { suprimirCuenta } = require('../services/supresion');
+      await suprimirCuenta({ accountId: accId, userId: id, borrarUsuario: false });
     }
 
     await db.remove(db.users, { _id: id });

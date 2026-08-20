@@ -1688,6 +1688,32 @@
           <span id="notif-save-result" style="margin-left:10px;font-size:12px"></span>
         </div>
       </div>
+
+      <!-- ZONA DE PELIGRO — supresión de datos (Ley 21.719 + Meta data deletion).
+           La página pública /data-deletion promete este botón: "También puedes
+           pedirlo desde el panel: Ajustes → Eliminar cuenta". -->
+      <div class="settings-card" style="grid-column:1/-1;border-color:#ef4444">
+        <h3 style="color:#ef4444">Eliminar mi cuenta y todos mis datos</h3>
+        <p>Borra de forma permanente tus conversaciones, prospectos, agentes, base de conocimiento y los accesos a Instagram, WhatsApp y Messenger. <strong>No se puede deshacer.</strong></p>
+
+        <div class="box" style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.25);border-radius:10px;padding:14px 16px;margin:14px 0">
+          <div style="font-size:13px;line-height:1.8">
+            <strong>Se elimina:</strong> conversaciones y mensajes · prospectos, notas y estados del CRM · agentes y base de conocimiento · lead magnets y sus entregas · llamadas y transcripciones · reglas por publicación · tus tokens de Meta · tu usuario y tu cuenta.<br>
+            <strong>Se conserva:</strong> los registros de facturación que exige la ley tributaria chilena (sin contenido de conversaciones) y el registro administrativo de esta eliminación.
+          </div>
+        </div>
+
+        <p style="font-size:13px;color:var(--text-2);margin-bottom:8px">
+          Si solo quieres que el agente deje de responder un rato, <strong>no uses esto</strong>: pausa el canal en la tarjeta que corresponda, más arriba.
+        </p>
+
+        <div class="form-row" style="max-width:420px">
+          <label>Para confirmar, escribe <code>ELIMINAR MIS DATOS</code></label>
+          <input type="text" id="borrar-confirm" class="form-input" placeholder="ELIMINAR MIS DATOS" autocomplete="off">
+        </div>
+        <button class="btn-secondary" id="btn-eliminar-cuenta" style="background:#ef4444;border-color:#ef4444;color:#fff">Eliminar mi cuenta definitivamente</button>
+        <div id="borrar-resultado" style="font-size:13px;margin-top:12px"></div>
+      </div>
     </div>
   </section>
 

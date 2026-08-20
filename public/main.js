@@ -1888,6 +1888,8 @@ async function loadSettings() {
     showToast('Messenger desconectado');
   });
 
+  wireEliminarCuenta();
+
   // ── Shopify (confirmación de pedidos) ─────────────────────────────────────
   // El estado viene del flag de settings (el secret nunca llega al frontend).
   const shopConn = !!data.settings?.has_shopify;
@@ -2277,6 +2279,48 @@ async function alternarPausaCanal(canal, pausadoAhora) {
   showToast(nuevo
     ? `⏸ ${cfg.label} en pausa — tus credenciales quedan guardadas`
     : `▶ ${cfg.label} reanudado — el agente vuelve a responder`);
+}
+
+// ── ELIMINAR MI CUENTA (supresión Ley 21.719 / data deletion de Meta) ─────────
+// onclick por asignación, no addEventListener: loadSettings() corre en cada
+// visita a Ajustes y con addEventListener el handler se acumularía.
+const FRASE_BORRADO = 'ELIMINAR MIS DATOS';
+
+function wireEliminarCuenta() {
+  const btn = document.getElementById('btn-eliminar-cuenta');
+  if (!btn) return;
+
+  btn.onclick = async () => {
+    const input = document.getElementById('borrar-confirm');
+    const out   = document.getElementById('borrar-resultado');
+    const frase = (input?.value || '').trim().toUpperCase();
+
+    if (frase !== FRASE_BORRADO) {
+      if (out) { out.style.color = '#ef4444'; out.textContent = `Escribe exactamente "${FRASE_BORRADO}" para confirmar.`; }
+      input?.focus();
+      return;
+    }
+    // Segunda barrera: la frase se puede escribir por inercia.
+    if (!confirm('Última confirmación.\n\nSe borran tus conversaciones, prospectos, agentes, base de conocimiento y accesos a Meta.\n\nEsto NO se puede deshacer. ¿Seguimos?')) return;
+
+    btn.disabled = true;
+    if (out) { out.style.color = 'var(--text-2)'; out.textContent = 'Eliminando…'; }
+
+    const r = await apiFetch('/api/settings/eliminar-cuenta', 'POST', { confirm: frase }, { conError: true });
+
+    if (!r?.ok) {
+      btn.disabled = false;
+      if (out) { out.style.color = '#ef4444'; out.textContent = `No se pudo eliminar: ${r?.error || 'error del servidor'}`; }
+      return;
+    }
+
+    if (out) {
+      out.style.color = 'var(--text-2)';
+      out.textContent = `Listo: ${r.total} registros eliminados. Te enviamos la confirmación por correo. Cerrando sesión…`;
+    }
+    // La cuenta ya no existe: cualquier llamada siguiente daría 401. Salimos.
+    setTimeout(() => logout(), 2500);
+  };
 }
 
 // ── UTILS ─────────────────────────────────────────────────────────────────────
