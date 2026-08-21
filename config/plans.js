@@ -38,6 +38,43 @@ const PLANS = {
       prioritySupport:  false,
     },
   },
+  // ── EL PLAN QUE SE VENDE HOY ──────────────────────────────────────────────
+  // Founder es el único plan comercial vigente: $148 USD / $135.000 CLP, 20
+  // cupos con precio congelado. Lo que trae acá es exactamente lo que promete
+  // la landing y lo que el agente dice en services/atinovPreset.js.
+  //
+  // Faltaba en esta lista, y eso NO era teórico: la migración post-Lemon
+  // Squeezy de db/database.js ya dejó cuentas reales con
+  // membershipPlan='founder' desde el 2026-05-03. Como getPlanFor() hace
+  // `PLANS[key] || PLANS.trial`, esas cuentas caían a TRIAL — 200 DMs, sin
+  // calificación, sin follow-ups, sin lead magnets. Es decir: el plan que se
+  // cobra entregaba los límites del plan gratis.
+  //
+  // starter/pro/agency de más abajo son LEGACY: no se venden desde el rebrand
+  // (2026-05-09). Se dejan para no romper cuentas viejas que aún los tengan.
+  founder: {
+    id:          'founder',
+    name:        'Founder',
+    price:       148,           // USD/mes — precio fundador, congelado de por vida
+    priceCLP:    135000,        // debe calzar con MP_PRICE_FOUNDER_CLP (routes/billing.js)
+    maxAccounts: 3,
+    maxAgents:   5,
+    maxDMs:      6000,          // "6.000 conversaciones/mes" de la landing
+    maxMagnets:  10,
+    overagePerDM: 0.025,        // sobre el tope se cobra, no se corta la atención
+    features: {
+      followups:        true,
+      leadMagnets:      true,
+      qualification:    true,
+      webhook:          true,
+      inboxTakeControl: true,
+      multiAccount:     true,
+      whiteLabel:       false,  // el white-label es del plan de agencias
+      multiUser:        true,
+      apiAccess:        true,
+      prioritySupport:  true,   // "contacto directo con el fundador" es parte de la oferta
+    },
+  },
   starter: {
     id:          'starter',
     name:        'Starter',

@@ -452,8 +452,17 @@ app.post('/api/billing/mp-webhook', webhookLimiter, async (req, res) => {
     const subscriptionId = data.preapproval_id || data.id;
     const userId         = data.external_reference;
     const status         = data.status; // 'authorized', 'pending', 'paused', 'cancelled'
+    // El plan se deduce del `reason` del preapproval de MP (el nombre que se le
+    // puso al plan al crearlo). 'founder' va PRIMERO por dos motivos: es el
+    // único que se vende hoy, y 'pro' es substring de varias cosas — un reason
+    // como "Atinov Founder Pro" caería en 'pro' si el orden fuera al revés.
+    //
+    // Faltaba 'founder' acá: planGuess quedaba null, la línea de abajo nunca
+    // asignaba membershipPlan, y el cliente que acababa de pagar se quedaba con
+    // el plan que tuviera antes (trial). Cobrar y no entregar.
     const planReason     = (data.reason || '').toLowerCase();
-    const planGuess      = planReason.includes('starter') ? 'starter'
+    const planGuess      = planReason.includes('founder') ? 'founder'
+                         : planReason.includes('starter') ? 'starter'
                          : planReason.includes('agency')  ? 'agency'
                          : planReason.includes('pro')     ? 'pro'
                          : null;
