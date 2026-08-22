@@ -461,10 +461,13 @@ app.post('/api/billing/mp-webhook', webhookLimiter, async (req, res) => {
     // asignaba membershipPlan, y el cliente que acababa de pagar se quedaba con
     // el plan que tuviera antes (trial). Cobrar y no entregar.
     const planReason     = (data.reason || '').toLowerCase();
-    const planGuess      = planReason.includes('founder') ? 'founder'
-                         : planReason.includes('starter') ? 'starter'
-                         : planReason.includes('agency')  ? 'agency'
-                         : planReason.includes('pro')     ? 'pro'
+    const planGuess      = planReason.includes('inicial')     ? 'inicial'
+                         : planReason.includes('crecimiento') ? 'crecimiento'
+                         : planReason.includes('escala')      ? 'escala'
+                         : planReason.includes('founder')     ? 'founder'
+                         : planReason.includes('starter')     ? 'starter'
+                         : planReason.includes('agency')      ? 'agency'
+                         : planReason.includes('pro')         ? 'pro'
                          : null;
 
     if (!userId) { res.sendStatus(200); return; }

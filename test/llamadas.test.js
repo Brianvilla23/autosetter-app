@@ -52,8 +52,13 @@ function ventanaAbiertaAhora() {
 }
 
 // Fixture mínima: cuenta + agente + lead de WhatsApp con conversación viva.
-async function armarLead({ consentHaceMin = 1 } = {}) {
+async function armarLead({ consentHaceMin = 1, plan = 'crecimiento' } = {}) {
   const accountId = 'acc-' + crypto.randomUUID();
+  // La llamada con IA va por plan: Inicial no la trae. Sin un usuario con un
+  // plan que la incluya, el candado de telefonia.js corta antes de empezar.
+  await db.insert(db.users, {
+    account_id: accountId, email: `test-${accountId}@atinov.com`, membershipPlan: plan,
+  });
   const agent = await db.insert(db.agents, {
     account_id: accountId, name: 'Vale', enabled: true, calls_enabled: true,
   });
@@ -385,4 +390,38 @@ test('resumenTranscript respeta el tope de caracteres y toma el final', () => {
   assert.ok(out.length <= 220, 'acotado');
   assert.ok(out.includes('línea 49'), 'incluye el final');
   assert.ok(!out.includes('línea 0 '), 'no arranca del principio');
+});
+
+// ── CANDADO DE PLAN ──────────────────────────────────────────────────────────
+// La llamada con IA es lo que separa Inicial de Crecimiento. Si este candado
+// se cae, el plan de entrada regala el diferenciador y la escalera pierde
+// sentido comercial — además de gastar Twilio y Realtime que nadie pagó.
+
+test('plan Inicial: el agente ni se entera de que puede llamar', async () => {
+  conCredenciales();
+  const { agent, lead, settings } = await armarLead({ plan: 'inicial' });
+  const ctx = await telefonia.buildLlamadaContext({
+    settings, agent, lead, incomingText: 'llámame por favor',
+  });
+  assert.strictEqual(ctx, null, 'sin plan con llamadas, no hay capacidad en el prompt');
+});
+
+test('plan Inicial: aunque llegue el marcador, no se programa nada', async () => {
+  conCredenciales();
+  const { agent, lead, settings } = await armarLead({ plan: 'inicial' });
+  const r = await telefonia.resolveLlamadaMarkers(
+    'Perfecto, te llamo al tiro. [LLAMAR: whatsapp | cerrar la venta]',
+    { settings, account: {}, agent, lead }
+  );
+  assert.strictEqual(r.llamadas.length, 0, 'no se programa ninguna llamada');
+  assert.ok(!/LLAMAR/.test(r.text), 'el marcador se limpia del mensaje al cliente');
+});
+
+test('plan Crecimiento: la llamada sí está disponible', async () => {
+  conCredenciales();
+  const { agent, lead, settings } = await armarLead({ plan: 'crecimiento' });
+  const ctx = await telefonia.buildLlamadaContext({
+    settings, agent, lead, incomingText: 'llámame por favor',
+  });
+  assert.ok(ctx, 'Crecimiento compró la llamada: tiene que aparecer');
 });

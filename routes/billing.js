@@ -37,22 +37,34 @@ function mpHeaders() {
   };
 }
 
+// Los tres primeros son los planes vigentes. El resto son heredados: se dejan
+// para no romper suscripciones viejas, pero no se ofrecen.
 const MP_PLANS = {
-  founder: () => process.env.MP_PLAN_FOUNDER,
-  starter: () => process.env.MP_PLAN_STARTER,
-  pro:     () => process.env.MP_PLAN_PRO,
-  agency:  () => process.env.MP_PLAN_AGENCY,
+  inicial:     () => process.env.MP_PLAN_INICIAL,
+  crecimiento: () => process.env.MP_PLAN_CRECIMIENTO,
+  escala:      () => process.env.MP_PLAN_ESCALA,
+  founder:     () => process.env.MP_PLAN_FOUNDER,
+  starter:     () => process.env.MP_PLAN_STARTER,
+  pro:         () => process.env.MP_PLAN_PRO,
+  agency:      () => process.env.MP_PLAN_AGENCY,
 };
 
-// CLP prices (configurable via env; defaults son aprox del USD equivalente)
+// Precios en CLP (configurables por env). Los defaults son el neto del USD al
+// tipo de cambio de referencia — el IVA de 19% lo agrega Mercado Pago al cobrar.
 const MP_CLP = {
-  founder: () => parseInt(process.env.MP_PRICE_FOUNDER_CLP || '135000'),  // ~$148 USD
-  starter: () => parseInt(process.env.MP_PRICE_STARTER_CLP || '180000'),
-  pro:     () => parseInt(process.env.MP_PRICE_PRO_CLP     || '270000'),
-  agency:  () => parseInt(process.env.MP_PRICE_AGENCY_CLP  || '450000'),
+  inicial:     () => parseInt(process.env.MP_PRICE_INICIAL_CLP     || '93000'),   // US$98
+  crecimiento: () => parseInt(process.env.MP_PRICE_CRECIMIENTO_CLP || '261000'),  // US$275
+  escala:      () => parseInt(process.env.MP_PRICE_ESCALA_CLP      || '473000'),  // US$498
+  founder:     () => parseInt(process.env.MP_PRICE_FOUNDER_CLP     || '135000'),  // ~US$148
+  starter:     () => parseInt(process.env.MP_PRICE_STARTER_CLP     || '180000'),
+  pro:         () => parseInt(process.env.MP_PRICE_PRO_CLP         || '270000'),
+  agency:      () => parseInt(process.env.MP_PRICE_AGENCY_CLP      || '450000'),
 };
 
-const PLAN_NAMES = { starter: 'Starter', pro: 'Pro', agency: 'Agency', founder: 'Founder' };
+const PLAN_NAMES = {
+  inicial: 'Inicial', crecimiento: 'Crecimiento', escala: 'Escala',
+  starter: 'Starter', pro: 'Pro', agency: 'Agency', founder: 'Founder',
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POLAR.SH adapter (lazy-loaded — solo se activa si POLAR_ENABLED=1)

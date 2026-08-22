@@ -27,9 +27,33 @@
 const crypto = require('crypto');
 const axios  = require('axios');
 const db     = require('../db/database');
+const { hasFeature } = require('../config/plans');
 const { normalizePhoneCL } = require('./shopify');
 
 const APP_URL = () => process.env.APP_URL || 'https://atinov.com';
+
+/**
+ * ¿El plan de esta cuenta incluye llamadas con IA?
+ *
+ * La llamada es lo que separa el plan de entrada del resto: Inicial no la
+ * trae, Crecimiento y Escala sí. El interruptor de la cuenta
+ * (settings.llamadas_enabled) sigue existiendo, pero ya no alcanza por sí
+ * solo — primero hay que haberla comprado.
+ *
+ * El plan vive en el usuario, no en la cuenta, así que hay que resolverlo.
+ * Fail-closed: ante cualquier duda NO se llama. Una llamada de más cuesta
+ * plata real y le suena el teléfono a alguien que no lo pidió.
+ */
+async function planIncluyeLlamadas(accountId) {
+  if (!accountId) return false;
+  try {
+    const user = await db.findOne(db.users, { account_id: accountId });
+    return hasFeature(user, 'llamadas');
+  } catch (e) {
+    console.error(`[telefonia] no se pudo resolver el plan de ${accountId}: ${e.message}`);
+    return false;
+  }
+}
 
 // La llamada se marca este tiempo DESPUÉS DE QUE EL AVISO SALE por el chat
 // (no después de resolver el marcador). El aviso tiene su propio delay
@@ -156,6 +180,9 @@ async function buildLlamadaContext({ settings, agent, lead, incomingText, accoun
   if (settings?.llamadas_enabled !== true) return null;
   if (agent?.calls_enabled !== true) return null;
   if (!lead?._id) return null;
+  // Candado de plan: si no la compró, el agente ni siquiera se entera de que
+  // la llamada existe — así no puede ofrecerla y quedar mal.
+  if (!await planIncluyeLlamadas(account?._id || lead.account_id)) return null;
   if (!dentroDeHorario(settings)) return null;
 
   const esCaliente = lead.qualification === 'hot';
@@ -258,6 +285,12 @@ async function prepararLlamada({ settings, account, agent, lead, telefonoPedido,
   if (!telefoniaHabilitada())            throw new SinLlamada('Twilio no está configurado');
   if (settings?.llamadas_enabled !== true) throw new SinLlamada('las llamadas están apagadas en la cuenta');
   if (agent?.calls_enabled !== true)     throw new SinLlamada('las llamadas están apagadas en este agente');
+  // Segundo control del plan, en el punto donde se gasta la plata. El de
+  // buildLlamadaContext evita que el agente la ofrezca; este evita que se
+  // ejecute igual si el marcador llegó por cualquier otro camino.
+  if (!await planIncluyeLlamadas(account?._id || lead?.account_id)) {
+    throw new SinLlamada('el plan de la cuenta no incluye llamadas con IA');
+  }
 
   // Candado 4: horario.
   if (!dentroDeHorario(settings)) throw new SinLlamada('fuera del horario permitido de llamadas', true);

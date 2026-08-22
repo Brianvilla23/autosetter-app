@@ -61,7 +61,9 @@ test('founder cobra overage en vez de cortar la atención', () => {
   const o = calculateOverage(u, 6500);
   assert.ok(o, 'founder permite overage: pasarse no puede dejar al negocio mudo');
   assert.strictEqual(o.extraDMs, 500);
-  assert.strictEqual(o.perDM, 0.025);
+  // 0,50 y no 0,025: desde el 1-oct-2026 una conversación de WhatsApp cuesta
+  // ~US$0,27, así que el overage viejo se vendía por debajo del costo.
+  assert.strictEqual(o.perDM, 0.50);
 });
 
 test('lo que ya funcionaba sigue funcionando', () => {
