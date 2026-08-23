@@ -15,15 +15,16 @@ const assert = require('node:assert');
 const {
   PLANS, getPlanFor, hasFeature, calculateOverage, cuotaWhatsApp, costoPlan,
   COSTO_CONV_WHATSAPP, COSTO_CONV_META, COSTO_MINUTO_LLAMADA, PRECIO_MINUTO_EXTRA,
+  precioAMedida, PISO_A_MEDIDA,
 } = require('../config/plans');
 
 const VIGENTES = ['inicial', 'crecimiento', 'escala'];
 
 test('los tres planes vigentes existen con su precio y su cuota', () => {
   const esperado = {
-    inicial:     { price: 98,  maxDMs: 1800,  maxDMsWhatsApp: 90,  minutosLlamada: 0 },
-    crecimiento: { price: 275, maxDMs: 7000,  maxDMsWhatsApp: 250, minutosLlamada: 200 },
-    escala:      { price: 498, maxDMs: 20000, maxDMsWhatsApp: 460, minutosLlamada: 500 },
+    inicial:     { price: 98,  maxDMs: 1700, maxDMsWhatsApp: 90,  minutosLlamada: 0 },
+    crecimiento: { price: 275, maxDMs: 2900, maxDMsWhatsApp: 200, minutosLlamada: 150 },
+    escala:      { price: 498, maxDMs: 3800, maxDMsWhatsApp: 300, minutosLlamada: 400 },
   };
   for (const [id, e] of Object.entries(esperado)) {
     const p = PLANS[id];
@@ -77,12 +78,12 @@ test('la cuota de WhatsApp es siempre menor que el total', () => {
 test('cuotaWhatsApp cuenta bien lo usado, lo que queda y el excedente', () => {
   const u = { membershipPlan: 'crecimiento' };
   const sinUsar = cuotaWhatsApp(u, 0);
-  assert.strictEqual(sinUsar.tope, 250);
-  assert.strictEqual(sinUsar.restantes, 250);
+  assert.strictEqual(sinUsar.tope, 200);
+  assert.strictEqual(sinUsar.restantes, 200);
   assert.strictEqual(sinUsar.excedidas, 0);
   assert.strictEqual(sinUsar.costoExtraUSD, 0);
 
-  const pasado = cuotaWhatsApp(u, 300);
+  const pasado = cuotaWhatsApp(u, 250);
   assert.strictEqual(pasado.excedidas, 50);
   assert.strictEqual(pasado.restantes, 0);
   assert.strictEqual(pasado.costoExtraUSD, 25, '50 conversaciones x US$0,50');
@@ -142,5 +143,75 @@ test('los planes heredados siguen resolviendo y no se rompen', () => {
     assert.strictEqual(getPlanFor({ membershipPlan: id }).id, id,
       `${id} debe seguir resolviendo: hay cuentas que lo tienen`);
   }
-  assert.strictEqual(calculateOverage({ membershipPlan: 'inicial' }, 2000).extraDMs, 200);
+  assert.strictEqual(calculateOverage({ membershipPlan: 'inicial' }, 2000).extraDMs, 300);
+});
+
+// ── PROPORCIONALIDAD ─────────────────────────────────────────────────────────
+// El problema que originó este rediseño: la escalera vieja daba 54% / 34% / 13%.
+// A mayor cliente, el negocio ganaba proporcionalmente MENOS. Estos tests
+// impiden que vuelva a pasar.
+
+test('el margen SUBE con cada tramo, no baja', () => {
+  const m = VIGENTES.map(id => costoPlan(id).margenPct);
+  for (let i = 1; i < m.length; i++) {
+    assert.ok(m[i] > m[i - 1],
+      `el tramo ${VIGENTES[i]} (${m[i]}%) tiene que dar más margen que ${VIGENTES[i - 1]} (${m[i - 1]}%)`);
+  }
+  assert.ok(m[0] >= 55, `Inicial debe partir en 55% o más, está en ${m[0]}%`);
+  assert.ok(m[m.length - 1] >= 65, `Escala debe llegar a 65%, está en ${m[m.length - 1]}%`);
+});
+
+test('la ganancia en PLATA también sube con cada tramo', () => {
+  // No basta el porcentaje: un cliente más grande tiene que dejar más pesos.
+  const g = VIGENTES.map(id => costoPlan(id).margen);
+  for (let i = 1; i < g.length; i++) {
+    assert.ok(g[i] > g[i - 1], `${VIGENTES[i]} debe dejar más plata que ${VIGENTES[i - 1]}`);
+  }
+});
+
+test('el plan a medida cotiza con el mismo margen que Escala', () => {
+  const r = precioAMedida({ conversaciones: 20000, whatsapp: 1000, minutos: 1000 });
+  assert.ok(r.margenPct >= 64.9, `debe respetar el 65%, dio ${r.margenPct}%`);
+  assert.ok(r.precio > PLANS.escala.price, 'a medida nunca puede salir más barato que Escala');
+  assert.ok(r.costo > 0);
+});
+
+test('el plan a medida tiene piso y no compite con Escala', () => {
+  const chico = precioAMedida({ conversaciones: 100, whatsapp: 10, minutos: 0 });
+  assert.strictEqual(chico.precio, PISO_A_MEDIDA, 'bajo el piso, se cobra el piso');
+  assert.ok(chico.piso, 'y queda marcado que se aplicó');
+  assert.ok(chico.precio > PLANS.escala.price, 'el piso está sobre Escala');
+});
+
+test('a medida sin cotización cargada NO regala capacidad', () => {
+  // Fail-closed: cotizar de más se arregla hablando; regalar capacidad es
+  // pérdida directa. Sin cuotas guardadas, se cae a las de Escala.
+  const sinCargar = getPlanFor({ membershipPlan: 'medida' });
+  assert.strictEqual(sinCargar.maxDMs, PLANS.escala.maxDMs);
+  assert.strictEqual(sinCargar.maxDMsWhatsApp, PLANS.escala.maxDMsWhatsApp);
+
+  const cargado = getPlanFor({
+    membershipPlan: 'medida',
+    custom_maxDMs: 20000, custom_maxDMsWhatsApp: 1000, custom_price: 1777,
+  });
+  assert.strictEqual(cargado.maxDMs, 20000);
+  assert.strictEqual(cargado.maxDMsWhatsApp, 1000);
+  assert.strictEqual(cargado.price, 1777);
+});
+
+test('valores basura en la cotización no bajan los límites', () => {
+  const p = getPlanFor({
+    membershipPlan: 'medida',
+    custom_maxDMs: 0, custom_maxDMsWhatsApp: -5, custom_price: 'gratis',
+  });
+  assert.strictEqual(p.maxDMs, PLANS.escala.maxDMs, 'un 0 no puede dejar la cuenta sin cuota');
+  assert.strictEqual(p.maxDMsWhatsApp, PLANS.escala.maxDMsWhatsApp);
+  assert.strictEqual(p.price, null, 'un precio inválido se ignora');
+});
+
+test('a medida incluye llamadas y todo lo de arriba', () => {
+  const u = { membershipPlan: 'medida' };
+  for (const f of ['llamadas', 'whiteLabel', 'apiAccess', 'multiAccount', 'prioritySupport']) {
+    assert.strictEqual(hasFeature(u, f), true, `a medida debe incluir ${f}`);
+  }
 });

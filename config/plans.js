@@ -90,8 +90,8 @@ const PLANS = {
     priceCLP:    93000,
     maxAccounts: 1,
     maxAgents:   2,
-    maxDMs:      1800,          // total, todos los canales
-    maxDMsWhatsApp: 90,         // ~25% del precio en fees de Meta
+    maxDMs:      1700,          // total, todos los canales
+    maxDMsWhatsApp: 90,         // dimensionada para 55% de margen a uso pleno
     minutosLlamada: 0,          // sin llamadas: es la razón para subir
     maxMagnets:  3,
     overagePerDM: 0.50,         // cuesta 0,27 → 46% de margen
@@ -117,9 +117,9 @@ const PLANS = {
     priceCLP:    261000,
     maxAccounts: 3,
     maxAgents:   5,
-    maxDMs:      7000,
-    maxDMsWhatsApp: 250,
-    minutosLlamada: 200,        // ~50 llamadas de 4 min; cuesta US$23 = 8% del plan
+    maxDMs:      2900,
+    maxDMsWhatsApp: 200,
+    minutosLlamada: 150,        // ~37 llamadas de 4 min
     maxMagnets:  10,
     overagePerDM: 0.50,
     features: {
@@ -144,9 +144,9 @@ const PLANS = {
     priceCLP:    473000,
     maxAccounts: 10,
     maxAgents:   10,
-    maxDMs:      20000,
-    maxDMsWhatsApp: 460,
-    minutosLlamada: 500,        // ~125 llamadas; cuesta US$57 = 12% del plan
+    maxDMs:      3800,
+    maxDMsWhatsApp: 300,
+    minutosLlamada: 400,        // ~100 llamadas
     maxMagnets:  30,
     overagePerDM: 0.50,
     features: {
@@ -163,6 +163,42 @@ const PLANS = {
       llamadas:         true,
     },
   },
+
+  // ── PLAN A MEDIDA ─────────────────────────────────────────────────────────
+  // Para el cliente que se sale de Escala. No tiene cuotas fijas: se cotizan
+  // con precioAMedida() y se guardan en el propio usuario (custom_maxDMs,
+  // custom_maxDMsWhatsApp, custom_minutosLlamada), que getPlanFor() superpone.
+  //
+  // Sin cuotas guardadas cae a los límites de Escala — nunca a algo mayor de
+  // lo que se cobró. Fail-closed: cotizar de más es un problema comercial,
+  // regalar capacidad es una pérdida.
+  medida: {
+    id:          'medida',
+    name:        'A medida',
+    price:       null,          // se fija por cliente al cotizar
+    priceCLP:    null,
+    maxAccounts: 25,
+    maxAgents:   25,
+    maxDMs:      3800,          // piso = Escala, hasta que se cargue la cotización
+    maxDMsWhatsApp: 300,
+    minutosLlamada: 400,
+    maxMagnets:  50,
+    overagePerDM: 0.50,
+    features: {
+      followups:        true,
+      leadMagnets:      true,
+      qualification:    true,
+      webhook:          true,
+      inboxTakeControl: true,
+      multiAccount:     true,
+      whiteLabel:       true,
+      multiUser:        true,
+      apiAccess:        true,
+      prioritySupport:  true,
+      llamadas:         true,
+    },
+  },
+
   // ── PLANES HEREDADOS — NO SE VENDEN ───────────────────────────────────────
   // Founder (US$148) fue el plan único hasta que se armó la escalera de tres
   // tramos. Nunca llegó a cobrarse: no hubo procesador de pagos conectado, así
@@ -326,6 +362,24 @@ function getPlanFor(user) {
   else {
     const key = (user.membershipPlan || 'trial').toLowerCase();
     plan = PLANS[key] || PLANS.trial;
+    // El plan a medida no tiene cuotas propias: son las que se cotizaron y se
+    // guardaron en el usuario. Sin ellas queda con las de Escala, nunca más.
+    if (plan.id === 'medida') {
+      const sobre = {};
+      for (const [campo, guardado] of [
+        ['maxDMs', 'custom_maxDMs'],
+        ['maxDMsWhatsApp', 'custom_maxDMsWhatsApp'],
+        ['minutosLlamada', 'custom_minutosLlamada'],
+        ['maxAgents', 'custom_maxAgents'],
+        ['maxAccounts', 'custom_maxAccounts'],
+      ]) {
+        const v = Number(user[guardado]);
+        if (Number.isFinite(v) && v > 0) sobre[campo] = v;
+      }
+      const precio = Number(user.custom_price);
+      if (Number.isFinite(precio) && precio > 0) sobre.price = precio;
+      plan = { ...plan, ...sobre };
+    }
   }
   // Backward compat: plan.followups / plan.webhook como flags top-level
   return {
@@ -421,10 +475,49 @@ function cuotaWhatsApp(user, usadasWhatsApp = 0) {
   };
 }
 
+/** Margen objetivo del tramo más alto; el plan a medida lo respeta. */
+const MARGEN_A_MEDIDA = 0.65;
+
+/** Piso del plan a medida: por debajo, el cliente debería ir a Escala. */
+const PISO_A_MEDIDA = 698;
+
+/**
+ * Cotiza un plan a medida a partir de lo que el cliente pide.
+ *
+ * No es una opinión: toma el costo real de servir esa capacidad y le aplica el
+ * mismo margen que Escala. Así el tramo de arriba nunca sale más barato en
+ * proporción que el de abajo — que era justamente el problema de la escalera
+ * anterior, donde a mayor cliente el negocio ganaba proporcionalmente menos.
+ *
+ * @param {{conversaciones:number, whatsapp:number, minutos:number}} pedido
+ * @returns {{costo:number, precio:number, margen:number, margenPct:number, piso:boolean}}
+ */
+function precioAMedida({ conversaciones = 0, whatsapp = 0, minutos = 0 } = {}) {
+  const conv = Math.max(0, Number(conversaciones) || 0);
+  const wa   = Math.min(Math.max(0, Number(whatsapp) || 0), conv);
+  const min  = Math.max(0, Number(minutos) || 0);
+
+  const costo = wa * COSTO_CONV_WHATSAPP
+              + (conv - wa) * COSTO_CONV_META
+              + min * COSTO_MINUTO_LLAMADA
+              + (min > 0 ? COSTOS.numeroMes : 0);
+
+  const calculado = costo / (1 - MARGEN_A_MEDIDA);
+  const precio    = Math.max(PISO_A_MEDIDA, Math.ceil(calculado));
+
+  return {
+    costo:     +costo.toFixed(2),
+    precio,
+    margen:    +(precio - costo).toFixed(2),
+    margenPct: +(((precio - costo) / precio) * 100).toFixed(1),
+    piso:      calculado < PISO_A_MEDIDA,
+  };
+}
+
 module.exports = {
   PLANS, getPlanFor, hasFeature, calculateOverage, cuotaWhatsApp, costoPlan,
   COSTOS, COSTO_CONV_WHATSAPP, COSTO_CONV_META, COSTO_MINUTO_LLAMADA,
-  PRECIO_MINUTO_EXTRA,
+  PRECIO_MINUTO_EXTRA, precioAMedida, MARGEN_A_MEDIDA, PISO_A_MEDIDA,
   UNLIMITED: Infinity,
 };
 

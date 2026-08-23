@@ -43,6 +43,7 @@ const MP_PLANS = {
   inicial:     () => process.env.MP_PLAN_INICIAL,
   crecimiento: () => process.env.MP_PLAN_CRECIMIENTO,
   escala:      () => process.env.MP_PLAN_ESCALA,
+  medida:      () => process.env.MP_PLAN_MEDIDA,
   founder:     () => process.env.MP_PLAN_FOUNDER,
   starter:     () => process.env.MP_PLAN_STARTER,
   pro:         () => process.env.MP_PLAN_PRO,
@@ -55,6 +56,7 @@ const MP_CLP = {
   inicial:     () => parseInt(process.env.MP_PRICE_INICIAL_CLP     || '93000'),   // US$98
   crecimiento: () => parseInt(process.env.MP_PRICE_CRECIMIENTO_CLP || '261000'),  // US$275
   escala:      () => parseInt(process.env.MP_PRICE_ESCALA_CLP      || '473000'),  // US$498
+  medida:      () => parseInt(process.env.MP_PRICE_MEDIDA_CLP      || '663000'),  // piso US$698
   founder:     () => parseInt(process.env.MP_PRICE_FOUNDER_CLP     || '135000'),  // ~US$148
   starter:     () => parseInt(process.env.MP_PRICE_STARTER_CLP     || '180000'),
   pro:         () => parseInt(process.env.MP_PRICE_PRO_CLP         || '270000'),
@@ -62,7 +64,7 @@ const MP_CLP = {
 };
 
 const PLAN_NAMES = {
-  inicial: 'Inicial', crecimiento: 'Crecimiento', escala: 'Escala',
+  inicial: 'Inicial', crecimiento: 'Crecimiento', escala: 'Escala', medida: 'A medida',
   starter: 'Starter', pro: 'Pro', agency: 'Agency', founder: 'Founder',
 };
 

@@ -461,7 +461,8 @@ app.post('/api/billing/mp-webhook', webhookLimiter, async (req, res) => {
     // asignaba membershipPlan, y el cliente que acababa de pagar se quedaba con
     // el plan que tuviera antes (trial). Cobrar y no entregar.
     const planReason     = (data.reason || '').toLowerCase();
-    const planGuess      = planReason.includes('inicial')     ? 'inicial'
+    const planGuess      = planReason.includes('medida')      ? 'medida'
+                         : planReason.includes('inicial')     ? 'inicial'
                          : planReason.includes('crecimiento') ? 'crecimiento'
                          : planReason.includes('escala')      ? 'escala'
                          : planReason.includes('founder')     ? 'founder'
