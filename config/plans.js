@@ -90,7 +90,7 @@ const PLANS = {
     priceCLP:    93000,
     maxAccounts: 1,
     maxAgents:   2,
-    maxDMs:      1700,          // total, todos los canales
+    maxDMs:      1500,          // total, todos los canales
     maxDMsWhatsApp: 90,         // dimensionada para 55% de margen a uso pleno
     minutosLlamada: 0,          // sin llamadas: es la razón para subir
     maxMagnets:  3,
@@ -117,8 +117,8 @@ const PLANS = {
     priceCLP:    261000,
     maxAccounts: 3,
     maxAgents:   5,
-    maxDMs:      2900,
-    maxDMsWhatsApp: 200,
+    maxDMs:      3000,
+    maxDMsWhatsApp: 150,
     minutosLlamada: 150,        // ~37 llamadas de 4 min
     maxMagnets:  10,
     overagePerDM: 0.50,
@@ -144,8 +144,11 @@ const PLANS = {
     priceCLP:    473000,
     maxAccounts: 10,
     maxAgents:   10,
-    maxDMs:      3800,
-    maxDMsWhatsApp: 300,
+    maxDMs:      5600,
+    // 200 y no más: cada conversación de WhatsApp cuesta ~US$0,27 y con 300 se
+    // comía el presupuesto del tramo, dejando a Escala casi pegado a
+    // Crecimiento en volumen. Bajarla es lo que abre la diferencia entre ambos.
+    maxDMsWhatsApp: 200,
     minutosLlamada: 400,        // ~100 llamadas
     maxMagnets:  30,
     overagePerDM: 0.50,
@@ -179,8 +182,8 @@ const PLANS = {
     priceCLP:    null,
     maxAccounts: 25,
     maxAgents:   25,
-    maxDMs:      3800,          // piso = Escala, hasta que se cargue la cotización
-    maxDMsWhatsApp: 300,
+    maxDMs:      5600,          // piso = Escala, hasta que se cargue la cotización
+    maxDMsWhatsApp: 200,
     minutosLlamada: 400,
     maxMagnets:  50,
     overagePerDM: 0.50,

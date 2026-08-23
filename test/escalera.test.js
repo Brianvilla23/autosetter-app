@@ -22,9 +22,9 @@ const VIGENTES = ['inicial', 'crecimiento', 'escala'];
 
 test('los tres planes vigentes existen con su precio y su cuota', () => {
   const esperado = {
-    inicial:     { price: 98,  maxDMs: 1700, maxDMsWhatsApp: 90,  minutosLlamada: 0 },
-    crecimiento: { price: 275, maxDMs: 2900, maxDMsWhatsApp: 200, minutosLlamada: 150 },
-    escala:      { price: 498, maxDMs: 3800, maxDMsWhatsApp: 300, minutosLlamada: 400 },
+    inicial:     { price: 98,  maxDMs: 1500, maxDMsWhatsApp: 90,  minutosLlamada: 0 },
+    crecimiento: { price: 275, maxDMs: 3000, maxDMsWhatsApp: 150, minutosLlamada: 150 },
+    escala:      { price: 498, maxDMs: 5600, maxDMsWhatsApp: 200, minutosLlamada: 400 },
   };
   for (const [id, e] of Object.entries(esperado)) {
     const p = PLANS[id];
@@ -78,12 +78,12 @@ test('la cuota de WhatsApp es siempre menor que el total', () => {
 test('cuotaWhatsApp cuenta bien lo usado, lo que queda y el excedente', () => {
   const u = { membershipPlan: 'crecimiento' };
   const sinUsar = cuotaWhatsApp(u, 0);
-  assert.strictEqual(sinUsar.tope, 200);
-  assert.strictEqual(sinUsar.restantes, 200);
+  assert.strictEqual(sinUsar.tope, 150);
+  assert.strictEqual(sinUsar.restantes, 150);
   assert.strictEqual(sinUsar.excedidas, 0);
   assert.strictEqual(sinUsar.costoExtraUSD, 0);
 
-  const pasado = cuotaWhatsApp(u, 250);
+  const pasado = cuotaWhatsApp(u, 200);
   assert.strictEqual(pasado.excedidas, 50);
   assert.strictEqual(pasado.restantes, 0);
   assert.strictEqual(pasado.costoExtraUSD, 25, '50 conversaciones x US$0,50');
@@ -143,7 +143,7 @@ test('los planes heredados siguen resolviendo y no se rompen', () => {
     assert.strictEqual(getPlanFor({ membershipPlan: id }).id, id,
       `${id} debe seguir resolviendo: hay cuentas que lo tienen`);
   }
-  assert.strictEqual(calculateOverage({ membershipPlan: 'inicial' }, 2000).extraDMs, 300);
+  assert.strictEqual(calculateOverage({ membershipPlan: 'inicial' }, 2000).extraDMs, 500);
 });
 
 // ── PROPORCIONALIDAD ─────────────────────────────────────────────────────────
@@ -213,5 +213,17 @@ test('a medida incluye llamadas y todo lo de arriba', () => {
   const u = { membershipPlan: 'medida' };
   for (const f of ['llamadas', 'whiteLabel', 'apiAccess', 'multiAccount', 'prioritySupport']) {
     assert.strictEqual(hasFeature(u, f), true, `a medida debe incluir ${f}`);
+  }
+});
+
+test('cada tramo se distingue del anterior, no queda pegado', () => {
+  // Escala llegó a tener solo 900 conversaciones más que Crecimiento: la cuota
+  // de WhatsApp le comía el presupuesto y los dos planes se veían iguales en
+  // la tabla de precios. Un cliente no paga el doble por un 30% más.
+  const p = VIGENTES.map(id => PLANS[id]);
+  for (let i = 1; i < p.length; i++) {
+    const salto = p[i].maxDMs / p[i - 1].maxDMs;
+    assert.ok(salto >= 1.7,
+      `${p[i].id} solo da ${salto.toFixed(1)}x las conversaciones de ${p[i - 1].id}: se ven iguales`);
   }
 });
