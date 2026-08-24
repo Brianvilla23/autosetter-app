@@ -64,14 +64,27 @@ router.get('/:id', async (req, res, next) => {
 // POST create agent
 router.post('/', enforceMaxAgents, async (req, res, next) => {
   try {
-    const { accountId, name, avatar = '🤖', instructions = '', role, channels } = req.body;
+    const {
+      accountId, name, avatar = '🤖', instructions = '', role, channels,
+      objetivo, cargo, p_contexto, p_limites, p_objeciones, p_escalacion, p_ejemplos,
+    } = req.body;
     if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
     // role: 'nurture' (default, comportamiento actual) o 'prospect' (asistente humano).
     const agentRole = isValidRole(role) ? role : 'nurture';
+    // Campos del prompt estructurado (constructor guiado). Todos opcionales:
+    // un agente clásico de texto libre sigue siendo válido.
+    const { esObjetivoValido, sanearEjemplos } = require('../services/promptEstructurado');
     const agent = await db.insert(db.agents, {
       account_id: accountId, name, avatar, instructions, role: agentRole,
       enabled: true, link_ids: [],
       channels: sanitizeChannels(channels) || [],
+      objetivo:     esObjetivoValido(objetivo) ? objetivo : null,
+      cargo:        String(cargo || '').trim().slice(0, 80),
+      p_contexto:   String(p_contexto || '').trim().slice(0, 4000),
+      p_limites:    String(p_limites || '').trim().slice(0, 2000),
+      p_objeciones: String(p_objeciones || '').trim().slice(0, 2000),
+      p_escalacion: String(p_escalacion || '').trim().slice(0, 1500),
+      p_ejemplos:   sanearEjemplos(p_ejemplos),
     });
     res.json({ ...agent, id: agent._id });
   } catch (e) { next(e); }
@@ -86,8 +99,22 @@ router.put('/:id', enforceFollowupFeature, async (req, res, next) => {
       name, avatar, instructions, enabled, trigger_keywords, delay_min, delay_max,
       followup_enabled, followup_delay_hours, role, channels, comment_public_reply,
       calls_enabled,
+      objetivo, cargo, p_contexto, p_limites, p_objeciones, p_escalacion, p_ejemplos,
     } = req.body;
     const upd = { name, avatar, instructions, enabled, trigger_keywords, delay_min, delay_max };
+    // Prompt estructurado: cada campo se actualiza solo si viene en el body
+    // (undefined = no tocar), y vacío = borrar. Así el panel puede guardar
+    // una pestaña sin pisar las otras.
+    {
+      const { esObjetivoValido, sanearEjemplos } = require('../services/promptEstructurado');
+      if (objetivo !== undefined)     upd.objetivo     = esObjetivoValido(objetivo) ? objetivo : null;
+      if (cargo !== undefined)        upd.cargo        = String(cargo || '').trim().slice(0, 80);
+      if (p_contexto !== undefined)   upd.p_contexto   = String(p_contexto || '').trim().slice(0, 4000);
+      if (p_limites !== undefined)    upd.p_limites    = String(p_limites || '').trim().slice(0, 2000);
+      if (p_objeciones !== undefined) upd.p_objeciones = String(p_objeciones || '').trim().slice(0, 2000);
+      if (p_escalacion !== undefined) upd.p_escalacion = String(p_escalacion || '').trim().slice(0, 1500);
+      if (p_ejemplos !== undefined)   upd.p_ejemplos   = sanearEjemplos(p_ejemplos);
+    }
     // Respuesta pública al comentario ("te escribí al DM 📩"). Vacío = no responder.
     if (comment_public_reply !== undefined) {
       upd.comment_public_reply = String(comment_public_reply || '').trim().slice(0, 280);

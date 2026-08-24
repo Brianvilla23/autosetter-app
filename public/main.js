@@ -950,9 +950,79 @@ async function renderAgentBuilder(agentId) {
       </div>
 
       <div id="stab-instructions">
+        <!-- ── CONSTRUCTOR GUIADO ─────────────────────────────────────────
+             Preguntas con nombre en vez de un textarea vacío: la calidad del
+             agente es 90% el prompt, y esto le saca un buen prompt a un dueño
+             que no sabe escribir prompts. Los ejemplos pesan más que las
+             reglas: el modelo los imita. -->
+        <div style="margin-bottom:16px;padding:14px;background:#0f0f1a;border:1px solid #2a2a4a;border-radius:8px">
+          <label style="font-size:0.78rem;color:#a5a5c8;font-weight:600;display:block;margin-bottom:8px">
+            🎯 Objetivo del agente
+          </label>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <select id="ag-objetivo" style="flex:1;min-width:200px;background:#1a1a2e;border:1px solid #3a3a5a;color:#e0e0e0;padding:8px 10px;border-radius:6px;font-size:0.85rem">
+              <option value="">Sin objetivo específico</option>
+              <option value="calificar">Calificar leads</option>
+              <option value="agendar">Agendar citas</option>
+              <option value="vender">Cerrar ventas</option>
+              <option value="informar">Dar información</option>
+              <option value="soporte">Atención al cliente</option>
+              <option value="recolectar">Recolectar datos</option>
+            </select>
+            <input type="text" id="ag-cargo" placeholder="Cargo — ej: Asistente de ventas"
+              style="flex:1;min-width:180px;background:#1a1a2e;border:1px solid #3a3a5a;color:#e0e0e0;padding:8px 10px;border-radius:6px;font-size:0.85rem">
+          </div>
+          <small style="color:#666;font-size:0.72rem;display:block;margin-top:6px">
+            El objetivo le da <strong style="color:#a5a5c8">foco</strong> a cada conversación: qué persigue el agente en cada chat.
+          </small>
+        </div>
+
+        <div style="margin-bottom:16px;padding:14px;background:#0f0f1a;border:1px solid #2a2a4a;border-radius:8px">
+          <label style="font-size:0.78rem;color:#a5a5c8;font-weight:600;display:block;margin-bottom:6px">
+            🏪 Contexto del negocio
+          </label>
+          <textarea id="ag-p-contexto" rows="4" placeholder="¿Qué hace tu negocio? ¿Qué vende y a qué precio? ¿Qué está buscando la persona que te escribe?"
+            style="width:100%;background:#1a1a2e;border:1px solid #3a3a5a;color:#e0e0e0;padding:8px 10px;border-radius:6px;font-size:0.85rem;resize:vertical"></textarea>
+        </div>
+
+        <div style="margin-bottom:16px;padding:14px;background:#0f0f1a;border:1px solid #2a2a4a;border-radius:8px">
+          <label style="font-size:0.78rem;color:#a5a5c8;font-weight:600;display:block;margin-bottom:6px">
+            🚫 Límites — lo que NUNCA debe hacer
+          </label>
+          <textarea id="ag-p-limites" rows="3" placeholder="¿Qué no debe decir, hacer ni prometer? Ej: nunca prometer plazos de entrega, nunca dar descuentos sin autorización, nunca inventar stock."
+            style="width:100%;background:#1a1a2e;border:1px solid #3a3a5a;color:#e0e0e0;padding:8px 10px;border-radius:6px;font-size:0.85rem;resize:vertical"></textarea>
+        </div>
+
+        <div style="margin-bottom:16px;padding:14px;background:#0f0f1a;border:1px solid #2a2a4a;border-radius:8px">
+          <label style="font-size:0.78rem;color:#a5a5c8;font-weight:600;display:block;margin-bottom:6px">
+            💬 Manejo de objeciones
+          </label>
+          <textarea id="ag-p-objeciones" rows="3" placeholder='¿Cómo responde cuando le dicen "está caro", "lo voy a pensar" o "vi uno más barato"?'
+            style="width:100%;background:#1a1a2e;border:1px solid #3a3a5a;color:#e0e0e0;padding:8px 10px;border-radius:6px;font-size:0.85rem;resize:vertical"></textarea>
+        </div>
+
+        <div style="margin-bottom:16px;padding:14px;background:#0f0f1a;border:1px solid #2a2a4a;border-radius:8px">
+          <label style="font-size:0.78rem;color:#a5a5c8;font-weight:600;display:block;margin-bottom:6px">
+            🙋 Cuándo derivar a un humano
+          </label>
+          <textarea id="ag-p-escalacion" rows="2" placeholder="¿Qué situaciones debe pasar a una persona? Ej: reclamos, negociaciones sobre cierto monto, temas legales."
+            style="width:100%;background:#1a1a2e;border:1px solid #3a3a5a;color:#e0e0e0;padding:8px 10px;border-radius:6px;font-size:0.85rem;resize:vertical"></textarea>
+        </div>
+
+        <div style="margin-bottom:16px;padding:14px;background:#0f0f1a;border:1px solid #2a2a4a;border-radius:8px">
+          <label style="font-size:0.78rem;color:#a5a5c8;font-weight:600;display:block;margin-bottom:6px">
+            ⭐ Conversaciones de ejemplo
+          </label>
+          <small style="color:#666;font-size:0.72rem;display:block;margin-bottom:10px">
+            3 buenos ejemplos enseñan más que veinte reglas: el agente <strong style="color:#a5a5c8">imita el tono y el largo</strong> de lo que escribas acá.
+          </small>
+          <div id="ag-ejemplos-wrap"></div>
+          <button type="button" class="btn-ghost" id="btn-add-ejemplo" style="padding:5px 12px;font-size:12px;margin-top:4px">+ Agregar ejemplo</button>
+        </div>
+
         <div class="instructions-label">
-          <span>Agent Instructions</span>
-          <small style="color:var(--text-3)">System prompt del agente</small>
+          <span>Instrucciones adicionales</span>
+          <small style="color:var(--text-3)">Opcional — todo lo que no calce arriba</small>
         </div>
         <textarea class="instructions-area" id="agent-instructions">${escHtml(agentData.instructions)}</textarea>
 
@@ -1118,6 +1188,40 @@ async function renderAgentBuilder(agentId) {
     });
   });
 
+  // ── Constructor guiado: poblar con lo guardado + manejo de ejemplos ──────
+  {
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+    set('ag-objetivo',     agentData.objetivo);
+    set('ag-cargo',        agentData.cargo);
+    set('ag-p-contexto',   agentData.p_contexto);
+    set('ag-p-limites',    agentData.p_limites);
+    set('ag-p-objeciones', agentData.p_objeciones);
+    set('ag-p-escalacion', agentData.p_escalacion);
+
+    const wrap = document.getElementById('ag-ejemplos-wrap');
+    const pintarEjemplo = (e = {}) => {
+      if (!wrap || wrap.children.length >= 5) return;
+      const fila = document.createElement('div');
+      fila.className = 'ag-ejemplo';
+      fila.style.cssText = 'display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:8px';
+      fila.innerHTML = `
+        <textarea rows="2" class="ag-ej-cliente" placeholder="Cliente escribe…"
+          style="background:#1a1a2e;border:1px solid #3a3a5a;color:#e0e0e0;padding:7px 9px;border-radius:6px;font-size:0.82rem;resize:vertical"></textarea>
+        <textarea rows="2" class="ag-ej-agente" placeholder="El agente responde…"
+          style="background:#1a1a2e;border:1px solid #3a3a5a;color:#e0e0e0;padding:7px 9px;border-radius:6px;font-size:0.82rem;resize:vertical"></textarea>
+        <button type="button" class="btn-ghost ag-ej-borrar" title="Quitar ejemplo" style="padding:2px 9px;align-self:start">✕</button>`;
+      fila.querySelector('.ag-ej-cliente').value = e.cliente || '';
+      fila.querySelector('.ag-ej-agente').value  = e.agente || '';
+      fila.querySelector('.ag-ej-borrar').onclick = () => fila.remove();
+      wrap.appendChild(fila);
+    };
+    const guardados = Array.isArray(agentData.p_ejemplos) ? agentData.p_ejemplos : [];
+    if (guardados.length) guardados.slice(0, 5).forEach(pintarEjemplo);
+    else pintarEjemplo();                       // partir con una fila vacía invita a llenarla
+    const btnAdd = document.getElementById('btn-add-ejemplo');
+    if (btnAdd) btnAdd.onclick = () => pintarEjemplo();
+  }
+
   // Save instructions
   document.getElementById('btn-save-instructions').onclick = async () => {
     const instructions     = document.getElementById('agent-instructions').value;
@@ -1126,10 +1230,21 @@ async function renderAgentBuilder(agentId) {
     const delay_max        = parseInt(document.getElementById('agent-delay-max').value);
     const channels         = [...document.querySelectorAll('.agent-channel-check:checked')].map(c => c.value);
     const comment_public_reply = document.getElementById('agent-comment-public-reply')?.value.trim() || '';
+    // Constructor guiado: se manda todo junto — el backend actualiza solo lo
+    // que viene definido y descarta ejemplos incompletos.
+    const g = (id) => document.getElementById(id)?.value.trim() || '';
+    const p_ejemplos = [...document.querySelectorAll('#ag-ejemplos-wrap .ag-ejemplo')].map(f => ({
+      cliente: f.querySelector('.ag-ej-cliente')?.value.trim() || '',
+      agente:  f.querySelector('.ag-ej-agente')?.value.trim() || '',
+    })).filter(e => e.cliente && e.agente);
     await apiFetch(`/api/agents/${agentId}`, 'PUT', {
       name: currentAgent.name, avatar: currentAgent.avatar,
       instructions, enabled: currentAgent.enabled, trigger_keywords,
-      delay_min, delay_max, channels, comment_public_reply
+      delay_min, delay_max, channels, comment_public_reply,
+      objetivo: g('ag-objetivo'), cargo: g('ag-cargo'),
+      p_contexto: g('ag-p-contexto'), p_limites: g('ag-p-limites'),
+      p_objeciones: g('ag-p-objeciones'), p_escalacion: g('ag-p-escalacion'),
+      p_ejemplos,
     });
     showToast('✅ Configuración guardada');
     currentAgent.instructions     = instructions;
@@ -1138,6 +1253,13 @@ async function renderAgentBuilder(agentId) {
     currentAgent.delay_max        = delay_max;
     currentAgent.channels         = channels;
     currentAgent.comment_public_reply = comment_public_reply;
+    currentAgent.objetivo     = g('ag-objetivo');
+    currentAgent.cargo        = g('ag-cargo');
+    currentAgent.p_contexto   = g('ag-p-contexto');
+    currentAgent.p_limites    = g('ag-p-limites');
+    currentAgent.p_objeciones = g('ag-p-objeciones');
+    currentAgent.p_escalacion = g('ag-p-escalacion');
+    currentAgent.p_ejemplos   = p_ejemplos;
   };
 
   // Save links (assign/unassign checkboxes)

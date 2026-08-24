@@ -82,7 +82,7 @@ const REGLAS_LLAMADA_SALIENTE = `
  */
 function construirBloquesLead({ agent, kbTexto, lead, messages, buildMemoryContext, turnos = 14 }) {
   return [
-    agent.instructions || '',
+    require('./promptEstructurado').instruccionesEfectivas(agent) || '',
     kbTexto || '',
     REGLAS_VOZ,
     REGLAS_CLOSER,

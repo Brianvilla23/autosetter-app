@@ -360,7 +360,11 @@ Ejemplo: "mira, te mando la guía que uso con los que están arrancando — ¿a 
 × Bajar el precio o inventar un descuento antes de que el lead objete el precio — regalas margen que nadie pidió.
 × Dejar una objeción sin resolver "por ahora" y seguir hablando de otra cosa — vuelve más grande después.`;
 
-  const systemPrompt = agent.instructions + knowledgeText + linksText + magnetsText + extraContextText + humanizationPrompt;
+  // instruccionesEfectivas ensambla los campos estructurados del agente
+  // (objetivo, contexto, límites, objeciones, escalación, ejemplos) y cae al
+  // texto libre tal cual en los agentes clásicos.
+  const { instruccionesEfectivas } = require('./promptEstructurado');
+  const systemPrompt = instruccionesEfectivas(agent) + knowledgeText + linksText + magnetsText + extraContextText + humanizationPrompt;
 
   // ── Detectar complejidad y elegir modelo ───────────────────────────────────
   const complexity = detectComplexity({ newMessage, conversationHistory });

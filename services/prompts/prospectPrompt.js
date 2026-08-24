@@ -25,7 +25,8 @@
  * @param {string} [p.leadInfo]  — info que el humano sabe del lead (bio, nicho, qué publica)
  */
 function buildProspectSystemPrompt({ agent, knowledge = [], mode = 'reply', leadInfo }) {
-  const businessContext = (agent && agent.instructions) ? agent.instructions.trim() : '';
+  const { instruccionesEfectivas } = require('../promptEstructurado');
+  const businessContext = agent ? instruccionesEfectivas(agent).trim() : '';
   const knowledgeText = knowledge.length
     ? '\n\n--- LO QUE VENDE EL CLIENTE (base de conocimiento) ---\n' +
       knowledge.map(k => `[${k.title}]\n${k.content}`).join('\n\n')
