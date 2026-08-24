@@ -57,6 +57,7 @@ async function init() {
 function showDashboard() {
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('app-shell').style.display   = 'flex';
+  initCopiloto();   // la burbuja del copiloto solo existe con sesión iniciada
   // Update user info in sidebar
   const nameEl = document.getElementById('sidebar-user-name');
   if (nameEl && CURRENT_USER) nameEl.textContent = CURRENT_USER.name;
@@ -407,6 +408,14 @@ function logout() {
   localStorage.removeItem('autosetter_token');
   localStorage.removeItem('autosetter_user');
   AUTH_TOKEN = ''; CURRENT_USER = null; ACCOUNT_ID = '';
+  // El copiloto habla de la cuenta: al salir se oculta y se olvida el hilo.
+  const _fab = document.getElementById('copi-fab');
+  const _pan = document.getElementById('copi-panel');
+  if (_fab) _fab.style.display = 'none';
+  if (_pan) _pan.style.display = 'none';
+  const _msgs = document.getElementById('copi-mensajes');
+  if (_msgs) _msgs.innerHTML = '';
+  COPI.historial = []; COPI.cargado = false; COPI.abierto = false;
   showAuthScreen('login');
 }
 
@@ -4965,3 +4974,100 @@ try { _safeExpose('crmExport', crmExport); } catch {}
 
 // ── START ─────────────────────────────────────────────────────────────────────
 init();
+
+// ── COPILOTO DEL PANEL ───────────────────────────────────────────────────────
+// Chat interno del dueño. El backend le pasa al modelo el estado real de la
+// cuenta más un diagnóstico ya calculado, así que las respuestas hablan de SU
+// configuración y no de un manual genérico.
+
+const COPI = { abierto: false, historial: [], enviando: false, cargado: false };
+
+function copiBurbuja(rol, texto) {
+  const cont = document.getElementById('copi-mensajes');
+  if (!cont) return null;
+  const mio = rol === 'user';
+  const d = document.createElement('div');
+  d.style.cssText = `max-width:88%;align-self:${mio ? 'flex-end' : 'flex-start'};background:${mio ? '#2b2b52' : '#1b1b2e'};border:1px solid ${mio ? '#3d3d6b' : '#2a2a4a'};color:#e8e8f0;padding:9px 12px;border-radius:11px;font-size:13.5px;line-height:1.55;white-space:pre-wrap;word-break:break-word`;
+  d.textContent = texto;
+  cont.appendChild(d);
+  cont.scrollTop = cont.scrollHeight;
+  return d;
+}
+
+/** Saludo con los hallazgos ya detectados: el copiloto abre diciendo algo útil. */
+async function copiSaludar() {
+  if (COPI.cargado) return;
+  COPI.cargado = true;
+  const r = await apiFetch('/api/copiloto/estado');
+  const hallazgos = r?.hallazgos || [];
+  if (hallazgos.length) {
+    copiBurbuja('assistant',
+      `Revisé tu cuenta y encontré esto:\n\n${hallazgos.map(h => `• ${h}`).join('\n\n')}\n\n¿Te ayudo con alguno?`);
+  } else {
+    copiBurbuja('assistant',
+      'Revisé tu cuenta y no veo problemas de configuración. Pregúntame lo que necesites: cómo conectar un canal, por qué un agente responde de cierta forma, o qué incluye tu plan.');
+  }
+}
+
+function copiToggle(abrir) {
+  const panel = document.getElementById('copi-panel');
+  const fab = document.getElementById('copi-fab');
+  if (!panel || !fab) return;
+  COPI.abierto = abrir === undefined ? !COPI.abierto : abrir;
+  panel.style.display = COPI.abierto ? 'flex' : 'none';
+  fab.textContent = COPI.abierto ? '✕' : '✦';
+  if (COPI.abierto) {
+    copiSaludar();
+    document.getElementById('copi-input')?.focus();
+  }
+}
+
+async function copiEnviar() {
+  if (COPI.enviando) return;
+  const input = document.getElementById('copi-input');
+  const texto = (input?.value || '').trim();
+  if (!texto) return;
+
+  COPI.enviando = true;
+  input.value = '';
+  input.style.height = 'auto';
+  copiBurbuja('user', texto);
+  const pensando = copiBurbuja('assistant', 'Pensando…');
+  if (pensando) pensando.style.opacity = '.6';
+
+  const r = await apiFetch('/api/copiloto/chat', 'POST',
+    { mensaje: texto, historial: COPI.historial.slice(-12) }, { conError: true });
+
+  if (pensando) pensando.remove();
+  if (!r?.ok) {
+    const err = copiBurbuja('assistant', `⚠️ ${r?.error || 'No se pudo responder. Reintenta.'}`);
+    if (err) err.style.borderColor = '#7a3b3b';
+  } else {
+    copiBurbuja('assistant', r.respuesta);
+    COPI.historial.push({ role: 'user', content: texto }, { role: 'assistant', content: r.respuesta });
+  }
+  COPI.enviando = false;
+  input?.focus();
+}
+
+function initCopiloto() {
+  const fab = document.getElementById('copi-fab');
+  if (!fab || fab.dataset.listo) return;
+  fab.dataset.listo = '1';
+  fab.style.display = '';                       // solo aparece con sesión iniciada
+
+  fab.onclick = () => copiToggle();
+  document.getElementById('copi-cerrar').onclick = () => copiToggle(false);
+  document.getElementById('copi-enviar').onclick = copiEnviar;
+
+  const input = document.getElementById('copi-input');
+  input.addEventListener('input', () => {         // crece con el texto, hasta un tope
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 110) + 'px';
+  });
+  input.addEventListener('keydown', (e) => {
+    // Enter envía; Shift+Enter hace salto de línea, como en cualquier chat.
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); copiEnviar(); }
+    if (e.key === 'Escape') copiToggle(false);
+  });
+}

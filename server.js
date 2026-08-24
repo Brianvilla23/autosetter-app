@@ -526,6 +526,9 @@ app.use('/api/knowledge', apiLimiter, requireAuth, checkSubscription, require('.
 app.use('/api/leads',     apiLimiter, requireAuth, checkSubscription, require('./routes/leads'));
 app.use('/api/links',     apiLimiter, requireAuth, checkSubscription, require('./routes/links'));
 app.use('/api/settings',  apiLimiter, requireAuth, require('./routes/settings'));
+// Copiloto del panel: sin checkSubscription a propósito — una cuenta vencida
+// es justo la que necesita preguntar qué pasó y cómo reactivarse.
+app.use('/api/copiloto',  apiLimiter, requireAuth, require('./routes/copiloto'));
 app.use('/api/growth',    apiLimiter, requireAuth, checkSubscription, require('./routes/growth'));
 app.use('/api/lead-magnets', apiLimiter, requireAuth, checkSubscription, require('./routes/leadMagnets'));
 app.use('/api/post-rules',   apiLimiter, requireAuth, checkSubscription, require('./routes/postRules'));
