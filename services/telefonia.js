@@ -28,6 +28,7 @@ const crypto = require('crypto');
 const axios  = require('axios');
 const db     = require('../db/database');
 const { hasFeature } = require('../config/plans');
+const { checkMinutosVoz } = require('./limits');
 const { normalizePhoneCL } = require('./shopify');
 
 const APP_URL = () => process.env.APP_URL || 'https://atinov.com';
@@ -290,6 +291,15 @@ async function prepararLlamada({ settings, account, agent, lead, telefonoPedido,
   // ejecute igual si el marcador llegó por cualquier otro camino.
   if (!await planIncluyeLlamadas(account?._id || lead?.account_id)) {
     throw new SinLlamada('el plan de la cuenta no incluye llamadas con IA');
+  }
+
+  // Bolsa de minutos del plan. Se permite pasarse (cobrando el excedente) para
+  // no dejar sin llamada a un negocio que está vendiendo, pero hay corte duro
+  // al doble: un bucle de llamadas es plata que se va de verdad.
+  const voz = await checkMinutosVoz(account?._id || lead?.account_id);
+  if (!voz.allowed) throw new SinLlamada(voz.reason || 'sin minutos disponibles', true);
+  if (voz.overage) {
+    console.warn(`💸 [telefonia] cuenta ${account?._id || lead?.account_id} sobre su bolsa de ${voz.bolsa} min — se cobra excedente`);
   }
 
   // Candado 4: horario.
@@ -678,6 +688,16 @@ async function finalizarLlamada(llamadaId, { resultado, duracionSeg, motivo = nu
   const conectada = resultado === 'terminada';
   const dur = Math.max(0, Math.round(Number(duracionSeg || 0)));
   const costo = conectada ? costoEstimadoUSD(dur) : { minutos: 0, twilio: 0, openai_est: 0, total_est: 0 };
+
+  // Descontar de la bolsa de minutos del plan. Se hace al COLGAR y no al
+  // marcar, porque hasta que la llamada termina no se sabe cuánto duró — y
+  // una que no contestan no consume bolsa.
+  if (conectada && dur > 0 && ll.account_id) {
+    try {
+      const { registrarSegundosVoz } = require('./limits');
+      await registrarSegundosVoz(ll.account_id, dur);
+    } catch (e) { console.error('[telefonia] no se pudieron descontar los minutos:', e.message); }
+  }
 
   // Regla de Meta para la vía WhatsApp: 2 llamadas seguidas sin contestar →
   // aviso al lead; 4 seguidas → Meta REVOCA el permiso solo. Se lleva el

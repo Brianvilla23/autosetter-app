@@ -10,7 +10,7 @@ const PIPE = require('../config/pipeline');
 const { selectAgent, servesChannel } = require('../services/agents');
 const { canSendAuto } = require('../config/agentRoles');
 const { knowledgeForAgent } = require('../services/agents/knowledge');
-const { checkDMAllowance, incrementDMCount } = require('../services/limits');
+const { checkDMAllowance, incrementDMCount, registrarConversacion, checkCuotaCanal } = require('../services/limits');
 // Pausa por canal: el dueño apagó ese canal desde Ajustes sin borrar credenciales.
 const { estaPausado } = require('../services/channels/core');
 const { v4: uuidv4 } = require('uuid');
@@ -850,9 +850,11 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
 
   // ── CHECK LÍMITE DE PLAN ─────────────────────────────────────────────────
   // El bot solo responde si el dueño de la cuenta no superó su límite mensual.
-  const allowance = await checkDMAllowance(account._id);
+  // El tope es por CANAL: WhatsApp tiene cuota propia porque Meta lo cobra
+  // (~US$0,27 por conversación) y los otros canales no.
+  const allowance = await checkCuotaCanal(account._id, lead.channel);
   if (!allowance.allowed) {
-    console.warn(`🚫 [${agent.name}] Límite mensual alcanzado para @${lead.ig_username}: ${allowance.reason}`);
+    console.warn(`🚫 [${agent.name}] Cuota alcanzada (${allowance.motivo}) para @${lead.ig_username}: ${allowance.reason}`);
     // Marcamos el lead para que el humano sepa que quedó sin respuesta automática
     await db.update(db.leads, { _id: lead._id }, {
       limit_reached: true,
@@ -860,6 +862,14 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
     }).catch(() => null);
     return false;
   }
+  if (allowance.overage) {
+    console.warn(`💸 [${agent.name}] Cuenta ${account._id} atendiendo sobre su cuota de ${allowance.motivo} — se cobra excedente`);
+  }
+
+  // Se cuenta la conversación acá: pasado el candado y antes de gastar en el
+  // LLM. Es idempotente por lead y mes, así que responder veinte veces al
+  // mismo lead sigue contando 1.
+  await registrarConversacion({ accountId: account._id, lead }).catch(() => null);
 
   // Cancelar follow-ups pendientes — el lead acaba de responder (best-effort)
   try {
