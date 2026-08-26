@@ -1211,7 +1211,7 @@
       <div id="intel-list-huecos"></div>
     </div>
 
-    <!-- Mejoras propuestas por el análisis semanal de conversaciones perdidas -->
+    <!-- Mejoras propuestas: análisis semanal + conversaciones subidas por el dueño -->
     <div id="intel-improvements-card" style="display:none;background:#fff;border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:14px;padding:20px;margin-bottom:18px">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
         <span style="width:34px;height:34px;border-radius:9px;background:var(--accent-bg);color:var(--accent);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:17px">📈</span>
@@ -1219,6 +1219,21 @@
       </div>
       <div style="font-size:13px;color:var(--text-2);margin-bottom:14px">Cada semana el agente analiza las conversaciones que se perdieron y te propone ajustes concretos. Tú decides: al aprobar, la regla se agrega a sus instrucciones.</div>
       <div id="intel-list-improvements"></div>
+
+      <!-- Subir conversaciones reales: el agente aprende de cómo vendes TÚ -->
+      <details id="intel-upload-block" style="margin-top:14px;border-top:1px solid var(--border);padding-top:14px">
+        <summary style="cursor:pointer;font-weight:700;font-size:13.5px;color:var(--text-1)">📎 Sube conversaciones reales y mejora tu agente</summary>
+        <div style="font-size:12.5px;color:var(--text-2);margin:10px 0 8px;line-height:1.5">
+          Pega conversaciones reales con tus clientes — de tu WhatsApp personal, de antes de tener el agente, de donde sea.
+          El sistema detecta qué te funciona (para que el agente lo imite) y qué falla (para corregirlo), y te propone las reglas acá arriba. Tú apruebas.
+        </div>
+        <textarea id="intel-upload-text" rows="6" placeholder="Cliente: Hola, ¿tienen disponible el tratamiento X?&#10;Yo: Hola! Sí, mira te cuento...&#10;&#10;(pega una o varias conversaciones completas — mínimo unas líneas con ida y vuelta)"
+          style="width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:13px;resize:vertical;background:var(--surface)"></textarea>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap">
+          <button class="btn-primary" id="intel-upload-btn" style="padding:8px 16px;font-size:13px" onclick="analizarConversacionesUI(this)">🔍 Analizar y proponer mejoras</button>
+          <span id="intel-upload-status" style="font-size:12.5px;color:var(--text-2)"></span>
+        </div>
+      </details>
     </div>
 
     <!-- Empty state (RAG sin datos o apagado) -->

@@ -40,6 +40,20 @@ const voiceLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+/**
+ * Análisis LLM bajo demanda (subir conversaciones al mejorador de prompts):
+ * cada análisis manda ~14k caracteres a OpenAI con la key de la plataforma.
+ * El límite general de 100/min dejaría quemar 100 análisis en un minuto.
+ * Máx 6 por hora por IP; el tope diario por cuenta vive en la ruta.
+ */
+const analysisLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 6,
+  message: { error: 'Alcanzaste el límite de análisis por hora. Intenta más tarde.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 /** Webhook Meta: más permisivo (mensajes en ráfaga) */
 const webhookLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -131,6 +145,7 @@ module.exports = {
   authLimiter,
   apiLimiter,
   voiceLimiter,
+  analysisLimiter,
   webhookLimiter,
   sanitizeBody,
   preventParamPollution,

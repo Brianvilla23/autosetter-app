@@ -539,18 +539,25 @@ async function loadIntelligence() {
 }
 window.loadIntelligence = loadIntelligence;
 
-// ── Mejoras propuestas (auto-mejora semanal del agente) ─────────────────────
+// ── Mejoras propuestas (análisis semanal + conversaciones subidas) ──────────
 async function loadImprovements() {
   const card = document.getElementById('intel-improvements-card');
   const list = document.getElementById('intel-list-improvements');
   if (!card || !list) return;
+  // El card se ve siempre: aunque no haya propuestas, desde acá se suben
+  // conversaciones reales para generarlas.
+  card.style.display = '';
   const d = await apiFetch(`/api/intelligence/improvements?accountId=${ACCOUNT_ID}`);
   const items = d?.improvements || [];
-  if (!items.length) { card.style.display = 'none'; return; }
-  card.style.display = '';
+  if (!items.length) {
+    list.innerHTML = '<div style="font-size:13px;color:var(--text-3);padding:6px 2px">Sin propuestas pendientes por ahora. El análisis semanal corre los lunes — o pega conversaciones reales acá abajo y genera propuestas al tiro.</div>';
+    return;
+  }
   list.innerHTML = items.map(i => `
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;padding:13px 14px">
-      <div style="font-size:13.5px;font-weight:700;margin-bottom:3px">${escHtml(i.causa)}</div>
+      <div style="font-size:13.5px;font-weight:700;margin-bottom:3px">${escHtml(i.causa)}
+        <span style="font-weight:600;font-size:11px;color:var(--text-3);margin-left:6px">${i.origen === 'subidas' ? '📎 de tus conversaciones subidas' : '📅 del análisis semanal'}</span>
+      </div>
       ${i.evidencia ? `<div style="font-size:12.5px;color:var(--text-2);margin-bottom:8px">${escHtml(i.evidencia)}${i.muestra ? ` · análisis sobre ${i.muestra} conversaciones` : ''}</div>` : ''}
       <div style="font-size:13px;background:var(--surface-2);border-left:3px solid var(--accent);border-radius:6px;padding:9px 12px;margin-bottom:10px;line-height:1.5">${escHtml(i.propuesta)}</div>
       <div style="display:flex;gap:8px">
@@ -559,6 +566,39 @@ async function loadImprovements() {
       </div>
     </div>`).join('');
 }
+
+// "Sube conversaciones reales": manda lo pegado al análisis y refresca la lista.
+async function analizarConversacionesUI(btn) {
+  const ta = document.getElementById('intel-upload-text');
+  const status = document.getElementById('intel-upload-status');
+  const texto = (ta?.value || '').trim();
+  if (texto.length < 200) {
+    status.textContent = 'Pega al menos unas cuantas líneas de conversación (mínimo 200 caracteres).';
+    return;
+  }
+  btn.disabled = true; btn.textContent = 'Analizando…';
+  status.textContent = 'El análisis toma unos segundos.';
+  try {
+    const r = await apiFetch('/api/intelligence/improvements/analizar-texto', 'POST', { accountId: ACCOUNT_ID, texto }, { conError: true });
+    if (r?.ok) {
+      if (r.creadas > 0) {
+        showToast(`✓ ${r.creadas} propuesta${r.creadas > 1 ? 's' : ''} nueva${r.creadas > 1 ? 's' : ''} — revísala${r.creadas > 1 ? 's' : ''} arriba`);
+        status.textContent = `${r.creadas} propuesta(s) generada(s).${r.truncado ? ' El texto era muy largo: se analizó el comienzo.' : ''} Te quedan ${r.restantes_hoy} análisis hoy.`;
+        ta.value = '';
+      } else {
+        status.textContent = 'El análisis no encontró patrones nuevos que proponer en ese texto.';
+      }
+      loadImprovements();
+    } else {
+      status.textContent = r?.error || 'El análisis falló. Intenta de nuevo.';
+    }
+  } catch (e) {
+    status.textContent = 'El análisis falló. Intenta de nuevo en un momento.';
+  } finally {
+    btn.disabled = false; btn.textContent = '🔍 Analizar y proponer mejoras';
+  }
+}
+window.analizarConversacionesUI = analizarConversacionesUI;
 
 async function applyImprovementUI(id, btn) {
   btn.disabled = true; btn.textContent = 'Aplicando…';

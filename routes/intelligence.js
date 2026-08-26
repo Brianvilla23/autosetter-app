@@ -12,6 +12,11 @@
 
 const express = require('express');
 const router = express.Router();
+// ⚠️ Este require faltó desde el nacimiento del archivo: GET /improvements
+// usaba `db` sin importarlo → ReferenceError → 500. La auto-mejora semanal
+// generaba propuestas que el dueño JAMÁS pudo ver — el sistema entero parecía
+// funcionar porque el sweep corría y guardaba, pero el panel moría al listar.
+const db = require('../db/database');
 
 function assertOwnsAccount(req, accountId) {
   return accountId && req.user && req.user.accountId === accountId;
@@ -58,6 +63,8 @@ router.get('/improvements', async (req, res, next) => {
     res.json({ improvements: items.map(i => ({
       id: i._id, causa: i.causa, evidencia: i.evidencia, propuesta: i.propuesta,
       muestra: i.muestra, createdAt: i.createdAt,
+      // Propuestas anteriores a la subida manual no traen origen: son del semanal.
+      origen: i.origen || 'semanal',
     })) });
   } catch (e) { next(e); }
 });
@@ -71,6 +78,52 @@ router.post('/improvements/apply', async (req, res, next) => {
     const r = await applyImprovement(id, accountId);
     if (!r.ok) return res.status(400).json(r);
     res.json(r);
+  } catch (e) { next(e); }
+});
+
+// POST /api/intelligence/improvements/analizar-texto  Body: { accountId, texto }
+// "Sube conversaciones reales y mejora tu agente": análisis LLM bajo demanda.
+// Gasta plata de la key de la plataforma → los 4 candados, no 1: requireAuth y
+// checkSubscription vienen del mount, analysisLimiter es el rate limit propio
+// por IP, y el tope diario por cuenta vive acá (cambiar de IP es trivial).
+const MAX_ANALISIS_DIA = 10;
+const { analysisLimiter } = require('../middleware/security');
+router.post('/improvements/analizar-texto', analysisLimiter, async (req, res, next) => {
+  try {
+    const { accountId, texto } = req.body;
+    if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
+
+    // Tope diario por cuenta, reset perezoso por fecha (patrón de voice.js).
+    const settings = await db.findOne(db.settings, { account_id: accountId });
+    const hoy = new Date().toISOString().slice(0, 10);
+    const usadosHoy = settings?.upload_analysis_date === hoy
+      ? Number(settings.upload_analysis_count || 0)
+      : 0;
+    if (usadosHoy >= MAX_ANALISIS_DIA) {
+      return res.status(429).json({
+        error: `Alcanzaste el máximo de ${MAX_ANALISIS_DIA} análisis por día. Vuelve mañana.`,
+      });
+    }
+
+    // API key: misma precedencia que todo el repo (plataforma → cuenta).
+    const apiKey = process.env.OPENAI_API_KEY || settings?.openai_key;
+
+    const { analyzeUploadedText } = require('../services/promptImprover');
+    const r = await analyzeUploadedText({ accountId, texto, apiKey });
+    if (!r.ok) return res.status(400).json({ error: r.error });
+
+    // Contar el análisis DESPUÉS del éxito (mismo criterio que las sesiones
+    // de voz): un error del modelo no quema cupo del dueño.
+    if (settings) {
+      await db.update(db.settings, { _id: settings._id },
+        { upload_analysis_date: hoy, upload_analysis_count: usadosHoy + 1 }).catch(() => null);
+    } else {
+      await db.insert(db.settings, {
+        account_id: accountId, upload_analysis_date: hoy, upload_analysis_count: 1,
+      }).catch(() => null);
+    }
+
+    res.json({ ...r, restantes_hoy: MAX_ANALISIS_DIA - (usadosHoy + 1) });
   } catch (e) { next(e); }
 });
 
@@ -172,7 +225,6 @@ router.post('/teach', async (req, res, next) => {
       return res.status(400).json({ error: 'gapText y answer son requeridos' });
     }
 
-    const db = require('../db/database');
     const title = String(gapText).slice(0, 120);
     const entry = await db.insert(db.knowledge, {
       account_id: accountId,

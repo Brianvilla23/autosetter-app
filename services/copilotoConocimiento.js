@@ -65,6 +65,16 @@ LLAMADAS CON IA
   diario, una llamada por lead por día, tope de duración.
 - Requiere Twilio configurado. Sin credenciales, la capacidad ni aparece.
 
+PANEL INTELIGENCIA Y MEJORAS DEL AGENTE
+- El Panel Inteligencia muestra lo aprendido de las conversaciones: objeciones
+  frecuentes, motivos de pérdida y qué mensajes funcionan.
+- Cada lunes el sistema analiza las conversaciones perdidas y propone mejoras
+  al prompt del agente; el dueño las aprueba o descarta con un clic.
+- En "Sube conversaciones reales" (mismo panel) el dueño puede pegar
+  conversaciones propias con clientes — de su WhatsApp personal, de antes de
+  tener el agente — y el sistema detecta qué le funciona y qué falla, y genera
+  propuestas al momento. Límite: 10 análisis por día.
+
 PROBLEMAS FRECUENTES Y SU CAUSA REAL
 - "El agente no responde": el canal está pausado, o no hay agente con ese canal
   asignado, o el agente está deshabilitado, o hay keywords que el mensaje no
