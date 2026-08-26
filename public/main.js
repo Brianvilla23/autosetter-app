@@ -1398,11 +1398,12 @@ function openAgentModal() {
   document.getElementById('btn-close-agent-modal').onclick = () => document.getElementById('agent-modal').style.display = 'none';
   document.getElementById('btn-cancel-agent-modal').onclick = () => document.getElementById('agent-modal').style.display = 'none';
   document.getElementById('btn-save-new-agent').onclick = async () => {
-    const name   = document.getElementById('new-agent-name').value.trim();
-    const avatar = document.getElementById('new-agent-avatar').value.trim() || '🤖';
-    const role   = document.getElementById('new-agent-role')?.value || 'nurture';
+    const name     = document.getElementById('new-agent-name').value.trim();
+    const avatar   = document.getElementById('new-agent-avatar').value.trim() || '🤖';
+    const role     = document.getElementById('new-agent-role')?.value || 'nurture';
+    const objetivo = document.getElementById('new-agent-objetivo')?.value || '';
     if (!name) return;
-    const agent = await apiFetch('/api/agents', 'POST', { accountId: ACCOUNT_ID, name, avatar, role });
+    const agent = await apiFetch('/api/agents', 'POST', { accountId: ACCOUNT_ID, name, avatar, role, objetivo });
     document.getElementById('agent-modal').style.display = 'none';
     document.getElementById('new-agent-name').value = '';
     currentAgent = null;
