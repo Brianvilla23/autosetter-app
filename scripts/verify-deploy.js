@@ -102,6 +102,12 @@ const CHECKS = [
     expectStatus: 401,
   },
   {
+    name: '/api/admin/margen-cuentas sin auth → 401 (números del negocio, solo admin)',
+    method: 'GET',
+    path: '/api/admin/margen-cuentas',
+    expectStatus: 401,
+  },
+  {
     name: '/api/calendar/status sin auth → 401',
     method: 'GET',
     path: '/api/calendar/status',

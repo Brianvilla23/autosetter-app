@@ -1034,6 +1034,28 @@ router.get('/costo-whatsapp', async (req, res) => {
 });
 
 /**
+ * GET /api/admin/margen-cuentas?mes=YYYY-MM
+ * El monitor de margen: qué paga cada cuenta, qué cuesta servirla este mes y
+ * qué margen deja, con alerta bajo el umbral. Además mide el costo LLM real
+ * por conversación (db.aiUsage) contra la constante de config/plans.js — `mes`
+ * solo afecta esa medición; el margen por cuenta es siempre del mes corriente,
+ * porque sale de los contadores de cuota y esos solo viven el mes en curso.
+ */
+router.get('/margen-cuentas', async (req, res) => {
+  try {
+    if (req.query.mes !== undefined && !/^\d{4}-(0[1-9]|1[0-2])$/.test(String(req.query.mes))) {
+      return res.status(400).json({ error: 'mes inválido — formato YYYY-MM' });
+    }
+    const { medirLlmPorConv, margenPorCuenta } = require('../services/margenCuentas');
+    const [llm, margen] = await Promise.all([
+      medirLlmPorConv(req.query.mes ? String(req.query.mes) : undefined),
+      margenPorCuenta(),
+    ]);
+    res.json({ llm, margen });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
  * POST /api/admin/aplicar-preset-dental
  * Aplica el preset vertical dental a una cuenta: agente recepcionista +
  * knowledge base con placeholders [EDITAR]. No borra nada existente.

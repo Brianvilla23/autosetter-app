@@ -196,6 +196,7 @@
       <div class="tab" onclick="switchTab('codes',this)">🎟️ Códigos</div>
       <div class="tab" onclick="switchTab('discounts',this)">💸 Cupones</div>
       <div class="tab" onclick="switchTab('metrics',this)">📊 Métricas</div>
+      <div class="tab" onclick="switchTab('margen',this)">💰 Margen</div>
       <div class="tab" onclick="switchTab('simulator',this)">🎭 Simulador</div>
       <div class="tab" onclick="switchTab('agente',this)">🎙️ Agente</div>
       <div class="tab" onclick="switchTab('system',this)">⚙️ Sistema</div>
@@ -424,6 +425,63 @@
             </thead>
             <tbody id="topUsersTable">
               <tr><td colspan="4" class="empty">⏳ Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── MARGEN POR CUENTA ── -->
+    <div id="tab-margen" class="section">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+          <h3 style="margin:0">🧮 Costo LLM real por conversación</h3>
+          <div style="display:flex;gap:6px;align-items:center">
+            <label style="font-size:0.8rem;color:#888">Mes:</label>
+            <input type="month" id="margenMes" onchange="loadMargen(true)"
+              style="background:#0f0f1a;border:1px solid #2a2a4a;color:#e0e0e0;padding:4px 8px;border-radius:4px;font-size:0.82rem">
+            <button class="btn btn-ghost btn-sm" onclick="loadMargen(true)">🔄 Refrescar</button>
+          </div>
+        </div>
+        <p style="color:#888;font-size:0.82rem;margin-bottom:12px">
+          Lo medido en <code>aiUsage</code> (chat principal × factor auxiliar) contra la constante
+          <code>llmPorConv</code> de <code>config/plans.js</code>. Si la desviación es positiva, la
+          constante se queda corta y los márgenes publicados son optimistas: hay que subirla y re-mirar la escalera.
+        </p>
+        <div id="llmResumen" style="display:flex;gap:18px;font-size:0.86rem;color:#888;margin-bottom:12px;flex-wrap:wrap;padding:12px 14px;background:#0f0f1a;border-radius:8px">
+          <span>⏳ Cargando…</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Modelo</th><th>Llamadas</th><th>Tokens entrada</th><th>Tokens salida</th><th>Costo US$</th></tr>
+            </thead>
+            <tbody id="llmModelosTable">
+              <tr><td colspan="5" class="empty">⏳ Cargando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-bottom:6px">💰 Margen del mes corriente, cuenta por cuenta</h3>
+        <p style="color:#888;font-size:0.82rem;margin-bottom:12px">
+          Uso real de los contadores de cuota × costos unitarios de la escalera. La columna LLM medido es
+          solo contraste (ya está estimada dentro del costo). 🔴 = cuenta pagada bajo el umbral de alerta.
+        </p>
+        <div id="margenResumen" style="display:flex;gap:18px;font-size:0.86rem;color:#888;margin-bottom:12px;flex-wrap:wrap;padding:12px 14px;background:#0f0f1a;border-radius:8px">
+          <span>⏳ Cargando…</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Cuenta</th><th>Plan</th><th>Precio</th><th>Conv</th><th>WA</th>
+                <th>Min voz</th><th>Costo</th><th>LLM medido</th><th>Margen</th><th>%</th><th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="margenTable">
+              <tr><td colspan="11" class="empty">⏳ Cargando…</td></tr>
             </tbody>
           </table>
         </div>
@@ -756,10 +814,76 @@ function switchTab(name, el) {
 
   // Carga bajo demanda
   if (name === 'metrics')   loadMetrics();
+  if (name === 'margen')    loadMargen();
   if (name === 'system')    loadSystem();
   if (name === 'discounts') loadDiscounts();
   if (name === 'simulator') loadSimulatorOptions();
   if (name === 'agente')    loadAgenteTab();
+}
+
+// ── MARGEN: costo LLM medido + margen por cuenta ────────────────────────────
+let _margenLoaded = false;
+async function loadMargen(force) {
+  if (_margenLoaded && !force) return;
+  const mesInput = document.getElementById('margenMes');
+  const qs = mesInput?.value ? `?mes=${mesInput.value}` : '';
+  try {
+    const { llm, margen } = await api('GET', '/api/admin/margen-cuentas' + qs);
+    _margenLoaded = true;
+    if (mesInput && !mesInput.value) mesInput.value = llm.mes;
+
+    // ── Card LLM ──
+    const usd = (v, dec = 4) => v === null || v === undefined ? '—' : `$${Number(v).toFixed(dec)}`;
+    const desvia = llm.desviacion_pct;
+    const colorDesv = desvia === null ? '#888' : (desvia > 0 ? '#ef4444' : '#22c55e');
+    document.getElementById('llmResumen').innerHTML = `
+      <span>Conversaciones: <strong style="color:#e0e0e0">${llm.conversaciones}</strong></span>
+      <span>Llamadas LLM: <strong style="color:#e0e0e0">${llm.llamadas_llm}</strong></span>
+      <span>Costo chat: <strong style="color:#e0e0e0">${usd(llm.costo_chat_usd)}</strong></span>
+      <span>Medido/conv (×${llm.factor_auxiliar} aux): <strong style="color:#e0e0e0">${usd(llm.llm_por_conv_total_usd)}</strong></span>
+      <span>Constante config: <strong style="color:#e0e0e0">${usd(llm.constante_config_usd)}</strong></span>
+      <span>Desviación: <strong style="color:${colorDesv}">${desvia === null ? 'sin datos' : (desvia > 0 ? '+' : '') + desvia + '%'}</strong></span>
+      ${llm.modelos_sin_precio.length ? `<span style="color:#f0c674">⚠️ Sin rate card (cobrados como gpt-4o): ${llm.modelos_sin_precio.map(escHtml).join(', ')}</span>` : ''}`;
+
+    const modelos = Object.entries(llm.por_modelo || {});
+    document.getElementById('llmModelosTable').innerHTML = modelos.length
+      ? modelos.map(([m, f]) => `<tr>
+          <td><code>${escHtml(m)}</code></td><td>${f.llamadas}</td>
+          <td>${f.promptTokens.toLocaleString('es-CL')}</td>
+          <td>${f.completionTokens.toLocaleString('es-CL')}</td>
+          <td>${usd(f.costo_usd)}</td></tr>`).join('')
+      : '<tr><td colspan="5" class="empty">Sin llamadas LLM en este mes</td></tr>';
+
+    // ── Card margen ──
+    document.getElementById('margenResumen').innerHTML = `
+      <span>Mes: <strong style="color:#e0e0e0">${margen.mes}</strong></span>
+      <span>Cuentas: <strong style="color:#e0e0e0">${margen.cuentas.length}</strong></span>
+      <span>Umbral de alerta: <strong style="color:#e0e0e0">${margen.umbral_alerta_pct}%</strong></span>
+      <span>Alertas: <strong style="color:${margen.alertas ? '#ef4444' : '#22c55e'}">${margen.alertas}</strong></span>`;
+
+    const estado = (c) => {
+      if (c.alerta) return '<span style="color:#ef4444">🔴 bajo umbral</span>';
+      if (c.margen_pct === null) return '<span style="color:#888">⚪ sin ingreso</span>';
+      if (c.margen_pct < 40) return '<span style="color:#f0c674">🟡 justo</span>';
+      return '<span style="color:#22c55e">🟢 sano</span>';
+    };
+    document.getElementById('margenTable').innerHTML = margen.cuentas.length
+      ? margen.cuentas.map(c => `<tr${c.alerta ? ' style="background:rgba(239,68,68,.07)"' : ''}>
+          <td title="${escHtml(c.email)}">${escHtml(c.cuenta)}</td>
+          <td>${escHtml(c.plan)}</td>
+          <td>${c.precio_usd ? '$' + c.precio_usd : '—'}</td>
+          <td>${c.conversaciones}</td>
+          <td>${c.conversaciones_wa}</td>
+          <td>${c.minutos_voz}</td>
+          <td title="WA $${c.costo_desglose.whatsapp} · Meta $${c.costo_desglose.meta} · Voz $${c.costo_desglose.voz} · Nº $${c.costo_desglose.numero}">$${c.costo_usd}</td>
+          <td>${usd(c.llm_medido_usd)}</td>
+          <td>${c.margen_pct === null ? '—' : '$' + c.margen_usd}</td>
+          <td>${c.margen_pct === null ? '—' : c.margen_pct + '%'}</td>
+          <td>${estado(c)}</td></tr>`).join('')
+      : '<tr><td colspan="11" class="empty">No hay cuentas de clientes todavía</td></tr>';
+  } catch (e) {
+    document.getElementById('margenResumen').innerHTML = `<span style="color:#ef4444">${escHtml(e.message)}</span>`;
+  }
 }
 
 // ── AGENTE: probar voces + actualizar instrucciones ─────────────────────────
