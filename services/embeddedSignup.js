@@ -33,18 +33,27 @@ const GRAPH = 'https://graph.facebook.com/v21.0';
 // Configuración de Meta, no esta constante.
 const SCOPES = ['whatsapp_business_management', 'whatsapp_business_messaging'];
 
+// DOS apps de Meta conviven en este proyecto (lección vieja del repo):
+// META_APP_ID/META_APP_SECRET son la SUB-APP de Instagram (login IGAA), pero
+// la Configuración de Embedded Signup solo puede crearse en la app PRINCIPAL
+// — la del caso de uso de WhatsApp. El popup y el canje del código tienen que
+// correr con la app dueña de la configuración, o Meta rechaza el config_id.
+// Por eso el ES usa credenciales propias (META_ES_APP_ID / META_ES_APP_SECRET)
+// y cae a las viejas solo si no están: una instalación con una sola app sigue
+// funcionando sin tocar nada.
+const esAppId     = () => process.env.META_ES_APP_ID     || process.env.META_APP_ID;
+const esAppSecret = () => process.env.META_ES_APP_SECRET || process.env.META_APP_SECRET;
+
 /** true solo si están las tres piezas. Sin esto el botón no se muestra. */
 function estaHabilitado() {
-  return !!(process.env.META_APP_ID
-    && process.env.META_APP_SECRET
-    && process.env.META_ES_CONFIG_ID);
+  return !!(esAppId() && esAppSecret() && process.env.META_ES_CONFIG_ID);
 }
 
 /** Lo que el frontend necesita para abrir el popup. Nada de esto es secreto. */
 function configPublica() {
   return {
     enabled:      estaHabilitado(),
-    appId:        process.env.META_APP_ID || null,
+    appId:        esAppId() || null,
     configId:     process.env.META_ES_CONFIG_ID || null,
     graphVersion: 'v21.0',
   };
@@ -57,8 +66,8 @@ function configPublica() {
 async function canjearCodigo(code) {
   const r = await axios.get(`${GRAPH}/oauth/access_token`, {
     params: {
-      client_id:     process.env.META_APP_ID,
-      client_secret: process.env.META_APP_SECRET,
+      client_id:     esAppId(),
+      client_secret: esAppSecret(),
       code,
     },
     timeout: 15000,

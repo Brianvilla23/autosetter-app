@@ -36,6 +36,7 @@ function fingirGet(fn) {
 test('sin las 3 variables de entorno, la función está apagada', () => {
   const prev = { ...process.env };
   delete process.env.META_APP_ID; delete process.env.META_APP_SECRET; delete process.env.META_ES_CONFIG_ID;
+  delete process.env.META_ES_APP_ID; delete process.env.META_ES_APP_SECRET;
   assert.strictEqual(es.estaHabilitado(), false, 'sin nada configurado: apagado');
 
   process.env.META_APP_ID = 'app'; process.env.META_APP_SECRET = 'secreto';
@@ -57,6 +58,27 @@ test('la config pública NO incluye el app secret', () => {
   assert.ok(!serializado.includes('SECRETO_QUE_NO_DEBE_SALIR'), 'el app secret jamás viaja al browser');
   assert.strictEqual(cfg.appId, 'app-123');
   assert.strictEqual(cfg.configId, 'cfg-456');
+  process.env = prev;
+});
+
+test('la app del ES manda: META_ES_APP_ID/SECRET ganan sobre las de Instagram', () => {
+  // Dos apps de Meta conviven: la sub-app de Instagram (META_APP_ID) y la
+  // principal, dueña de la Configuración de registro insertado. El popup y el
+  // canje deben correr con la principal, o Meta rechaza el config_id.
+  const prev = { ...process.env };
+  process.env.META_APP_ID = 'sub-app-instagram';
+  process.env.META_APP_SECRET = 'secreto-ig';
+  process.env.META_ES_APP_ID = 'app-principal-whatsapp';
+  process.env.META_ES_APP_SECRET = 'secreto-wa';
+  process.env.META_ES_CONFIG_ID = 'cfg-789';
+
+  assert.strictEqual(es.estaHabilitado(), true);
+  assert.strictEqual(es.configPublica().appId, 'app-principal-whatsapp',
+    'el popup abre con la app dueña de la configuración, no con la sub-app de IG');
+
+  // Sin las viejas, las del ES bastan por sí solas.
+  delete process.env.META_APP_ID; delete process.env.META_APP_SECRET;
+  assert.strictEqual(es.estaHabilitado(), true);
   process.env = prev;
 });
 
