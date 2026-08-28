@@ -66,6 +66,9 @@ const db = {
   // Tareas del playbook post-compra (vertical tiendas): referencian lead_id →
   // caen en las mismas cascadas de supresión que followups.
   pedidoTasks:   new Datastore({ filename: path.join(dir, 'pedidoTasks.db'),   autoload: true }),
+  // Campañas de promociones segmentadas (broadcast): el snapshot de
+  // destinatarios lleva lead_ids → cascada de supresión por cuenta.
+  campanas:      new Datastore({ filename: path.join(dir, 'campanas.db'),      autoload: true }),
 };
 
 // Compact on load

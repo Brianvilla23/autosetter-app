@@ -883,6 +883,35 @@
         </div>
       </div>
     </div>
+
+    <!-- CAMPAÑAS SEGMENTADAS — broadcast de una plantilla MARKETING a un segmento -->
+    <div class="settings-card" style="margin-top:18px">
+      <h3>📣 Campañas</h3>
+      <p style="font-size:13px;color:var(--text-2)">Manda una plantilla de <strong>Marketing</strong> aprobada a un segmento de tus contactos de WhatsApp. La regla sana: <strong>2-3 campañas al mes por segmento</strong> — el sistema respeta solo el tope por persona (quien ya recibió su marketing del día o del mes queda fuera y se reporta).</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-top:8px">
+        <div class="form-row" style="margin:0"><label>Nombre de la campaña</label><input type="text" id="camp-nombre" class="form-input" placeholder="Promo drop septiembre" maxlength="80"></div>
+        <div class="form-row" style="margin:0"><label>Plantilla (MARKETING aprobada)</label><input type="text" id="camp-template" class="form-input" placeholder="promo_drop_sept"></div>
+        <div class="form-row" style="margin:0"><label>Idioma</label><select id="camp-lang" class="form-input"><option value="es">es</option><option value="es_CL">es_CL</option><option value="es_MX">es_MX</option><option value="en_US">en_US</option></select></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-top:10px">
+        <div class="form-row" style="margin:0"><label>¿Compraron?</label><select id="camp-compraron" class="form-input"><option value="todos">Todos</option><option value="si">Solo clientes (compraron)</option><option value="no">Solo los que no han comprado</option></select></div>
+        <div class="form-row" style="margin:0"><label>Temperatura</label><select id="camp-calif" class="form-input"><option value="todos">Todas</option><option value="hot">🔥 Calientes</option><option value="warm">🌤 Tibios</option><option value="cold">❄️ Fríos</option></select></div>
+        <div class="form-row" style="margin:0"><label>Actividad</label><select id="camp-actividad" class="form-input"><option value="todos">Todos</option><option value="activos_30">Activos últimos 30 días</option><option value="dormidos_30">Dormidos +30 días</option><option value="dormidos_60">Dormidos +60 días</option></select></div>
+        <div class="form-row" style="margin:0"><label>Enviar</label><input type="datetime-local" id="camp-cuando" class="form-input" title="Vacío = ahora"></div>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-top:10px">
+        <input type="checkbox" id="camp-con-nombre" style="width:15px;height:15px"> La plantilla usa <code>{{1}}</code> como nombre de la persona
+      </label>
+      <div style="display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap">
+        <button class="btn-ghost" id="btn-camp-estimar">Contar destinatarios</button>
+        <button class="btn-primary" id="btn-camp-crear">Programar campaña</button>
+        <span id="camp-status" style="font-size:12.5px;color:var(--text-2)"></span>
+      </div>
+      <div style="margin-top:16px">
+        <div style="font-weight:700;font-size:14px;margin-bottom:8px">Tus campañas</div>
+        <div id="camp-list" style="font-size:13px;color:var(--text-2)">—</div>
+      </div>
+    </div>
   </section>
 
   <section id="section-postrules" class="section">

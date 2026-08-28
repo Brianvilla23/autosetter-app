@@ -581,6 +581,9 @@ app.use('/api/llamadas', apiLimiter, requireAuth, checkSubscription, require('./
 // Opera con el WABA y el token de la propia cuenta. Es además la evidencia
 // visible del permiso whatsapp_business_management para el App Review.
 app.use('/api/wa-templates', apiLimiter, requireAuth, checkSubscription, require('./routes/waTemplates'));
+// Campañas segmentadas (broadcast con plantillas): comparte el cap de
+// marketing por contacto con el playbook post-compra.
+app.use('/api/campanas', apiLimiter, requireAuth, checkSubscription, require('./routes/campanas'));
 
 // La URL sin .html es la que la gente tipea; el catch-all serviría el
 // dashboard en silencio y el micrófono quedaría bloqueado (el permiso se
@@ -867,6 +870,12 @@ setInterval(() => {
 const { procesarTareas } = require('./services/playbookPedido');
 setInterval(() => {
   procesarTareas().catch(e => console.error('playbookPedido:', e.message));
+}, 60000);
+
+// Campañas: 15 envíos por corrida y por campaña — pacing deliberado, no ráfaga.
+const { procesarCampanas } = require('./services/campanas');
+setInterval(() => {
+  procesarCampanas().catch(e => console.error('campanas:', e.message));
 }, 60000);
 
 // ── TRIAL LIFECYCLE EMAILS WORKER ─────────────────────────────────────────────

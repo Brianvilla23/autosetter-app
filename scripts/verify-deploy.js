@@ -115,6 +115,12 @@ const CHECKS = [
     expectStatus: 401,
   },
   {
+    name: '/api/campanas sin auth → 401 (broadcast gasta plata: protegido)',
+    method: 'GET',
+    path: '/api/campanas?accountId=fake',
+    expectStatus: 401,
+  },
+  {
     name: 'Webhook Shopify sin cuenta → 400 (fulfillments comparte el riel firmado)',
     method: 'POST',
     path: '/webhook/shopify',

@@ -3665,8 +3665,11 @@ async function loadWaTemplates() {
       document.getElementById(id)?.addEventListener('input', watPreview);
     });
     document.getElementById('btn-wat-create')?.addEventListener('click', createWaTemplate);
+    document.getElementById('btn-camp-estimar')?.addEventListener('click', estimarCampana);
+    document.getElementById('btn-camp-crear')?.addEventListener('click', crearCampanaUI);
   }
   watPreview();
+  loadCampanas().catch(() => null);
 
   list.textContent = 'Cargando…';
   const r = await watFetch('/api/wa-templates');
@@ -3699,6 +3702,92 @@ async function loadWaTemplates() {
     </div>`;
   }).join('');
 }
+
+// ── Campañas segmentadas (broadcast de plantillas MARKETING) ────────────────
+
+function segmentoDelForm() {
+  return {
+    compraron:    document.getElementById('camp-compraron')?.value || 'todos',
+    calificacion: document.getElementById('camp-calif')?.value || 'todos',
+    actividad:    document.getElementById('camp-actividad')?.value || 'todos',
+  };
+}
+
+async function estimarCampana() {
+  const st = document.getElementById('camp-status');
+  st.textContent = 'Contando…';
+  const r = await apiFetch('/api/campanas/estimar', 'POST', { accountId: ACCOUNT_ID, segmento: segmentoDelForm() }, { conError: true });
+  if (r && r.destinatarios !== undefined) {
+    st.textContent = `${r.destinatarios} destinatario${r.destinatarios === 1 ? '' : 's'} hoy${r.sin_tope > r.tope ? ` (el segmento tiene ${r.sin_tope}; el tope por campaña es ${r.tope})` : ''}.`;
+  } else {
+    st.textContent = r?.error || 'No se pudo estimar.';
+  }
+}
+
+async function crearCampanaUI() {
+  const st = document.getElementById('camp-status');
+  const nombre = document.getElementById('camp-nombre')?.value.trim();
+  const templateName = document.getElementById('camp-template')?.value.trim();
+  if (!nombre || !templateName) { st.textContent = 'Falta el nombre de la campaña o la plantilla.'; return; }
+  const cuandoRaw = document.getElementById('camp-cuando')?.value;
+  if (!confirm(`Se enviará la plantilla "${templateName}" al segmento elegido${cuandoRaw ? ' en la fecha programada' : ' AHORA'}. Los mensajes de marketing gastan cuota del plan y el cupo mensual de cada contacto. ¿Programar?`)) return;
+  st.textContent = 'Programando…';
+  const r = await apiFetch('/api/campanas', 'POST', {
+    accountId: ACCOUNT_ID, nombre, templateName,
+    templateLang: document.getElementById('camp-lang')?.value || 'es',
+    segmento: segmentoDelForm(),
+    scheduledFor: cuandoRaw ? new Date(cuandoRaw).toISOString() : null,
+    conNombre: !!document.getElementById('camp-con-nombre')?.checked,
+  }, { conError: true });
+  if (r?.ok) {
+    st.textContent = `✅ Campaña programada (${r.campana.estimado} destinatarios estimados).`;
+    document.getElementById('camp-nombre').value = '';
+    loadCampanas();
+  } else {
+    st.textContent = r?.error || 'No se pudo crear la campaña.';
+  }
+}
+
+const CAMP_ESTADO = {
+  programada:    { txt: '⏳ Programada', bg: '#e0e7ff', fg: '#3730a3' },
+  enviando:      { txt: '📤 Enviando',   bg: '#fef3c7', fg: '#92400e' },
+  completada:    { txt: '✅ Completada', bg: '#d1fae5', fg: '#065f46' },
+  cancelada:     { txt: '✖ Cancelada',  bg: '#e5e7eb', fg: '#374151' },
+  pausada_cuota: { txt: '⛔ Sin cuota',  bg: '#fee2e2', fg: '#991b1b' },
+};
+
+async function loadCampanas() {
+  const list = document.getElementById('camp-list');
+  if (!list) return;
+  const r = await apiFetch(`/api/campanas?accountId=${ACCOUNT_ID}`);
+  const cs = r?.campanas || [];
+  if (!cs.length) { list.textContent = 'Todavía no has hecho ninguna campaña.'; return; }
+  list.innerHTML = cs.map(c => {
+    const st = CAMP_ESTADO[c.estado] || { txt: c.estado, bg: '#e5e7eb', fg: '#374151' };
+    const s = c.stats || {};
+    const detalle = c.estado === 'programada'
+      ? `sale ${new Date(c.scheduled_for).toLocaleString('es-CL')} · ~${c.estimado} destinatarios`
+      : `${s.enviados || 0} enviados · ${s.bloqueados_cap || 0} fuera por tope personal · ${s.casilla_llena || 0} casilla llena · ${s.fallidos || 0} fallidos${c.total_snapshot ? ` · de ${c.total_snapshot}` : ''}`;
+    return `<div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+        <div><strong style="font-size:13.5px">${escHtmlSafe(c.nombre)}</strong> <code style="font-size:12px;color:var(--text-3);margin-left:6px">${escHtmlSafe(c.template_name)}</code></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span style="font-size:11px;padding:2px 8px;border-radius:999px;background:${st.bg};color:${st.fg};font-weight:600">${st.txt}</span>
+          ${['programada', 'enviando', 'pausada_cuota'].includes(c.estado) ? `<button class="btn-ghost" style="padding:2px 8px;font-size:12px" onclick="cancelarCampanaUI('${c.id}')">✖ Cancelar</button>` : ''}
+        </div>
+      </div>
+      <div style="font-size:12.5px;color:var(--text-2);margin-top:5px">${detalle}${c.nota ? ` — ${escHtmlSafe(c.nota)}` : ''}</div>
+    </div>`;
+  }).join('');
+}
+
+async function cancelarCampanaUI(id) {
+  if (!confirm('¿Cancelar esta campaña? Lo ya enviado no se puede deshacer.')) return;
+  const r = await apiFetch(`/api/campanas/${id}/cancelar`, 'POST', { accountId: ACCOUNT_ID }, { conError: true });
+  if (r?.ok) { showToast('Campaña cancelada'); loadCampanas(); }
+  else showToast('⚠️ ' + (r?.error || 'No se pudo cancelar'));
+}
+try { _safeExpose('cancelarCampanaUI', cancelarCampanaUI); } catch {}
 
 async function createWaTemplate() {
   const btn = document.getElementById('btn-wat-create');

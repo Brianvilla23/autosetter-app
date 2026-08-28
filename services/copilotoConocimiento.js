@@ -81,6 +81,12 @@ TIENDA ONLINE (Shopify) Y PLAYBOOK POST-COMPRA
 - STOCK VIVO: con el token de Admin API de la tienda, el agente responde
   disponibilidad con el inventario real ("¿queda talla M?") y tiene prohibido
   inventar stock.
+- CAMPAÑAS (Plantillas → Campañas): broadcast de una plantilla de Marketing
+  aprobada a un segmento (compraron o no, temperatura, activos/dormidos).
+  Regla sana: 2-3 campañas al mes por segmento. El sistema deja fuera solo a
+  quien ya recibió su marketing del día o del mes (se reporta en las
+  estadísticas), respeta el tope del plan SIN entrar en overage, y avanza de
+  a ~15 envíos por minuto a propósito. Máximo 2 campañas activas a la vez.
 
 PANEL INTELIGENCIA Y MEJORAS DEL AGENTE
 - El Panel Inteligencia muestra lo aprendido de las conversaciones: objeciones
