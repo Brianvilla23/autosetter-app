@@ -19,6 +19,7 @@
  */
 const POR_CUENTA = [
   ['followups',        'account_id'],
+  ['pedidoTasks',      'account_id'],
   ['pendingSends',     'accountId'],
   ['failedSends',      'accountId'],
   ['llamadas',         'account_id'],
