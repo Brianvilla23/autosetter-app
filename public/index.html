@@ -1599,6 +1599,44 @@
           </p>
           <div class="code-block" id="shopify-webhook-url" style="font-size:12px;word-break:break-all">—</div>
         </div>
+
+        <!-- Playbook post-compra: seguimiento del pedido de punta a punta -->
+        <details id="playbook-block" style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
+          <summary style="cursor:pointer;font-weight:700;font-size:14px">📦 Playbook post-compra <span id="playbook-estado" style="font-size:11px;color:var(--text-3);font-weight:600"></span></summary>
+          <p style="font-size:12.5px;color:var(--text-2);margin:10px 0 12px;line-height:1.5">
+            El pedido se sigue solo: sugerencia de agregar algo al mismo envío (2-3 h), "va en camino" y "llega HOY" cuando el courier avisa, "¿llegó bien?" al entregar, reseña a los días y invitación a recomprar. Necesita el webhook <em>Actualización de preparación de pedidos</em> en Shopify (misma URL de arriba) y las plantillas aprobadas en Meta para los mensajes fuera de la ventana de 24 h.
+          </p>
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;margin-bottom:12px">
+            <input type="checkbox" id="pb-enabled" style="width:16px;height:16px"> Activar el playbook
+          </label>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px">
+            <div class="form-row" style="margin:0"><label>Plantilla "va en camino"</label><input type="text" id="pb-t-tracking" placeholder="pedido_en_camino" class="form-input"></div>
+            <div class="form-row" style="margin:0"><label>Plantilla "llega hoy"</label><input type="text" id="pb-t-llega" placeholder="pedido_llega_hoy" class="form-input"></div>
+            <div class="form-row" style="margin:0"><label>Plantilla "¿llegó bien?"</label><input type="text" id="pb-t-entregado" placeholder="pedido_entregado_check" class="form-input"></div>
+            <div class="form-row" style="margin:0"><label>Plantilla upsell</label><input type="text" id="pb-t-upsell" placeholder="pedido_agregar_envio" class="form-input"></div>
+            <div class="form-row" style="margin:0"><label>Plantilla reseña</label><input type="text" id="pb-t-resena" placeholder="pedido_resena_video" class="form-input"></div>
+            <div class="form-row" style="margin:0"><label>Plantilla recompra</label><input type="text" id="pb-t-winback" placeholder="pedido_recompra" class="form-input"></div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:10px">
+            <div class="form-row" style="margin:0"><label>Upsell (horas)</label><input type="number" id="pb-upsell-h" placeholder="2.5" min="0.5" max="24" step="0.5" class="form-input"></div>
+            <div class="form-row" style="margin:0"><label>Reseña (días)</label><input type="number" id="pb-resena-d" placeholder="10" min="1" max="60" class="form-input"></div>
+            <div class="form-row" style="margin:0"><label>Recompra (días)</label><input type="number" id="pb-winback-d" placeholder="21" min="1" max="90" class="form-input"></div>
+            <div class="form-row" style="margin:0"><label>Máx. promos/mes por cliente</label><input type="number" id="pb-cap" placeholder="3" min="1" max="8" class="form-input"></div>
+          </div>
+          <div class="form-row" style="margin-top:10px">
+            <label>Incentivo por video-reseña (se promete EXACTO esto; vacío = no se promete nada)</label>
+            <input type="text" id="pb-incentivo" placeholder="ej: 10% de descuento en tu próxima compra" class="form-input">
+          </div>
+          <div style="border-top:1px dashed var(--border);margin-top:14px;padding-top:12px">
+            <div style="font-weight:600;font-size:13.5px;margin-bottom:6px">📊 Stock vivo <span id="pb-stock-estado" style="font-size:11px;color:var(--text-3)"></span></div>
+            <p style="font-size:12px;color:var(--text-2);margin:0 0 10px">Con el token de Admin API el agente responde "¿queda talla M?" con el inventario real de tu Shopify (app privada con permiso <code>read_products</code>).</p>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px">
+              <div class="form-row" style="margin:0"><label>Dominio de la tienda</label><input type="text" id="pb-shop-domain" placeholder="mitienda.myshopify.com" class="form-input"></div>
+              <div class="form-row" style="margin:0"><label>Token de Admin API</label><input type="password" id="pb-admin-token" placeholder="shpat_…" class="form-input"></div>
+            </div>
+          </div>
+          <button class="btn-primary" id="btn-save-playbook" style="margin-top:12px">Guardar playbook</button>
+        </details>
       </div>
 
       <div class="settings-card">

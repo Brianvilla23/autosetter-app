@@ -62,17 +62,24 @@ test('sanitizeSettings NUNCA expone secrets de Google Calendar ni Shopify', () =
     account_id: 'acc1',
     google_refresh_token: '1//04_REFRESH_TOKEN_SUPER_SECRETO',
     shopify_webhook_secret: 'shpss_SECRETO_DE_FIRMA_9876',
+    shopify_admin_token: 'shpat_ADMIN_API_TODO_PODEROSO_5555',
   };
   const safe = sanitizeSettings(settings);
   const serialized = JSON.stringify(safe);
 
   assert.ok(!('google_refresh_token' in safe), 'google_refresh_token NO debe estar presente');
   assert.ok(!('shopify_webhook_secret' in safe), 'shopify_webhook_secret NO debe estar presente');
+  // El Admin API token es el más poderoso de los tres: lee inventario,
+  // pedidos y clientes de la tienda. Se filtró google_refresh_token una vez
+  // (batch Calendar) — esta clase de test existe para que no se repita.
+  assert.ok(!('shopify_admin_token' in safe), 'shopify_admin_token NO debe estar presente');
   assert.ok(!serialized.includes('REFRESH_TOKEN_SUPER_SECRETO'), 'el refresh token no debe aparecer ni serializado');
   assert.ok(!serialized.includes('SECRETO_DE_FIRMA'), 'el secret de Shopify no debe aparecer');
+  assert.ok(!serialized.includes('ADMIN_API_TODO_PODEROSO'), 'el admin token no debe aparecer ni serializado');
   // Flags de presencia sí (es lo que la UI necesita para mostrar "conectado")
   assert.strictEqual(safe.has_google_calendar, true);
   assert.strictEqual(safe.has_shopify, true);
+  assert.strictEqual(safe.has_shopify_stock, true);
 });
 
 test('sanitizeAccount/Settings manejan null sin romper', () => {

@@ -65,6 +65,23 @@ LLAMADAS CON IA
   diario, una llamada por lead por día, tope de duración.
 - Requiere Twilio configurado. Sin credenciales, la capacidad ni aparece.
 
+TIENDA ONLINE (Shopify) Y PLAYBOOK POST-COMPRA
+- Con Shopify conectado (Configuración → Tienda), cada pedido crea el lead y
+  sale la confirmación por WhatsApp; el agente conversa con el pedido en
+  contexto (confirma, corrige dirección o cancela).
+- El PLAYBOOK POST-COMPRA (opt-in) sigue el pedido solo: sugerencia de agregar
+  algo al mismo envío (2-3 h), aviso "va en camino" y "llega HOY" cuando el
+  courier reporta el estado, "¿llegó todo bien?" al entregar, petición de
+  reseña (~10 días) e invitación a recomprar (~3 semanas).
+- Fuera de la ventana de 24 h esos mensajes exigen PLANTILLAS aprobadas por
+  Meta: si falta la plantilla de un paso, ese paso avisa en el hilo y no sale.
+- Los pasos comerciales respetan un tope por cliente (default 3/mes, máx 1 al
+  día): Meta limita cuántos mensajes de marketing puede recibir cada persona
+  al día contando todas las marcas, y pasarse degrada el número.
+- STOCK VIVO: con el token de Admin API de la tienda, el agente responde
+  disponibilidad con el inventario real ("¿queda talla M?") y tiene prohibido
+  inventar stock.
+
 PANEL INTELIGENCIA Y MEJORAS DEL AGENTE
 - El Panel Inteligencia muestra lo aprendido de las conversaciones: objeciones
   frecuentes, motivos de pérdida y qué mensajes funcionan.

@@ -1034,6 +1034,27 @@ router.get('/costo-whatsapp', async (req, res) => {
 });
 
 /**
+ * POST /api/admin/aplicar-preset-ropa
+ * Aplica el preset vertical tienda de ropa (contra-entrega / drop) a una
+ * cuenta: agente vendedora + knowledge con placeholders [EDITAR] + cuerpos
+ * sugeridos de las 6 plantillas del playbook post-compra. No borra nada.
+ * Body: { accountId, nombreTienda? }
+ */
+router.post('/aplicar-preset-ropa', async (req, res) => {
+  try {
+    const { accountId, nombreTienda } = req.body;
+    if (!accountId) return res.status(400).json({ error: 'accountId requerido' });
+    const cuenta = await db.findOne(db.accounts, { _id: accountId });
+    if (!cuenta) return res.status(404).json({ error: 'cuenta no encontrada' });
+
+    const { applyRopaPreset } = require('../services/presets/ropaPreset');
+    const r = await applyRopaPreset(db, accountId, { nombreTienda });
+    await audit(req, 'preset.ropa_apply', accountId, { nombreTienda: nombreTienda || null });
+    res.json(r);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
  * GET /api/admin/margen-cuentas?mes=YYYY-MM
  * El monitor de margen: qué paga cada cuenta, qué cuesta servirla este mes y
  * qué margen deja, con alerta bajo el umbral. Además mide el costo LLM real

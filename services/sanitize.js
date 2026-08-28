@@ -27,6 +27,7 @@ const SENSITIVE_SETTINGS_FIELDS = [
   'mp_access_token',       // token de Mercado Pago (permite crear cobros y leer pagos)
   'google_refresh_token',  // acceso permanente al Google Calendar del user
   'shopify_webhook_secret',// firma los webhooks: con él se pueden falsificar pedidos
+  'shopify_admin_token',   // Admin API de la tienda: lee inventario y mucho más — jamás al frontend
   'wa_sip_password',       // credencial SIP de Meta: permite hacer llamadas de WhatsApp a nombre del número
   'wa_sip_username',       // junto con la password es la identidad SIP del número — no sale
 ];
@@ -72,6 +73,7 @@ function sanitizeSettings(settings) {
   safe.mp_access_token_masked = maskSecret(settings.mp_access_token);
   safe.has_google_calendar    = !!settings.google_refresh_token;
   safe.has_shopify            = !!settings.shopify_webhook_secret;
+  safe.has_shopify_stock      = !!settings.shopify_admin_token;
   return safe;
 }
 

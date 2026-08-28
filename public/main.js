@@ -2103,6 +2103,63 @@ async function loadSettings() {
     loadSettings(); showToast('Tienda desconectada');
   };
 
+  // ── Playbook post-compra + stock vivo ─────────────────────────────────────
+  // Los valores no sensibles llegan del settings sanitizado; el admin token
+  // jamás vuelve (solo el flag has_shopify_stock).
+  const s = data.settings || {};
+  const setVal = (id, v) => { const el = document.getElementById(id); if (el && v !== undefined && v !== null && v !== '') el.value = v; };
+  const pbEnabled = document.getElementById('pb-enabled');
+  if (pbEnabled) pbEnabled.checked = s.playbook_pedido_enabled === true;
+  const pbEstado = document.getElementById('playbook-estado');
+  if (pbEstado) pbEstado.textContent = s.playbook_pedido_enabled === true ? '· ACTIVO' : '· apagado';
+  setVal('pb-t-tracking', s.playbook_template_tracking);
+  setVal('pb-t-llega', s.playbook_template_llega_hoy);
+  setVal('pb-t-entregado', s.playbook_template_entregado);
+  setVal('pb-t-upsell', s.playbook_template_upsell);
+  setVal('pb-t-resena', s.playbook_template_resena);
+  setVal('pb-t-winback', s.playbook_template_winback);
+  setVal('pb-upsell-h', s.playbook_upsell_horas);
+  setVal('pb-resena-d', s.playbook_resena_dias);
+  setVal('pb-winback-d', s.playbook_winback_dias);
+  setVal('pb-cap', s.playbook_mkt_cap_mes);
+  setVal('pb-incentivo', s.playbook_incentivo_video);
+  setVal('pb-shop-domain', s.shopify_shop_domain);
+  const stockEstado = document.getElementById('pb-stock-estado');
+  if (stockEstado) stockEstado.textContent = s.has_shopify_stock ? '· conectado' : '';
+  const tokenInput = document.getElementById('pb-admin-token');
+  if (tokenInput && s.has_shopify_stock) tokenInput.placeholder = 'shpat_… (ya hay uno guardado)';
+
+  const btnPb = document.getElementById('btn-save-playbook');
+  if (btnPb) btnPb.onclick = async () => {
+    const g = (id) => document.getElementById(id)?.value.trim();
+    const body = {
+      accountId: ACCOUNT_ID,
+      playbook_pedido_enabled: !!document.getElementById('pb-enabled')?.checked,
+      playbook_template_tracking: g('pb-t-tracking') || '',
+      playbook_template_llega_hoy: g('pb-t-llega') || '',
+      playbook_template_entregado: g('pb-t-entregado') || '',
+      playbook_template_upsell: g('pb-t-upsell') || '',
+      playbook_template_resena: g('pb-t-resena') || '',
+      playbook_template_winback: g('pb-t-winback') || '',
+      playbook_incentivo_video: g('pb-incentivo') || '',
+      shopify_shop_domain: g('pb-shop-domain') || '',
+    };
+    for (const [id, campo] of [
+      ['pb-upsell-h', 'playbook_upsell_horas'], ['pb-resena-d', 'playbook_resena_dias'],
+      ['pb-winback-d', 'playbook_winback_dias'], ['pb-cap', 'playbook_mkt_cap_mes'],
+    ]) { const v = g(id); if (v) body[campo] = v; }
+    // El token solo viaja si el dueño escribió uno nuevo (nunca se re-manda el guardado).
+    const token = g('pb-admin-token');
+    if (token) body.shopify_admin_token = token;
+    const r = await apiFetch('/api/settings/shopify', 'PUT', body, { conError: true });
+    if (r?.ok) {
+      const tk = document.getElementById('pb-admin-token'); if (tk) tk.value = '';
+      loadSettings(); showToast('✅ Playbook guardado');
+    } else {
+      showToast(`⚠️ ${r?.error || 'No se pudo guardar el playbook'}`);
+    }
+  };
+
   // ── Google Calendar (agendamiento in-chat) ────────────────────────────────
   // onclick por asignación (no addEventListener): esta función corre en cada
   // loadSettings() y los listeners acumulados dispararían handlers múltiples.

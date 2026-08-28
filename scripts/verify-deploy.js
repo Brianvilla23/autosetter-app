@@ -108,6 +108,20 @@ const CHECKS = [
     expectStatus: 401,
   },
   {
+    name: '/api/admin/aplicar-preset-ropa sin auth → 401',
+    method: 'POST',
+    path: '/api/admin/aplicar-preset-ropa',
+    body: '{"accountId":"fake"}',
+    expectStatus: 401,
+  },
+  {
+    name: 'Webhook Shopify sin cuenta → 400 (fulfillments comparte el riel firmado)',
+    method: 'POST',
+    path: '/webhook/shopify',
+    body: '{"fake":1}',
+    expectStatus: 400,
+  },
+  {
     name: '/api/calendar/status sin auth → 401',
     method: 'GET',
     path: '/api/calendar/status',
