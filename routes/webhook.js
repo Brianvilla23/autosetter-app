@@ -1006,6 +1006,14 @@ ${entregar
     orderContext = buildOrderContext(lead);
   } catch (e) { /* pedidos opcional */ }
 
+  // ── Stock vivo de la tienda: "¿queda talla M?" con el inventario REAL ─────
+  // Cache de 5 min por cuenta; sin token de Admin API configurado es null.
+  let stockContext = null;
+  try {
+    const { getStockContext } = require('../services/shopifyStock');
+    stockContext = await getStockContext(account._id, settings);
+  } catch (e) { /* stock opcional, nunca bloquea */ }
+
   // ── Llamada telefónica: capacidad solo si TODO está dado ──────────────────
   // (Twilio configurado + interruptores cuenta/agente + horario + topes +
   //  lead CALIENTE o que pidió la llamada). Fail-closed en cada condición.
@@ -1015,7 +1023,7 @@ ${entregar
     llamadaContext = await buildLlamadaContext({ settings, agent, lead, incomingText: text, account });
   } catch (e) { /* telefonía opcional */ }
 
-  const extraContext = [baseContext, contextoHistoria, messengerHandoff, magnetContext, audioContext, memoryContext, followerContext, paymentContext, calendarContext, orderContext, llamadaContext, ragContext].filter(Boolean).join('\n\n') || null;
+  const extraContext = [baseContext, contextoHistoria, messengerHandoff, magnetContext, audioContext, memoryContext, followerContext, paymentContext, calendarContext, orderContext, stockContext, llamadaContext, ragContext].filter(Boolean).join('\n\n') || null;
 
   let reply = await generateReply({
     agent, knowledge, links,
@@ -1305,13 +1313,34 @@ router.post('/shopify', async (req, res) => {
     // ACK inmediato: Shopify corta a los 5s y reintenta. El trabajo sigue abajo.
     res.sendStatus(200);
 
-    // UN solo topic por cuenta (default orders/create). Aceptar create Y paid
-    // provocaba una carrera real: Shopify dispara ambos con milisegundos de
-    // diferencia en pedidos pagados online, las dos requests leen el dedup en
-    // null y la clienta recibe DOS mensajes (y quedan dos leads con el mismo
-    // wa_id). El dueño elige uno en la configuración.
+    // UN solo topic de PEDIDOS por cuenta (default orders/create). Aceptar
+    // create Y paid provocaba una carrera real: Shopify dispara ambos con
+    // milisegundos de diferencia en pedidos pagados online, las dos requests
+    // leen el dedup en null y la clienta recibe DOS mensajes (y quedan dos
+    // leads con el mismo wa_id). El dueño elige uno en la configuración.
+    //
+    // fulfillments/update viaja aparte: es el courier reportando el estado del
+    // envío (en tránsito / en reparto / entregado) y alimenta el playbook
+    // post-compra. No compite con el flujo de pedidos.
     const topicEsperado = settings.shopify_topic || 'orders/create';
     const topic = req.get('X-Shopify-Topic') || 'orders/create';
+
+    if (topic === 'fulfillments/update') {
+      const fulfillment = shopify.parseFulfillment(req.body);
+      if (!fulfillment.orderId || !fulfillment.status) return;
+      const leadEnvio = await db.findOne(db.leads, {
+        account_id: accountId, 'shopify_order.orderId': fulfillment.orderId,
+      });
+      if (!leadEnvio) {
+        console.log(`[shopify] fulfillment de pedido ${fulfillment.orderId} sin lead — ignorado`);
+        return;
+      }
+      const { alCambioEnvio } = require('../services/playbookPedido');
+      const r = await alCambioEnvio({ lead: leadEnvio, accountId, fulfillment });
+      console.log(`🚚 [shopify] envío ${fulfillment.status} — pedido ${leadEnvio.shopify_order?.numero || fulfillment.orderId} (${r.agendadas} tareas)`);
+      return;
+    }
+
     if (topic !== topicEsperado) {
       console.log(`[shopify] topic ${topic} ignorado (la cuenta escucha ${topicEsperado})`);
       return;
@@ -1344,6 +1373,7 @@ router.post('/shopify', async (req, res) => {
       orderId: orden.orderId, numero: orden.numero, productos: orden.productos,
       direccion: orden.direccion, total: orden.total, moneda: orden.moneda,
       etaLegible: orden.etaLegible, etaIso: orden.etaIso,
+      pago_contra_entrega: orden.pagoContraEntrega === true,
       estado: 'pendiente', creado_at: new Date().toISOString(),
     };
 

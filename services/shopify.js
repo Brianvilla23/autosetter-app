@@ -126,6 +126,15 @@ function parseOrder(payload, { etaDias = 3 } = {}) {
 
   const eta = etaHabiles(etaDias);
 
+  // Contra-entrega: Shopify lo delata en los gateways del pedido ("Cash on
+  // Delivery (COD)" del pago manual, o nombres que contengan cod/contra).
+  // El playbook usa esto para el tono del aviso "llega hoy" (tener el pago listo).
+  const gateways = (payload.payment_gateway_names || [])
+    .map(g => String(g).toLowerCase());
+  const pagoContraEntrega = gateways.some(g =>
+    g.includes('cash on delivery') || g.includes('contra') || /\bcod\b/.test(g)
+  );
+
   return {
     orderId:     String(payload.id || ''),
     numero:      payload.order_number ? `#${payload.order_number}` : (payload.name || ''),
@@ -141,6 +150,24 @@ function parseOrder(payload, { etaDias = 3 } = {}) {
     moneda:      payload.currency || 'CLP',
     etaLegible:  eta.legible,
     etaIso:      eta.iso,
+    pagoContraEntrega,
+  };
+}
+
+// ── Parseo del fulfillment (webhook fulfillments/update) ─────────────────────
+
+/**
+ * Extrae del payload de fulfillments/update lo que el playbook necesita.
+ * `shipment_status` es el que reporta el courier: in_transit,
+ * out_for_delivery, delivered, failure (y otros que se ignoran).
+ */
+function parseFulfillment(payload) {
+  return {
+    orderId:        String(payload.order_id || ''),
+    status:         String(payload.shipment_status || '').toLowerCase() || null,
+    trackingNumber: payload.tracking_number || (payload.tracking_numbers || [])[0] || null,
+    trackingUrl:    payload.tracking_url || (payload.tracking_urls || [])[0] || null,
+    empresa:        payload.tracking_company || null,
   };
 }
 
@@ -261,6 +288,15 @@ async function resolveOrderMarkers(text, { lead, accountId }) {
 
       outcome = { estado, detalle: detalle || null };
       console.log(`🛒 [shopify] ${etiqueta} — lead ${lead._id}`);
+
+      // Pedido confirmado → arranca el playbook post-compra (si la cuenta lo
+      // activó). Best-effort: el playbook jamás bloquea la confirmación.
+      if (estado === 'confirmado') {
+        try {
+          const { alConfirmarPedido } = require('./playbookPedido');
+          await alConfirmarPedido({ lead: { ...lead, shopify_order: o }, accountId });
+        } catch (e) { /* playbook opcional */ }
+      }
     }
     out = out.replace(m[0], '');
   }
@@ -275,6 +311,7 @@ module.exports = {
   normalizePhoneCL,
   etaHabiles,
   parseOrder,
+  parseFulfillment,
   buildOrderContext,
   resolveOrderMarkers,
 };

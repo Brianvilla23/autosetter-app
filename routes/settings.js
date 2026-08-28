@@ -235,6 +235,46 @@ router.put('/shopify', async (req, res, next) => {
       const n = parseInt(shopify_eta_dias, 10);
       upd.shopify_eta_dias = Number.isFinite(n) && n >= 1 && n <= 30 ? n : 3;
     }
+
+    // ── Stock vivo (Admin API de la tienda) ─────────────────────────────────
+    // El token solo se pisa si viene uno nuevo real (no el masked), igual que
+    // el webhook secret. Es campo SENSIBLE: sanitize.js lo omite del frontend.
+    if (req.body.shopify_admin_token && !String(req.body.shopify_admin_token).includes('…')) {
+      upd.shopify_admin_token = String(req.body.shopify_admin_token).trim();
+    }
+    if (req.body.shopify_shop_domain !== undefined) {
+      upd.shopify_shop_domain = String(req.body.shopify_shop_domain || '').trim().slice(0, 120);
+    }
+
+    // ── Playbook post-compra (opt-in) ────────────────────────────────────────
+    // Tiempos con rangos sanos; plantillas por nombre plano (Meta las aprueba
+    // aparte); el incentivo del video-reseña solo se promete si está escrito acá.
+    const pb = req.body;
+    if (pb.playbook_pedido_enabled !== undefined) {
+      upd.playbook_pedido_enabled = pb.playbook_pedido_enabled === true;
+    }
+    for (const [campo, min, max] of [
+      ['playbook_upsell_horas', 0.5, 24],
+      ['playbook_resena_dias', 1, 60],
+      ['playbook_winback_dias', 1, 90],
+      ['playbook_mkt_cap_mes', 1, 8],
+    ]) {
+      if (pb[campo] !== undefined) {
+        const n = Number(pb[campo]);
+        if (Number.isFinite(n) && n >= min && n <= max) upd[campo] = n;
+      }
+    }
+    if (pb.playbook_incentivo_video !== undefined) {
+      upd.playbook_incentivo_video = String(pb.playbook_incentivo_video || '').trim().slice(0, 200);
+    }
+    for (const campo of [
+      'playbook_template_tracking', 'playbook_template_llega_hoy',
+      'playbook_template_entregado', 'playbook_template_upsell',
+      'playbook_template_resena', 'playbook_template_winback',
+    ]) {
+      if (pb[campo] !== undefined) upd[campo] = String(pb[campo] || '').trim().slice(0, 120);
+    }
+
     if (!Object.keys(upd).length) return res.json({ ok: true, unchanged: true });
 
     const exists = await db.findOne(db.settings, { account_id: accountId });
@@ -255,7 +295,11 @@ router.delete('/shopify', async (req, res, next) => {
     await db.update(db.settings, { account_id: accountId }, {
       shopify_webhook_secret: null, shopify_template_name: null,
       shopify_template_lang: null, shopify_eta_dias: null, shopify_topic: null,
+      // El playbook y el stock vivo viven de la conexión Shopify: caen con ella.
+      playbook_pedido_enabled: null,
+      shopify_admin_token: null, shopify_shop_domain: null,
     });
+    try { require('../services/shopifyStock').invalidar(accountId); } catch (e) { /* cache opcional */ }
     res.json({ ok: true });
   } catch (e) { next(e); }
 });

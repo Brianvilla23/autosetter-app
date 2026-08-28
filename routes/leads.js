@@ -306,6 +306,7 @@ router.delete('/:id', async (req, res, next) => {
     const extIds = [lead.wa_id, lead.ig_user_id].filter(Boolean);
     await db.remove(db.messages,     { lead_id: lead._id }, { multi: true });
     await db.remove(db.followups,    { lead_id: lead._id }, { multi: true });
+    await db.remove(db.pedidoTasks,  { lead_id: lead._id }, { multi: true });
     // Llamadas telefónicas: teléfono + transcripción son dato personal.
     // El costo ya quedó en billableEvents (retención legítima).
     await db.remove(db.llamadas,     { lead_id: lead._id }, { multi: true });
@@ -366,6 +367,7 @@ router.post('/clear-all', async (req, res, next) => {
     await db.remove(db.pendingSends, { accountId }, { multi: true });
     await db.remove(db.failedSends,  { accountId }, { multi: true });
     await db.remove(db.followups,    { account_id: accountId }, { multi: true });
+    await db.remove(db.pedidoTasks,  { account_id: accountId }, { multi: true });
     await db.remove(db.llamadas,     { account_id: accountId }, { multi: true });
     await db.remove(db.leads,        { account_id: accountId }, { multi: true });
     console.warn(`🗑️🗑️ CLEAR-ALL: ${leads.length} leads borrados para account ${accountId}`);

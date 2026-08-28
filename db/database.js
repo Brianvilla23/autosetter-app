@@ -63,6 +63,9 @@ const db = {
   // (DELETE lead / clear-messages / clear-all / DELETE user). El costo
   // sobrevive aparte en billableEvents (retención legítima).
   llamadas:      new Datastore({ filename: path.join(dir, 'llamadas.db'),      autoload: true }),
+  // Tareas del playbook post-compra (vertical tiendas): referencian lead_id →
+  // caen en las mismas cascadas de supresión que followups.
+  pedidoTasks:   new Datastore({ filename: path.join(dir, 'pedidoTasks.db'),   autoload: true }),
 };
 
 // Compact on load

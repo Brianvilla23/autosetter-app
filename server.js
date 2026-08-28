@@ -860,6 +860,15 @@ setInterval(() => {
   processFollowUps().catch(e => console.error('processFollowUps:', e.message));
 }, 30000);
 
+// ── PLAYBOOK POST-COMPRA (vertical tiendas) ──────────────────────────────────
+// Procesa las tareas del pedido (upsell, tracking, "llega hoy", reseña,
+// recompra) agendadas por el webhook de Shopify y la confirmación del pedido.
+// Opt-in por cuenta: sin playbook_pedido_enabled no hay tareas que procesar.
+const { procesarTareas } = require('./services/playbookPedido');
+setInterval(() => {
+  procesarTareas().catch(e => console.error('playbookPedido:', e.message));
+}, 60000);
+
 // ── TRIAL LIFECYCLE EMAILS WORKER ─────────────────────────────────────────────
 // Cada 6h recorre users con plan=trial y manda:
 //  - trialEndingEmail cuando falta 2 días (o menos) para que venza
