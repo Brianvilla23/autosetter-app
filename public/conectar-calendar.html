@@ -2,6 +2,13 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <!-- Set completo: el SVG manda en navegadores modernos; el PNG es el que
+       usan Safari viejo, Android y los crawlers de link preview (WhatsApp,
+       Meta) que no renderizan favicon SVG. -->
+  <link rel="icon" href="/icon-1024.png" type="image/png" sizes="1024x1024">
+  <link rel="apple-touch-icon" href="/icon-1024.png">
+  <meta name="theme-color" content="#0a0a0a">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Conectar Google Calendar — Atinov</title>
   <meta name="robots" content="noindex">
