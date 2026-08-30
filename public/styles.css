@@ -122,7 +122,24 @@ body { display: flex; }
   display: flex;
   flex-direction: column;
   gap: 2px;
+  /* El menú scrollea DENTRO de sí mismo. Sin esto, con 14 secciones y una
+     pantalla de portátil, la navegación empujaba la cuenta y el botón de
+     cerrar sesión fuera de la vista: existían, pero nadie los encontraba.
+     min-height:0 es lo que permite que un hijo flex se encoja bajo su
+     contenido — sin eso, overflow-y no hace nada. */
+  overflow-y: auto;
+  min-height: 0;
 }
+/* Barra de scroll discreta: que se note que hay más, sin ensuciar. */
+.sidebar-nav::-webkit-scrollbar { width: 6px; }
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(120, 130, 140, .28);
+  border-radius: 3px;
+}
+.sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+
+/* La cuenta y el cerrar sesión quedan clavados al pie, pase lo que pase. */
+.sidebar-account, .sidebar-logout { flex-shrink: 0; }
 .nav-item {
   display: flex;
   align-items: center;
