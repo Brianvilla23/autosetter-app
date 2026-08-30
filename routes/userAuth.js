@@ -256,11 +256,15 @@ router.post('/login', async (req, res, next) => {
  * Candados:
  *  - FAIL-CLOSED: solo funciona si la cuenta demo EXISTE (la crea el admin con
  *    POST /api/admin/crear-demo) y está marcada `demo: true`. Sin demo → 404.
- *  - Sesión de solo 2 horas (no los 30 días de un login normal).
+ *  - Sesión de 7 días (no los 30 de un login normal): cubre la ventana
+ *    completa de revisión de Meta sin que el revisor quede fuera a mitad.
  *  - Rate limit propio (10 por 15 min por IP): es una puerta pública.
  *  - El JWT lleva `demo: true` — el frontend muestra el aviso "cuenta demo".
  * Nunca da acceso a otra cuenta que no sea la demo.
  */
+/** Duración de la sesión demo. Se puede acortar por entorno si hiciera falta. */
+const DEMO_SESSION = process.env.DEMO_SESSION_TTL || '7d';
+
 const demoLimiter = require('express-rate-limit')({
   windowMs: 15 * 60 * 1000,
   max: 10,
@@ -290,10 +294,15 @@ router.post('/demo-login', demoLimiter, async (req, res, next) => {
     if (user.membershipExpiresAt && new Date(user.membershipExpiresAt) < new Date()) {
       return res.status(404).json({ error: 'La cuenta demo no está disponible en este momento.' });
     }
+    // 7 días, no 2 horas: el revisor de Meta puede tardar de 2 a 7 días hábiles
+    // y suele volver a la sesión varias veces. Una sesión que vence a mitad de
+    // revisión es un rechazo por "el revisor no pudo entrar" — el motivo #1.
+    // El riesgo es acotado: la cuenta demo solo tiene datos ficticios y ningún
+    // canal conectado, así que un token filtrado no expone nada real.
     const token = jwt.sign(
       { userId: user._id, email: user.email, name: user.name, accountId: user.account_id, role: user.role, demo: true },
       SECRET,
-      { expiresIn: '2h' }
+      { expiresIn: DEMO_SESSION }
     );
     await db.insert(db.auditLog, {
       action: 'demo_login', target: DEMO_EMAIL, ip: req.ip || null, at: new Date().toISOString(),

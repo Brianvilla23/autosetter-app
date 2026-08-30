@@ -176,17 +176,111 @@ async function seedDemo({ password }) {
     avatar: '🦷',
     enabled: true,
     role: 'nurture',
-    instructions: 'Eres la recepcionista virtual de Clínica Demo Sonrisa (La Serena). Tuteo chileno cálido. Respondes dudas de tratamientos, precios referenciales y agendas evaluaciones. [CUENTA DEMO — datos ficticios para demostraciones]',
+    instructions: [
+      'Eres la recepcionista virtual de Clínica Demo Sonrisa, en La Serena.',
+      '',
+      'CÓMO HABLAS: tuteo chileno cálido y natural, como una recepcionista con años en el rubro. Frases cortas. Nada de robot ni de formalidad acartonada. Un emoji ocasional, no en cada mensaje.',
+      '',
+      'TU OBJETIVO: que la persona termine con día y hora concretos para una evaluación. No sueltes el "avísame cuando puedas" — propón siempre dos alternativas de horario.',
+      '',
+      'CÓMO TRABAJAS:',
+      '1. Primero entiendes el caso: qué le pasa, hace cuánto, si hay dolor. Una pregunta a la vez, no un interrogatorio.',
+      '2. Con eso das el precio REFERENCIAL de la base de conocimiento y aclaras que el valor final lo define la evaluación.',
+      '3. Cierras proponiendo horario.',
+      '',
+      'LÍMITES QUE NO CRUZAS:',
+      '· Nunca diagnosticas por chat. Ante síntomas, el paso es evaluación presencial.',
+      '· Nunca inventas precios, plazos ni convenios: si no está en tu conocimiento, dices que lo confirmas con el equipo.',
+      '· Si hay dolor, priorizas: ofreces la hora más cercana.',
+      '· Si comparan con otra clínica, no hablas mal de nadie: explicas qué incluye el precio y ofreces la evaluación.',
+      '',
+      '[CUENTA DEMO — datos ficticios para demostraciones y revisión]',
+    ].join('\n'),
     link_ids: [],
     delay_min: 5, delay_max: 15,
   });
 
-  // 3. Knowledge básica (para que el tester del demo responda coherente)
-  await db.insert(db.knowledge, {
-    account_id: accountId, agent_ids: [agent._id], is_main: true,
-    title: 'Clínica Demo Sonrisa — servicios y precios',
-    content: 'Limpieza $35.000 · Evaluación implante $15.000 (descontable) · Blanqueamiento láser desde $120.000 · Ortodoncia invisible desde $1.890.000 (hasta 12 cuotas) · Carillas desde $180.000 por pieza · Sábados 9-14h · Acceso a nivel de calle · Convenios con empresas de la zona.',
-  });
+  // 3. Knowledge del demo.
+  //
+  // Cinco documentos, no uno. El probador en vivo (Agentes → el agente) es lo
+  // que de verdad vende el producto: si el revisor o un prospecto le pregunta
+  // "¿duele?", "¿puedo pagar en cuotas?" o "llego 20 min tarde, ¿alcanzo?",
+  // el agente tiene que responder como una recepcionista de verdad. Con un
+  // solo párrafo de precios contestaba en genérico y el motor no se lucía.
+  const DOCS = [
+    {
+      title: 'Servicios y precios',
+      content: [
+        'PRECIOS REFERENCIALES (evaluación previa define el valor final):',
+        '· Consulta de urgencia (dolor): $25.000, mismo día si hay cupo.',
+        '· Limpieza + destartraje: $35.000. Dura 40 min.',
+        '· Evaluación de implante (con radiografía): $15.000, se descuenta del tratamiento si continúa.',
+        '· Implante unitario completo: desde $780.000 (incluye pilar y corona). 2 a 4 visitas en 4-6 meses.',
+        '· Blanqueamiento láser: desde $120.000. 1 o 2 sesiones de 45 min; el resultado se ve desde la primera.',
+        '· Carillas de porcelana: desde $180.000 por pieza. Mínimo recomendado 6 piezas para un resultado parejo.',
+        '· Ortodoncia invisible: desde $1.890.000 todo incluido (escáner, alineadores, controles y retenedores).',
+        '· Ortodoncia con brackets metálicos: desde $980.000. Controles mensuales incluidos.',
+        '· Tapadura (resina): $38.000 por pieza. Endodoncia: desde $180.000.',
+        'La evaluación con escáner 3D para ortodoncia es GRATIS y sin compromiso.',
+      ].join('\n'),
+    },
+    {
+      title: 'Horarios, ubicación y cómo llegar',
+      content: [
+        'Lunes a viernes 9:00 a 19:00. Sábados 9:00 a 14:00. Domingos cerrado.',
+        'Dirección: Av. Francisco de Aguirre 234, oficina 3, La Serena.',
+        'Acceso a nivel de calle, sin escaleras (apto para silla de ruedas y adultos mayores).',
+        'Estacionamiento: hay públicos frente a la clínica ($1.500 la hora aprox).',
+        'Urgencias fuera de horario: dejar mensaje por este mismo chat; se responde a primera hora.',
+        'Tolerancia de atraso: 15 minutos. Pasados esos, se reagenda para no atrasar al resto.',
+        'Cancelaciones: avisar con 24 h de anticipación. Sin aviso dos veces seguidas, la próxima hora se pide confirmada con abono.',
+      ].join('\n'),
+    },
+    {
+      title: 'Formas de pago, cuotas y convenios',
+      content: [
+        'Efectivo, débito, crédito y transferencia.',
+        'Hasta 12 cuotas sin interés con tarjetas de crédito bancarias.',
+        'Tratamientos sobre $500.000 se pueden pagar en cuotas mensuales directas con la clínica, sin banco: 30% al inicio y el saldo repartido en el plazo del tratamiento.',
+        'CONVENIOS: Fonasa (bonificación en prestaciones codificadas) e Isapres con reembolso — se entrega boleta y detalle para que el paciente lo presente.',
+        'Convenio con empresas de la zona: 15% de descuento presentando credencial.',
+        'Boleta electrónica siempre. Presupuesto por escrito antes de empezar cualquier tratamiento: nunca se cobra algo que no se avisó antes.',
+      ].join('\n'),
+    },
+    {
+      title: 'Preguntas frecuentes de pacientes',
+      content: [
+        '¿DUELE? La evaluación no duele. En tratamientos se usa anestesia local; la mayoría describe molestia, no dolor. Para pacientes con miedo hay sedación consciente (se conversa en la evaluación).',
+        '¿CUÁNTO DURA UN IMPLANTE? Con higiene y controles, más de 20 años. Garantía de la clínica: 5 años sobre el implante.',
+        '¿EL BLANQUEAMIENTO DAÑA EL ESMALTE? No. Puede dar sensibilidad 24-48 h; se entrega gel desensibilizante incluido.',
+        '¿CUÁNTO DURA EL BLANQUEAMIENTO? Entre 1 y 2 años según hábitos (café, té, cigarro).',
+        '¿ATIENDEN NIÑOS? Sí, desde los 4 años. La primera visita es de reconocimiento y es gratis.',
+        '¿EMBARAZADAS? Sí, la limpieza y las urgencias son seguras. Radiografías y tratamientos electivos se posponen al segundo trimestre o al postparto.',
+        '¿PUEDO IR SOLO A COTIZAR? Sí, la evaluación no obliga a nada y el presupuesto queda por escrito.',
+        'POSTOPERATORIO DE IMPLANTE: frío las primeras 24 h, comida blanda 3 días, sin fumar 1 semana. Control a los 7 días.',
+      ].join('\n'),
+    },
+    {
+      title: 'Cómo atiende la recepcionista (política de la clínica)',
+      content: [
+        'NUNCA diagnosticar por chat. Ante síntomas, el paso siempre es evaluación presencial.',
+        'Ante dolor: priorizar. Ofrecer la hora más cercana disponible y, si no hay, dejar en lista de espera del día.',
+        'Los precios se entregan siempre como REFERENCIALES y aclarando que el valor final lo define la evaluación.',
+        'Si el paciente compara con otra clínica: no hablar mal de nadie. Explicar qué incluye el precio (materiales, controles, garantía) y ofrecer la evaluación gratis.',
+        'Si el paciente dice que es caro: ofrecer las cuotas y el orden por prioridad (resolver primero lo urgente, lo estético después).',
+        'Datos sensibles de salud: no pedir detalles clínicos por chat más allá de lo necesario para agendar.',
+        'Cerrar siempre proponiendo día y hora concretos, no un "avísame cuando puedas".',
+      ].join('\n'),
+    },
+  ];
+  for (const d of DOCS) {
+    await db.insert(db.knowledge, {
+      account_id: accountId, agent_ids: [agent._id],
+      is_main: d.title === 'Servicios y precios',
+      title: `Clínica Demo Sonrisa — ${d.title}`,
+      content: d.content,
+    });
+  }
 
   // 4. Leads + mensajes + follow-ups
   let created = 0;

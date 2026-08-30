@@ -70,7 +70,7 @@ function showDashboard() {
     // Capa FIJA arriba, no dentro del flex del app-shell (ahí empujaba todo el
     // contenido a una columna). Se compensa con padding-top en el shell.
     b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:60;background:#0a0a0a;color:#f5f5f5;font-size:12.5px;padding:7px 14px;text-align:center;letter-spacing:.02em;border-bottom:1px solid rgba(255,255,255,.14)';
-    b.innerHTML = '🧪 <strong>Cuenta demo</strong> — Clínica Demo Sonrisa. Datos ficticios para revisión y demostración · sesión de 2 horas · <a href="#" id="demo-banner-exit" style="color:#c9a227;text-decoration:underline">salir</a>';
+    b.innerHTML = '🧪 <strong>Cuenta demo</strong> — Clínica Demo Sonrisa. Datos ficticios para revisión y demostración · sesión de 7 días · <a href="#" id="demo-banner-exit" style="color:#c9a227;text-decoration:underline">salir</a>';
     document.body.prepend(b);
     document.getElementById('app-shell').style.paddingTop = '32px';
     document.getElementById('demo-banner-exit').onclick = (e) => { e.preventDefault(); logout(); };
@@ -135,7 +135,7 @@ function renderAuthForm(mode) {
       <p class="auth-footer">¿Nuevo aquí? <a href="#" id="auth-to-register" style="color:var(--orange);font-weight:600">Crear cuenta gratis →</a></p>
       <div id="auth-demo-box" style="display:none;margin-top:18px;padding-top:14px;border-top:1px solid var(--border,#333)">
         <button class="btn-secondary auth-btn" id="auth-demo" style="width:100%">Ver la cuenta demo (sin registro)</button>
-        <p class="auth-footer" style="margin-top:6px;font-size:12px;color:var(--text-3,#888)">Clínica Demo Sonrisa · datos ficticios · sesión de 2 horas · para revisores y demostraciones</p>
+        <p class="auth-footer" style="margin-top:6px;font-size:12px;color:var(--text-3,#888)">Clínica Demo Sonrisa · datos ficticios · sesión de 7 días · para revisores y demostraciones</p>
       </div>
     `;
     document.getElementById('auth-submit').onclick = () => submitAuth('login');
