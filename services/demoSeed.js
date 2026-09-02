@@ -137,7 +137,12 @@ async function seedDemo({ password }) {
   let accountId;
   if (user) {
     accountId = user.account_id;
-    await db.update(db.users, { _id: user._id }, { password_hash: passHash, onboardingCompleted: true, onboardingStep: 4 });
+    await db.update(db.users, { _id: user._id }, {
+      password_hash: passHash, onboardingCompleted: true, onboardingStep: 4,
+      // Plan real y no trial: sin esto el panel del revisor muestra 'Plan Trial'
+      // con la alerta de limite y el boton de upgrade — parece cuenta a medias.
+      membershipPlan: 'crecimiento',
+    });
     // Limpiar datos anteriores de la cuenta demo (nunca otras cuentas).
     // messages no tiene account_id → primero se resuelven los lead_id del demo.
     const oldLeads = await db.find(db.leads, { account_id: accountId });
@@ -162,6 +167,8 @@ async function seedDemo({ password }) {
       account_id: accountId,
       demo: true,
       membershipExpiresAt: new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString(),
+      // Ver el comentario de arriba: el revisor no debe ver una cuenta en trial.
+      membershipPlan: 'crecimiento',
       // El revisor de Meta (y cualquier demo) entra directo al panel: sin el
       // asistente de bienvenida encima, que en una cuenta ya poblada no aporta.
       onboardingCompleted: true, onboardingStep: 4,
@@ -176,6 +183,43 @@ async function seedDemo({ password }) {
     avatar: '🦷',
     enabled: true,
     role: 'nurture',
+    // Constructor de prompt estructurado: sin estos campos el revisor de Meta
+    // (y cualquier prospecto) abre Agentes y ve formularios EN BLANCO. El
+    // agente demo nacio antes del constructor; esto lo pone al dia.
+    objetivo: 'agendar',
+    cargo: 'Recepcionista de la clinica',
+    p_contexto: [
+      'Clinica Demo Sonrisa, clinica dental en La Serena, Chile.',
+      'Atiende urgencias, implantes, ortodoncia (fija e invisible), blanqueamiento y limpiezas.',
+      'La evaluacion cuesta $15.000 y se descuenta del tratamiento si la persona sigue adelante.',
+      'Se paga en efectivo, tarjeta y hasta 12 cuotas. Horario: lunes a viernes 9:00-19:00, sabado 9:00-14:00.',
+      'Quien escribe suele llegar con dolor, con una duda de precio, o comparando con otra clinica.',
+    ].join('\n'),
+    p_limites: [
+      'Nunca diagnosticar por chat: ante sintomas, el paso siempre es la evaluacion presencial.',
+      'Nunca inventar precios, plazos ni convenios. Si no esta en el conocimiento, decir que se confirma con el equipo.',
+      'Nunca prometer un resultado estetico ni un plazo de tratamiento sin evaluacion.',
+      'Nunca hablar mal de otra clinica.',
+    ].join('\n'),
+    p_objeciones: [
+      '"Esta caro": explicar que incluye el precio (materiales, controles, garantia) y recordar que la evaluacion se descuenta. Ofrecer las cuotas.',
+      '"Lo voy a pensar": sin presion. Dejar la puerta abierta y ofrecer un dato util para decidir.',
+      '"Estoy cotizando en otra parte": validar que compare, dar un criterio honesto para elegir y ofrecer la evaluacion igual.',
+      '"Me da miedo el dentista": validar el miedo, contar que la evaluacion no duele y que se avisa cada paso.',
+    ].join('\n'),
+    p_escalacion: [
+      'Dolor fuerte, sangrado o golpe reciente: ofrecer la hora mas cercana y avisar al equipo.',
+      'Reclamos por un tratamiento ya hecho: no discutir, pedir disculpas y derivar a una persona.',
+      'Convenios, seguros o temas de facturacion que no esten en el conocimiento.',
+    ].join('\n'),
+    p_ejemplos: [
+      { cliente: 'Hola, cuanto sale un implante?',
+        agente: 'Hola! Depende del caso, pero te cuento altiro como funciona 😊 Es por una pieza puntual o mas de una?' },
+      { cliente: 'Tengo un diente picado hace como dos semanas y me duele al masticar',
+        agente: 'Uf, dos semanas con dolor es harto. Lo primero es una evaluacion con radiografia para ver si se rescata la pieza o va implante. La evaluacion son $15.000 y se descuentan si sigues el tratamiento. Te acomoda esta semana?' },
+      { cliente: 'Y se puede pagar en cuotas?',
+        agente: 'Si, hasta 12 cuotas con tarjeta. Te dejo jueves 16:30 o viernes 15:00?' },
+    ],
     instructions: [
       'Eres la recepcionista virtual de Clínica Demo Sonrisa, en La Serena.',
       '',

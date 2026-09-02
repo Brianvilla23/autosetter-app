@@ -674,6 +674,19 @@ router.get('/onboarding', async (req, res, next) => {
       },
     ];
 
+    // La cuenta demo no es un cliente configurandose: es un escaparate. Sin
+    // esto, el revisor de Meta abre el panel y lo primero que ve es
+    // "Termina tu setup 3/6 - Proximo paso: Conecta tu Instagram", que lee
+    // como producto a medio instalar. Nunca podra completarlo (la demo no
+    // tiene un Instagram real que conectar), asi que se marca como listo y la
+    // tarjeta no se muestra.
+    if (account && account.demo === true) {
+      return res.json({
+        steps, completedSteps: steps.length, totalSteps: steps.length,
+        percent: 100, allDone: true, nextStep: null, demo: true,
+      });
+    }
+
     const completedSteps = steps.filter(s => s.done).length;
     const totalSteps = steps.length;
     const percent = Math.round((completedSteps / totalSteps) * 100);
