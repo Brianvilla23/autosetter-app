@@ -59,11 +59,44 @@ function attach(server) {
   return wss;
 }
 
-/** Una conexión de Twilio Media Streams = una llamada en curso. */
+// ── Normalizacion entre proveedores ──────────────────────────────────────────
+// Twilio y Telnyx mandan el MISMO audio (PCMU 8k en base64) y el evento
+// `media` tiene la misma forma en los dos. Lo que cambia es la envoltura:
+//
+//   Twilio  start:  { start: { streamSid, customParameters } }
+//   Telnyx  start:  { stream_id, start: { call_control_id, media_format } }
+//   Twilio  salida: { event:'media', streamSid, media:{ payload } }
+//   Telnyx  salida: { event:'media', media:{ payload } }   ← sin id
+//
+// El proveedor se detecta del PROPIO mensaje, no de una variable de entorno:
+// asi cada stream se identifica solo y las dos vias pueden convivir.
+
+function leerStart(msg) {
+  const s = msg.start || {};
+  const params = s.customParameters || s.custom_parameters || s.parameters || {};
+  const streamId = msg.streamSid || s.streamSid || msg.stream_id || s.stream_id || null;
+  const proveedor = (msg.stream_id || s.stream_id || s.call_control_id) ? 'telnyx' : 'twilio';
+  return { params, streamId, proveedor };
+}
+
+/** Audio del modelo hacia la llamada, en el formato que espera cada uno. */
+function msgAudio(proveedor, streamId, payload) {
+  return proveedor === 'telnyx'
+    ? { event: 'media', media: { payload } }
+    : { event: 'media', streamSid: streamId, media: { payload } };
+}
+
+/** Barge-in: tirar lo que quedo bufferizado del lado del proveedor. */
+function msgClear(proveedor, streamId) {
+  return proveedor === 'telnyx' ? { event: 'clear' } : { event: 'clear', streamSid: streamId };
+}
+
+/** Una conexión de media streams (Twilio o Telnyx) = una llamada en curso. */
 function manejarStream(twilioWs) {
   const estado = {
     llamada: null,          // doc de db.llamadas
     streamSid: null,
+    proveedor: 'twilio',      // se corrige al llegar el `start`
     openaiWs: null,
     cerrando: false,
     // barge-in: para truncar el audio del asistente donde el lead interrumpió
@@ -108,7 +141,7 @@ function manejarStream(twilioWs) {
   twilioWs.on('error', (e) => { console.warn('[bridge] twilio ws error:', e.message); cerrarTodo('twilio ws error'); });
 
   async function onStart(msg) {
-    const p = msg.start?.customParameters || {};
+    const { params: p, streamId, proveedor } = leerStart(msg);
     const llamadaId = String(p.ll || '');
     const token     = String(p.t || '');
     if (!llamadaId || !telefonia.tokenValido(llamadaId, token)) {
@@ -128,7 +161,8 @@ function manejarStream(twilioWs) {
     }
 
     estado.llamada = llamada;
-    estado.streamSid = msg.start.streamSid;
+    estado.streamSid = streamId;
+    estado.proveedor = proveedor;
     clearTimeout(estado.timers.start);
 
     await db.update(db.llamadas, { _id: llamadaId }, {
@@ -251,11 +285,7 @@ function manejarStream(twilioWs) {
             if (ev.delta && twilioWs.readyState === WebSocket.OPEN && estado.streamSid) {
               if (estado.tsInicioRespuestaMs === null) estado.tsInicioRespuestaMs = estado.tsMediaMs;
               if (ev.item_id) estado.itemAsistente = ev.item_id;
-              twilioWs.send(JSON.stringify({
-                event: 'media',
-                streamSid: estado.streamSid,
-                media: { payload: ev.delta },
-              }));
+              twilioWs.send(JSON.stringify(msgAudio(estado.proveedor, estado.streamSid, ev.delta)));
             }
             break;
 
@@ -264,7 +294,7 @@ function manejarStream(twilioWs) {
           // exactamente cuánto alcanzó a "decir".
           case 'input_audio_buffer.speech_started': {
             if (twilioWs.readyState === WebSocket.OPEN && estado.streamSid) {
-              twilioWs.send(JSON.stringify({ event: 'clear', streamSid: estado.streamSid }));
+              twilioWs.send(JSON.stringify(msgClear(estado.proveedor, estado.streamSid)));
             }
             if (estado.itemAsistente && estado.tsInicioRespuestaMs !== null) {
               const transcurrido = Math.max(0, estado.tsMediaMs - estado.tsInicioRespuestaMs);
@@ -374,4 +404,4 @@ function manejarStream(twilioWs) {
   }
 }
 
-module.exports = { attach, WS_PATH };
+module.exports = { attach, WS_PATH, leerStart, msgAudio, msgClear };

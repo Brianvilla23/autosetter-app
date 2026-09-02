@@ -30,6 +30,7 @@ const db     = require('../db/database');
 const { hasFeature } = require('../config/plans');
 const { checkMinutosVoz } = require('./limits');
 const { normalizePhoneCL } = require('./shopify');
+const proveedores = require('./telefoniaProveedor');
 
 const APP_URL = () => process.env.APP_URL || 'https://atinov.com';
 
@@ -87,11 +88,14 @@ const MARKER_RE = /\[LLAMAR:\s*([^|\]]{3,40})\s*\|\s*([^\]]{2,120})\]/gi;
 
 // ── Fail-closed ───────────────────────────────────────────────────────────────
 
-/** true solo si las TRES credenciales de Twilio están en el entorno. */
+/**
+ * true solo si el proveedor ACTIVO tiene todas sus credenciales.
+ * Quien decide cual es el proveedor es services/telefoniaProveedor.js
+ * (variable TELEFONIA_PROVEEDOR, o autodeteccion). Fail-closed: sin
+ * credenciales completas la capacidad ni aparece en el prompt.
+ */
 function telefoniaHabilitada() {
-  return !!(process.env.TWILIO_ACCOUNT_SID
-    && process.env.TWILIO_AUTH_TOKEN
-    && process.env.TWILIO_PHONE_NUMBER);
+  return proveedores.telefoniaHabilitada();
 }
 
 // ── Utilidades de hora Chile (sin dependencias) ───────────────────────────────
@@ -534,52 +538,28 @@ async function procesarLlamadasProgramadas() {
  * IDÉNTICO a la llamada telefónica: por eso la vía WhatsApp reusa todo.
  */
 async function crearLlamadaTwilio(llamada, settingsWa = null) {
-  const sid   = process.env.TWILIO_ACCOUNT_SID;
-  const token = process.env.TWILIO_AUTH_TOKEN;
-  const t     = tokenLlamada(llamada._id);
-  const base  = APP_URL();
+  const t    = tokenLlamada(llamada._id);
+  const base = APP_URL();
+  const prov = proveedores.proveedorActivo();
 
+  // El destino es lo unico que cambia entre una llamada telefonica y una via
+  // WhatsApp: en la segunda se marca al SIP de Meta con las credenciales
+  // digest del numero. El proveedor no decide esto — solo lo transporta.
   const destino = settingsWa
     ? require('./whatsappCalling').paramsTwilioParaWhatsapp({ telefonoE164: llamada.telefono, settings: settingsWa })
-    : { To: llamada.telefono, From: process.env.TWILIO_PHONE_NUMBER };
+    : { To: llamada.telefono, From: prov.numeroPropio() };
 
-  const params = new URLSearchParams({
-    ...destino,
-    Url:            `${base}/webhook/twilio/twiml?ll=${encodeURIComponent(llamada._id)}&t=${t}`,
-    Method:         'POST',
-    StatusCallback: `${base}/webhook/twilio/status?ll=${encodeURIComponent(llamada._id)}&t=${t}`,
-    StatusCallbackMethod: 'POST',
-    Timeout: String(RING_TIMEOUT_SEG),
+  return prov.crearLlamada({
+    destino,
+    urlInstrucciones: `${base}/webhook/twilio/twiml?ll=${encodeURIComponent(llamada._id)}&t=${t}`,
+    statusCallback:   `${base}/webhook/twilio/status?ll=${encodeURIComponent(llamada._id)}&t=${t}`,
+    timeoutSeg:       RING_TIMEOUT_SEG,
   });
-  ['initiated', 'ringing', 'answered', 'completed'].forEach(ev =>
-    params.append('StatusCallbackEvent', ev));
-
-  const r = await axios.post(
-    `https://api.twilio.com/2010-04-01/Accounts/${sid}/Calls.json`,
-    params.toString(),
-    {
-      auth: { username: sid, password: token },
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      timeout: 15000,
-    }
-  );
-  if (!r.data?.sid) throw new Error('Twilio no devolvió CallSid');
-  return r.data.sid;
 }
 
-/** Corta una llamada en curso vía REST (el tope de duración manda). */
+/** Corta una llamada en curso via REST (el tope de duracion manda). */
 async function colgarLlamadaTwilio(callSid) {
-  const sid   = process.env.TWILIO_ACCOUNT_SID;
-  const token = process.env.TWILIO_AUTH_TOKEN;
-  await axios.post(
-    `https://api.twilio.com/2010-04-01/Accounts/${sid}/Calls/${encodeURIComponent(callSid)}.json`,
-    new URLSearchParams({ Status: 'completed' }).toString(),
-    {
-      auth: { username: sid, password: token },
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      timeout: 10000,
-    }
-  );
+  await proveedores.proveedorActivo().colgar(callSid);
 }
 
 // ── Seguridad de los webhooks ─────────────────────────────────────────────────
@@ -607,27 +587,7 @@ function tokenValido(llamadaId, t) {
  *    un valor pasa a "&amp;") y con eso una firma LEGÍTIMA dejaría de calzar.
  */
 function firmaTwilioValida(req) {
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  if (!authToken) return false;
-  const firma = req.headers['x-twilio-signature'];
-  if (!firma) return false;
-
-  const url = APP_URL().replace(/\/$/, '') + req.originalUrl;
-
-  let params;
-  if (req.rawBody && req.rawBody.length) {
-    params = {};
-    for (const [k, v] of new URLSearchParams(req.rawBody.toString('utf8'))) params[k] = v;
-  } else {
-    params = req.body && typeof req.body === 'object' ? req.body : {};
-  }
-
-  const data = url + Object.keys(params).sort().map(k => k + params[k]).join('');
-  const esperada = crypto.createHmac('sha1', authToken).update(Buffer.from(data, 'utf8')).digest('base64');
-
-  const a = Buffer.from(String(firma));
-  const b = Buffer.from(esperada);
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
+  return proveedores.proveedorActivo().firmaValida(req).ok === true;
 }
 
 // ── TwiML ─────────────────────────────────────────────────────────────────────
@@ -644,14 +604,16 @@ function xmlEscape(s) {
  */
 function twimlParaLlamada(llamadaId) {
   const wsUrl = APP_URL().replace(/^http/, 'ws').replace(/\/$/, '') + '/twilio-media';
+  // El bloque <Stream> lo arma el proveedor: TwiML lo tiene bidireccional por
+  // defecto, TeXML exige pedirlo (bidirectionalMode="rtp") o el lead no
+  // escucharia al agente. El resto del documento es identico en los dos.
+  const stream = proveedores.proveedorActivo().streamXml({
+    wsUrl,
+    parametros: { ll: llamadaId, t: tokenLlamada(llamadaId) },
+  });
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Connect>
-    <Stream url="${xmlEscape(wsUrl)}">
-      <Parameter name="ll" value="${xmlEscape(llamadaId)}"/>
-      <Parameter name="t" value="${xmlEscape(tokenLlamada(llamadaId))}"/>
-    </Stream>
-  </Connect>
+${stream}
 </Response>`;
 }
 
@@ -660,7 +622,7 @@ function twimlParaLlamada(llamadaId) {
 /** Twilio factura por minuto redondeado hacia arriba. */
 function costoEstimadoUSD(duracionSeg) {
   const min = Math.max(1, Math.ceil(Number(duracionSeg || 0) / 60));
-  const twilio = min * USD_MIN_TWILIO_MOVIL;
+  const twilio = min * proveedores.costoMinutoUSD();
   const openai = min * USD_MIN_OPENAI_EST;
   return {
     minutos: min,
