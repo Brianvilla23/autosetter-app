@@ -2075,24 +2075,38 @@ router.get('/self-test', async (req, res) => {
         const acc = await axios.get(`https://api.twilio.com/2010-04-01/Accounts/${sid}.json`, {
           auth: { username: sid, password: tok }, timeout: 8000,
         });
-        // Número: ¿existe en la cuenta y tiene voz?
+        // Número: puede ser COMPRADO a Twilio (IncomingPhoneNumbers, con
+        // capacidad de voz) o PROPIO VERIFICADO como Caller ID
+        // (OutgoingCallerIds). El segundo es el camino elegido para Chile:
+        // Twilio no vende +569 (los rangos moviles son de los operadores
+        // moviles), asi que se verifica el WhatsApp del negocio y se usa como
+        // From. Un Caller ID verificado sirve para SALIR; las entrantes a ese
+        // numero siguen llegando al telefono donde vive la SIM, no a Twilio.
         const nums = await axios.get(`https://api.twilio.com/2010-04-01/Accounts/${sid}/IncomingPhoneNumbers.json`, {
           auth: { username: sid, password: tok }, params: { PhoneNumber: num }, timeout: 8000,
         });
         const mio = (nums.data?.incoming_phone_numbers || [])[0];
-        const voz = mio?.capabilities?.voice === true;
+        let verificado = null;
+        if (!mio) {
+          const cids = await axios.get(`https://api.twilio.com/2010-04-01/Accounts/${sid}/OutgoingCallerIds.json`, {
+            auth: { username: sid, password: tok }, params: { PhoneNumber: num }, timeout: 8000,
+          });
+          verificado = (cids.data?.outgoing_caller_ids || [])[0] || null;
+        }
+        const voz = mio ? mio.capabilities?.voice === true : !!verificado;
         const status = acc.data?.status;
         const problemas = [];
         if (status && status !== 'active') problemas.push(`cuenta en estado ${status}`);
-        if (!mio) problemas.push('el número no está en esta cuenta de Twilio');
-        else if (!voz) problemas.push('el número NO tiene capacidad de voz');
+        if (!mio && !verificado) problemas.push('el número no está en esta cuenta de Twilio: ni comprado ni verificado como Caller ID (Phone Numbers → Verified Caller IDs)');
+        else if (mio && !voz) problemas.push('el número NO tiene capacidad de voz');
+        const modoNumero = mio ? 'número comprado con voz' : 'número propio verificado como Caller ID (sirve para SALIR; las entrantes no llegan a Twilio)';
         const trial = acc.data?.type === 'Trial';
         tests.push({
           id: 'twilio', name: 'Twilio (llamadas)',
           status: problemas.length ? 'fail' : (trial ? 'warn' : 'pass'),
           message: problemas.length
             ? problemas.join(' · ')
-            : `OK · credenciales válidas · número con voz${trial ? ' · ⚠️ cuenta TRIAL: solo puede llamar a números verificados en Twilio y antepone un aviso grabado — subir a cuenta pagada antes de llamar a leads reales' : ''}${process.env.TWILIO_SIP_DOMAIN ? ' · SIP configurado (vía WhatsApp lista para cuando la app esté Live)' : ' · sin TWILIO_SIP_DOMAIN (vía WhatsApp inactiva; la telefónica funciona igual)'}`,
+            : `OK · credenciales válidas · ${modoNumero}${trial ? ' · ⚠️ cuenta TRIAL: solo puede llamar a números verificados en Twilio y antepone un aviso grabado — subir a cuenta pagada antes de llamar a leads reales' : ''}${process.env.TWILIO_SIP_DOMAIN ? ' · SIP configurado (vía WhatsApp lista para cuando la app esté Live)' : ' · sin TWILIO_SIP_DOMAIN (vía WhatsApp inactiva; la telefónica funciona igual)'}`,
         });
       } catch (e) {
         const code = e.response?.status;
