@@ -248,7 +248,7 @@ async function evaluarNaturalidad({ client, transcript, model }) {
   const agenteHablo = (transcript || []).some(m => m.role === 'agent');
   if (!agenteHablo) return null;
   const texto = transcript.map((m, i) =>
-    `${i + 1}. ${m.role === 'agent' ? 'AGENTE' : 'CLIENTE'}: ${String(m.content).slice(0, 400)}`).join('\n');
+    `${i + 1}. ${m.role === 'agent' ? 'AGENTE' : 'CLIENTE'}: ${String(m.content || '').slice(0, 400) || '(sin respuesta)'}`).join('\n');
   try {
     const res = await client.chat.completions.create({
       model: model || process.env.OPENAI_FAST_MODEL || 'gpt-4o-mini',
@@ -322,12 +322,14 @@ async function runSimulation({ agent, knowledge = [], links = [], icp, temperatu
     if (outcome === 'cerrado' || outcome === 'frio_o_abandono') break;
 
     // 2. Turno del AGENTE real (mismo motor que producción)
-    const agentReply = await generateReply({
+    // `|| ''`: si el modelo devolviera vacío, la transcripción lo muestra tal
+    // cual (el juez lo castiga como "sin respuesta") en vez de reventar.
+    const agentReply = String(await generateReply({
       agent, knowledge, links,
       conversationHistory: history.slice(0, -1), // todo menos el último (que va como newMessage)
       newMessage: leadMsg,
       accountId, apiKey,
-    });
+    }) || '').trim();
     transcript.push({ role: 'agent', content: agentReply });
     history.push({ role: 'agent', content: agentReply });
   }

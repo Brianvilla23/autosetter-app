@@ -717,7 +717,7 @@ function renderEntrenamiento(r, out) {
           ${s.naturalidad?.veredicto ? `<div style="font-size:13px;margin-bottom:8px">${escHtml(s.naturalidad.veredicto)}</div>` : ''}
           ${(s.naturalidad?.senales || []).map(x => `<div style="font-size:12.5px;color:var(--text-2);margin-bottom:4px">⚠️ ${x.fragmento ? `<i>"${escHtml(x.fragmento)}"</i> — ` : ''}${escHtml(x.problema)}</div>`).join('')}
           <div style="display:flex;flex-direction:column;gap:6px;margin-top:10px">
-            ${s.transcript.map(m => `<div style="align-self:${m.role === 'agent' ? 'flex-end' : 'flex-start'};max-width:82%;background:${m.role === 'agent' ? 'var(--accent-bg)' : 'var(--surface-2)'};border-radius:12px;padding:7px 11px;font-size:12.5px;line-height:1.4">${escHtml(m.content)}</div>`).join('')}
+            ${s.transcript.map(m => `<div style="align-self:${m.role === 'agent' ? 'flex-end' : 'flex-start'};max-width:82%;background:${m.role === 'agent' ? 'var(--accent-bg)' : 'var(--surface-2)'};border-radius:12px;padding:7px 11px;font-size:12.5px;line-height:1.4">${escHtml(m.content) || '<i style="color:var(--text-3)">(sin respuesta)</i>'}</div>`).join('')}
           </div>
         </div>
       </details>`).join('')}`;

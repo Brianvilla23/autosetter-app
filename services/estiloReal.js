@@ -150,7 +150,13 @@ function corpusDesdeTexto(texto) {
 
 // ── Saneo del perfil (puro) ──────────────────────────────────────────────────
 
-const str = (v, max) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
+// Algunos modelos copian el andamiaje del esquema ("1 frase: …", "<…>"): se
+// limpia para que ese ruido no llegue al prompt del agente.
+const str = (v, max) => String(v ?? '')
+  .replace(/\s+/g, ' ')
+  .replace(/^\s*(?:1|una)\s+frase\s*[:—–-]\s*/i, '')
+  .replace(/^\s*<|>\s*$/g, '')
+  .trim().slice(0, max);
 const lista = (v, max, largo) => (Array.isArray(v) ? v : [])
   .map(x => str(x, largo)).filter(Boolean)
   .filter((x, i, arr) => arr.indexOf(x) === i)
@@ -236,17 +242,18 @@ const SYS_APRENDER = `Eres lingüista de conversaciones de venta por chat (Whats
 
 Devuelve SOLO un objeto JSON (sin texto extra) con esta forma:
 {
-  "registro": "1 frase: país/región probable, tuteo o voseo, formal o informal, mayúsculas, tildes, puntuación",
-  "largo": "1 frase: cuántas palabras suele tener un mensaje de cliente y uno del negocio",
-  "muletillas": ["hasta 10 palabras o expresiones repetidas: po, ya, dale, al tiro, cachai, órale, vale..."],
-  "emojis": "1 frase: si usan, cuáles y con qué frecuencia",
-  "saludos": ["hasta 5 formas reales de saludar o abrir"],
-  "observaciones": "1 frase con lo más distintivo (ej: preguntan precio antes de saludar, mandan 3 mensajes seguidos, escriben en minúscula)",
-  "muestras_cliente": ["10-12 mensajes TEXTUALES de clientes, cortos y variados: saludo, pregunta de precio, duda, objeción, confirmación"],
-  "pares": [{ "cliente": "mensaje textual del cliente", "humano": "la respuesta textual del NEGOCIO cuando fue claramente una persona (no un bot): natural, corta, buena" }]
+  "registro": "<país o región probable, tuteo o voseo, formal o informal, uso de mayúsculas, tildes y puntuación — como frase natural, ej: 'chileno informal, tuteo, minúsculas y sin tildes'>",
+  "largo": "<cuántas palabras suele tener un mensaje de cliente y uno del negocio, ej: 'clientes 5-12 palabras, negocio 8-15'>",
+  "muletillas": ["<hasta 10 expresiones coloquiales de RELLENO que se repiten: po, ya, dale, al tiro, cachai, órale, vale, jaja, porfa, siii — nunca palabras de contenido como precio, hora, atienden, cuánto>"],
+  "emojis": "<si usan, cuáles y con qué frecuencia, ej: 'casi nunca; 😅 en 1 de cada 5'>",
+  "saludos": ["<hasta 5 formas reales de saludar o abrir, textuales>"],
+  "observaciones": "<lo más distintivo, en una frase, ej: 'preguntan precio antes de saludar', 'mandan 3 mensajes seguidos'>",
+  "muestras_cliente": ["<10-12 mensajes TEXTUALES de clientes, cortos y variados: saludo, pregunta de precio, duda, objeción, confirmación>"],
+  "pares": [{ "cliente": "<mensaje textual del cliente>", "humano": "<la respuesta textual del NEGOCIO cuando fue claramente una persona (no un bot): natural, corta, buena>" }]
 }
 
 Reglas:
+- Lo que va entre < > son instrucciones: escribe el contenido real. Nunca copies las instrucciones, los < >, ni prefijos como "1 frase:".
 - Copia los mensajes TAL CUAL (minúsculas, sin tildes, errores de tipeo incluidos). No los corrijas ni los embellezcas.
 - Reemplaza cualquier nombre de persona por [nombre]. Nada de teléfonos, correos ni direcciones.
 - En "pares" solo van respuestas del negocio que suenen a persona real y que estén BIEN (claras, cortas, cálidas). Máximo 6. Si no hay respuestas humanas buenas, deja el array vacío.

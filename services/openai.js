@@ -413,7 +413,9 @@ Ejemplo: "mira, te mando la guía que uso con los que están arrancando — ¿a 
     const reasoningMessages = [
       { role: 'developer', content: systemPrompt },
       ...dialogHistory.map(m => ({
-        role: m.role === 'agent' ? 'assistant' : 'user',
+        // Mismo mapeo que el branch rápido: lo que escribió el dueño a mano
+        // es 'assistant', no 'user' (si no, el modelo le responde al dueño).
+        role: (m.role === 'agent' || m.role === 'manual') ? 'assistant' : 'user',
         content: m.content
       })),
       { role: 'user', content: newMessage }
@@ -421,9 +423,23 @@ Ejemplo: "mira, te mando la guía que uso con los que están arrancando — ¿a 
     response = await client.chat.completions.create({
       model: selectedModel,
       messages: reasoningMessages,
-      max_completion_tokens: 500, // reasoning interno + output corto (~80 tokens visibles)
+      max_completion_tokens: 700, // reasoning interno + output corto (~80 tokens visibles)
       reasoning_effort: 'low',    // bajo para respuestas rápidas y baratas (chat IG debe ser veloz)
     });
+    // El razonamiento interno cuenta contra max_completion_tokens: si se lo
+    // come entero, `content` vuelve VACÍO (finish_reason 'length') y el lead
+    // recibía el acuse genérico del webhook a una pregunta de precio. Visto
+    // en el entrenador el 05-09. Fallback: el modelo rápido con el mismo
+    // contexto — una respuesta corta y real vale más que un silencio.
+    if (!String(response.choices?.[0]?.message?.content || '').trim()) {
+      console.warn(`🧠 ${selectedModel} devolvió vacío (finish=${response.choices?.[0]?.finish_reason}) — fallback a ${fastModel}`);
+      response = await client.chat.completions.create({
+        model: fastModel,
+        messages,
+        max_tokens: 120,
+        temperature: 0.85,
+      });
+    }
   } else {
     response = await client.chat.completions.create({
       model: selectedModel,

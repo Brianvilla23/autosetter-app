@@ -174,6 +174,19 @@ test('sanearPerfil recorta, dedup y devuelve null sin señal', () => {
   assert.ok(p.pares.every(x => x.cliente && x.humano), 'un par sin lado humano no sirve');
 });
 
+test('sanearPerfil limpia el andamiaje del esquema que el modelo a veces copia ("1 frase:", "<…>")', () => {
+  // Visto en producción el 05-09: gpt-4o-mini devolvió "1 frase: Chile, tuteo…"
+  const p = sanearPerfil({
+    registro: '1 frase: Chile, tuteo, informal',
+    largo: 'Una frase — clientes 5-12 palabras',
+    emojis: '<casi nunca>',
+    muestras_cliente: ['a', 'b', 'c'],
+  });
+  assert.strictEqual(p.registro, 'Chile, tuteo, informal');
+  assert.strictEqual(p.largo, 'clientes 5-12 palabras');
+  assert.strictEqual(p.emojis, 'casi nunca');
+});
+
 test('parsearJSON rescata el objeto aunque venga envuelto; nunca throw', () => {
   assert.deepStrictEqual(parsearJSON('claro:\n```json\n{"a":1}\n```'), { a: 1 });
   assert.strictEqual(parsearJSON('sin json'), null);
