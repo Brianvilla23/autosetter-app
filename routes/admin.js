@@ -2450,10 +2450,11 @@ router.post('/simulator/run', async (req, res) => {
       opener: opener || 'lead',
       maxTurns: Math.min(Math.max(parseInt(maxTurns) || 6, 2), 12),
       extraNotes,
+      evaluar: true, // juez de naturalidad: una llamada extra a gpt-4o-mini
       accountId, apiKey,
     });
 
-    await audit(req, 'simulator_run', agentId, { icp, temperature, objection, outcome: result.outcome });
+    await audit(req, 'simulator_run', agentId, { icp, temperature, objection, outcome: result.outcome, naturalidad: result.naturalidad?.puntaje ?? null });
     res.json(result);
   } catch (e) {
     console.error('simulator/run error:', e);

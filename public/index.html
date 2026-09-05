@@ -1251,6 +1251,28 @@
       <div id="intel-list-huecos"></div>
     </div>
 
+    <!-- Estilo real + Entrenador: el agente aprende cómo escriben los clientes y se entrena contra clientes simulados que escriben igual -->
+    <div id="intel-estilo-card" style="background:#fff;border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:14px;padding:20px;margin-bottom:18px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+        <span style="width:34px;height:34px;border-radius:9px;background:var(--accent-bg);color:var(--accent);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:17px">🗣️</span>
+        <div style="font-weight:800;font-size:1.05rem">Que hable como tus clientes</div>
+      </div>
+      <div style="font-size:13px;color:var(--text-2);margin-bottom:14px;line-height:1.5">Tu agente ya sabe vender. Acá aprende <b>cómo escribe la gente que te escribe</b> — largo, muletillas, emojis, informalidad — y lo combina con ese conocimiento. Después entrénalo: tres clientes simulados que escriben igual le hablan, y un juez te dice qué sonó a bot.</div>
+      <div id="intel-estilo-box" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:13px 14px;margin-bottom:10px"><div style="font-size:13px;color:var(--text-3)">Cargando…</div></div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <button class="btn-primary" style="padding:8px 16px;font-size:13px" onclick="aprenderEstiloUI(this, 'bandeja')">🗣️ Aprender de mi bandeja</button>
+        <button class="btn-ghost" style="padding:8px 14px;font-size:13px" onclick="document.getElementById('intel-upload-block').open = true; document.getElementById('intel-upload-text').focus()">Pegar conversaciones…</button>
+        <span id="intel-estilo-status" style="font-size:12.5px;color:var(--text-2)"></span>
+      </div>
+      <div style="border-top:1px solid var(--border);margin-top:16px;padding-top:14px">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <button class="btn-primary" id="intel-entrenar-btn" style="padding:8px 16px;font-size:13px" onclick="entrenarAgenteUI(this)">🎯 Entrenar ahora</button>
+          <span style="font-size:12.5px;color:var(--text-2)">3 conversaciones simuladas · 1-2 minutos · las mejoras que proponga el juez aparecen abajo para que las apruebes.</span>
+        </div>
+        <div id="intel-entrenar-result" style="margin-top:10px"></div>
+      </div>
+    </div>
+
     <!-- Mejoras propuestas: análisis semanal + conversaciones subidas por el dueño -->
     <div id="intel-improvements-card" style="display:none;background:#fff;border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:14px;padding:20px;margin-bottom:18px">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
@@ -1271,6 +1293,7 @@
           style="width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:13px;resize:vertical;background:var(--surface)"></textarea>
         <div style="display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap">
           <button class="btn-primary" id="intel-upload-btn" style="padding:8px 16px;font-size:13px" onclick="analizarConversacionesUI(this)">🔍 Analizar y proponer mejoras</button>
+          <button class="btn-ghost" style="padding:8px 14px;font-size:13px" onclick="aprenderEstiloUI(this, 'texto')">🗣️ Aprender el estilo de lo pegado</button>
           <span id="intel-upload-status" style="font-size:12.5px;color:var(--text-2)"></span>
         </div>
       </details>

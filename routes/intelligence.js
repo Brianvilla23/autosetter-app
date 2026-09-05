@@ -139,6 +139,158 @@ router.post('/improvements/dismiss', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// ── ESTILO REAL + ENTRENADOR ────────────────────────────────────────────────
+// El agente aprende CÓMO ESCRIBEN los clientes del negocio (de la bandeja o
+// de chats pegados) y se entrena contra un cliente simulado que escribe
+// igual; un juez de naturalidad convierte lo que sonó a bot en propuestas
+// que el dueño aprueba con un clic (mismo riel que las mejoras). Gastan la
+// key de la plataforma → mismos candados que analizar-texto: rate limit por
+// IP + tope diario por cuenta.
+const MAX_ESTILO_DIA = 5;
+const MAX_ENTRENAMIENTOS_DIA = 3;
+
+/** Cupo diario por cuenta guardado en settings (reset perezoso por fecha). */
+async function cupoDiario(accountId, campo, max) {
+  const settings = await db.findOne(db.settings, { account_id: accountId });
+  const hoy = new Date().toISOString().slice(0, 10);
+  const usados = settings?.[`${campo}_date`] === hoy ? Number(settings[`${campo}_count`] || 0) : 0;
+  return { settings, hoy, usados, agotado: usados >= max, restantes: Math.max(0, max - usados) };
+}
+/** Se cobra DESPUÉS del éxito: un error del modelo no quema cupo del dueño. */
+async function consumirCupo({ settings, accountId, campo, hoy, usados }) {
+  const upd = { [`${campo}_date`]: hoy, [`${campo}_count`]: usados + 1 };
+  if (settings) await db.update(db.settings, { _id: settings._id }, upd).catch(() => null);
+  else await db.insert(db.settings, { account_id: accountId, ...upd }).catch(() => null);
+}
+
+function perfilPublico(agent) {
+  const e = agent?.estilo_real;
+  if (!e || !Array.isArray(e.muestras_cliente) || !e.muestras_cliente.length) return null;
+  return {
+    registro: e.registro, largo: e.largo, emojis: e.emojis, muletillas: e.muletillas || [],
+    saludos: e.saludos || [], observaciones: e.observaciones,
+    muestras_cliente: e.muestras_cliente, pares: e.pares || [],
+    fuente: e.fuente, n_mensajes: e.n_mensajes, conversaciones: e.conversaciones, aprendido_en: e.aprendido_en,
+  };
+}
+
+// GET /api/intelligence/estilo?accountId=X
+router.get('/estilo', async (req, res, next) => {
+  try {
+    const { accountId } = req.query;
+    if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
+    const agent = await db.findOne(db.agents, { account_id: accountId, enabled: true });
+    const cupoE = await cupoDiario(accountId, 'style_learn', MAX_ESTILO_DIA);
+    const cupoT = await cupoDiario(accountId, 'training', MAX_ENTRENAMIENTOS_DIA);
+    res.json({
+      agente: agent ? agent.name : null,
+      perfil: perfilPublico(agent),
+      restantes_hoy: { aprender: cupoE.restantes, entrenar: cupoT.restantes },
+    });
+  } catch (e) { next(e); }
+});
+
+// POST /api/intelligence/estilo/aprender  Body: { accountId, fuente: 'bandeja'|'texto', texto? }
+router.post('/estilo/aprender', analysisLimiter, async (req, res, next) => {
+  try {
+    const { accountId, fuente, texto } = req.body;
+    if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
+    const f = fuente === 'texto' ? 'texto' : 'bandeja';
+    const cupo = await cupoDiario(accountId, 'style_learn', MAX_ESTILO_DIA);
+    if (cupo.agotado) {
+      return res.status(429).json({ error: `Alcanzaste el máximo de ${MAX_ESTILO_DIA} aprendizajes por día. Vuelve mañana.` });
+    }
+    const apiKey = process.env.OPENAI_API_KEY || cupo.settings?.openai_key;
+    const account = await db.findOne(db.accounts, { _id: accountId });
+    const { aprenderEstilo } = require('../services/estiloReal');
+    const r = await aprenderEstilo({
+      accountId, fuente: f, texto: String(texto || ''), apiKey,
+      nombreNegocio: account?.business_name || account?.ig_username || '',
+    });
+    if (!r.ok) return res.status(400).json({ error: r.error });
+    await consumirCupo({ settings: cupo.settings, accountId, campo: 'style_learn', hoy: cupo.hoy, usados: cupo.usados });
+    res.json({ ok: true, perfil: r.perfil, agente: r.agente, truncado: r.truncado, restantes_hoy: cupo.restantes - 1 });
+  } catch (e) { next(e); }
+});
+
+// DELETE /api/intelligence/estilo  Body: { accountId }
+router.delete('/estilo', async (req, res, next) => {
+  try {
+    const accountId = req.body?.accountId || req.query?.accountId;
+    if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
+    const { olvidarEstilo } = require('../services/estiloReal');
+    const r = await olvidarEstilo(accountId);
+    if (!r.ok) return res.status(400).json(r);
+    res.json(r);
+  } catch (e) { next(e); }
+});
+
+// POST /api/intelligence/entrenar  Body: { accountId }
+// Tres clientes simulados del negocio (decidido, comparando precio,
+// desconfiado) conversan con el agente real; el juez puntúa la naturalidad y
+// sus recomendaciones entran como propuestas pendientes.
+const ESCENARIOS = [
+  { label: 'Cliente decidido',            temperature: 'caliente', objection: 'ninguna' },
+  { label: 'Cliente que compara precio',  temperature: 'tibio',    objection: 'precio' },
+  { label: 'Cliente desconfiado',         temperature: 'frio',     objection: 'desconfianza' },
+];
+router.post('/entrenar', analysisLimiter, async (req, res, next) => {
+  try {
+    const { accountId } = req.body;
+    if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
+    const cupo = await cupoDiario(accountId, 'training', MAX_ENTRENAMIENTOS_DIA);
+    if (cupo.agotado) {
+      return res.status(429).json({ error: `Alcanzaste el máximo de ${MAX_ENTRENAMIENTOS_DIA} entrenamientos por día. Vuelve mañana.` });
+    }
+    const agent = await db.findOne(db.agents, { account_id: accountId, enabled: true });
+    if (!agent) return res.status(400).json({ error: 'La cuenta no tiene un agente activo que entrenar.' });
+    const apiKey = process.env.OPENAI_API_KEY || cupo.settings?.openai_key;
+    if (!apiKey) return res.status(400).json({ error: 'La cuenta no tiene API key de OpenAI configurada.' });
+
+    // Knowledge + links igual que el webhook real: el agente entrena con lo
+    // mismo que usa en producción.
+    const { knowledgeForAgent } = require('../services/agents/knowledge');
+    const knowledge = knowledgeForAgent(await db.find(db.knowledge, { account_id: accountId }), agent);
+    const allLinks = await db.find(db.links, { account_id: accountId });
+    const links = (agent.link_ids || []).map(lid => allLinks.find(l => l._id === lid)).filter(Boolean);
+
+    const { runSimulation } = require('../services/conversationSimulator');
+    const simulaciones = [];
+    for (const esc of ESCENARIOS) {
+      const r = await runSimulation({
+        agent, knowledge, links, icp: 'cliente_real',
+        temperature: esc.temperature, objection: esc.objection,
+        opener: 'lead', maxTurns: 5, evaluar: true, accountId, apiKey,
+      });
+      simulaciones.push({
+        escenario: esc.label, outcome: r.outcome, naturalidad: r.naturalidad,
+        transcript: r.transcript, estilo_real: r.profile.estilo_real,
+      });
+    }
+    const puntajes = simulaciones.map(s => s.naturalidad?.puntaje).filter(Number.isFinite);
+    const puntaje = puntajes.length
+      ? Math.round((puntajes.reduce((a, b) => a + b, 0) / puntajes.length) * 10) / 10
+      : null;
+
+    // Recomendaciones del juez → propuestas pendientes (mismo riel de aprobación).
+    const { guardarPropuestas } = require('../services/promptImprover');
+    const pendientes = await db.find(db.improvements, { account_id: accountId, status: 'pending' });
+    const items = [];
+    for (const s of simulaciones) {
+      for (const rec of (s.naturalidad?.recomendaciones || [])) {
+        if (items.some(i => i.causa === rec.causa)) continue;
+        items.push({ causa: rec.causa, evidencia: `Entrenamiento · ${s.escenario}`, propuesta: rec.propuesta });
+      }
+    }
+    const creadas = items.length
+      ? await guardarPropuestas({ accountId, agentId: agent._id, items, pendientes, origen: 'entrenamiento', muestra: simulaciones.length })
+      : 0;
+
+    await consumirCupo({ settings: cupo.settings, accountId, campo: 'training', hoy: cupo.hoy, usados: cupo.usados });
+    res.json({ ok: true, puntaje, simulaciones, creadas, restantes_hoy: cupo.restantes - 1 });
+  } catch (e) { next(e); }
+});
+
 // GET /api/intelligence?accountId=X
 router.get('/', async (req, res, next) => {
   try {

@@ -547,6 +547,7 @@ async function loadImprovements() {
   // El card se ve siempre: aunque no haya propuestas, desde acá se suben
   // conversaciones reales para generarlas.
   card.style.display = '';
+  loadEstiloReal();
   const d = await apiFetch(`/api/intelligence/improvements?accountId=${ACCOUNT_ID}`);
   const items = d?.improvements || [];
   if (!items.length) {
@@ -556,7 +557,7 @@ async function loadImprovements() {
   list.innerHTML = items.map(i => `
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;padding:13px 14px">
       <div style="font-size:13.5px;font-weight:700;margin-bottom:3px">${escHtml(i.causa)}
-        <span style="font-weight:600;font-size:11px;color:var(--text-3);margin-left:6px">${i.origen === 'subidas' ? '📎 de tus conversaciones subidas' : '📅 del análisis semanal'}</span>
+        <span style="font-weight:600;font-size:11px;color:var(--text-3);margin-left:6px">${ORIGEN_LABEL[i.origen] || ORIGEN_LABEL.semanal}</span>
       </div>
       ${i.evidencia ? `<div style="font-size:12.5px;color:var(--text-2);margin-bottom:8px">${escHtml(i.evidencia)}${i.muestra ? ` · análisis sobre ${i.muestra} conversaciones` : ''}</div>` : ''}
       <div style="font-size:13px;background:var(--surface-2);border-left:3px solid var(--accent);border-radius:6px;padding:9px 12px;margin-bottom:10px;line-height:1.5">${escHtml(i.propuesta)}</div>
@@ -599,6 +600,132 @@ async function analizarConversacionesUI(btn) {
   }
 }
 window.analizarConversacionesUI = analizarConversacionesUI;
+
+// ── Estilo real + Entrenador ────────────────────────────────────────────────
+// El agente aprende cómo escriben los clientes (bandeja o chats pegados) y se
+// entrena contra clientes simulados que escriben igual. El juez de
+// naturalidad muestra qué sonó a bot y deja sus propuestas en la lista de
+// mejoras (mismo riel de aprobación).
+const ORIGEN_LABEL = {
+  subidas: '📎 de tus conversaciones subidas',
+  entrenamiento: '🎯 del entrenamiento',
+  semanal: '📅 del análisis semanal',
+};
+
+async function loadEstiloReal() {
+  const box = document.getElementById('intel-estilo-box');
+  if (!box) return;
+  const d = await apiFetch(`/api/intelligence/estilo?accountId=${ACCOUNT_ID}`);
+  const p = d?.perfil;
+  const btnE = document.getElementById('intel-entrenar-btn');
+  if (btnE) btnE.disabled = !d?.agente;
+  if (!p) {
+    box.innerHTML = `<div style="font-size:13px;color:var(--text-3)">Todavía no aprendió el estilo de tus clientes. Aprende de tu bandeja con un clic, o pega conversaciones reales más abajo y elige "Aprender el estilo de lo pegado".${d?.agente ? '' : ' <b>Necesitas un agente activo.</b>'}</div>`;
+    return;
+  }
+  const fecha = p.aprendido_en ? new Date(p.aprendido_en).toLocaleDateString('es-CL', { day: '2-digit', month: 'short' }) : '';
+  const fuente = p.fuente === 'texto' ? 'conversaciones pegadas' : 'tu bandeja';
+  const plural = n => n > 1 ? 's' : '';
+  box.innerHTML = `
+    <div style="font-size:12.5px;color:var(--text-2);margin-bottom:8px">Aprendido de <b>${p.n_mensajes}</b> mensajes de ${fuente}${p.conversaciones ? ` (${p.conversaciones} conversaciones)` : ''}${fecha ? ` · ${fecha}` : ''}</div>
+    ${p.registro ? `<div style="font-size:13px;margin-bottom:4px"><b>Registro:</b> ${escHtml(p.registro)}</div>` : ''}
+    ${p.largo ? `<div style="font-size:13px;margin-bottom:4px"><b>Largo:</b> ${escHtml(p.largo)}</div>` : ''}
+    ${p.muletillas?.length ? `<div style="font-size:13px;margin-bottom:8px"><b>Muletillas:</b> ${p.muletillas.map(m => `<code style="background:var(--surface-2);padding:1px 6px;border-radius:5px">${escHtml(m)}</code>`).join(' ')}</div>` : ''}
+    <div style="font-size:12px;font-weight:700;color:var(--text-2);margin:8px 0 4px">Así escriben tus clientes</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">${p.muestras_cliente.slice(0, 8).map(m => `<span style="background:var(--surface-2);border:1px solid var(--border);border-radius:14px;padding:4px 10px;font-size:12.5px">${escHtml(m)}</span>`).join('')}</div>
+    ${p.pares?.length ? `<div style="font-size:12px;color:var(--text-3);margin-top:8px">+ ${p.pares.length} respuesta${plural(p.pares.length)} humana${plural(p.pares.length)} tuya${plural(p.pares.length)} como ejemplo de tono.</div>` : ''}
+    <div style="margin-top:10px"><button class="btn-ghost" style="padding:6px 12px;font-size:12.5px" onclick="olvidarEstiloUI(this)">Olvidar este estilo</button></div>`;
+}
+
+async function aprenderEstiloUI(btn, fuente) {
+  const status = document.getElementById(fuente === 'texto' ? 'intel-upload-status' : 'intel-estilo-status');
+  const body = { accountId: ACCOUNT_ID, fuente };
+  if (fuente === 'texto') {
+    const texto = (document.getElementById('intel-upload-text')?.value || '').trim();
+    if (texto.length < 200) {
+      status.textContent = 'Pega conversaciones en el cuadro (mínimo 200 caracteres, formato "Nombre: mensaje" o export de WhatsApp).';
+      return;
+    }
+    body.texto = texto;
+  }
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Aprendiendo…';
+  status.textContent = 'Leyendo cómo escriben tus clientes — toma unos segundos.';
+  try {
+    const r = await apiFetch('/api/intelligence/estilo/aprender', 'POST', body, { conError: true });
+    if (r?.ok) {
+      showToast(`✓ Estilo aprendido de ${r.perfil.n_mensajes} mensajes`);
+      status.textContent = `Listo: tu agente ya escribe al nivel de tus clientes.${r.truncado ? ' El texto era muy largo: se leyó el comienzo.' : ''} Te quedan ${r.restantes_hoy} aprendizajes hoy.`;
+      loadEstiloReal();
+    } else {
+      status.textContent = r?.error || 'No se pudo aprender. Intenta de nuevo.';
+    }
+  } catch (e) {
+    status.textContent = 'No se pudo aprender. Intenta de nuevo en un momento.';
+  } finally {
+    btn.disabled = false; btn.textContent = orig;
+  }
+}
+
+async function olvidarEstiloUI(btn) {
+  if (!confirm('¿Olvidar el estilo aprendido? El agente vuelve a su tono por defecto.')) return;
+  btn.disabled = true;
+  await apiFetch('/api/intelligence/estilo', 'DELETE', { accountId: ACCOUNT_ID });
+  showToast('Estilo olvidado');
+  loadEstiloReal();
+}
+
+async function entrenarAgenteUI(btn) {
+  const out = document.getElementById('intel-entrenar-result');
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Entrenando… (1-2 min)';
+  out.innerHTML = '<div style="font-size:13px;color:var(--text-3)">Tres clientes simulados le están escribiendo a tu agente. El juez revisa cada respuesta…</div>';
+  try {
+    const r = await apiFetch('/api/intelligence/entrenar', 'POST', { accountId: ACCOUNT_ID }, { conError: true });
+    if (!r?.ok) {
+      out.innerHTML = `<div style="font-size:13px;color:#b91c1c">${escHtml(r?.error || 'El entrenamiento falló. Intenta de nuevo.')}</div>`;
+      return;
+    }
+    renderEntrenamiento(r, out);
+    if (r.creadas > 0) {
+      showToast(`✓ ${r.creadas} propuesta${r.creadas > 1 ? 's' : ''} del entrenamiento — revísala${r.creadas > 1 ? 's' : ''} abajo`);
+      loadImprovements();
+    }
+  } catch (e) {
+    out.innerHTML = '<div style="font-size:13px;color:#b91c1c">El entrenamiento falló. Intenta de nuevo en un momento.</div>';
+  } finally {
+    btn.disabled = false; btn.textContent = orig;
+  }
+}
+
+function renderEntrenamiento(r, out) {
+  const color = n => n == null ? 'var(--text-3)' : n >= 8 ? '#15803d' : n >= 6 ? '#b45309' : '#b91c1c';
+  const outcomeLabel = { cerrado: '✅ cerró', frio_o_abandono: '❄️ se enfrió', en_curso: '⏳ quedó en curso' };
+  const conEstilo = r.simulaciones[0]?.estilo_real;
+  out.innerHTML = `
+    <div style="display:flex;align-items:center;gap:14px;margin:6px 0 12px">
+      <div style="font-size:34px;font-weight:800;line-height:1;color:${color(r.puntaje)}">${r.puntaje ?? '—'}<span style="font-size:14px;color:var(--text-3)">/10</span></div>
+      <div style="font-size:13px;color:var(--text-2);line-height:1.5">Naturalidad promedio en ${r.simulaciones.length} conversaciones${conEstilo ? ' · los clientes simulados escribieron con tu estilo real' : ' · <b>sin estilo aprendido</b>: aprende de tu bandeja para entrenar con clientes que escriben como los tuyos'}.${r.creadas ? ` <b>${r.creadas} propuesta(s)</b> nueva(s) abajo.` : ''} Te quedan ${r.restantes_hoy} entrenamientos hoy.</div>
+    </div>
+    ${r.simulaciones.map(s => `
+      <details style="border:1px solid var(--border);border-radius:10px;margin-bottom:8px;background:var(--surface)">
+        <summary style="cursor:pointer;padding:10px 14px;font-size:13.5px;font-weight:700;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
+          <span>${escHtml(s.escenario)} <span style="font-weight:500;color:var(--text-3)">· ${outcomeLabel[s.outcome] || escHtml(s.outcome)}</span></span>
+          <span style="color:${color(s.naturalidad?.puntaje)}">${s.naturalidad?.puntaje ?? '—'}/10</span>
+        </summary>
+        <div style="padding:0 14px 12px">
+          ${s.naturalidad?.veredicto ? `<div style="font-size:13px;margin-bottom:8px">${escHtml(s.naturalidad.veredicto)}</div>` : ''}
+          ${(s.naturalidad?.senales || []).map(x => `<div style="font-size:12.5px;color:var(--text-2);margin-bottom:4px">⚠️ ${x.fragmento ? `<i>"${escHtml(x.fragmento)}"</i> — ` : ''}${escHtml(x.problema)}</div>`).join('')}
+          <div style="display:flex;flex-direction:column;gap:6px;margin-top:10px">
+            ${s.transcript.map(m => `<div style="align-self:${m.role === 'agent' ? 'flex-end' : 'flex-start'};max-width:82%;background:${m.role === 'agent' ? 'var(--accent-bg)' : 'var(--surface-2)'};border-radius:12px;padding:7px 11px;font-size:12.5px;line-height:1.4">${escHtml(m.content)}</div>`).join('')}
+          </div>
+        </div>
+      </details>`).join('')}`;
+}
+window.loadEstiloReal = loadEstiloReal;
+window.aprenderEstiloUI = aprenderEstiloUI;
+window.olvidarEstiloUI = olvidarEstiloUI;
+window.entrenarAgenteUI = entrenarAgenteUI;
 
 async function applyImprovementUI(id, btn) {
   btn.disabled = true; btn.textContent = 'Aplicando…';

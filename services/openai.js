@@ -364,7 +364,11 @@ Ejemplo: "mira, te mando la guía que uso con los que están arrancando — ¿a 
   // (objetivo, contexto, límites, objeciones, escalación, ejemplos) y cae al
   // texto libre tal cual en los agentes clásicos.
   const { instruccionesEfectivas } = require('./promptEstructurado');
-  const systemPrompt = instruccionesEfectivas(agent) + knowledgeText + linksText + magnetsText + extraContextText + humanizationPrompt;
+  // El estilo real (cómo escriben los clientes de ESTE negocio, aprendido de
+  // la bandeja o de chats pegados) va al final: son ejemplos concretos y el
+  // modelo imita ejemplos mejor de lo que obedece reglas. Sin perfil → ''.
+  const { bloqueEstilo } = require('./estiloReal');
+  const systemPrompt = instruccionesEfectivas(agent) + knowledgeText + linksText + magnetsText + extraContextText + humanizationPrompt + bloqueEstilo(agent.estilo_real);
 
   // ── Detectar complejidad y elegir modelo ───────────────────────────────────
   const complexity = detectComplexity({ newMessage, conversationHistory });

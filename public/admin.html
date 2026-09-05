@@ -542,6 +542,7 @@
         </div>
         <div id="sim-chat" style="display:flex;flex-direction:column;gap:10px;max-width:680px"></div>
         <div id="sim-tip" style="margin-top:16px;padding:12px 14px;background:#1a1a2e;border:1px dashed #2a2a4a;border-radius:8px;font-size:0.82rem;color:#a0a0c0"></div>
+        <div id="sim-natural" style="display:none;margin-top:12px;padding:12px 14px;background:#1a1a2e;border:1px solid #2a2a4a;border-radius:8px"></div>
       </div>
     </div>
 
@@ -1080,7 +1081,22 @@ function renderSimulation(r) {
     en_curso:        'No hubo cierre claro en los turnos dados. Prueba subir los turnos o revisa si el agente está llevando hacia el próximo paso (pedir el "sí" para la prueba).',
   };
   document.getElementById('sim-tip').textContent = '💡 ' + (tips[r.outcome] || tips.en_curso) +
-    `  ·  Perfil: ${r.profile.icp} / ${r.profile.temperature} / objeción ${r.profile.objection}.`;
+    `  ·  Perfil: ${r.profile.icp} / ${r.profile.temperature} / objeción ${r.profile.objection}.` +
+    (r.profile.estilo_real ? '  ·  El prospecto escribió con el estilo real aprendido de la bandeja.' : '');
+
+  // Juez de naturalidad: ¿el agente suena a persona o a bot?
+  const nat = document.getElementById('sim-natural');
+  const n = r.naturalidad;
+  if (!n) { nat.style.display = 'none'; return; }
+  const col = n.puntaje == null ? '#a0a0c0' : n.puntaje >= 8 ? '#16a34a' : n.puntaje >= 6 ? '#d97706' : '#dc2626';
+  nat.style.display = 'block';
+  nat.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+      <span style="font-size:1.6rem;font-weight:800;color:${col}">${n.puntaje ?? '—'}<span style="font-size:0.8rem;color:#888">/10</span></span>
+      <span style="font-size:0.86rem;color:#f0f0ff">${esc(n.veredicto || 'Naturalidad del agente')}</span>
+    </div>
+    ${(n.senales || []).map(x => `<div style="font-size:0.8rem;color:#a0a0c0;margin-bottom:4px">⚠️ ${x.turno ? `#${x.turno} ` : ''}${x.fragmento ? `<i>"${esc(x.fragmento)}"</i> — ` : ''}${esc(x.problema)}</div>`).join('')}
+    ${(n.recomendaciones || []).map(x => `<div style="font-size:0.8rem;color:#c9a227;margin-top:6px">💡 <b>${esc(x.causa)}</b>: ${esc(x.propuesta)}</div>`).join('')}`;
 }
 
 // ── DISCOUNTS / CUPONES LS ──────────────────────────────────────────────────
