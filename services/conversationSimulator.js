@@ -196,8 +196,10 @@ async function generateLeadMessage({ client, leadSystemPrompt, conversationHisto
  */
 function detectOutcome(lastLeadMsg) {
   const t = (lastLeadMsg || '').toLowerCase();
-  if (/\b(dale|ya|listo|ok|perfecto|me sirve|lo pruebo|prob[ée]mos|pasame|pásame|mándame|mandame|quiero probar|me interesa|empecemos|vamos|lo llevo|confirmo|ag[eé]nda|ag[eé]ndame|reserv\w*|c[oó]mo pago|te transfiero)\b/.test(t)
-      && /\b(prueb\w*|acceso|link|empez\w*|prob\w*|adelante|sí|si|cita|hora|agend\w*|reserv\w*|pago|transfer\w*|llevo|confirm\w*|dirección|direccion)\b/.test(t)) {
+  // "cómo puedo pagar" / "cómo se paga" también es cierre: visto en el
+  // entrenador el 06-09 — el cliente confirmó la hora y quedó "en curso".
+  if (/\b(dale|ya|listo|ok|perfecto|me sirve|lo pruebo|prob[ée]mos|pasame|pásame|mándame|mandame|quiero probar|me interesa|empecemos|vamos|lo llevo|confirmo|ag[eé]nda|ag[eé]ndame|reserv\w*|c[oó]mo (?:puedo |se )?pag\w*|te transfiero)\b/.test(t)
+      && /\b(prueb\w*|acceso|link|empez\w*|prob\w*|adelante|sí|si|cita|hora|agend\w*|reserv\w*|pag(?:o|ar|a)|transfer\w*|llevo|confirm\w*|dirección|direccion)\b/.test(t)) {
     return 'cerrado';
   }
   if (/\b(no me interesa|no gracias|déjalo|dejalo|despu[ée]s veo|lo pienso|no por ahora|otro momento|no es para mí|no es para mi|ya,? gracias)\b/.test(t)) {

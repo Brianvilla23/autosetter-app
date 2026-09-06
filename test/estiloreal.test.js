@@ -260,6 +260,9 @@ test('detectOutcome reconoce cierres de cliente común (agendar, pagar, llevar) 
   assert.strictEqual(detectOutcome('dale, lo pruebo'), 'cerrado');
   assert.strictEqual(detectOutcome('ya, agéndame para la hora de las 10'), 'cerrado');
   assert.strictEqual(detectOutcome('perfecto, cómo pago?'), 'cerrado');
+  // Visto en el entrenador el 06-09: confirmó la hora y quedó "en curso"
+  assert.strictEqual(detectOutcome('Siii, a las 4:00 p.m. está perfecto. ¿Cómo puedo pagar?'), 'cerrado');
+  assert.strictEqual(detectOutcome('ya, y cómo se paga?'), 'cerrado');
   assert.strictEqual(detectOutcome('lo pienso y te aviso'), 'frio_o_abandono');
   assert.strictEqual(detectOutcome('ya, gracias'), 'frio_o_abandono');
   assert.strictEqual(detectOutcome('y cuánto sale?'), 'en_curso');
