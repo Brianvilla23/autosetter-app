@@ -1795,14 +1795,16 @@ router.post('/seed-sales-preset', async (req, res) => {
     const account = await db.findOne(db.accounts, { _id: accountId });
     if (!account) return res.status(404).json({ error: 'Cuenta no encontrada' });
 
-    // Anti-duplicado: si ya hay un agente llamado "Atinov Sales", no volvemos a aplicar
-    const existing = await db.findOne(db.agents, { account_id: accountId, name: 'Atinov Sales' });
+    // Anti-duplicado: si ya hay un agente con el nombre del preset v2, no
+    // volvemos a aplicar. El "Atinov Sales" viejo puede convivir hasta que el
+    // dueño lo apague o borre desde Agentes (el nuevo se crea desactivado).
+    const { applyAtinovPreset, NOMBRE_AGENTE } = require('../services/atinovPreset');
+    const existing = await db.findOne(db.agents, { account_id: accountId, name: NOMBRE_AGENTE });
     if (existing) return res.status(409).json({
-      error: 'El preset ya fue aplicado a esta cuenta',
+      error: `El preset ya fue aplicado a esta cuenta (agente "${NOMBRE_AGENTE}")`,
       agentId: existing._id,
     });
 
-    const { applyAtinovPreset } = require('../services/atinovPreset');
     const result = await applyAtinovPreset(db, accountId);
 
     await audit(req, 'seed_sales_preset', accountId, result);
