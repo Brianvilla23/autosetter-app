@@ -758,6 +758,9 @@ function resumenTranscript(transcript, maxChars) {
 
 /** Mensaje natural al chat cuando no contestó (decisión del batch doc). */
 async function encolarMensajeNoContesto(llamada) {
+  // Una llamada de prueba no le escribe a nadie: el "lead" es sintético y el
+  // dueño ya sabe cómo le fue — ve el resultado en el panel.
+  if (llamada.es_prueba) return;
   try {
     const lead    = await db.findOne(db.leads, { _id: llamada.lead_id });
     const account = await db.findOne(db.accounts, { _id: llamada.account_id });
@@ -799,6 +802,7 @@ module.exports = {
   telefoniaHabilitada,
   dentroDeHorario,
   telefonoE164,
+  fechaChile,
   buildLlamadaContext,
   resolveLlamadaMarkers,
   procesarLlamadasProgramadas,

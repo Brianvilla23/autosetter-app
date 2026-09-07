@@ -2005,6 +2005,144 @@ router.get('/ls-products', async (req, res) => {
  *  9. Hay lead magnets configurados
  * 10. Webhooks de billing reachable (LS + MP)
  */
+/**
+ * POST /api/admin/llamada-prueba   { telefono }
+ *
+ * La PRIMERA llamada de la plataforma no puede ser la de un lead real: si el
+ * bridge, el códec o la voz están mal, se quema una venta solo para
+ * enterarse. Esto hace una llamada de humo por el MISMO camino de producción
+ * — worker → proveedor → TwiML → WebSocket → Realtime → audio de vuelta —
+ * con un lead sintético y un tope de duración corto.
+ *
+ * CANDADOS (gasta plata doble: telefonía + OpenAI):
+ *   1. requireAdmin (ya aplicado al montar el router en server.js).
+ *   2. Proveedor de telefonía completo; si no, no hay nada que probar.
+ *   3. Número escrito acá por el dueño, normalizado a E.164 chileno.
+ *   4. Tope de MAX_PRUEBAS_DIA pruebas por día — un botón que marca no puede
+ *      convertirse en un bucle de llamadas.
+ *   5. El interruptor de la cuenta, el horario y los topes NO se saltan: los
+ *      re-chequea el worker igual que en una llamada real. Una prueba que se
+ *      salta los candados no prueba nada.
+ */
+const MAX_PRUEBAS_DIA = 3;
+
+router.post('/llamada-prueba', async (req, res) => {
+  const telefonia = require('../services/telefonia');
+  try {
+    if (!telefonia.telefoniaHabilitada()) {
+      return res.status(400).json({
+        error: 'La telefonía no está configurada: faltan las credenciales del proveedor en Railway. Corré el diagnóstico para ver cuáles.',
+      });
+    }
+
+    const telefono = telefonia.telefonoE164(String(req.body?.telefono || ''));
+    if (!telefono) {
+      return res.status(400).json({ error: 'Teléfono inválido. Escribilo en formato chileno, por ejemplo +56 9 1234 5678.' });
+    }
+
+    const accountId = req.user?.accountId;
+    if (!accountId) return res.status(400).json({ error: 'Tu usuario admin no tiene cuenta asociada.' });
+
+    const settings = await db.findOne(db.settings, { account_id: accountId });
+    if (settings?.llamadas_enabled !== true) {
+      return res.status(400).json({
+        error: 'Las llamadas están apagadas en esta cuenta. Prendelas en el panel del dueño → Configuración → 📞 Llamadas telefónicas.',
+      });
+    }
+    if (!telefonia.dentroDeHorario(settings)) {
+      return res.status(400).json({ error: 'Estás fuera del horario de llamadas de la cuenta (por defecto 09:00–21:00 hora Chile).' });
+    }
+
+    // Un agente con voz: el que va a hablar. Se prefiere uno con las llamadas
+    // ya habilitadas para que la prueba use exactamente la misma config.
+    const agentes = await db.find(db.agents, { account_id: accountId, enabled: true });
+    const agent = agentes.find(a => a.calls_enabled === true) || agentes[0];
+    if (!agent) return res.status(400).json({ error: 'No hay ningún agente activo en tu cuenta para hacer la llamada.' });
+
+    // Tope de pruebas del día (hora Chile, igual que el resto de los topes).
+    const hoy = telefonia.fechaChile();
+    const previas = await db.find(db.llamadas, { account_id: accountId, fecha_chile: hoy, es_prueba: true });
+    const gastadas = previas.filter(l => l.status !== 'cancelada').length;
+    if (gastadas >= MAX_PRUEBAS_DIA) {
+      return res.status(429).json({ error: `Ya hiciste ${gastadas} llamadas de prueba hoy (tope ${MAX_PRUEBAS_DIA}).` });
+    }
+
+    // Lead sintético NUEVO por prueba: el candado "un lead, una llamada por
+    // día" es real y se aplica también acá — reusar el mismo lead haría que la
+    // segunda prueba del día muriera sola.
+    const lead = await db.insert(db.leads, {
+      account_id:    accountId,
+      name:          'Prueba de llamada',
+      channel:       'test',
+      qualification: 'hot',
+      es_prueba:     true,
+      status:        'test',
+    });
+    await db.insert(db.messages, {
+      lead_id: lead._id, account_id: accountId, role: 'user',
+      content: 'Llamada de prueba de la plataforma pedida por el dueño desde el panel admin.',
+    }).catch(() => null);
+
+    const ahora = new Date();
+    const doc = await db.insert(db.llamadas, {
+      account_id:  accountId,
+      lead_id:     lead._id,
+      agent_id:    agent._id,
+      status:      'programada',
+      via:         'telefono',
+      telefono,
+      tema:        'probar que la llamada se escucha bien en los dos sentidos',
+      fecha_chile: hoy,
+      dial_at:     ahora.toISOString(),   // sin espera: no hay aviso de chat que esperar
+      max_min:     3,                     // prueba corta: alcanza para oírse y cortar
+      es_prueba:   true,
+      consent_texto: 'llamada de prueba iniciada por el dueño desde el panel admin',
+      consent_at:    ahora.toISOString(),
+      ws_lock:      null,
+      finalized_at: null,
+      transcript:   [],
+    });
+
+    console.log(`📞 [prueba] llamada de prueba ${doc._id} → ${telefono} (cuenta ${accountId}, agente ${agent.name})`);
+    res.json({
+      ok: true,
+      llamadaId: doc._id,
+      telefono,
+      agente: agent.name,
+      voz: agent.voice || null,
+      restantes: MAX_PRUEBAS_DIA - gastadas - 1,
+      mensaje: 'Llamada encolada. El worker marca dentro de los próximos 10 segundos.',
+    });
+  } catch (e) {
+    console.error('llamada-prueba error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * GET /api/admin/llamada-prueba/:id
+ *
+ * Estado de una llamada de prueba. Vive en el router admin y no reusa
+ * /api/llamadas/:id a propósito: ese endpoint pasa por checkSubscription y
+ * devuelve el teléfono enmascarado. Acá el dueño necesita ver el error crudo
+ * del proveedor — es justo el dato por el que hizo la prueba.
+ */
+router.get('/llamada-prueba/:id', async (req, res) => {
+  try {
+    const ll = await db.findOne(db.llamadas, { _id: req.params.id });
+    if (!ll || ll.account_id !== req.user?.accountId) return res.status(404).json({ error: 'Not found' });
+    res.json({
+      status:       ll.status,
+      error:        ll.error || null,
+      duracion_seg: ll.duracion_seg || 0,
+      costo_usd:    ll.costo_usd || null,
+      turnos:       Array.isArray(ll.transcript) ? ll.transcript.length : 0,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 router.get('/self-test', async (req, res) => {
   const axios = require('axios');
   const tests = [];

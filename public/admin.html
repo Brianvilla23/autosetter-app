@@ -586,6 +586,24 @@
       </div>
 
       <div class="card">
+        <h3>📞 Llamada de prueba</h3>
+        <p style="font-size:0.85rem;color:#a0a0c0;margin-top:0">
+          Marca a tu teléfono por el <strong style="color:#f0f0ff">mismo camino que una llamada real</strong>
+          (worker → proveedor → TwiML → WebSocket → voz de OpenAI), con un lead sintético y tope de 3 minutos.
+          Contesta y habla: si te escucha y lo escuchas, la cadena completa está sana.
+          Respeta el interruptor de la cuenta, el horario y los topes — una prueba que se los salta no prueba nada.
+          Máximo 3 al día.
+        </p>
+        <div class="form-row" style="margin-bottom:10px">
+          <label style="display:block;font-size:0.8rem;color:#a0a0c0;margin-bottom:4px">Teléfono a llamar</label>
+          <input type="text" id="prueba-tel" placeholder="+56 9 1234 5678" style="width:100%;max-width:320px">
+        </div>
+        <button class="btn" id="btn-llamada-prueba" onclick="llamadaPrueba()">📲 Llámame ahora</button>
+        <span id="prueba-status" style="margin-left:10px;font-size:0.85rem"></span>
+        <div id="prueba-result" style="margin-top:12px"></div>
+      </div>
+
+      <div class="card">
         <h3>🧠 Actualizar instrucciones del agente</h3>
         <p style="font-size:0.85rem;color:#a0a0c0;margin-top:0">
           Aplica la plantilla vigente (presupuesto de 5-6 preguntas, bifurcación y modo nutrición)
@@ -605,6 +623,18 @@
     </div>
 
     <div id="tab-system" class="section">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:6px">
+          <h3 style="margin:0">🩺 Diagnóstico de conexiones</h3>
+          <button class="btn btn-primary btn-sm" id="btn-self-test" onclick="runSelfTest()">▶ Probar todo</button>
+        </div>
+        <p style="color:#888;font-size:0.84rem;margin:0 0 12px">
+          Golpea de verdad a OpenAI, Meta, Twilio, Resend y las pasarelas de pago con las credenciales que hay en Railway.
+          Es lo que hay que mirar después de pegar una variable nueva: dice si quedó bien SIN mostrar ningún valor.
+        </p>
+        <div id="selfTestOut" style="font-size:0.86rem;color:#888">Sin ejecutar todavía.</div>
+      </div>
+
       <div class="card">
         <h3>⚙️ Estado del sistema</h3>
         <div class="health-grid" id="healthGrid">
@@ -1569,6 +1599,99 @@ function renderTopUsers(users) {
 // ── System (health + logs) ─────────────────────────────────────────────────
 async function loadSystem() {
   await Promise.all([loadHealth(), loadAIUsage(), loadAuditLog(), loadEmailLog(), loadErrors()]);
+}
+
+// ── DIAGNÓSTICO: /self-test existía desde siempre pero no tenía dónde apretarse.
+// Sin botón, verificar que una credencial nueva quedó bien exigía armar un
+// curl con el token de admin a mano — y entonces simplemente no se verificaba.
+async function runSelfTest() {
+  const btn = document.getElementById('btn-self-test');
+  const out = document.getElementById('selfTestOut');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Probando…'; }
+  out.innerHTML = '<span style="color:#888">Consultando cada servicio… (hasta ~20 s)</span>';
+  try {
+    const r = await api('GET', '/api/admin/self-test');
+    const ICONO = { pass: '✅', warn: '⚠️', fail: '❌', skip: '⬜' };
+    const COLOR = { pass: '#10b981', warn: '#f59e0b', fail: '#ef4444', skip: '#666' };
+    // Lo roto primero: si algo falló, no puede quedar bajo el scroll.
+    const ORDEN = { fail: 0, warn: 1, pass: 2, skip: 3 };
+    const filas = [...r.tests].sort((a, b) => ORDEN[a.status] - ORDEN[b.status]).map(t => `
+      <tr>
+        <td style="white-space:nowrap">${ICONO[t.status] || ''} <strong>${escHtml(t.name)}</strong></td>
+        <td style="color:${COLOR[t.status] || '#888'}">${escHtml(t.message || '')}</td>
+      </tr>`).join('');
+    out.innerHTML = `
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px;font-size:0.88rem">
+        <span style="color:${r.ready ? '#10b981' : '#f59e0b'}"><strong>${r.ready ? '✅ Listo para producción' : '⚠️ Con pendientes'}</strong></span>
+        <span style="color:#10b981">${r.summary.pass} ok</span>
+        <span style="color:#f59e0b">${r.summary.warn} aviso</span>
+        <span style="color:#ef4444">${r.summary.fail} falla</span>
+        <span style="color:#666">${r.summary.skip} sin configurar</span>
+        <span style="color:#666">${r.durationMs} ms</span>
+      </div>
+      <div class="table-wrap"><table><tbody>${filas}</tbody></table></div>`;
+  } catch (e) {
+    out.innerHTML = `<span style="color:#ef4444">No se pudo correr el diagnóstico: ${escHtml(e.message)}</span>`;
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '▶ Probar todo'; }
+  }
+}
+
+// ── LLAMADA DE PRUEBA ───────────────────────────────────────────
+// El backend deja la llamada 'programada' y el worker la marca dentro de ~10 s.
+// Acá se sigue el estado real hasta que suena, para no dejar al dueño mirando
+// un botón sin saber si salió o si un candado la canceló en silencio.
+async function llamadaPrueba() {
+  const btn = document.getElementById('btn-llamada-prueba');
+  const st  = document.getElementById('prueba-status');
+  const out = document.getElementById('prueba-result');
+  const tel = document.getElementById('prueba-tel').value.trim();
+  if (!tel) { st.innerHTML = '<span style="color:#f59e0b">Escribe el teléfono</span>'; return; }
+
+  btn.disabled = true;
+  st.innerHTML = '<span style="color:#888">⏳ Encolando…</span>';
+  out.innerHTML = '';
+  try {
+    const r = await api('POST', '/api/admin/llamada-prueba', { telefono: tel });
+    st.innerHTML = `<span style="color:#10b981">✅ Encolada · quedan ${r.restantes} hoy</span>`;
+    out.innerHTML = `<div style="font-size:0.86rem;color:#a0a0c0">
+      Llamando a <strong style="color:#f0f0ff">${escHtml(r.telefono)}</strong>
+      con el agente <strong style="color:#f0f0ff">${escHtml(r.agente)}</strong>${r.voz ? ` (voz ${escHtml(r.voz)})` : ''}.
+      Debería sonar en unos segundos.</div>
+      <div id="prueba-estado" style="margin-top:8px;font-size:0.86rem;color:#888">⏳ esperando que marque…</div>`;
+    seguirLlamadaPrueba(r.llamadaId, 0);
+  } catch (e) {
+    st.innerHTML = '';
+    out.innerHTML = `<div style="color:#ef4444;font-size:0.88rem">❌ ${escHtml(e.message)}</div>`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function seguirLlamadaPrueba(id, intento) {
+  if (intento > 40) return;   // ~2 min y se deja de preguntar
+  const el = document.getElementById('prueba-estado');
+  if (!el) return;            // el dueño cambió de pestaña: nada que actualizar
+  try {
+    const ll = await api('GET', '/api/admin/llamada-prueba/' + id);
+    const TXT = {
+      programada: '⏳ en cola, el worker marca en segundos…',
+      marcando:   '☎️ pidiéndole la llamada al proveedor…',
+      sonando:    '📲 sonando — contesta',
+      en_curso:   '🟢 en curso — habla, te está escuchando',
+      terminada:  '✅ terminó bien',
+      no_contesto:'⚠️ nadie contestó',
+      fallida:    '❌ falló',
+      cancelada:  '❌ cancelada',
+    };
+    const color = ['terminada'].includes(ll.status) ? '#10b981'
+                : ['fallida', 'cancelada', 'no_contesto'].includes(ll.status) ? '#ef4444' : '#888';
+    el.innerHTML = `<span style="color:${color}">${TXT[ll.status] || escHtml(ll.status)}</span>` +
+      (ll.error ? ` <span style="color:#ef4444">· ${escHtml(ll.error)}</span>` : '') +
+      (ll.duracion_seg ? ` <span style="color:#888">· ${ll.duracion_seg}s</span>` : '');
+    if (['terminada', 'fallida', 'cancelada', 'no_contesto'].includes(ll.status)) return;
+  } catch { /* el endpoint es del panel dueño: si no responde, se sigue intentando */ }
+  setTimeout(() => seguirLlamadaPrueba(id, intento + 1), 3000);
 }
 
 async function loadErrors() {
