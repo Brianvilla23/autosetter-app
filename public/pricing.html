@@ -512,7 +512,7 @@
       if (!r.ok || !data.url) throw new Error(data.error || `HTTP ${r.status}`);
       window.location.href = data.url;
     } catch (e) {
-      alert('No pudimos abrir el checkout: ' + e.message + '\n\nProbá de nuevo o contactá soporte.');
+      alert('No pudimos abrir el checkout: ' + e.message + '\n\nPrueba de nuevo o contacta a soporte.');
       btn.textContent = origLabel;
       btn.style.pointerEvents = '';
     }
