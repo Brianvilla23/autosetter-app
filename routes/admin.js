@@ -2342,8 +2342,29 @@ router.get('/env-status', async (req, res) => {
  *
  * Devuelve un archivo descargable con timestamp en el nombre.
  */
+/**
+ * Segundo factor para el respaldo/restauración: el JSON trae TODO sin
+ * enmascarar (password_hash, tokens de Meta/MP/Shopify de cada cuenta,
+ * openai_key). Un token admin robado no puede llevárselo solo con la sesión:
+ * además debe presentar ADMIN_RESET_SECRET en el header x-admin-secret.
+ * Fail-closed: sin la env, el respaldo por API queda deshabilitado.
+ * (pentest 06-09-2026)
+ */
+function exigirSecretoAdmin(req, res) {
+  const esperado = process.env.ADMIN_RESET_SECRET || '';
+  const recibido = String(req.get('x-admin-secret') || '');
+  if (!esperado) { res.status(404).json({ error: 'Respaldo deshabilitado: falta ADMIN_RESET_SECRET' }); return false; }
+  const a = Buffer.from(recibido), b = Buffer.from(esperado);
+  if (a.length !== b.length || !require('crypto').timingSafeEqual(a, b)) {
+    res.status(403).json({ error: 'Se requiere el secreto de administración (header x-admin-secret)' });
+    return false;
+  }
+  return true;
+}
+
 router.get('/backup', async (req, res) => {
   try {
+    if (!exigirSecretoAdmin(req, res)) return;
     const collections = [
       'accounts','agents','knowledge','links','leads','messages','bypassed',
       'settings','users','inviteCodes','aiUsage','auditLog','followups',
@@ -2373,6 +2394,7 @@ router.get('/backup', async (req, res) => {
  */
 router.post('/restore', express.json({ limit: '50mb' }), async (req, res) => {
   try {
+    if (!exigirSecretoAdmin(req, res)) return;
     const body = req.body || {};
     if (body.confirm !== 'YES') {
       return res.status(400).json({ error: 'Pasá { confirm: "YES" } en el body. Esto sobreescribe la DB.' });

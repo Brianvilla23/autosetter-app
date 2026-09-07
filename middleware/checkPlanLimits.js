@@ -56,9 +56,11 @@ async function enforceMaxAgents(req, res, next) {
     const plan = getPlanFor(user);
     if (plan.maxAgents === UNLIMITED) return next();
 
-    // user es el DOC de la DB → el campo es account_id (snake_case). Con
-    // user.accountId el fallback quedaba undefined y el límite se saltaba.
-    const accountId = req.body?.accountId || user.account_id;
+    // user es el DOC de la DB → el campo es account_id (snake_case). SOLO la
+    // cuenta del usuario autenticado: con req.body.accountId se podía sondear
+    // cuántos agentes tiene OTRA cuenta antes del check de propiedad del
+    // handler (pentest 06-09-2026).
+    const accountId = user.account_id;
     if (!accountId) return next();
 
     const agents = await db.find(db.agents, { account_id: accountId });
@@ -109,8 +111,8 @@ async function enforceMaxMagnets(req, res, next) {
     const plan = getPlanFor(user);
     if (plan.maxMagnets === UNLIMITED) return next();
 
-    // Mismo fix que enforceMaxAgents: el doc de users usa account_id.
-    const accountId = req.body?.accountId || user.account_id;
+    // Mismo criterio que enforceMaxAgents: solo la cuenta del usuario autenticado.
+    const accountId = user.account_id;
     if (!accountId) return next();
 
     const magnets = await db.find(db.magnetLinks, { account_id: accountId });

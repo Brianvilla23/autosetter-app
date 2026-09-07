@@ -384,14 +384,8 @@ app.get('/health/ready', async (req, res) => {
     allOk = false;
   }
 
-  // 3. Cantidad de cuentas activas (señal de vida del producto)
-  try {
-    const dbM = require('./db/database');
-    const accounts = await dbM.find(dbM.accounts, {});
-    checks.accounts_count = accounts.length;
-  } catch {
-    checks.accounts_count = null;
-  }
+  // (El conteo de cuentas se retiró de este endpoint público: es una señal
+  //  de negocio que no tiene por qué leer cualquiera. Está en el admin.)
 
   res.status(allOk ? 200 : 503).json({
     status: allOk ? 'ready' : 'degraded',

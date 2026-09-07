@@ -2343,6 +2343,8 @@ async function loadSettings() {
   const setLl = (id, v, def) => { const el = document.getElementById(id); if (el) el.value = (v ?? def); };
   const chkLl = document.getElementById('llamadas-enabled');
   if (chkLl) chkLl.checked = cfgLl.llamadas_enabled === true;
+  const chkDictado = document.getElementById('llamadas-numero-dictado');
+  if (chkDictado) chkDictado.checked = cfgLl.llamadas_numero_dictado === true;
   setLl('llamadas-inicio',  cfgLl.llamadas_hora_inicio, 9);
   setLl('llamadas-fin',     cfgLl.llamadas_hora_fin, 21);
   setLl('llamadas-max-dia', cfgLl.llamadas_max_dia, 10);
@@ -2373,6 +2375,7 @@ async function loadSettings() {
     const r = await apiFetch('/api/settings/llamadas', 'PUT', {
       accountId: ACCOUNT_ID,
       llamadas_enabled: !!document.getElementById('llamadas-enabled')?.checked,
+      llamadas_numero_dictado: !!document.getElementById('llamadas-numero-dictado')?.checked,
       llamadas_hora_inicio: num('llamadas-inicio'),
       llamadas_hora_fin:    num('llamadas-fin'),
       llamadas_max_dia:     num('llamadas-max-dia'),
@@ -3272,6 +3275,10 @@ function exportConversationsCSV() {
   .catch(e => showToast('❌ ' + e.message));
 }
 
+/** href seguro: solo http(s); cualquier otro esquema (javascript:, data:) cae a '#'. */
+function hrefSeguro(u) {
+  return /^https?:\/\//i.test(String(u || '')) ? escHtmlSafe(u) : '#';
+}
 function escHtmlSafe(str) {
   return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
@@ -3646,7 +3653,7 @@ async function loadMagnets() {
               <span>${DELIVERY_LABEL[m.delivery] || m.delivery}</span>
               <span>•</span>
               <span>📦 ${m.deliveries} entregados</span>
-              ${m.delivery_url ? `<span>•</span><a href="${escHtmlSafe(m.delivery_url)}" target="_blank" style="color:var(--orange);text-decoration:none">Abrir recurso →</a>` : ''}
+              ${m.delivery_url ? `<span>•</span><a href="${hrefSeguro(m.delivery_url)}" target="_blank" rel="noopener" style="color:var(--orange);text-decoration:none">Abrir recurso →</a>` : ''}
             </div>
           </div>
           <div style="display:flex;gap:6px;align-items:flex-start">

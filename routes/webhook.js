@@ -33,6 +33,19 @@ function leerBitacora() {
 // Meta firma cada POST con header X-Hub-Signature-256 = "sha256=<hex>"
 // usando el APP_SECRET sobre el raw body. Sin esta validación, cualquier
 // atacante puede inyectar mensajes falsos y dispararle DMs reales a leads.
+/**
+ * Idempotencia (pentest 06-09-2026): Meta reintenta la entrega del mismo
+ * evento cuando no recibe 200 a tiempo, y sin esto el mismo DM se respondía
+ * dos veces y se pagaban dos llamadas a OpenAI. El id del mensaje de Meta
+ * (mid en Instagram/Messenger, wamid en WhatsApp) se guarda con el mensaje
+ * y se consulta antes de procesar. Dura lo que dura el mensaje (cae con la
+ * cascada de supresión del lead).
+ */
+async function mensajeYaProcesado(mid) {
+  if (!mid) return false;
+  return !!(await db.findOne(db.messages, { mid: String(mid) }));
+}
+
 function verifyMetaSignature(req) {
   // Meta firma cada canal con el APP_SECRET del app que lo emite. En este
   // proyecto conviven DOS apps bajo el mismo webhook:
@@ -88,10 +101,12 @@ router.get('/', (req, res) => {
   // Token canónico (env, branded) + legacy de la suscripción Meta ya existente.
   // El legacy se acepta para NO romper el webhook vivo al rebrandinguear el
   // token; se puede quitar una vez que Meta apunte al token nuevo.
+  // Sin default hardcodeado (pentest 06-09-2026): si falta la env, solo vale
+  // el legacy documentado de la suscripción viva.
   const validTokens = [
-    process.env.META_VERIFY_TOKEN || 'mi_token_secreto_webhook',
+    process.env.META_VERIFY_TOKEN,
     'autosetter_webhook_2024', // legacy — suscripción Instagram ya verificada
-  ];
+  ].filter(Boolean);
   if (mode === 'subscribe' && validTokens.includes(token)) {
     console.log('✅ Webhook verified by Meta');
     return res.status(200).send(challenge);
@@ -304,6 +319,11 @@ async function handleDM(pageId, event) {
     text = '[TE MENCIONÓ EN SU HISTORIA]';
   }
   if (!text) return;
+  const mid = event.message?.mid ? String(event.message.mid) : null;
+  if (mid && await mensajeYaProcesado(mid)) {
+    anotar({ canal: 'instagram', resultado: 'DUPLICADO', detalle: `mid ${mid} ya procesado` });
+    return;
+  }
 
   // Find account.
   // Instagram identifica la misma cuenta con dos IDs distintos: el que llega en
@@ -392,7 +412,7 @@ async function handleDM(pageId, event) {
     await db.update(db.leads, { _id: lead._id }, { ultima_mencion_at: new Date().toISOString() }).catch(() => null);
   }
 
-  await runConversation({ account, agent, lead, senderId, text, esMencion, respuestaHistoria });
+  await runConversation({ account, agent, lead, senderId, text, esMencion, respuestaHistoria, mid });
 }
 
 // ── HANDLER: COMENTARIO EN POST/CARRUSEL → DM ─────────────────────────────────
@@ -624,6 +644,12 @@ async function handleWhatsAppMessage(phoneNumberId, msg, value) {
 
   const senderId = msg.from;
   const senderName = value.contacts?.[0]?.profile?.name || senderId;
+  // Idempotencia por wamid, antes de transcribir audio o describir fotos (cuesta plata).
+  const midWa = msg.id ? String(msg.id) : null;
+  if (midWa && await mensajeYaProcesado(midWa)) {
+    anotar({ canal: 'whatsapp', resultado: 'DUPLICADO', detalle: `wamid ${midWa} ya procesado` });
+    return;
+  }
 
   // Find account by phone_number_id
   const account = await wa.findAccountByPhoneNumberId(phoneNumberId);
@@ -748,7 +774,7 @@ async function handleWhatsAppMessage(phoneNumberId, msg, value) {
 
   if (lead.automation !== 'automated' || lead.is_bypassed) return;
 
-  await runConversation({ account, agent, lead, senderId, text, wasAudio, wasImage });
+  await runConversation({ account, agent, lead, senderId, text, wasAudio, wasImage, mid: midWa });
 }
 
 // ── HANDLER: MENSAJE DE MESSENGER (Página de Facebook / Marketplace) ─────────
@@ -822,15 +848,17 @@ async function handleMessengerMessage(pageId, event) {
 
   if (lead.automation !== 'automated' || lead.is_bypassed) return;
 
-  await runConversation({ account, agent, lead, senderId, text });
+  await runConversation({ account, agent, lead, senderId, text, mid: event.message?.mid ? String(event.message.mid) : null });
 }
 
 // ── MOTOR PRINCIPAL: genera respuesta IA y envía DM ──────────────────────────
 // Devuelve true si dejó una respuesta encolada. El comment-to-DM lo necesita:
 // la respuesta PÚBLICA promete un DM, así que no puede publicarse si el DM no
 // va a salir (lead en manos de un humano, límite de plan alcanzado…).
-async function runConversation({ account, agent, lead, senderId, text, isCommentTrigger = false, commentId = null, entregar = null, esMencion = false, respuestaHistoria = false, wasAudio = false, wasImage = false }) {
+async function runConversation({ account, agent, lead, senderId, text, isCommentTrigger = false, commentId = null, entregar = null, esMencion = false, respuestaHistoria = false, wasAudio = false, wasImage = false, mid = null }) {
   if (lead.automation !== 'automated' || lead.is_bypassed) return false;
+  // Red de seguridad de idempotencia para cualquier canal que llegue acá.
+  if (mid && await mensajeYaProcesado(mid)) return false;
 
   // Guardar mensaje entrante (no cuenta al límite: son los DMs recibidos)
   // media marca el origen: 'audio' = nota de voz (content es su transcripción),
@@ -840,6 +868,7 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
   // follow-up no puede tratarlo como si el lead nos hubiera escrito.
   await db.insert(db.messages, {
     lead_id: lead._id, role: 'user', content: text,
+    ...(mid ? { mid } : {}),
     ...(mediaTag ? { media: mediaTag } : {}),
     ...(isCommentTrigger ? { via: 'comment' } : {}),
     // Una mención tampoco es un mensaje que la persona escribió: marcarla
@@ -1585,3 +1614,4 @@ router.post('/twilio/status', async (req, res) => {
 
 module.exports = router;
 module.exports.leerBitacora = leerBitacora;
+module.exports.mensajeYaProcesado = mensajeYaProcesado;

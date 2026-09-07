@@ -340,6 +340,15 @@ async function prepararLlamada({ settings, account, agent, lead, telefonoPedido,
     telefono = telefonoE164(lead.wa_id);
   } else {
     telefono = telefonoE164(telefonoPedido);
+    // Candado anti-terceros (pentest 06-09-2026): por inyección de prompt un
+    // lead podía dictar el número de OTRA persona y el agente la llamaba con
+    // una venta grabada, a costa del negocio. Un número escrito en el chat
+    // solo se marca si el dueño lo habilitó a sabiendas
+    // (settings.llamadas_numero_dictado); por defecto se llama únicamente al
+    // WhatsApp que efectivamente nos escribe.
+    if (settings?.llamadas_numero_dictado !== true) {
+      throw new SinLlamada('número dictado por chat: deshabilitado (Ajustes → Llamadas → permitir número dictado)');
+    }
     // Anti-invención: un número que no aparece en la conversación no se marca.
     // (El lead lo dictó → está en algún mensaje suyo. El modelo no puede
     // llamar a un número que "recuerda" de otra parte.)
@@ -349,6 +358,13 @@ async function prepararLlamada({ settings, account, agent, lead, telefonoPedido,
       const dichoPorElLead = mensajesLead.some(msg =>
         String(msg.content || '').replace(/\D/g, '').includes(soloDigitos));
       if (!dichoPorElLead) throw new SinLlamada('el número del marcador no aparece dicho por el lead en la conversación');
+      // Un mismo número dictado recibe como máximo UNA llamada cada 24 h en la
+      // cuenta, venga del lead que venga: corta el acoso por repetición.
+      const hace24h = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+      const previas = await db.find(db.llamadas, { account_id: lead.account_id, telefono });
+      if (previas.some(l => String(l.createdAt || '') >= hace24h)) {
+        throw new SinLlamada('ese número ya recibió una llamada en las últimas 24 h');
+      }
     }
   }
   if (!telefono) throw new SinLlamada('no hay teléfono válido para llamar');

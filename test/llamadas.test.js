@@ -215,9 +215,41 @@ test('un número que el lead NUNCA dictó no se marca', async () => {
   assert.strictEqual(r.llamadas.length, 0, 'número inventado por el modelo = rechazo');
 });
 
-test('un número dictado por el lead en la conversación SÍ se acepta', async () => {
+test('un número dictado por el lead NO se marca si el dueño no habilitó "número dictado" (default)', async () => {
   conCredenciales();
   const { agent, lead, settings } = await armarLead();
+  await db.insert(db.messages, {
+    lead_id: lead._id, account_id: lead.account_id, role: 'user',
+    content: 'llámame al 9 5555 6666, es de mi hermana', createdAt: new Date().toISOString(),
+  });
+  const r = await telefonia.resolveLlamadaMarkers(
+    '[LLAMAR: 955556666 | coordinar]', { settings, account: {}, agent, lead }
+  );
+  assert.strictEqual(r.llamadas.length, 0, 'sin el interruptor, un número escrito en el chat jamás se marca');
+  assert.ok(!r.text.includes('[LLAMAR'), 'el marcador se elimina igual');
+});
+
+test('con "número dictado" habilitado, el mismo número recibe UNA llamada cada 24 h (anti-acoso)', async () => {
+  conCredenciales();
+  const { agent, lead, settings } = await armarLead();
+  settings.llamadas_numero_dictado = true;
+  await db.insert(db.messages, {
+    lead_id: lead._id, account_id: lead.account_id, role: 'user',
+    content: 'al 9 7777 8888 porfa', createdAt: new Date().toISOString(),
+  });
+  const r1 = await telefonia.resolveLlamadaMarkers('[LLAMAR: 977778888 | a]', { settings, account: {}, agent, lead });
+  assert.strictEqual(r1.llamadas.length, 1);
+  // Otro lead de la misma cuenta dicta el MISMO número: rechazo.
+  const lead2 = await db.insert(db.leads, { account_id: lead.account_id, channel: 'instagram', ig_username: 'otro', qualification: 'hot' });
+  await db.insert(db.messages, { lead_id: lead2._id, account_id: lead.account_id, role: 'user', content: 'llama al 977778888', createdAt: new Date().toISOString() });
+  const r2 = await telefonia.resolveLlamadaMarkers('[LLAMAR: 977778888 | b]', { settings, account: {}, agent, lead: lead2 });
+  assert.strictEqual(r2.llamadas.length, 0, 'el mismo número no se vuelve a marcar en 24 h');
+});
+
+test('un número dictado por el lead en la conversación SÍ se acepta (con el interruptor prendido)', async () => {
+  conCredenciales();
+  const { agent, lead, settings } = await armarLead();
+  settings.llamadas_numero_dictado = true;
   await db.insert(db.messages, {
     lead_id: lead._id, account_id: lead.account_id, role: 'user',
     content: 'mejor al 9 3333 4444 que es mi personal',

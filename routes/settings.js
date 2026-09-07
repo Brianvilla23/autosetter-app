@@ -75,11 +75,41 @@ router.put('/', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// Conexión MANUAL de Instagram (sin OAuth). El webhook resuelve la cuenta por
+// ig_user_id, así que este endpoint era un vector de secuestro de ruteo: una
+// cuenta podía fijar el ig_user_id de OTRA y desviar o romper sus DMs
+// entrantes (pentest 06-09-2026). Candados: solo formato de ID de Meta (dígitos),
+// token con pinta de token, y UNICIDAD — un ig_user_id que ya pertenece a otra
+// cuenta se rechaza con 409. Lo verificado de verdad sigue siendo el OAuth.
+const RE_META_ID = /^[0-9]{5,25}$/;
 router.put('/account', async (req, res, next) => {
   try {
-    const { accountId, ig_username, ig_user_id, access_token } = req.body;
+    const { accountId } = req.body || {};
     if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
-    await db.update(db.accounts, { _id: accountId }, { ig_username, ig_user_id, access_token });
+
+    const ig_username = String(req.body.ig_username ?? '').trim().replace(/^@/, '').slice(0, 60);
+    const ig_user_id  = String(req.body.ig_user_id ?? '').trim();
+    const access_token = String(req.body.access_token ?? '').trim();
+    const upd = {};
+    if (ig_username) upd.ig_username = ig_username;
+
+    if (ig_user_id || access_token) {
+      if (!RE_META_ID.test(ig_user_id)) {
+        return res.status(400).json({ error: 'El ID de Instagram debe ser numérico (el que muestra Meta).' });
+      }
+      if (access_token.length < 20 || /[ \t\r\n]/.test(access_token)) {
+        return res.status(400).json({ error: 'El access token no tiene el formato de un token de Meta.' });
+      }
+      const dueno = await db.findOne(db.accounts, { ig_user_id });
+      if (dueno && dueno._id !== accountId) {
+        return res.status(409).json({ error: 'Ese ID de Instagram ya está conectado a otra cuenta de Atinov.' });
+      }
+      upd.ig_user_id = ig_user_id;
+      upd.access_token = access_token;
+    }
+    if (!Object.keys(upd).length) return res.status(400).json({ error: 'Nada que actualizar.' });
+
+    await db.update(db.accounts, { _id: accountId }, upd);
     res.json({ ok: true });
   } catch (e) { next(e); }
 });
@@ -377,12 +407,15 @@ router.put('/llamadas', async (req, res, next) => {
   try {
     const {
       accountId, llamadas_enabled, llamadas_hora_inicio, llamadas_hora_fin,
-      llamadas_max_dia, llamadas_max_min,
+      llamadas_max_dia, llamadas_max_min, llamadas_numero_dictado,
     } = req.body;
     if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
 
     const upd = {};
     if (typeof llamadas_enabled === 'boolean') upd.llamadas_enabled = llamadas_enabled;
+    // Apagado por defecto: llamar a un número escrito en el chat (no al WhatsApp
+    // que escribe) es la vía por la que un tercero podía recibir una llamada.
+    if (typeof llamadas_numero_dictado === 'boolean') upd.llamadas_numero_dictado = llamadas_numero_dictado;
     const hora = (v) => Number.isInteger(Number(v)) && Number(v) >= 0 && Number(v) <= 23 ? Number(v) : undefined;
     if (llamadas_hora_inicio !== undefined && hora(llamadas_hora_inicio) !== undefined) {
       upd.llamadas_hora_inicio = hora(llamadas_hora_inicio);

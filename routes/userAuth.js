@@ -61,6 +61,11 @@ router.post('/register', async (req, res, next) => {
 
     // Primer usuario → admin sin código ni expiración
     // Demás usuarios → prueba gratuita de 3 días (o acceso extendido con código de invitación)
+    // Type-guard: un objeto en vez de string reventaba con 500 (pentest 06-09-2026).
+    for (const campo of ['inviteCode', 'referralCode', 'name', 'email', 'password']) {
+      const v = req.body?.[campo];
+      if (v != null && typeof v !== 'string') return res.status(400).json({ error: 'Datos inválidos' });
+    }
     let codeDoc = null;
     if (!isFirstUser && inviteCode) {
       // Código de invitación es OPCIONAL — si se provee, se valida y extiende acceso
@@ -319,17 +324,19 @@ router.post('/demo-login', demoLimiter, async (req, res, next) => {
 });
 
 // ── CHANGE PASSWORD ───────────────────────────────────────────────────────────
-router.post('/change-password', async (req, res, next) => {
+// Antes era ANÓNIMA (email + clave actual en el body) y distinguía "usuario no
+// existe" (404) de "clave mala" (401): una sonda para enumerar correos
+// registrados (pentest 06-09-2026). Ahora exige sesión, el usuario sale del
+// JWT y la respuesta es una sola.
+router.post('/change-password', requireAuth, async (req, res, next) => {
   try {
-    const { email, currentPassword, newPassword } = req.body;
-    if (!email || !currentPassword || !newPassword) return res.status(400).json({ error: 'Faltan campos' });
+    const { currentPassword, newPassword } = req.body || {};
+    if (!currentPassword || !newPassword) return res.status(400).json({ error: 'Faltan campos' });
     const pwErr = validatePassword(newPassword);
     if (pwErr) return res.status(400).json({ error: pwErr });
 
-    const user = await db.findOne(db.users, { email: email.toLowerCase() });
-    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
-
-    const valid = await bcrypt.compare(currentPassword, user.password_hash);
+    const user = await db.findOne(db.users, { _id: req.user.userId });
+    const valid = !!user && await bcrypt.compare(String(currentPassword), user.password_hash || '');
     if (!valid) return res.status(401).json({ error: 'Contraseña actual incorrecta' });
 
     const hash = await bcrypt.hash(newPassword, 12);
