@@ -15,7 +15,8 @@
  *   no cobra esos canales. Un contador único trataría como iguales dos cosas
  *   que difieren 9x, y el cliente compra esto justamente para WhatsApp.
  * - minutosLlamada: bolsa mensual de minutos de llamada con IA. El minuto
- *   cuesta ~US$0,115 (Twilio US$0,0746 + OpenAI Realtime ~US$0,04).
+ *   cuesta ~US$0,119 (voz Twilio US$0,0746 + Media Streams US$0,0044 +
+ *   OpenAI Realtime ~US$0,04).
  * - features.llamadas: la llamada telefónica es el diferenciador del tramo
  *   medio hacia arriba. El plan de entrada NO la trae, a propósito.
  * - features: dict de booleans que apaga/prende secciones específicas.
@@ -39,7 +40,14 @@ const COSTOS = {
   // y model por llamada. Si OPENAI_USE_REASONING manda tráfico al modelo de
   // razonamiento, este número sube y hay que rehacerlo.
   llmPorConv:          0.013,
-  twilioMinuto:        0.0746, // saliente a celular chileno
+  twilioMinuto:        0.0746, // voz saliente a celular chileno
+  // El <Stream> del TwiML se factura APARTE de la voz: US$0,0044/min por
+  // stream, y cada llamada abre uno. Se pasó por alto al armar los planes
+  // y el margen quedaba inflado en el papel — chico por minuto, pero es
+  // justo el error que el monitor de margen existe para no cometer.
+  // (Twilio Programmable Voice pricing, verificado 2026-09-08. Telnyx
+  //  cobra lo suyo aparte también: US$0,0035/min.)
+  streamMinuto:        0.0044,
   realtimeMinuto:      0.04,   // OpenAI Realtime, punto medio de 0,02-0,06
   numeroMes:           7.00,   // arriendo del número (fijo, no por uso)
 };
@@ -47,7 +55,7 @@ const COSTOS = {
 /** Lo que cuesta de verdad una conversación, según el canal por el que entra. */
 const COSTO_CONV_WHATSAPP = COSTOS.metaMensajeServicio * COSTOS.mensajesPorConv + COSTOS.llmPorConv; // ~0,27
 const COSTO_CONV_META     = COSTOS.llmPorConv;                                                       // ~0,03
-const COSTO_MINUTO_LLAMADA = COSTOS.twilioMinuto + COSTOS.realtimeMinuto;                            // ~0,115
+const COSTO_MINUTO_LLAMADA = COSTOS.twilioMinuto + COSTOS.streamMinuto + COSTOS.realtimeMinuto;      // ~0,119
 
 const PLANS = {
   trial: {

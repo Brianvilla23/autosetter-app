@@ -3977,7 +3977,7 @@ async function loadVozGasto(days) {
   set('voz-sem-usd', usd(g.semana.costo_usd)); set('voz-sem-det', det(g.semana));
   set('voz-mes-usd', usd(g.mes.costo_usd));    set('voz-mes-det', det(g.mes));
   set('voz-min-usd', g.periodo.usd_por_min != null ? `US$${g.periodo.usd_por_min.toFixed(3)}/min` : '—');
-  set('voz-gasto-tarifa', `Tarifa de referencia: US$${g.tarifa_referencia.total_usd_min_est}/min (Twilio ${g.tarifa_referencia.twilio_usd_min} + IA ~${g.tarifa_referencia.openai_usd_min_est})`);
+  set('voz-gasto-tarifa', `Tarifa de referencia: US$${g.tarifa_referencia.total_usd_min_est}/min (telefonía ${g.tarifa_referencia.telefonia_usd_min} + IA ~${g.tarifa_referencia.openai_usd_min_est})`);
   const via = g.por_via || {};
   set('voz-por-via', `Por vía — 📞 teléfono: ${via.telefono?.llamadas || 0} llamadas, ${usd(via.telefono?.costo_usd)} · 📱 WhatsApp: ${via.whatsapp?.llamadas || 0} llamadas, ${usd(via.whatsapp?.costo_usd)}${g.no_contestadas_periodo ? ` · sin contestar: ${g.no_contestadas_periodo}` : ''}`);
 

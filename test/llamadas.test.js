@@ -378,7 +378,7 @@ test('twimlParaLlamada: wss correcto, Parameters presentes, XML escapado', () =>
 test('costoEstimadoUSD redondea el minuto hacia arriba como factura Twilio', () => {
   const c61 = telefonia.costoEstimadoUSD(61);
   assert.strictEqual(c61.minutos, 2, '61s = 2 minutos facturables');
-  assert.ok(Math.abs(c61.twilio - 2 * telefonia.USD_MIN_TWILIO_MOVIL) < 1e-9);
+  assert.ok(Math.abs(c61.twilio - 2 * telefonia.USD_MIN_TELEFONIA) < 1e-9);
   assert.ok(c61.total_est > c61.twilio, 'el total incluye OpenAI');
 
   const c300 = telefonia.costoEstimadoUSD(300);

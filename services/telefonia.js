@@ -80,8 +80,13 @@ const HARD_MAX_MIN        = 15;   // techo absoluto aunque la cuenta pida más
 // voz (suelen saltar a los ~30s) — llamar a un buzón es plata perdida.
 const RING_TIMEOUT_SEG = 25;
 
-// Costos para la estimación (verificados 2026-08-10, Twilio pricing Chile).
-const USD_MIN_TWILIO_MOVIL = 0.0746;
+// Costos para la estimación. La VOZ se verificó el 2026-08-10 (Twilio pricing
+// Chile); el STREAM, el 2026-09-08: el <Stream> del TwiML se factura aparte
+// de la voz y se había omitido, así que toda llamada salía ~6% más barata en
+// el papel de lo que Twilio cobra.
+const USD_MIN_VOZ_MOVIL_CL = 0.0746;
+const USD_MIN_MEDIA_STREAM = 0.0044;
+const USD_MIN_TELEFONIA    = Number((USD_MIN_VOZ_MOVIL_CL + USD_MIN_MEDIA_STREAM).toFixed(4)); // 0,079
 const USD_MIN_OPENAI_EST   = 0.04;   // punto medio del rango 0.02-0.06
 
 const MARKER_RE = /\[LLAMAR:\s*([^|\]]{3,40})\s*\|\s*([^\]]{2,120})\]/gi;
@@ -822,6 +827,8 @@ module.exports = {
   DEFAULT_MAX_DIA,
   DEFAULT_MAX_MIN,
   HARD_MAX_MIN,
-  USD_MIN_TWILIO_MOVIL,
+  USD_MIN_VOZ_MOVIL_CL,
+  USD_MIN_MEDIA_STREAM,
+  USD_MIN_TELEFONIA,
   USD_MIN_OPENAI_EST,
 };

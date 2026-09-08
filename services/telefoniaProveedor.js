@@ -334,15 +334,20 @@ function estadoTelefonia() {
  * US$ por minuto saliente a móvil chileno, para la estimación de costo y el
  * margen de los planes (config/plans.js → COSTOS.twilioMinuto).
  *
- * ⚠️ El 0,0746 es la tarifa VERIFICADA de Twilio (2026-08-10). Telnyx no
- * publica su tarifa a Chile en la web: sale del rate sheet de la cuenta. Hasta
- * medirla se usa la de Twilio, que es la conservadora — subestimar el costo
- * infla el margen en el papel, y ese es justo el error que el monitor de
- * margen existe para no cometer. Al tener la real: TELEFONIA_USD_MIN.
+ * Son DOS cobros, no uno: la voz (US$0,0746/min a móvil chileno, Twilio,
+ * verificado 2026-08-10) MÁS el <Stream> del TwiML, que se factura aparte
+ * (US$0,0044/min, verificado 2026-09-08). El segundo se había omitido y toda
+ * llamada salía ~6% más barata en el papel de lo que Twilio cobra.
+ *
+ * ⚠️ Telnyx no publica su tarifa de voz a Chile en la web (sale del rate
+ * sheet de la cuenta) y su streaming cuesta US$0,0035/min. Hasta medirla se
+ * usa la de Twilio, que es la conservadora — subestimar el costo infla el
+ * margen en el papel, y ese es justo el error que el monitor de margen existe
+ * para no cometer. Al tener la real: TELEFONIA_USD_MIN.
  */
 function costoMinutoUSD() {
   const v = Number(process.env.TELEFONIA_USD_MIN);
-  return Number.isFinite(v) && v > 0 ? v : 0.0746;
+  return Number.isFinite(v) && v > 0 ? v : 0.079;   // 0,0746 voz + 0,0044 stream
 }
 
 function xmlEscape(s) {

@@ -93,7 +93,7 @@ router.get('/gasto', async (req, res, next) => {
     const deSemana = conectadas.filter(l => (l.fecha_chile || fechaCL(l.createdAt)) >= lunesStr);
     const deMes    = conectadas.filter(l => (l.fecha_chile || fechaCL(l.createdAt)).startsWith(mes));
 
-    const { USD_MIN_TWILIO_MOVIL, USD_MIN_OPENAI_EST } = require('../services/telefonia');
+    const { USD_MIN_TELEFONIA, USD_MIN_OPENAI_EST } = require('../services/telefonia');
     res.json({
       dias,
       hoy:    { fecha: hoy, ...agg(deHoy) },
@@ -105,10 +105,10 @@ router.get('/gasto', async (req, res, next) => {
         whatsapp: agg(conectadas.filter(l => l.via === 'whatsapp')),
       },
       tarifa_referencia: {
-        twilio_usd_min: USD_MIN_TWILIO_MOVIL,
+        telefonia_usd_min: USD_MIN_TELEFONIA,
         openai_usd_min_est: USD_MIN_OPENAI_EST,
-        total_usd_min_est: Number((USD_MIN_TWILIO_MOVIL + USD_MIN_OPENAI_EST).toFixed(4)),
-        nota: 'Twilio factura por minuto redondeado hacia arriba; OpenAI es estimación media (US$0.02-0.06/min).',
+        total_usd_min_est: Number((USD_MIN_TELEFONIA + USD_MIN_OPENAI_EST).toFixed(4)),
+        nota: 'Telefonía = voz + stream de audio, las dos se facturan por minuto redondeado hacia arriba; OpenAI es estimación media (US$0.02-0.06/min).',
       },
       no_contestadas_periodo: todas.filter(l => l.status === 'no_contesto' && new Date(l.createdAt) >= desde).length,
       serie,

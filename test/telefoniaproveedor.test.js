@@ -106,16 +106,19 @@ test('un proveedor inexistente no rompe: avisa y cae a la autodetección', () =>
 
 test('el costo/minuto es configurable, con el de Twilio como piso conservador', () => {
   limpiar();
-  // Sin variable: la tarifa VERIFICADA de Twilio. Subestimar el costo infla el
-  // margen en el papel — el error que el monitor de margen existe para evitar.
-  assert.strictEqual(prov.costoMinutoUSD(), 0.0746);
+  // Sin variable: la tarifa VERIFICADA de Twilio, y son DOS cobros — la voz
+  // (0,0746) MÁS el <Stream> del TwiML, que se factura aparte (0,0044). El
+  // segundo se omitió hasta el 07-09 y toda llamada salía ~6% más barata en el
+  // papel. Subestimar el costo infla el margen: el error que el monitor de
+  // margen existe para evitar.
+  assert.strictEqual(prov.costoMinutoUSD(), 0.079);
   process.env.TELEFONIA_USD_MIN = '0.019';
   assert.strictEqual(prov.costoMinutoUSD(), 0.019);
   // Basura o negativo → vuelve al conservador, nunca a cero.
   process.env.TELEFONIA_USD_MIN = 'gratis';
-  assert.strictEqual(prov.costoMinutoUSD(), 0.0746);
+  assert.strictEqual(prov.costoMinutoUSD(), 0.079);
   process.env.TELEFONIA_USD_MIN = '-1';
-  assert.strictEqual(prov.costoMinutoUSD(), 0.0746);
+  assert.strictEqual(prov.costoMinutoUSD(), 0.079);
 });
 
 // ── El XML del stream: la diferencia que rompería la llamada en silencio ────
