@@ -843,6 +843,22 @@ setInterval(() => {
   refreshAllExpiring().catch(e => console.error('metaRefresh periodic sweep:', e.message));
 }, 6 * 60 * 60 * 1000);
 
+// ── AVISO DE CADUCIDAD DEL TOKEN DE WHATSAPP ─────────────────────────────────
+// Va aparte del barrido de arriba a propósito: ese RENUEVA tokens de Instagram,
+// este solo AVISA. El token que entrega el botón de un clic (Embedded Signup)
+// caduca a los 60 días y Meta no publica cómo refrescarlo — la única salida es
+// que el cliente vuelva a apretar el botón. Sin este aviso, el WhatsApp se
+// apaga sin que nadie sepa por qué.
+const { barridoCaducidadWa } = require('./services/embeddedSignup');
+
+setTimeout(() => {
+  barridoCaducidadWa().catch(e => console.error('barridoCaducidadWa initial:', e.message));
+}, 45_000);
+
+setInterval(() => {
+  barridoCaducidadWa().catch(e => console.error('barridoCaducidadWa periodic:', e.message));
+}, 6 * 60 * 60 * 1000);
+
 // ── FOLLOW-UP WORKERS ─────────────────────────────────────────────────────────
 // Dos loops separados: agendar nuevos follow-ups y enviar los que están agendados.
 const { scheduleFollowUps, processFollowUps } = require('./services/followup');

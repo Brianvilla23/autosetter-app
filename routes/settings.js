@@ -174,6 +174,18 @@ router.put('/whatsapp', async (req, res, next) => {
     // El token solo se pisa si viene uno nuevo real (no el masked).
     if (wa_access_token && !wa_access_token.includes('…')) {
       upd.wa_access_token = String(wa_access_token).trim();
+      // Token nuevo = el aviso de "reconecta" ya no aplica. Sin esto, quien
+      // arregla su conexión a mano se queda con el cartel rojo encima para
+      // siempre — y deja de creerle al próximo aviso.
+      upd.wa_reconectar        = false;
+      upd.wa_reconectar_motivo = null;
+      upd.wa_reconectar_at     = null;
+      upd.wa_token_aviso_at    = null;
+      // El alta manual usa un System User token que NO caduca: se borra la
+      // cuenta regresiva que hubiera dejado una conexión previa por el botón.
+      upd.wa_conectado_via         = 'manual';
+      upd.wa_token_expires_at      = null;
+      upd.wa_token_expira_estimada = false;
     }
     await db.update(db.accounts, { _id: accountId }, upd);
     res.json({ ok: true });

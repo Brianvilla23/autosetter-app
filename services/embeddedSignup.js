@@ -62,6 +62,10 @@ function configPublica() {
 /**
  * Canjea el código del popup por un token de negocio.
  * ⏱️ El código vive 30 segundos: esto se llama apenas llega, sin pasos previos.
+ *
+ * Devuelve { token, expiraEnSeg }. `expires_in` llega solo a veces, y ese
+ * "solo a veces" es justo lo peligroso: sin dato, un token que caduca parece
+ * eterno. Ver VIDA_TOKEN_DEFAULT_DIAS.
  */
 async function canjearCodigo(code) {
   const r = await axios.get(`${GRAPH}/oauth/access_token`, {
@@ -74,7 +78,39 @@ async function canjearCodigo(code) {
   });
   const token = r.data?.access_token;
   if (!token) throw new Error('Meta no devolvió access_token');
-  return token;
+  const expiraEnSeg = Number(r.data?.expires_in) > 0 ? Number(r.data.expires_in) : null;
+  return { token, expiraEnSeg };
+}
+
+/**
+ * Cuándo se muere el token del cliente.
+ *
+ * ⚠️ EL DETALLE QUE ROMPE CUENTAS EN SILENCIO: la Configuración del panel de
+ * Meta se creó desde la plantilla "Registro insertado de WhatsApp **con token
+ * que caduca en 60 días**". Ese token es un *business integration system user
+ * token* y Meta NO documenta ningún endpoint para refrescarlo: la única
+ * recuperación es que el cliente vuelva a pasar por el botón. O sea, cada
+ * cliente que entre por acá tiene una mecha de 60 días encendida.
+ *
+ * (La vía manual usa un System User token sin caducidad — por eso esto nunca
+ * se notó: hoy TODOS los clientes entraron por ahí.)
+ *
+ * Si Meta no manda `expires_in`, se asume la vida de la plantilla. Errarle
+ * hacia el lado corto solo adelanta un aviso; hacia el largo, deja al cliente
+ * sin WhatsApp un martes cualquiera y sin saber por qué.
+ *
+ * 👉 Se arregla de raíz cambiando la Configuración a un token de usuario de
+ * sistema SIN caducidad (Meta lo permite: el tipo y la caducidad se eligen al
+ * crear la Configuración). Mientras eso no pase, este aviso es la red.
+ */
+const VIDA_TOKEN_DEFAULT_DIAS = 60;
+
+function caducidadToken(expiraEnSeg) {
+  const seg = expiraEnSeg || VIDA_TOKEN_DEFAULT_DIAS * 24 * 3600;
+  return {
+    expiraEn:  new Date(Date.now() + seg * 1000).toISOString(),
+    estimada:  !expiraEnSeg,     // true = lo pusimos nosotros, Meta no dijo
+  };
 }
 
 /**
@@ -166,7 +202,8 @@ async function conectarCuenta({ accountId, code, wabaId, phoneNumberId }) {
   if (!estaHabilitado()) throw new Error('Embedded Signup no está configurado en el servidor');
 
   // 1. Código → token (lo primero, el código expira en 30 s)
-  const token = await canjearCodigo(code);
+  const { token, expiraEnSeg } = await canjearCodigo(code);
+  const caducidad = caducidadToken(expiraEnSeg);
 
   // 2. ¿Es realmente suyo? (defensa contra WABA ajeno)
   const { waba, numero } = await verificarPropiedad({ token, wabaId, phoneNumberId });
@@ -198,9 +235,14 @@ async function conectarCuenta({ accountId, code, wabaId, phoneNumberId }) {
     wa_register_pin:        registrado ? pin : null,
     wa_conectado_via:       'embedded_signup',
     wa_conectado_at:        new Date().toISOString(),
+    // La mecha. Sin esto nadie sabe que este token se muere.
+    wa_token_expires_at:      caducidad.expiraEn,
+    wa_token_expira_estimada: caducidad.estimada,
+    wa_token_aviso_at:        null,
+    wa_reconectar:            false,
   });
 
-  console.log(`✅ [embedded-signup] cuenta ${accountId} conectó WhatsApp ${numero.display_phone_number || phoneNumberId} (WABA ${wabaId})`);
+  console.log(`✅ [embedded-signup] cuenta ${accountId} conectó WhatsApp ${numero.display_phone_number || phoneNumberId} (WABA ${wabaId}) · token hasta ${caducidad.expiraEn.slice(0, 10)}${caducidad.estimada ? ' (estimado)' : ''}`);
 
   return {
     numero:       numero.display_phone_number || null,
@@ -208,13 +250,94 @@ async function conectarCuenta({ accountId, code, wabaId, phoneNumberId }) {
     calidad:      numero.quality_rating || null,
     registrado,
     avisoRegistro,
+    expiraEn:     caducidad.expiraEn,
   };
+}
+
+// ── La mecha de 60 días ──────────────────────────────────────────────────────
+
+/** Días de anticipación con que se avisa al dueño. */
+const AVISO_DIAS = parseInt(process.env.WA_TOKEN_AVISO_DIAS || '10', 10);
+/** No repetir el correo más seguido que esto (el barrido corre cada pocas horas). */
+const AVISO_COOLDOWN_H = 72;
+
+/** Días que le quedan al token de WhatsApp, o null si no aplica. */
+function diasParaCaducar(account, ahora = Date.now()) {
+  if (!account?.wa_token_expires_at) return null;
+  const ms = new Date(account.wa_token_expires_at).getTime() - ahora;
+  if (!Number.isFinite(ms)) return null;
+  return Math.floor(ms / 86_400_000);
+}
+
+/**
+ * Recorre las cuentas conectadas por el botón y avisa antes de que el token
+ * muera. NO intenta refrescar: Meta no publica cómo, y fingir un refresh que
+ * no existe sería peor que avisar.
+ *
+ * Corre desde server.js junto al barrido de Instagram.
+ */
+async function barridoCaducidadWa() {
+  const ahora = Date.now();
+  let avisadas = 0, vencidas = 0;
+  try {
+    const cuentas = await db.find(db.accounts, {});
+    for (const acc of cuentas) {
+      // Solo las del botón: el alta manual usa un System User token que no caduca.
+      if (acc.wa_conectado_via !== 'embedded_signup') continue;
+      if (!acc.wa_access_token) continue;
+
+      const dias = diasParaCaducar(acc, ahora);
+      if (dias === null || dias > AVISO_DIAS) continue;
+
+      // Ya caducado: el canal no puede operar hasta que el cliente reconecte.
+      if (dias < 0 && !acc.wa_reconectar) {
+        await db.update(db.accounts, { _id: acc._id }, { wa_reconectar: true }).catch(() => null);
+        vencidas++;
+      }
+
+      const ultimo = acc.wa_token_aviso_at ? new Date(acc.wa_token_aviso_at).getTime() : 0;
+      if ((ahora - ultimo) / 3_600_000 < AVISO_COOLDOWN_H) continue;
+
+      const owner = await db.findOne(db.users, { account_id: acc._id });
+      if (!owner?.email) {
+        console.warn(`⚠️  [wa-token] cuenta ${acc._id} vence en ${dias}d y no tiene a quién avisarle`);
+        continue;
+      }
+      try {
+        const { sendEmail } = require('./email');
+        const { whatsappTokenPorVencerEmail } = require('./emailTemplates');
+        const { subject, html } = whatsappTokenPorVencerEmail({
+          name: owner.name, email: owner.email,
+          dias, numero: acc.wa_display_number || null,
+        });
+        const r = await sendEmail({ to: owner.email, subject, html, tag: 'wa_token_vence', userId: owner._id });
+        if (r?.ok) {
+          await db.update(db.accounts, { _id: acc._id },
+            { wa_token_aviso_at: new Date().toISOString() }).catch(() => null);
+          avisadas++;
+        }
+      } catch (e) {
+        console.error('[wa-token] no se pudo avisar:', e.message);
+      }
+    }
+    if (avisadas || vencidas) {
+      console.log(`🔑 [wa-token] ${avisadas} aviso(s) enviado(s), ${vencidas} cuenta(s) con el token ya vencido`);
+    }
+  } catch (e) {
+    console.error('barridoCaducidadWa error:', e.message);
+  }
+  return { avisadas, vencidas };
 }
 
 module.exports = {
   estaHabilitado,
   configPublica,
   canjearCodigo,
+  caducidadToken,
+  diasParaCaducar,
+  barridoCaducidadWa,
+  VIDA_TOKEN_DEFAULT_DIAS,
+  AVISO_DIAS,
   verificarPropiedad,
   suscribirWebhooks,
   registrarNumero,

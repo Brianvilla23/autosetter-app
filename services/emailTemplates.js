@@ -223,6 +223,45 @@ function needsReauthEmail({ name, email }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// 6b. WHATSAPP TOKEN POR VENCER — solo cuentas conectadas con el botón
+// ─────────────────────────────────────────────────────────────────────────────
+// El botón de un clic entrega un token que caduca a los 60 días y Meta no
+// publica cómo refrescarlo: la única salida es volver a apretar el botón. Sin
+// este aviso, el WhatsApp del cliente se apaga un martes cualquiera sin que
+// nadie sepa por qué. Ver services/embeddedSignup.js → barridoCaducidadWa.
+function whatsappTokenPorVencerEmail({ name, email, dias, numero }) {
+  const firstName = (name || email.split('@')[0]).split(' ')[0];
+  const vencido = dias < 0;
+  const cuando = vencido
+    ? 'venció'
+    : dias === 0 ? 'vence hoy'
+    : dias === 1 ? 'vence mañana'
+    : `vence en ${dias} días`;
+  return {
+    subject: vencido
+      ? '🔴 Tu WhatsApp se desconectó — reconéctalo en un clic'
+      : `🔑 El permiso de tu WhatsApp ${cuando}`,
+    html: layout({
+      preheader: vencido
+        ? 'El permiso que le diste a Meta caducó. Reconectar es el mismo botón de siempre y toma menos de un minuto.'
+        : `El permiso que le diste a Meta ${cuando}. Reconectar toma menos de un minuto y evita que se corte.`,
+      title: vencido
+        ? `${escapeHtml(firstName)}, tu WhatsApp quedó desconectado`
+        : `${escapeHtml(firstName)}, renueva el permiso de WhatsApp`,
+      body: `
+        <p style="margin:0 0 14px;">El permiso que Meta te pidió cuando conectaste ${numero ? `<strong style="color:#f0f0ff;">${escapeHtml(numero)}</strong>` : 'tu WhatsApp'} ${escapeHtml(cuando)}. Meta los emite con vencimiento y no se renuevan solos.</p>
+        <p style="margin:0 0 14px;">${vencido
+          ? '<strong style="color:#f0f0ff;">Mientras tanto no entran ni salen mensajes por WhatsApp.</strong> Tus conversaciones, tus leads y la configuración de tu agente quedan intactos.'
+          : 'Si no lo renuevas, ese día dejan de entrar y salir mensajes por WhatsApp. Nada se pierde, pero el agente queda mudo hasta que reconectes.'}</p>
+        <p style="margin:0 0 14px;">Es el mismo botón <strong style="color:#f0f0ff;">Conectar WhatsApp</strong> de tu panel: Meta te reconoce, confirmas y listo. Menos de un minuto.</p>
+      `,
+      ctaText: 'Reconectar WhatsApp →',
+      ctaUrl: `${APP_URL}/app`,
+    }),
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 7. WEEKLY REPORT — "Tu agente esta semana" (lunes)
 // ─────────────────────────────────────────────────────────────────────────────
 function weeklyReportEmail({ name, email, stats }) {
@@ -275,5 +314,6 @@ module.exports = {
   paymentFailedEmail,
   trialEndedEmail,
   needsReauthEmail,
+  whatsappTokenPorVencerEmail,
   weeklyReportEmail,
 };

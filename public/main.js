@@ -2119,6 +2119,7 @@ async function loadSettings() {
     if (biz) biz.value = data.account.wa_business_account_id || '';
     pintarEstadoCanal('wa', !!data.account.wa_pausado, 'WhatsApp Cloud API activo');
     pintarIdsWa(data.account);
+    pintarCaducidadWa(data.account);
   }
 
   document.getElementById('btn-save-wa')?.addEventListener('click', async () => {
@@ -2594,6 +2595,40 @@ function pintarEstadoCanal(pre, pausado, textoActivo) {
   if (btn) btn.textContent = pausado ? '▶ Reanudar canal' : '⏸ Pausar canal';
 }
 
+/**
+ * Cuenta regresiva del permiso de WhatsApp.
+ *
+ * Solo aplica a las cuentas conectadas con el botón de un clic: ese token
+ * caduca (60 días por la configuración de Meta) y Meta no publica cómo
+ * refrescarlo, así que la única salida es volver a apretar el botón. El alta
+ * manual usa un System User token sin caducidad y no muestra nada.
+ *
+ * Se pinta recién a los 15 días: antes es ruido, y un aviso permanente enseña
+ * a ignorarlo justo cuando importa.
+ */
+function pintarCaducidadWa(account) {
+  const box = document.getElementById('wa-token-aviso');
+  if (!box) return;
+  box.style.display = 'none';
+
+  const vencido = account.wa_reconectar === true;
+  const exp = account.wa_token_expires_at ? new Date(account.wa_token_expires_at).getTime() : 0;
+  if (!vencido && !exp) return;
+
+  const dias = exp ? Math.floor((exp - Date.now()) / 86400000) : -1;
+  if (!vencido && dias > 15) return;
+
+  const rojo = vencido || dias < 0;
+  const cuando = dias < 0 ? 'venció' : dias === 0 ? 'vence hoy' : dias === 1 ? 'vence mañana' : `vence en ${dias} días`;
+  box.style.background = rojo ? 'rgba(239,68,68,.10)' : 'rgba(245,158,11,.10)';
+  box.style.border     = `1px solid ${rojo ? 'rgba(239,68,68,.35)' : 'rgba(245,158,11,.35)'}`;
+  box.style.color      = 'var(--text-1)';
+  box.innerHTML = rojo
+    ? `🔴 <strong>El permiso de Meta ${cuando}.</strong> Mientras tanto no entran ni salen mensajes por WhatsApp — tus conversaciones y tu agente quedan intactos. Vuelve a apretar <strong>Conectar WhatsApp</strong> acá arriba: toma menos de un minuto.`
+    : `🔑 <strong>El permiso de Meta ${cuando}.</strong> No se renueva solo. Aprieta <strong>Conectar WhatsApp</strong> antes de esa fecha y sigues sin cortes.`;
+  box.style.display = '';
+}
+
 /** Los IDs de WhatsApp, visibles y copiables: es lo que hace falta para volver. */
 function pintarIdsWa(account) {
   const box = document.getElementById('wa-ids');
@@ -2939,6 +2974,10 @@ async function loadGrowth() {
 // se envía recién cuando están las dos. El código dura 30 s: nada de pasos
 // intermedios entre recibirlo y mandarlo.
 let _esDatos = null, _esCode = null, _esEnviado = false;
+// ¿Meta llegó a abrir el flujo? Un cierre normal del usuario emite CANCEL con
+// su paso; si NO llegó ningún evento, el popup ni arrancó — y eso, en la
+// práctica, es Meta bloqueando la función ("Función no disponible").
+let _esHuboEvento = false;
 
 function esStatus(msg, color) {
   const el = document.getElementById('wa-es-status');
@@ -2973,6 +3012,7 @@ async function initEmbeddedSignup() {
     let data;
     try { data = JSON.parse(event.data); } catch { return; }
     if (data?.type !== 'WA_EMBEDDED_SIGNUP') return;
+    _esHuboEvento = true;
 
     if (data.event === 'FINISH' || data.event === 'FINISH_ONLY_WABA') {
       _esDatos = { waba_id: data.data?.waba_id, phone_number_id: data.data?.phone_number_id };
@@ -3001,14 +3041,21 @@ async function initEmbeddedSignup() {
 
   document.getElementById('btn-wa-embedded')?.addEventListener('click', () => {
     if (!window.FB) { esStatus('No se pudo cargar la ventana de Meta. Revisa tu conexión o usa el formulario manual.', '#ef4444'); return; }
-    _esDatos = null; _esCode = null; _esEnviado = false;
+    _esDatos = null; _esCode = null; _esEnviado = false; _esHuboEvento = false;
     esStatus('Abriendo la ventana de Meta…');
     window.FB.login((response) => {
       if (response?.authResponse?.code) {
         _esCode = response.authResponse.code;
         esEnviarSiListo();
-      } else {
+      } else if (_esHuboEvento) {
+        // Empezó el flujo y no terminó: cerró la ventana o se arrepintió.
         esStatus('No se completó la autorización. Puedes reintentar.', 'var(--text-2)');
+      } else {
+        // Ni un evento: Meta cerró el popup sin abrir el flujo. Casi siempre es
+        // que la app todavía no tiene ACCESO AVANZADO a whatsapp_business_*
+        // (App Review pendiente). Reintentar no lo arregla, y decírselo evita
+        // el bucle de clics que ya nos costó una noche.
+        esStatus('Meta cerró la ventana sin abrir el flujo. Suele pasar cuando el permiso de WhatsApp aún no está aprobado por Meta — reintentar no lo cambia. Usa el formulario manual de más abajo y te conectamos igual.', '#f59e0b');
       }
     }, {
       config_id: cfg.configId,

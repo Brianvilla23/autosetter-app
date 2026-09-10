@@ -14,6 +14,45 @@ function isTokenError(err) {
 }
 
 /**
+ * El token de WhatsApp murió: se marca la cuenta y se avisa al dueño UNA vez.
+ *
+ * No hay refresco posible (ver el comentario en sendMessage), así que lo único
+ * honesto es dejar registro de que hay que reconectar y decírselo. El throttle
+ * de 24 h evita que un worker con 50 mensajes en cola mande 50 correos.
+ */
+async function marcarWaParaReconectar(account, err) {
+  const motivo = err?.response?.data?.error?.message || 'token de WhatsApp rechazado por Meta';
+  const ultimo = account.wa_token_aviso_at ? new Date(account.wa_token_aviso_at).getTime() : 0;
+  const yaAvisado = (Date.now() - ultimo) / 3_600_000 < 24;
+
+  await db.update(db.accounts, { _id: account._id }, {
+    wa_reconectar:        true,
+    wa_reconectar_motivo: String(motivo).slice(0, 200),
+    wa_reconectar_at:     account.wa_reconectar_at || new Date().toISOString(),
+  }).catch(() => null);
+
+  if (yaAvisado) return;
+  try {
+    const owner = await db.findOne(db.users, { account_id: account._id });
+    if (!owner?.email) return;
+    const { sendEmail } = require('./email');
+    const { whatsappTokenPorVencerEmail } = require('./emailTemplates');
+    const { subject, html } = whatsappTokenPorVencerEmail({
+      name: owner.name, email: owner.email,
+      dias: -1, numero: account.wa_display_number || null,
+    });
+    const r = await sendEmail({ to: owner.email, subject, html, tag: 'wa_token_vence', userId: owner._id });
+    if (r?.ok) {
+      await db.update(db.accounts, { _id: account._id },
+        { wa_token_aviso_at: new Date().toISOString() }).catch(() => null);
+      console.log(`📧 [whatsapp] avisado ${owner.email}: hay que reconectar WhatsApp (${motivo})`);
+    }
+  } catch (e) {
+    console.error('[whatsapp] no se pudo avisar del token caído:', e.message);
+  }
+}
+
+/**
  * Envía un mensaje de texto vía WhatsApp Cloud API.
  *
  * Endpoint: POST /{phone-number-id}/messages
@@ -52,13 +91,27 @@ async function sendMessage({ phoneNumberId, recipient, text, accessToken, accoun
   } catch (err) {
     if (isTokenError(err) && accountId) {
       try {
-        const { tryRefreshOnOAuthError } = require('./metaRefresh');
         const account = await db.findOne(db.accounts, { _id: accountId });
         if (account) {
-          const newToken = await tryRefreshOnOAuthError(account);
-          if (newToken) {
-            const retryRes = await attempt(newToken);
-            return retryRes.data;
+          // 🔴 EL TOKEN QUE FALLÓ DECIDE A QUIÉN LLAMAR. Antes se llamaba
+          // siempre a tryRefreshOnOAuthError, que renueva el token de
+          // INSTAGRAM (graph.instagram.com/refresh_access_token) y lo
+          // devuelve — y el reintento mandaba el mensaje de WhatsApp con el
+          // token de Instagram. Fallaba igual, pero parecía "ya lo intentamos".
+          const esTokenWa = !!account.wa_access_token && accessToken === account.wa_access_token;
+          if (esTokenWa) {
+            // El token de WhatsApp no se refresca: si vino del botón, Meta no
+            // publica endpoint de refresco; si vino del alta manual, es un
+            // System User token que solo muere si lo revocan. En los dos casos
+            // la salida es humana — se marca y se avisa, no se reintenta.
+            await marcarWaParaReconectar(account, err);
+          } else {
+            const { tryRefreshOnOAuthError } = require('./metaRefresh');
+            const newToken = await tryRefreshOnOAuthError(account);
+            if (newToken) {
+              const retryRes = await attempt(newToken);
+              return retryRes.data;
+            }
           }
         }
       } catch (refreshErr) {
@@ -141,4 +194,5 @@ module.exports = {
   markAsRead,
   findAccountByPhoneNumberId,
   isTokenError,
+  marcarWaParaReconectar,
 };
