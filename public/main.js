@@ -1045,6 +1045,14 @@ async function loadUsage() {
 }
 
 // ── AGENTS ───────────────────────────────────────────────────────────────────
+// Nombre y avatar para mostrar. Un agente dañado (visto en producción el
+// 2026-09-10: un PUT parcial le borró los campos) no puede pintar "undefined".
+// Sin avatar va la inicial del nombre, no un emoji.
+function etiquetaAgente(a) {
+  const nombre = (a && a.name) || 'Agente sin nombre';
+  return { nombre, avatar: (a && a.avatar) || nombre.charAt(0).toUpperCase() };
+}
+
 async function loadAgents() {
   if (!ACCOUNT_ID) return;
   const agents = await apiFetch(`/api/agents?accountId=${ACCOUNT_ID}`);
@@ -1072,10 +1080,11 @@ async function loadAgents() {
     const chanBadge = (agent.channels || []).map(c =>
       `<span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;background:rgba(99,102,241,.15);color:#4f46e5;padding:1px 6px;border-radius:8px;margin-left:4px">${chanLabel[c] || c}</span>`
     ).join('');
+    const et = etiquetaAgente(agent);
     tab.innerHTML = `
-      <span class="agent-tab-avatar">${agent.avatar}</span>
+      <span class="agent-tab-avatar">${et.avatar}</span>
       <div class="agent-tab-info">
-        <div class="agent-tab-name">${agent.name}${roleBadge}${chanBadge}</div>
+        <div class="agent-tab-name">${et.nombre}${roleBadge}${chanBadge}</div>
         <div class="agent-tab-status ${agent.enabled ? 'on' : ''}">${agent.enabled ? '● Activo' : '○ Inactivo'}</div>
       </div>
     `;
@@ -1489,7 +1498,7 @@ async function renderAgentBuilder(agentId) {
 
   // Delete
   document.getElementById('btn-delete-agent').onclick = async () => {
-    if (!confirm(`¿Eliminar el agente "${agentData.name}"?`)) return;
+    if (!confirm(`¿Eliminar el agente "${etiquetaAgente(agentData).nombre}"?`)) return;
     await apiFetch(`/api/agents/${agentId}`, 'DELETE');
     currentAgent = null;
     document.getElementById('agent-builder').innerHTML = '<div class="agent-builder-empty"><div style="font-size:48px">🤖</div><p>Selecciona un agente</p></div>';
@@ -1500,7 +1509,7 @@ async function renderAgentBuilder(agentId) {
   // Show tester
   const tester = document.getElementById('agent-tester');
   tester.style.display = 'flex';
-  document.getElementById('tester-name').textContent = `${agentData.avatar} ${agentData.name}`;
+  { const et = etiquetaAgente(agentData); document.getElementById('tester-name').textContent = `${et.avatar} ${et.nombre}`; }
   testerHistory = [];
   document.getElementById('tester-messages').innerHTML = '<div class="tester-hint">Inicia una conversación para probar tu agente</div>';
 
@@ -1621,7 +1630,7 @@ async function loadKnowledge() {
         ${e.agents?.length ? `
           <div class="kc-agents">
             <span style="font-size:12px;color:var(--text-2)">Agentes vinculados:</span>
-            ${e.agents.map(a => `<span class="kc-agent-badge">${a.avatar} ${a.name}</span>`).join('')}
+            ${e.agents.map(a => { const et = etiquetaAgente(a); return `<span class="kc-agent-badge">${et.avatar} ${et.nombre}</span>`; }).join('')}
           </div>
         ` : ''}
       `;
@@ -1661,7 +1670,7 @@ async function openKnowledgeModal(id) {
   checksDiv.innerHTML = (agents || []).map(a => `
     <label>
       <input type="checkbox" value="${a.id}" class="km-agent-check">
-      ${a.avatar} ${a.name}
+      ${etiquetaAgente(a).avatar} ${etiquetaAgente(a).nombre}
     </label>
   `).join('');
 

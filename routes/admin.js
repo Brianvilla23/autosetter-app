@@ -2020,9 +2020,10 @@ router.get('/ls-products', async (req, res) => {
  *   3. Número escrito acá por el dueño, normalizado a E.164 chileno.
  *   4. Tope de MAX_PRUEBAS_DIA pruebas por día — un botón que marca no puede
  *      convertirse en un bucle de llamadas.
- *   5. El interruptor de la cuenta, el horario y los topes NO se saltan: los
- *      re-chequea el worker igual que en una llamada real. Una prueba que se
- *      salta los candados no prueba nada.
+ *   5. El interruptor de la cuenta y los topes NO se saltan: los re-chequea
+ *      el worker igual que en una llamada real. El HORARIO sí se salta (desde
+ *      el 2026-09-10): cuida a los leads de que el agente los llame de noche,
+ *      y acá el número y la hora los elige el dueño — solo le impedía probar.
  */
 const MAX_PRUEBAS_DIA = 3;
 
@@ -2049,9 +2050,8 @@ router.post('/llamada-prueba', async (req, res) => {
         error: 'Las llamadas están apagadas en esta cuenta. Prendelas en el panel del dueño → Configuración → 📞 Llamadas telefónicas.',
       });
     }
-    if (!telefonia.dentroDeHorario(settings)) {
-      return res.status(400).json({ error: 'Estás fuera del horario de llamadas de la cuenta (por defecto 09:00–21:00 hora Chile).' });
-    }
+    // Sin chequeo de horario a propósito (candado 5 arriba): el worker tampoco
+    // lo aplica a las pruebas. Ver services/telefonia.js.
 
     // Un agente con voz: el que va a hablar. Se prefiere uno con las llamadas
     // ya habilitadas para que la prueba use exactamente la misma config.

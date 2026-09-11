@@ -8,8 +8,10 @@
  *
  * Lo que se fija acá es que "prueba" NO signifique "sin candados":
  *  1. Sin credenciales del proveedor no marca (fail-closed, igual que el resto).
- *  2. El interruptor de la cuenta y el horario se respetan — una prueba que se
- *     salta los candados no prueba el camino real, prueba otro.
+ *  2. El interruptor de la cuenta se respeta — una prueba que se lo salta no
+ *     prueba el camino real. El HORARIO no (desde 2026-09-10): cuida a los
+ *     leads de que el agente los llame de noche; acá el número y la hora los
+ *     elige el dueño, y solo le impedía probar.
  *  3. Tope diario: un botón que gasta plata no puede ser un bucle.
  *  4. Cada prueba usa un lead NUEVO: el candado "un lead, una llamada por día"
  *     es real, y reusar el lead haría que la segunda prueba muriera sola.
@@ -122,12 +124,15 @@ test('con las llamadas apagadas en la cuenta, la prueba no marca', async () => {
   assert.strictEqual((await db.find(db.llamadas, { account_id: ACCOUNT })).length, 0);
 });
 
-test('fuera del horario de la cuenta, la prueba no marca', async () => {
+test('fuera del horario de la cuenta, la prueba SÍ marca: la hora la elige el dueño', async () => {
   conProveedor();
   await prepararCuenta({ enHorario: false });
   const r = await llamar(post, { body: { telefono: '+56995684130' } });
-  assert.strictEqual(r.status, 400);
-  assert.match(r.data.error, /horario/i);
+  assert.strictEqual(r.status, 200, 'el horario cuida a los leads, no bloquea la prueba del dueño');
+  assert.strictEqual(r.data.ok, true);
+  const ll = await db.findOne(db.llamadas, { _id: r.data.llamadaId });
+  assert.strictEqual(ll.es_prueba, true, 'el worker usa este flag para no aplicarle el horario');
+  assert.strictEqual(ll.status, 'programada');
 });
 
 test('sin agente activo no hay quién hable', async () => {
@@ -220,4 +225,46 @@ test('el estado NO se puede leer desde otra cuenta', async () => {
 
   const ajena = await llamar(get, { params: { id: r.data.llamadaId }, accountId: 'otra-cuenta' });
   assert.strictEqual(ajena.status, 404);
+});
+
+// ── El worker: la mitad que de verdad cortaba la llamada ─────────────────────
+//
+// La ruta solo ENCOLA. Quien marca es procesarLlamadasProgramadas(), y ese
+// volvía a chequear el horario justo antes de marcar: sacarlo de la ruta sin
+// sacarlo de acá dejaba la prueba muriendo sola con "quedó fuera de horario".
+// El proveedor se reemplaza por uno falso que anota a quién marcó: sin red,
+// sin credenciales reales, y se ve exactamente quién pasó el candado.
+test('worker: fuera de horario marca la de PRUEBA y corta la de un lead real', async () => {
+  const proveedores = require('../services/telefoniaProveedor');
+  const original = proveedores.proveedorActivo;
+  const marcadas = [];
+  proveedores.proveedorActivo = () => ({
+    id: 'falso', etiqueta: 'Falso', configurado: () => true, faltantes: () => [],
+    numeroPropio: () => '+56995684130',
+    crearLlamada: async ({ destino }) => { marcadas.push(destino.To); return 'CA-falso-' + marcadas.length; },
+  });
+  try {
+    conProveedor();
+    await prepararCuenta({ enHorario: false });
+    const base = {
+      account_id: ACCOUNT, status: 'programada', via: 'telefono',
+      fecha_chile: telefonia.fechaChile(), dial_at: new Date(Date.now() - 1000).toISOString(),
+      max_min: 3, transcript: [],
+    };
+    const leadP = await db.insert(db.leads, { account_id: ACCOUNT, name: 'Prueba', es_prueba: true });
+    const leadR = await db.insert(db.leads, { account_id: ACCOUNT, name: 'Lead real' });
+    const prueba = await db.insert(db.llamadas, { ...base, lead_id: leadP._id, telefono: '+56911111111', es_prueba: true });
+    const real   = await db.insert(db.llamadas, { ...base, lead_id: leadR._id, telefono: '+56922222222' });
+
+    await telefonia.procesarLlamadasProgramadas();
+
+    const p = await db.findOne(db.llamadas, { _id: prueba._id });
+    const r = await db.findOne(db.llamadas, { _id: real._id });
+    assert.deepStrictEqual(marcadas, ['+56911111111'], 'solo la de prueba llega al proveedor');
+    assert.strictEqual(p.twilio_call_sid, 'CA-falso-1');
+    assert.strictEqual(r.status, 'cancelada');
+    assert.strictEqual(r.error, 'quedó fuera de horario', 'a un lead real el horario lo sigue cuidando');
+  } finally {
+    proveedores.proveedorActivo = original;
+  }
 });

@@ -501,7 +501,12 @@ async function procesarLlamadasProgramadas() {
       try {
         const settings = await db.findOne(db.settings, { account_id: ll.account_id });
         if (settings?.llamadas_enabled !== true) throw new SinLlamada('cuenta apagó las llamadas');
-        if (!dentroDeHorario(settings))          throw new SinLlamada('quedó fuera de horario');
+        // El horario protege a los LEADS de que el agente los llame de noche.
+        // La llamada de prueba la pide el dueño, a un número que él escribe y a
+        // la hora que él elige: ahí el horario no protege a nadie y solo le
+        // impedía probar de noche (decisión de Brayan, 2026-09-10). El resto de
+        // los candados —interruptor, topes, tope diario de pruebas— sigue igual.
+        if (!ll.es_prueba && !dentroDeHorario(settings)) throw new SinLlamada('quedó fuera de horario');
 
         // Recheck de topes EN el momento del gasto: dos llamadas programadas
         // casi juntas pasan el chequeo al programarse (ambas ven N-1); acá,
