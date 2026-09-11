@@ -24,7 +24,7 @@ const WebSocket = require('ws');
 const db = require('../db/database');
 const {
   VOCES_REALTIME, EQUIV_VOZ, VOZ_DEFAULT, MODELO, MODELO_TRANSCRIPCION,
-  MAX_TOKENS_SALIDA, REGLAS_LLAMADA_SALIENTE, construirBloquesLead,
+  MAX_TOKENS_SALIDA, REGLAS_LLAMADA_SALIENTE, construirBloquesLead, configAudioTelefono,
 } = require('./voiceCommon');
 const telefonia = require('./telefonia');
 
@@ -191,14 +191,18 @@ function manejarStream(twilioWs) {
       (a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
     const nombreLead = lead.name || lead.wa_name || lead.ig_username || null;
+    // La llamada de prueba del panel es una DEMOSTRACIÓN: no hubo chat antes.
+    const demo = llamada.es_prueba === true;
     const bloques = construirBloquesLead({
       agent, kbTexto,
       lead: { ...lead, name: nombreLead },
-      messages, buildMemoryContext,
+      messages, buildMemoryContext, demo,
     });
-    bloques.push(REGLAS_LLAMADA_SALIENTE);
+    if (!demo) bloques.push(REGLAS_LLAMADA_SALIENTE);
     if (llamada.tema) {
-      bloques.push(`\n--- TEMA PENDIENTE DE ESTA LLAMADA ---\nQuedaron en: ${llamada.tema}. Ese es el objetivo de la llamada.`);
+      bloques.push(demo
+        ? `\n--- OBJETIVO DE ESTA LLAMADA ---\n${llamada.tema}.`
+        : `\n--- TEMA PENDIENTE DE ESTA LLAMADA ---\nQuedaron en: ${llamada.tema}. Ese es el objetivo de la llamada.`);
     }
     const instrucciones = bloques.filter(Boolean).join('\n');
 
@@ -250,17 +254,9 @@ function manejarStream(twilioWs) {
             type: 'realtime',
             instructions: instrucciones,
             max_output_tokens: MAX_TOKENS_SALIDA,
-            audio: {
-              input: {
-                format: { type: 'audio/pcmu' },
-                transcription: { model: MODELO_TRANSCRIPCION },
-                turn_detection: { type: 'server_vad' },
-              },
-              output: {
-                format: { type: 'audio/pcmu' },
-                voice: voz,
-              },
-            },
+            // pcmu, semantic_vad, reducción de ruido y transcripción en
+            // español: ver configAudioTelefono() en voiceCommon.js.
+            audio: configAudioTelefono(voz),
           },
         }));
       });

@@ -30,7 +30,7 @@ const { knowledgeForAgent } = require('../services/agents/knowledge');
 const { buildMemoryContext } = require('../services/leadMemory');
 const { verifyInvite, matchesStoredHash } = require('../services/voiceInvite');
 const {
-  VOCES_REALTIME, EQUIV_VOZ, VOZ_DEFAULT, MODELO, MODELO_TRANSCRIPCION,
+  VOCES_REALTIME, EQUIV_VOZ, VOZ_DEFAULT, MODELO, MODELO_TRANSCRIPCION, TRANSCRIPCION,
   SECRETO_SEGUNDOS, MAX_TOKENS_SALIDA, construirBloquesLead,
 } = require('../services/voiceCommon');
 
@@ -117,7 +117,7 @@ router.post('/token', async (req, res) => {
         instructions: bloques.join('\n'),
         max_output_tokens: MAX_TOKENS_SALIDA,
         audio: {
-          input:  { transcription: { model: MODELO_TRANSCRIPCION } },
+          input:  { transcription: TRANSCRIPCION },
           output: { voice: voz },
         },
       },

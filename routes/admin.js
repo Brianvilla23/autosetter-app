@@ -2091,7 +2091,7 @@ router.post('/llamada-prueba', async (req, res) => {
       status:      'programada',
       via:         'telefono',
       telefono,
-      tema:        'probar que la llamada se escucha bien en los dos sentidos',
+      tema:        'conversación de demostración: preséntate y conversa con naturalidad, como con alguien que podría ser cliente',
       fecha_chile: hoy,
       dial_at:     ahora.toISOString(),   // sin espera: no hay aviso de chat que esperar
       max_min:     3,                     // prueba corta: alcanza para oírse y cortar
