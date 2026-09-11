@@ -101,7 +101,23 @@ router.put('/:id', enforceFollowupFeature, async (req, res, next) => {
       calls_enabled,
       objetivo, cargo, p_contexto, p_limites, p_objeciones, p_escalacion, p_ejemplos,
     } = req.body;
-    const upd = { name, avatar, instructions, enabled, trigger_keywords, delay_min, delay_max };
+    // Cada campo se actualiza SOLO si viene en el body.
+    //
+    // POR QUE: esta línea era `const upd = { name, avatar, ... }` con los
+    // valores directos. Cuando el panel manda un PUT PARCIAL — el checkbox de
+    // "Agentes que pueden llamar" manda solo {calls_enabled} — los otros siete
+    // llegan `undefined`. NeDB serializa con JSON.stringify, y JSON.stringify
+    // BORRA las claves undefined: el $set escribía el documento SIN nombre,
+    // avatar, instrucciones ni `enabled`. Un clic dejaba al agente sin cerebro
+    // y apagado. Visto en producción el 2026-09-10 con el agente del dueño.
+    const upd = {};
+    if (name             !== undefined) upd.name             = name;
+    if (avatar           !== undefined) upd.avatar           = avatar;
+    if (instructions     !== undefined) upd.instructions     = instructions;
+    if (typeof enabled === 'boolean')   upd.enabled          = enabled;
+    if (trigger_keywords !== undefined) upd.trigger_keywords = trigger_keywords;
+    if (delay_min        !== undefined) upd.delay_min        = delay_min;
+    if (delay_max        !== undefined) upd.delay_max        = delay_max;
     // Prompt estructurado: cada campo se actualiza solo si viene en el body
     // (undefined = no tocar), y vacío = borrar. Así el panel puede guardar
     // una pestaña sin pisar las otras.

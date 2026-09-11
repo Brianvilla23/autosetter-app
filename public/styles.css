@@ -935,7 +935,12 @@ body { display: flex; }
   box-shadow: var(--shadow-lg);
   border: 1px solid var(--border);
 }
-.modal-sm { max-width: 520px; padding: 28px 32px; }
+/* Los modales chicos (crear agente, nueva entrada de conocimiento) son una
+   columna simple SIN un .modal-body que scrollee. Con el max-height: 90vh y el
+   overflow: hidden de .modal-panel, en una pantalla de notebook el pie con el
+   botón de guardar quedaba cortado y sin forma de llegar a él. Visto en
+   producción el 2026-09-10: "no me aparece en ningún momento para crearlo". */
+.modal-sm { max-width: 520px; padding: 28px 32px; overflow-y: auto; }
 .modal-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 18px 26px;
