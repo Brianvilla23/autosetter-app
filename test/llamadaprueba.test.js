@@ -268,3 +268,22 @@ test('worker: fuera de horario marca la de PRUEBA y corta la de un lead real', a
     proveedores.proveedorActivo = original;
   }
 });
+
+// -- Voz por llamada (comparar marin vs cedar sin tocar el agente) -------------
+test('voz para ESTA llamada: se guarda si es valida, se ignora si no', async () => {
+  conProveedor();
+  await prepararCuenta();
+  let r = await llamar(post, { body: { telefono: '+56995684130', voz: 'CEDAR' } });
+  assert.strictEqual(r.status, 200, JSON.stringify(r.data));
+  assert.strictEqual(r.data.voz, 'cedar');
+  let ll = await db.findOne(db.llamadas, { _id: r.data.llamadaId });
+  assert.strictEqual(ll.voz, 'cedar');
+
+  r = await llamar(post, { body: { telefono: '+56995684130', voz: 'nova' } });
+  assert.strictEqual(r.data.voz, 'shimmer', 'nova (TTS clasico) se mapea a su equivalente de Realtime');
+
+  r = await llamar(post, { body: { telefono: '+56995684130', voz: 'robot-x' } });
+  assert.strictEqual(r.status, 200);
+  ll = await db.findOne(db.llamadas, { _id: r.data.llamadaId });
+  assert.strictEqual(ll.voz, null, 'voz inventada: se usa la del agente');
+});

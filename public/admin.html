@@ -566,11 +566,12 @@
       </div>
 
       <div class="card">
-        <h3 style="margin-top:0">🎙️ Probar las 10 voces</h3>
+        <h3 style="margin-top:0">🎙️ Probar las 13 voces</h3>
         <p style="font-size:0.85rem;color:#a0a0c0;margin-top:0">
           Manda a tu WhatsApp una nota de voz con cada voz disponible, etiquetada con su nombre.
-          Las voces de OpenAI están optimizadas para inglés, así que en español la diferencia entre
-          ellas es grande — elige escuchando. Tarda ~1 min en enviarlas todas.
+          <strong style="color:#f0f0ff">marin</strong> y <strong style="color:#f0f0ff">cedar</strong> son las que usa el teléfono.
+          Tarda ~1 min. <strong style="color:#f0f0ff">Requisito:</strong> que ese número le haya escrito al WhatsApp del negocio
+          en las últimas 24 horas — si no, WhatsApp acepta el envío y lo descarta sin avisar. Acá se muestra la entrega real.
         </p>
         <div class="form-row" style="margin-bottom:10px">
           <label style="display:block;font-size:0.8rem;color:#a0a0c0;margin-bottom:4px">Tu número (formato E.164 sin +, ej: 56912345678)</label>
@@ -580,7 +581,7 @@
           <label style="display:block;font-size:0.8rem;color:#a0a0c0;margin-bottom:4px">Frase de prueba (opcional)</label>
           <input type="text" id="voz-texto" placeholder="Deja vacío para usar la frase de venta por defecto" style="width:100%">
         </div>
-        <button class="btn" id="btn-probar-voces" onclick="probarVoces()">🎧 Enviarme las 10 voces</button>
+        <button class="btn" id="btn-probar-voces" onclick="probarVoces()">🎧 Enviarme las 13 voces</button>
         <span id="voz-status" style="margin-left:10px;font-size:0.85rem"></span>
         <div id="voz-result" style="margin-top:12px"></div>
       </div>
@@ -597,6 +598,22 @@
         <div class="form-row" style="margin-bottom:10px">
           <label style="display:block;font-size:0.8rem;color:#a0a0c0;margin-bottom:4px">Teléfono a llamar</label>
           <input type="text" id="prueba-tel" placeholder="+56 9 1234 5678" style="width:100%;max-width:320px">
+        </div>
+        <div class="form-row" style="margin-bottom:10px">
+          <label style="display:block;font-size:0.8rem;color:#a0a0c0;margin-bottom:4px">Voz para esta llamada (para comparar; no cambia el agente)</label>
+          <select id="prueba-voz" style="width:100%;max-width:320px">
+            <option value="">La del agente</option>
+            <option value="marin">marin (por defecto)</option>
+            <option value="cedar">cedar</option>
+            <option value="sage">sage</option>
+            <option value="coral">coral</option>
+            <option value="ash">ash</option>
+            <option value="ballad">ballad</option>
+            <option value="echo">echo</option>
+            <option value="alloy">alloy</option>
+            <option value="shimmer">shimmer</option>
+            <option value="verse">verse</option>
+          </select>
         </div>
         <button class="btn" id="btn-llamada-prueba" onclick="llamadaPrueba()">📲 Llámame ahora</button>
         <span id="prueba-status" style="margin-left:10px;font-size:0.85rem"></span>
@@ -980,21 +997,26 @@ async function probarVoces() {
   if (to.length < 8) { st.innerHTML = '<span style="color:#ef4444">Número inválido (E.164 sin +)</span>'; return; }
 
   btn.disabled = true;
-  st.innerHTML = '<span style="color:#a0a0c0">Generando y enviando las 10 voces… (~1 min)</span>';
+  st.innerHTML = '<span style="color:#a0a0c0">Generando, enviando y confirmando entrega… (~1 min)</span>';
   out.innerHTML = '';
   try {
     const body = { to };   // accountId lo resuelve el backend desde la sesión
     if (txt) body.texto = txt;
     const r = await api('POST', '/api/admin/probar-voces', body);
-    st.innerHTML = r.enviadas
-      ? `<span style="color:#22c55e">✅ ${r.enviadas}/${r.resultados.length} enviadas — revisa tu WhatsApp</span>`
-      : `<span style="color:#ef4444">❌ No se envió ninguna (0/${r.resultados.length})</span>`;
+    st.innerHTML = r.fallidas
+      ? `<span style="color:#ef4444">❌ ${r.fallidas}/${r.resultados.length} no llegaron</span>`
+      : r.entregadas
+        ? `<span style="color:#22c55e">✅ ${r.entregadas}/${r.resultados.length} entregadas — revisa tu WhatsApp</span>`
+        : `<span style="color:#f59e0b">⏳ Meta aceptó ${r.enviadas}/${r.resultados.length}, sin confirmación de entrega todavía</span>`;
     out.innerHTML = `${r.diagnostico ? `<div style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.4);border-radius:8px;padding:12px;margin-bottom:10px;font-size:0.88rem;line-height:1.5">${escHtml(r.diagnostico)}</div>` : ''}
-    <div class="table-wrap"><table><thead><tr><th>Voz</th><th>Estado</th></tr></thead><tbody>${
-      r.resultados.map(x => `<tr><td><strong>${escHtml(x.voz)}</strong></td><td>${
-        x.ok ? '<span style="color:#22c55e">enviada</span>'
-             : `<span style="color:#ef4444">${escHtml(x.error || 'error')}${x.codigo ? ` (código ${escHtml(String(x.codigo))})` : ''}</span>`
-      }</td></tr>`).join('')
+    <div class="table-wrap"><table><thead><tr><th>Voz</th><th>Meta</th><th>Entrega</th></tr></thead><tbody>${
+      r.resultados.map(x => {
+        const meta = x.ok ? '<span style="color:#22c55e">aceptada</span>'
+          : `<span style="color:#ef4444">${escHtml(x.error || 'error')}${x.codigo ? ` (código ${escHtml(String(x.codigo))})` : ''}</span>`;
+        const color = x.entrega === 'entregada' || x.entrega === 'leída' ? '#22c55e' : x.entrega === 'fallida' ? '#ef4444' : '#f59e0b';
+        const entrega = `<span style="color:${color}">${escHtml(x.entrega || '—')}</span>${x.motivo ? ` <span style="color:#a0a0c0">· ${escHtml(x.motivo)}</span>` : ''}`;
+        return `<tr><td><strong>${escHtml(x.voz)}</strong></td><td>${meta}</td><td>${entrega}</td></tr>`;
+      }).join('')
     }</tbody></table></div>
     <p style="font-size:0.82rem;color:#a0a0c0;margin-top:8px">Cuando elijas la que más te guste, guárdala en el campo <code>voice</code> del agente.</p>`;
   } catch (e) {
@@ -1652,7 +1674,8 @@ async function llamadaPrueba() {
   st.innerHTML = '<span style="color:#888">⏳ Encolando…</span>';
   out.innerHTML = '';
   try {
-    const r = await api('POST', '/api/admin/llamada-prueba', { telefono: tel });
+    const voz = document.getElementById('prueba-voz')?.value || '';
+    const r = await api('POST', '/api/admin/llamada-prueba', voz ? { telefono: tel, voz } : { telefono: tel });
     st.innerHTML = `<span style="color:#10b981">✅ Encolada · quedan ${r.restantes} hoy</span>`;
     out.innerHTML = `<div style="font-size:0.86rem;color:#a0a0c0">
       Llamando a <strong style="color:#f0f0ff">${escHtml(r.telefono)}</strong>

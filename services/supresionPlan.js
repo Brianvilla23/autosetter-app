@@ -38,6 +38,7 @@ const POR_CUENTA = [
   ['improvements',     'account_id'],
   ['quickReplies',     'account_id'],
   ['aiUsage',          'accountId'],
+  ['waEstados',        'account_id'],   // wa_id del destinatario + motivo del fallo
 ];
 
 /** Colecciones que cuelgan del usuario, no de la cuenta. */

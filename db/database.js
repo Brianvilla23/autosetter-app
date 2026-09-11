@@ -69,6 +69,11 @@ const db = {
   // Campañas de promociones segmentadas (broadcast): el snapshot de
   // destinatarios lleva lead_ids → cascada de supresión por cuenta.
   campanas:      new Datastore({ filename: path.join(dir, 'campanas.db'),      autoload: true }),
+  // Estados de entrega de WhatsApp (sent/delivered/read/failed) que Meta manda
+  // por webhook DESPUÉS de aceptar un envío con 200. Sin esto el panel decía
+  // "enviada" a 10 audios que nunca llegaron (2026-09-10). Lleva el wa_id del
+  // destinatario → entra en la cascada de supresión por cuenta.
+  waEstados:     new Datastore({ filename: path.join(dir, 'waEstados.db'),     autoload: true }),
 };
 
 // Compact on load

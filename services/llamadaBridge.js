@@ -206,7 +206,10 @@ function manejarStream(twilioWs) {
     }
     const instrucciones = bloques.filter(Boolean).join('\n');
 
-    const vozPedida = EQUIV_VOZ[agent.voice] || agent.voice;
+    // La llamada puede traer su propia voz (llamada de prueba: comparar
+    // marin vs cedar). Si no, la del agente; si no, la default.
+    const vozBase   = llamada.voz || agent.voice;
+    const vozPedida = EQUIV_VOZ[vozBase] || vozBase;
     const voz = VOCES_REALTIME.includes(vozPedida) ? vozPedida : VOZ_DEFAULT;
 
     await conectarOpenAI({ apiKey, instrucciones, voz });

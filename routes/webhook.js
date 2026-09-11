@@ -189,6 +189,15 @@ router.post('/', async (req, res) => {
           const value = change.value || {};
           const phoneNumberId = value.metadata?.phone_number_id;
           if (!phoneNumberId) continue;
+          // Estados de lo que ENVIAMOS (sent/delivered/read/failed). Meta
+          // acepta un envío con 200 y recién acá dice si no lo entregó — sin
+          // leer esto, un audio rechazado por la ventana de 24 h figura como
+          // "enviado" para siempre. Ver services/waEstados.js.
+          if (Array.isArray(value.statuses) && value.statuses.length) {
+            const { registrarEstadosWa } = require('../services/waEstados');
+            await registrarEstadosWa({ phoneNumberId, statuses: value.statuses })
+              .catch(e => console.error('[wa] estados de entrega:', e.message));
+          }
           for (const msg of value.messages || []) {
             await handleWhatsAppMessage(phoneNumberId, msg, value)
               .catch(e => console.error('handleWhatsAppMessage error:', e));

@@ -95,7 +95,11 @@ async function transcribeAudio({ buffer, filename = 'nota.ogg', apiKey }) {
 // ('nova', 'shimmer') suenan a locutor gringo leyendo. 'sage' y 'coral' son
 // las más cálidas y conversacionales. Configurable por agente (agent.voice)
 // y probable en caliente con POST /api/admin/probar-voces.
-const VOCES_DISPONIBLES = ['alloy', 'ash', 'ballad', 'coral', 'echo', 'fable', 'nova', 'onyx', 'sage', 'shimmer'];
+// Las 13 de gpt-4o-mini-tts. `marin` y `cedar` son las que usa el TELÉFONO
+// (Realtime) y no estaban en la lista: el dueño nunca pudo escucharlas antes
+// de elegir (2026-09-10). tts-1 (el fallback) no las conoce → VOCES_TTS1.
+const VOCES_DISPONIBLES = ['alloy', 'ash', 'ballad', 'coral', 'echo', 'fable', 'nova', 'onyx', 'sage', 'shimmer', 'verse', 'marin', 'cedar'];
+const VOCES_TTS1 = ['alloy', 'ash', 'ballad', 'coral', 'echo', 'fable', 'nova', 'onyx', 'sage', 'shimmer'];
 const VOZ_POR_DEFECTO = 'sage';
 
 // El parámetro `instructions` de gpt-4o-mini-tts es la palanca más fuerte
@@ -115,8 +119,8 @@ const INSTRUCCIONES_VOZ = [
  */
 async function synthesizeVoice({ text, apiKey, voice = VOZ_POR_DEFECTO }) {
   const vozFinal = VOCES_DISPONIBLES.includes(voice) ? voice : VOZ_POR_DEFECTO;
-  async function call(model, withInstructions) {
-    const body = { model, voice: vozFinal, input: text, response_format: 'mp3' };
+  async function call(model, withInstructions, voz = vozFinal) {
+    const body = { model, voice: voz, input: text, response_format: 'mp3' };
     if (withInstructions) {
       body.instructions = INSTRUCCIONES_VOZ;
     }
@@ -139,7 +143,8 @@ async function synthesizeVoice({ text, apiKey, voice = VOZ_POR_DEFECTO }) {
   } catch (e) {
     // Modelo no disponible para esta key → fallback al TTS clásico
     if (e.status === 400 || e.status === 403 || e.status === 404) {
-      return await call('tts-1', false);
+      // tts-1 no conoce marin/cedar/verse: con esas, cae a la voz por defecto.
+      return await call('tts-1', false, VOCES_TTS1.includes(vozFinal) ? vozFinal : VOZ_POR_DEFECTO);
     }
     throw e;
   }
@@ -226,14 +231,18 @@ async function sendWhatsAppAudioMessage({ phoneNumberId, recipient, mediaId, acc
   };
   const headers = { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' };
 
+  // Devuelve el id (wamid) que asigna Meta: es la única forma de saber
+  // DESPUÉS si el audio se entregó o falló (services/waEstados.js).
   try {
-    await axios.post(url, { ...base, audio: { id: mediaId, voice: true } }, { headers, timeout: 15000 });
+    const r = await axios.post(url, { ...base, audio: { id: mediaId, voice: true } }, { headers, timeout: 15000 });
+    return r.data?.messages?.[0]?.id || null;
   } catch (err) {
     const code = err.response?.data?.error?.code;
     // 100 = parámetro inválido/no soportado para esta cuenta o versión
     if (code !== 100) throw err;
     console.warn('[voz] "voice:true" rechazado por Meta — reintentando como audio simple');
-    await axios.post(url, { ...base, audio: { id: mediaId } }, { headers, timeout: 15000 });
+    const r = await axios.post(url, { ...base, audio: { id: mediaId } }, { headers, timeout: 15000 });
+    return r.data?.messages?.[0]?.id || null;
   }
 }
 

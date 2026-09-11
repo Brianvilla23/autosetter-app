@@ -1209,8 +1209,10 @@ router.post('/probar-voces', async (req, res) => {
   try {
     // accountId opcional: por defecto la cuenta de la sesión (igual que el simulador)
     const accountId = req.body.accountId || req.user.accountId;
-    const { to, texto, voces } = req.body;
-    if (!accountId || !to) return res.status(400).json({ error: 'to (wa_id sin +) requerido' });
+    const { texto, voces } = req.body;
+    const waEstados = require('../services/waEstados');
+    const to = waEstados.normalizarWaId(req.body.to);
+    if (!accountId || to.length < 8) return res.status(400).json({ error: 'Escribe tu numero completo con codigo de pais, por ejemplo 56912345678.' });
 
     const cuenta = await db.findOne(db.accounts, { _id: accountId });
     if (!cuenta) return res.status(404).json({ error: 'cuenta no encontrada' });
@@ -1223,6 +1225,21 @@ router.post('/probar-voces', async (req, res) => {
     const settings = await db.findOne(db.settings, { account_id: accountId });
     const apiKey   = process.env.OPENAI_API_KEY || settings?.openai_key;
     if (!apiKey) return res.status(400).json({ error: 'sin OPENAI_API_KEY' });
+
+    const numeroNegocio = cuenta.wa_display_number || 'el WhatsApp del negocio';
+
+    // ANTES de gastar en sintesis: la ventana de 24 h. Meta acepta el envio con
+    // 200 aunque este cerrada y lo descarta despues; el 2026-09-10 salieron
+    // "10/10 enviadas" y no llego ninguna. Se mira en nuestra base si ese
+    // numero le escribio al negocio en las ultimas 24 h.
+    const ventana = await waEstados.ventana24hAbierta({ accountId, waId: to });
+    if (!ventana.abierta) {
+      return res.status(400).json({
+        error: `No se envian todavia: ${ventana.motivo}. WhatsApp solo entrega audios y textos libres si esa persona le escribio a ${numeroNegocio} en las ultimas 24 horas. Mandale un "hola" desde el ${to} y vuelve a apretar el boton.`,
+        ventana_24h: false,
+        ultimo_entrante: ventana.ultimoEntrante,
+      });
+    }
 
     const frase = texto || 'Hola, ¿cómo estás? Te llamo por la camioneta que estabas viendo. Cuéntame, ¿qué presupuesto tienes en mente?';
     const lista = Array.isArray(voces) && voces.length ? voces : audioSvc.VOCES_DISPONIBLES;
@@ -1245,13 +1262,13 @@ router.post('/probar-voces', async (req, res) => {
           oggBuffer: ogg,
           accessToken: cuenta.wa_access_token,
         });
-        await audioSvc.sendWhatsAppAudioMessage({
+        const wamid = await audioSvc.sendWhatsAppAudioMessage({
           phoneNumberId: cuenta.wa_phone_number_id,
           recipient: to,
           mediaId,
           accessToken: cuenta.wa_access_token,
         });
-        resultados.push({ voz, ok: true, bytes: ogg.length });
+        resultados.push({ voz, ok: true, bytes: ogg.length, wamid });
       } catch (err) {
         const meta = err.response?.data?.error || {};
         resultados.push({
@@ -1277,8 +1294,25 @@ router.post('/probar-voces', async (req, res) => {
       diagnostico = `Fallaron las ${fallos.length}. Error de Meta: "${fallos[0].error}".`;
     }
 
+    // "Aceptada por Meta" no es "entregada". Se espera (tope 12 s) el estado
+    // final que Meta manda por webhook y se muestra ENTREGA por voz.
+    const estados = await waEstados.esperarEstados({ wamids: resultados.map(r => r.wamid) });
+    for (const r of resultados) {
+      if (!r.ok) { r.entrega = 'no aceptada'; continue; }
+      const e = r.wamid ? estados[r.wamid] : null;
+      if (!e)                       { r.entrega = 'aceptada, sin confirmacion aun'; continue; }
+      if (e.estado === 'failed')    { r.entrega = 'fallida'; r.motivo = waEstados.explicarFallo(e.codigo, e.detalle, numeroNegocio); continue; }
+      if (e.estado === 'read')      { r.entrega = 'leida'; continue; }
+      if (e.estado === 'delivered') { r.entrega = 'entregada'; continue; }
+      r.entrega = 'aceptada, sin confirmacion aun';
+    }
+    const fallidas = resultados.filter(r => r.entrega === 'fallida');
+    if (!diagnostico && fallidas.length) diagnostico = fallidas[0].motivo;
+
     res.json({
       enviadas: resultados.filter(r => r.ok).length,
+      entregadas: resultados.filter(r => r.entrega === 'entregada' || r.entrega === 'leida').length,
+      fallidas: fallidas.length,
       frase,
       destinatario: to,
       diagnostico,
@@ -2032,22 +2066,29 @@ router.post('/llamada-prueba', async (req, res) => {
   try {
     if (!telefonia.telefoniaHabilitada()) {
       return res.status(400).json({
-        error: 'La telefonía no está configurada: faltan las credenciales del proveedor en Railway. Corré el diagnóstico para ver cuáles.',
+        error: 'La telefonía no está configurada: faltan las credenciales del proveedor en Railway. Corre el diagnostico para ver cuales.',
       });
     }
 
     const telefono = telefonia.telefonoE164(String(req.body?.telefono || ''));
     if (!telefono) {
-      return res.status(400).json({ error: 'Teléfono inválido. Escribilo en formato chileno, por ejemplo +56 9 1234 5678.' });
+      return res.status(400).json({ error: 'Teléfono inválido. Escribelo en formato chileno, por ejemplo +56 9 1234 5678.' });
     }
 
     const accountId = req.user?.accountId;
     if (!accountId) return res.status(400).json({ error: 'Tu usuario admin no tiene cuenta asociada.' });
 
+    // Voz opcional para ESTA llamada: comparar marin vs cedar sin tocar el
+    // agente. Solo nombres validos de Realtime; cualquier otra cosa se ignora.
+    const { VOCES_REALTIME, EQUIV_VOZ } = require('../services/voiceCommon');
+    const vozPedida  = String(req.body?.voz || '').trim().toLowerCase();
+    const vozMapeada = EQUIV_VOZ[vozPedida] || vozPedida;
+    const vozElegida = VOCES_REALTIME.includes(vozMapeada) ? vozMapeada : null;
+
     const settings = await db.findOne(db.settings, { account_id: accountId });
     if (settings?.llamadas_enabled !== true) {
       return res.status(400).json({
-        error: 'Las llamadas están apagadas en esta cuenta. Prendelas en el panel del dueño → Configuración → 📞 Llamadas telefónicas.',
+        error: 'Las llamadas están apagadas en esta cuenta. Prendelas en el panel del dueno → Configuración → 📞 Llamadas telefónicas.',
       });
     }
     // Sin chequeo de horario a propósito (candado 5 arriba): el worker tampoco
@@ -2098,6 +2139,7 @@ router.post('/llamada-prueba', async (req, res) => {
       es_prueba:   true,
       consent_texto: 'llamada de prueba iniciada por el dueño desde el panel admin',
       consent_at:    ahora.toISOString(),
+      voz:           vozElegida,
       ws_lock:      null,
       finalized_at: null,
       transcript:   [],
@@ -2109,7 +2151,7 @@ router.post('/llamada-prueba', async (req, res) => {
       llamadaId: doc._id,
       telefono,
       agente: agent.name,
-      voz: agent.voice || null,
+      voz: vozElegida || agent.voice || null,
       restantes: MAX_PRUEBAS_DIA - gastadas - 1,
       mensaje: 'Llamada encolada. El worker marca dentro de los próximos 10 segundos.',
     });
