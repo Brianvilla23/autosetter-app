@@ -67,8 +67,27 @@ test('demo: nada de pruebas técnicas de audio', () => {
   assert.match(voz.REGLAS_DEMO_LLAMADA, /No hagas pruebas técnicas de audio/);
 });
 
-test('turnos cortos: la regla de voz pone un techo concreto', () => {
-  assert.match(voz.REGLAS_VOZ, /máximo 2 frases y unas 25 palabras por turno/);
+test('REGLAS_VOZ v2: ataca el patron uniforme que delata al bot', () => {
+  // El "sono robotica" venia en parte de pedir turnos de largo casi identico.
+  assert.match(voz.REGLAS_VOZ, /LARGO VARIABLE/);
+  assert.match(voz.REGLAS_VOZ, /No repitas el mismo patr/);
+  assert.match(voz.REGLAS_VOZ, /Nunca repitas la misma frase de apertura/);
+});
+
+test('REGLAS_VOZ v2: backchannel al inicio del turno, jamas antes de un precio', () => {
+  assert.match(voz.REGLAS_VOZ, /BACKCHANNEL/);
+  assert.match(voz.REGLAS_VOZ, /solo al INICIO de tu turno/);
+  assert.match(voz.REGLAS_VOZ, /antes de decir un precio, una fecha o un compromiso/);
+});
+
+test('REGLAS_VOZ v2: espejo de usted y horas habladas', () => {
+  assert.match(voz.REGLAS_VOZ, /te trata de "usted" primero, cambia t/);
+  assert.match(voz.REGLAS_VOZ, /las tres y media de la tarde/);
+});
+
+test('REGLAS_VOZ: la transparencia de IA sigue en Opcion B (no anunciar salvo que pregunten)', () => {
+  // Cambiar esto es decision del dueno, no un cambio silencioso.
+  assert.match(voz.REGLAS_VOZ, /Nunca digas que eres una IA .* salvo que te pregunten directo/);
 });
 
 // ── Audio del teléfono contra el enum oficial de OpenAI ─────────────────────
