@@ -314,6 +314,24 @@ body { display: flex; }
   transition: all .15s;
   font-weight: 500;
 }
+/* .btn-secondary se usa 61 veces y no tenía regla base en el tema claro (solo
+   en .auth-screen y .theme-dark): se veía como botón gris del navegador.
+   Segundo escaneo 12-09. */
+.btn-secondary {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-1);
+  padding: 9px 18px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, border-color .15s, box-shadow .15s;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(16,24,40,.04);
+}
+.btn-secondary:hover { background: var(--surface-2); border-color: var(--text-3); }
+.btn-secondary:disabled { opacity: .55; cursor: not-allowed; }
 .btn-ghost:hover {
   border-color: var(--orange);
   color: var(--orange);

@@ -432,6 +432,13 @@ function initNav() {
 }
 
 function loadSection(name) {
+  // "Abrir tester" (checklist de activación) pedía la sección 'tester', que no
+  // existe: la pantalla quedaba en blanco. El chat de prueba vive dentro de
+  // Agentes; se abre esa sección y se baja hasta él (auditoría 12-09).
+  if (name === 'tester') {
+    name = 'agents';
+    setTimeout(() => document.getElementById('agent-tester')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 500);
+  }
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   const sec = document.getElementById(`section-${name}`);
   if (sec) sec.classList.add('active');
@@ -962,6 +969,8 @@ function escHtmlStep(s) {
 
 function goOnboardingStep(section) {
   if (typeof loadSection === 'function') loadSection(section);
+  // El chat de prueba vive en Agentes: que el menú resalte esa sección.
+  if (section === 'tester') section = 'agents';
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   const navItem = document.querySelector(`.nav-item[data-section="${section}"]`);
   if (navItem) navItem.classList.add('active');
