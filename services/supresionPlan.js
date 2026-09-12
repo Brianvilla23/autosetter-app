@@ -39,12 +39,14 @@ const POR_CUENTA = [
   ['quickReplies',     'account_id'],
   ['aiUsage',          'accountId'],
   ['waEstados',        'account_id'],   // wa_id del destinatario + motivo del fallo
+  ['errorLog',         'accountId'],    // guarda email e IP del titular (auditoría 12-09)
 ];
 
 /** Colecciones que cuelgan del usuario, no de la cuenta. */
 const POR_USUARIO = [
   ['emailLog',  'userId'],       // guarda la dirección de correo: dato personal
   ['referrals', 'referrer_id'],
+  ['errorLog',  'userId'],       // errores sin cuenta pero con usuario (login, registro)
 ];
 
 /**

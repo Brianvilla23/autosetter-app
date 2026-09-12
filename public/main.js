@@ -4626,9 +4626,12 @@ async function sendInboxMessage() {
 
   input.disabled = true;
   try {
-    await apiFetch(`/api/leads/${INBOX_SELECTED_ID}/message`, 'POST', {
+    const r = await apiFetch(`/api/leads/${INBOX_SELECTED_ID}/message`, 'POST', {
       text, accountId: ACCOUNT_ID, takeControl: true,
     });
+    // Antes el backend decía "ok" aunque Meta rechazara el envío: el dueño
+    // creía que su cliente había recibido un mensaje que nunca llegó.
+    if (r && r.metaSent === false && r.metaError) showToast('⚠️ Quedó guardado, pero no se pudo enviar: ' + r.metaError);
     input.value = '';
     await renderInboxThread(INBOX_SELECTED_ID, true);
     renderInboxList();
@@ -5192,7 +5195,7 @@ function crmCard(l) {
   const ch = l.channel === 'whatsapp' ? '📱' : '📷';
   const fu = l.next_followup_at ? `<span class="crm-card-fu">⏰ ${new Date(l.next_followup_at).toLocaleDateString('es-CL',{day:'numeric',month:'short'})}</span>` : '';
   return `<div class="crm-card" draggable="true" data-id="${l.id}" ondragstart="crmDragStart(event,'${l.id}')" ondragend="crmDragEnd(event)" onclick="crmOpenDrawer('${l.id}')">
-    <div class="crm-card-top"><span class="crm-card-name">${crmEsc(l.contact_name || '@'+l.ig_username)}</span><span style="display:flex;gap:5px;align-items:center">${crmScoreBadge(l.id)}<span class="crm-card-ch">${ch}</span></span></div>
+    <div class="crm-card-top"><span class="crm-card-name">${crmEsc(crmNombre(l))}</span><span style="display:flex;gap:5px;align-items:center">${crmScoreBadge(l.id)}<span class="crm-card-ch">${ch}</span></span></div>
     ${l.deal_value ? `<div class="crm-card-val">${crmFmtVal(l.deal_value,l.deal_currency)}</div>` : ''}
     ${l.tags && l.tags.length ? `<div class="crm-card-tags">${l.tags.slice(0,3).map(t=>`<span class="crm-tag">${crmEsc(t)}</span>`).join('')}</div>` : ''}
     <div class="crm-card-meta">${q && q!=='sin_calificar' ? `<span class="crm-card-q ${qCls}">${q}</span>` : '<span></span>'}<span>${fu || crmTimeAgo(l.last_message_at)}</span></div>
@@ -5237,7 +5240,7 @@ function crmRenderList() {
   body.innerHTML = all.map(l => {
     const s = stageById[l._stage] || {name:l._stage,color:'#64748b'};
     return `<tr onclick="crmOpenDrawer('${l.id}')">
-      <td><strong>${crmEsc(l.contact_name||'@'+l.ig_username)}</strong></td>
+      <td><strong>${crmEsc(crmNombre(l))}</strong></td>
       <td><span class="crm-stage-pill" style="background:${s.color}">${crmEsc(s.name)}</span></td>
       <td>${l.qualification&&l.qualification!=='sin_calificar'?l.qualification:'—'}</td>
       <td>${crmFmtVal(l.deal_value,l.deal_currency)||'—'}</td>
@@ -5252,7 +5255,7 @@ async function crmOpenDrawer(id) {
   _crmCurrentLeadId = id;
   const lead = await apiFetch(`/api/leads/${id}`);
   if (!lead) return;
-  document.getElementById('crm-d-name').textContent = lead.contact_name || '@'+lead.ig_username;
+  document.getElementById('crm-d-name').textContent = crmNombre(lead);
   const igl = document.getElementById('crm-d-iglink');
   if (lead.ig_username && lead.channel!=='whatsapp') { igl.href=`https://instagram.com/${lead.ig_username}`; igl.textContent=`@${lead.ig_username}`; }
   else { igl.removeAttribute('href'); igl.textContent = lead.channel==='whatsapp'?'WhatsApp':''; }
@@ -5447,4 +5450,14 @@ function initCopiloto() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); copiEnviar(); }
     if (e.key === 'Escape') copiToggle(false);
   });
+}
+
+// Nombre visible de un lead en el CRM. Un lead de WhatsApp sin nombre puesto
+// a mano no tiene ig_username y se pintaba "@undefined" (auditoría 12-09).
+function crmNombre(l) {
+  if (!l) return 'Sin nombre';
+  if (l.contact_name) return l.contact_name;
+  if (l.display_name) return l.display_name;
+  if (l.ig_username) return (l.channel === 'whatsapp' ? '' : '@') + l.ig_username;
+  return l.wa_name || l.wa_id || 'Sin nombre';
 }

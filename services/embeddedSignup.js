@@ -226,6 +226,11 @@ async function conectarCuenta({ accountId, code, wabaId, phoneNumberId }) {
   // 5. Guardar. El token va al account igual que en el alta manual, así todo
   //    el resto del sistema (worker de envío, audio, webhook) funciona sin
   //    enterarse de por dónde entró.
+  // Un número solo puede vivir en UNA cuenta (mismo candado que routes/settings.js).
+  const duena = await db.findOne(db.accounts, { wa_phone_number_id: String(phoneNumberId) });
+  if (duena && duena._id !== accountId) {
+    throw new Error('Ese número de WhatsApp ya está conectado a otra cuenta de Atinov.');
+  }
   await db.update(db.accounts, { _id: accountId }, {
     wa_phone_number_id:     String(phoneNumberId),
     wa_business_account_id: String(wabaId),

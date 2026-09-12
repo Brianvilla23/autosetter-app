@@ -91,6 +91,8 @@ router.get('/', async (req, res) => {
         id:             l._id,
         ig_username:    l.ig_username,
         ig_user_id:     l.ig_user_id,
+        wa_name:        l.wa_name || null,
+        display_name:   l.contact_name || l.wa_name || l.ig_username || l.wa_id || 'Sin nombre',
         qualification: l.qualification || null,
         qualification_reason: l.qualification_reason || null,
         is_bypassed:   !!l.is_bypassed,

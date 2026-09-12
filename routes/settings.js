@@ -12,6 +12,16 @@ function assertOwnsAccount(req, accountId) {
   return accountId && accountId === req.user.accountId;
 }
 
+// Un identificador de canal (número de WhatsApp, Página de Facebook) solo
+// puede vivir en UNA cuenta: el webhook resuelve la cuenta por ese campo, y
+// si dos lo tuvieran, los mensajes de un negocio los contestaría el agente
+// del otro. Mismo candado que ya tiene ig_user_id (pentest 06-09).
+async function otraCuentaTiene(campo, valor, accountId) {
+  if (!valor) return false;
+  const duena = await db.findOne(db.accounts, { [campo]: valor });
+  return !!(duena && duena._id !== accountId);
+}
+
 router.get('/', async (req, res, next) => {
   try {
     const { accountId } = req.query;
@@ -171,6 +181,9 @@ router.put('/whatsapp', async (req, res, next) => {
     const upd = {};
     if (wa_phone_number_id !== undefined)    upd.wa_phone_number_id    = String(wa_phone_number_id || '').trim();
     if (wa_business_account_id !== undefined) upd.wa_business_account_id = String(wa_business_account_id || '').trim();
+    if (await otraCuentaTiene('wa_phone_number_id', upd.wa_phone_number_id, accountId)) {
+      return res.status(409).json({ error: 'Ese número de WhatsApp ya está conectado a otra cuenta de Atinov.' });
+    }
     // El token solo se pisa si viene uno nuevo real (no el masked).
     if (wa_access_token && !wa_access_token.includes('…')) {
       upd.wa_access_token = String(wa_access_token).trim();
@@ -528,6 +541,9 @@ router.put('/messenger', async (req, res, next) => {
     const upd = {};
     if (fb_page_id !== undefined)       upd.fb_page_id       = String(fb_page_id || '').trim();
     if (wa_display_number !== undefined) upd.wa_display_number = String(wa_display_number || '').trim();
+    if (await otraCuentaTiene('fb_page_id', upd.fb_page_id, accountId)) {
+      return res.status(409).json({ error: 'Esa Página de Facebook ya está conectada a otra cuenta de Atinov.' });
+    }
     // El token solo se pisa si viene uno nuevo real (no el masked).
     if (fb_page_token && !fb_page_token.includes('…')) {
       upd.fb_page_token = String(fb_page_token).trim();

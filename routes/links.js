@@ -41,7 +41,13 @@ router.put('/:id', async (req, res, next) => {
     const owned = await loadOwnedLink(req, res);
     if (!owned) return;
     const { name, url, description } = req.body;
-    await db.update(db.links, { _id: req.params.id }, { name, url, description });
+    // Cada campo se toca solo si viene: con un PUT parcial los `undefined`
+    // borraban el resto en NeDB (misma familia que routes/agents.js).
+    const upd = {};
+    if (name !== undefined)        upd.name        = name;
+    if (url !== undefined)         upd.url         = url;
+    if (description !== undefined) upd.description = description;
+    await db.update(db.links, { _id: req.params.id }, upd);
     const link = await db.findOne(db.links, { _id: req.params.id });
     res.json({ ...link, id: link._id });
   } catch (e) { next(e); }

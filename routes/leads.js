@@ -252,6 +252,7 @@ router.post('/:id/message', async (req, res, next) => {
     // Send via Meta if real token
     const account = await db.findOne(db.accounts, { _id: accountId });
     let metaSent = false;
+    let metaError = null;
     if (account?.access_token && account.access_token !== 'demo_token') {
       try {
         const { sendMessage } = require('../services/meta');
@@ -259,11 +260,13 @@ router.post('/:id/message', async (req, res, next) => {
         await sendMessage({ recipientId: lead.ig_user_id, text: cleanText, accessToken: account.access_token, igUserId, accountId: account._id });
         metaSent = true;
       } catch (e) {
+        // El mensaje queda guardado, pero el dueño tiene que saber que NO llegó.
+        metaError = String(e.response?.data?.error?.message || e.message || 'error').slice(0, 200);
         console.warn(`manual send → @${lead.ig_username} failed:`, e.response?.data || e.message);
       }
     }
 
-    res.json({ ok: true, message: { ...message, id: message._id }, metaSent });
+    res.json({ ok: true, message: { ...message, id: message._id }, metaSent, metaError });
   } catch (e) { next(e); }
 });
 
@@ -435,6 +438,9 @@ router.get('/crm/board', async (req, res, next) => {
         id: l._id,
         ig_username: l.ig_username,
         contact_name: l.contact_name || '',
+        wa_name: l.wa_name || null,
+        // Un lead de WhatsApp sin nombre puesto a mano se pintaba "@undefined".
+        display_name: l.contact_name || l.wa_name || l.ig_username || l.wa_id || 'Sin nombre',
         channel: l.channel || 'instagram',
         qualification: l.qualification || 'sin_calificar',
         deal_value: l.deal_value || 0,

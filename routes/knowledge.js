@@ -46,8 +46,15 @@ router.put('/:id', async (req, res, next) => {
   try {
     const owned = await loadOwnedKnowledge(req, res);
     if (!owned) return;
-    const { title, content, is_main, agentIds = [] } = req.body;
-    await db.update(db.knowledge, { _id: req.params.id }, { title, content, is_main, agent_ids: agentIds });
+    const { title, content, is_main, agentIds } = req.body;
+    // Cada campo se toca solo si viene: con un PUT parcial los `undefined`
+    // borraban título/contenido en NeDB (misma familia que routes/agents.js).
+    const upd = {};
+    if (title !== undefined)     upd.title     = title;
+    if (content !== undefined)   upd.content   = content;
+    if (is_main !== undefined)   upd.is_main   = !!is_main;
+    if (Array.isArray(agentIds)) upd.agent_ids = agentIds;
+    await db.update(db.knowledge, { _id: req.params.id }, upd);
     const entry = await db.findOne(db.knowledge, { _id: req.params.id });
     res.json({ ...entry, id: entry._id });
   } catch (e) { next(e); }

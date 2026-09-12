@@ -493,11 +493,17 @@ app.post('/api/billing/mp-webhook', webhookLimiter, async (req, res) => {
         } catch (e) { console.warn('MP activation email skip:', e.message); }
       }
     } else if (status === 'cancelled' || status === 'paused') {
-      await dbW.update(dbW.users, { _id: userId }, {
-        subscriptionStatus:  status,
-        membershipPlan:      status === 'cancelled' ? 'cancelled' : undefined,
-        membershipExpiresAt: status === 'cancelled' ? now.toISOString() : undefined,
-      });
+      // En "paused" la intención era NO tocar el plan ni el vencimiento, y se
+      // mandaban como `undefined`. NeDB borra las claves undefined del $set:
+      // el cliente con pago pausado caía a TRIAL al instante y perdía su
+      // fecha de vencimiento. Misma familia del bug de routes/agents.js
+      // (auditoría 2026-09-12). Ahora solo se tocan en "cancelled".
+      const upd = { subscriptionStatus: status };
+      if (status === 'cancelled') {
+        upd.membershipPlan      = 'cancelled';
+        upd.membershipExpiresAt = now.toISOString();
+      }
+      await dbW.update(dbW.users, { _id: userId }, upd);
       console.log(`❌ MP: suscripción ${status} — usuario ${userId}`);
     }
 
