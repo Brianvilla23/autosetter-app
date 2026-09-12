@@ -72,14 +72,17 @@ router.post('/token', async (req, res) => {
 
     // Tope diario por cuenta — el mismo contador que la demo del dueño, para
     // que las dos vías no sumen el doble sin que nadie lo note.
-    const hoy = new Date().toISOString().slice(0, 10);
-    const usadasHoy = settings?.voice_sessions_date === hoy
-      ? Number(settings.voice_sessions_count || 0)
-      : 0;
-    if (usadasHoy >= MAX_SESIONES_DIA) {
+    // Reserva ATÓMICA del cupo diario antes de acuñar el token: dos pedidos
+    // casi simultáneos ya no pasan los dos (auditoría 12-09). Si OpenAI
+    // falla, se libera más abajo. Fecha en hora de Chile.
+    const { reservarCupoDiario, liberarCupoDiario } = require('../services/limits');
+    const cupo = await reservarCupoDiario({ accountId, campo: 'voice_sessions', max: MAX_SESIONES_DIA });
+    if (!cupo.ok) {
       console.warn(`[closer] cuenta ${accountId} alcanzó el tope diario de voz`);
       return res.status(429).json({ error: 'El asistente de voz no está disponible en este momento. Sigue por el chat y te responde igual.' });
     }
+    const hoy = cupo.hoy;
+    const usadasHoy = Math.max(0, cupo.usados - 1);
 
     // Agente: el que venía atendiendo a este lead, o el primero habilitado.
     const agentes = await db.find(db.agents, { account_id: accountId });
@@ -111,7 +114,9 @@ router.post('/token', async (req, res) => {
     const vozPedida = EQUIV_VOZ[vozBase] || vozBase;
     const voz = VOCES_REALTIME.includes(vozPedida) ? vozPedida : VOZ_DEFAULT;
 
-    const r = await axios.post('https://api.openai.com/v1/realtime/client_secrets', {
+    let r;
+    try {
+      r = await axios.post('https://api.openai.com/v1/realtime/client_secrets', {
       expires_after: { anchor: 'created_at', seconds: SECRETO_SEGUNDOS },
       session: {
         type: 'realtime',
@@ -127,9 +132,13 @@ router.post('/token', async (req, res) => {
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       timeout: 15000,
     });
+    } catch (e) {
+      await liberarCupoDiario({ accountId, campo: 'voice_sessions' });
+      throw e;
+    }
 
     const value = r.data?.value || r.data?.client_secret?.value;
-    if (!value) throw new Error('OpenAI no devolvió el secreto efímero');
+    if (!value) { await liberarCupoDiario({ accountId, campo: 'voice_sessions' }); throw new Error('OpenAI no devolvió el secreto efímero'); }
 
     // Consumir la invitación y contabilizar SOLO después de que OpenAI aceptó:
     // si falla, el lead puede reintentar con el mismo link y no se gastó cuota.
@@ -137,10 +146,7 @@ router.post('/token', async (req, res) => {
       { voice_invite_hash: null, voice_invite_expires: null, voice_invite_used_at: new Date().toISOString() })
       .catch(() => null);
 
-    if (settings) {
-      await db.update(db.settings, { account_id: accountId },
-        { voice_sessions_date: hoy, voice_sessions_count: usadasHoy + 1 }).catch(() => null);
-    }
+    // El cupo ya quedó reservado arriba (atómico); un fallo de OpenAI lo liberó.
 
     await db.insert(db.messages, {
       lead_id: lead._id, account_id: accountId, role: 'sistema',

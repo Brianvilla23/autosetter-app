@@ -56,22 +56,53 @@ async function sendMessage({ pageId, recipient, text, accessToken, accountId }) 
     return res.data;
   } catch (err) {
     if (isTokenError(err) && accountId) {
+      // Antes se llamaba a tryRefreshOnOAuthError, que renueva el token de
+      // INSTAGRAM y reintentaba Messenger con él: fallaba igual y en silencio.
+      // El Page Access Token no se refresca solo: se marca y se avisa al dueño,
+      // igual que WhatsApp e Instagram (auditoría 12-09).
       try {
-        const { tryRefreshOnOAuthError } = require('./metaRefresh');
         const account = await db.findOne(db.accounts, { _id: accountId });
-        if (account) {
-          const newToken = await tryRefreshOnOAuthError(account);
-          if (newToken) {
-            const retryRes = await attempt(newToken);
-            return retryRes.data;
-          }
-        }
-      } catch (refreshErr) {
-        console.error('[messenger] refresh-retry failed:', refreshErr.message);
+        if (account) await marcarFbParaReconectar(account, err);
+      } catch (e2) {
+        console.error('[messenger] no se pudo marcar la reconexión:', e2.message);
       }
     }
     console.error('[messenger] API error:', err.response?.data || err.message);
     throw err;
+  }
+}
+
+/**
+ * Meta rechazó el Page Access Token: se deja registro en la cuenta
+ * (fb_reconectar) y se avisa al dueño por correo, con throttle de 24 h para
+ * que un worker con mensajes en cola no mande cincuenta correos.
+ */
+async function marcarFbParaReconectar(account, err) {
+  const motivo = err?.response?.data?.error?.message || 'token de la Página de Facebook rechazado por Meta';
+  const ultimo = account.fb_token_aviso_at ? new Date(account.fb_token_aviso_at).getTime() : 0;
+  const yaAvisado = (Date.now() - ultimo) / 3_600_000 < 24;
+
+  await db.update(db.accounts, { _id: account._id }, {
+    fb_reconectar:        true,
+    fb_reconectar_motivo: String(motivo).slice(0, 200),
+    fb_reconectar_at:     account.fb_reconectar_at || new Date().toISOString(),
+  }).catch(() => null);
+
+  if (yaAvisado) return;
+  try {
+    const owner = await db.findOne(db.users, { account_id: account._id });
+    if (!owner?.email) return;
+    const { sendEmail } = require('./email');
+    const html = `<p>Hola ${owner.name || ''},</p>
+<p>Meta rechazó el acceso de Atinov a tu Página de Facebook (${String(motivo).slice(0, 120)}). Los mensajes de Messenger dejaron de responderse.</p>
+<p>Entra a <a href="https://atinov.com/app">atinov.com/app</a> → Ajustes → Messenger y vuelve a conectar la Página. Toma un minuto.</p>`;
+    const r = await sendEmail({ to: owner.email, subject: 'Atinov: hay que reconectar Messenger', html, tag: 'fb_token_caido', userId: owner._id });
+    if (r?.ok) {
+      await db.update(db.accounts, { _id: account._id }, { fb_token_aviso_at: new Date().toISOString() }).catch(() => null);
+      console.log(`📧 [messenger] avisado ${owner.email}: hay que reconectar Messenger (${motivo})`);
+    }
+  } catch (e) {
+    console.error('[messenger] no se pudo avisar del token caído:', e.message);
   }
 }
 
@@ -120,6 +151,7 @@ async function findAccountByPageId(pageId) {
 }
 
 module.exports = {
+  marcarFbParaReconectar,
   sendMessage,
   sendAction,
   getUserProfile,

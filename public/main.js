@@ -254,7 +254,7 @@ function renderAuthForm(mode) {
       <p class="auth-sub">3 días de prueba gratuita. Sin tarjeta de crédito.</p>
       <input class="auth-input" id="auth-name" type="text" placeholder="Tu nombre" autocomplete="name">
       <input class="auth-input" id="auth-email" type="email" placeholder="Email" autocomplete="email">
-      <input class="auth-input" id="auth-password" type="password" placeholder="Contraseña (mín. 6 caracteres)" autocomplete="new-password">
+      <input class="auth-input" id="auth-password" type="password" placeholder="Contraseña (mín. 8 caracteres, con letra y número)" autocomplete="new-password">
       <input class="auth-input" id="auth-password2" type="password" placeholder="Confirmar contraseña" autocomplete="new-password">
 
       <!-- Personalización del agente: colapsada para no asustar con 9 campos.
@@ -302,7 +302,7 @@ function renderAuthForm(mode) {
       <p class="auth-sub">Primera vez en el sistema. Crea tu cuenta de administrador.</p>
       <input class="auth-input" id="auth-name" type="text" placeholder="Tu nombre" autocomplete="name">
       <input class="auth-input" id="auth-email" type="email" placeholder="Email" autocomplete="email">
-      <input class="auth-input" id="auth-password" type="password" placeholder="Contraseña (mín. 6 caracteres)" autocomplete="new-password">
+      <input class="auth-input" id="auth-password" type="password" placeholder="Contraseña (mín. 8 caracteres, con letra y número)" autocomplete="new-password">
       <input class="auth-input" id="auth-password2" type="password" placeholder="Confirmar contraseña" autocomplete="new-password">
       <div id="auth-error" class="auth-error" style="display:none"></div>
       <button class="btn-primary auth-btn" id="auth-submit">Crear cuenta y entrar</button>
@@ -1062,7 +1062,7 @@ async function loadAgents() {
   list.innerHTML = '';
 
   if (!agents.length) {
-    list.innerHTML = '<div style="padding:20px;color:var(--text-3);text-align:center">No hay agentes aún</div>';
+    list.innerHTML = '<div style="padding:20px;color:var(--text-3);text-align:center"><p style="margin-bottom:10px">No hay agentes aún</p><button class="btn-primary" onclick="openAgentModal()">+ Crear tu primer agente</button></div>';
     return;
   }
 
@@ -1126,12 +1126,12 @@ async function renderAgentBuilder(agentId) {
 
   builder.innerHTML = `
     <div class="builder-tabs">
-      <div class="builder-tab active" data-tab="configure">Configure</div>
+      <div class="builder-tab active" data-tab="configure">Configurar</div>
     </div>
     <div class="builder-content">
       <div class="builder-sub-tabs">
         <div class="builder-sub-tab active" data-stab="instructions">Instrucciones</div>
-        <div class="builder-sub-tab" data-stab="links">Manage links</div>
+        <div class="builder-sub-tab" data-stab="links">Links</div>
       </div>
 
       <div id="stab-instructions">
@@ -2078,17 +2078,17 @@ async function loadSettings() {
   if (userIdEl)   userIdEl.value   = data.account?.ig_user_id  || '';
 
   // OAuth connect button
-  document.getElementById('btn-connect-ig')?.addEventListener('click', () => {
+  _on('btn-connect-ig', () => {
     const token = localStorage.getItem('autosetter_token') || '';
     window.location.href = `/auth/instagram?accountId=${ACCOUNT_ID}&token=${encodeURIComponent(token)}`;
   });
 
   // Pausar / reanudar Instagram — conserva la conexión.
-  document.getElementById('btn-pausa-ig')?.addEventListener('click', () =>
+  _on('btn-pausa-ig', () =>
     alternarPausaCanal('instagram', !!data.account?.ig_pausado));
 
   // Olvidar credenciales de Instagram — esto sí borra.
-  document.getElementById('btn-olvidar-ig')?.addEventListener('click', async () => {
+  _on('btn-olvidar-ig', async () => {
     if (!confirm('¿Olvidar las credenciales de Instagram?\n\nSe borra el acceso y hay que reconectar desde cero.\nSi solo quieres que el agente deje de responder, usa "Pausar canal".')) return;
     const r = await apiFetch(`/api/settings/instagram?accountId=${ACCOUNT_ID}`, 'DELETE', null, { conError: true });
     if (!r?.ok) { showToast(`⚠️ No se pudo desconectar Instagram: ${r?.error || 'error del servidor'}`); return; }
@@ -2105,7 +2105,7 @@ async function loadSettings() {
   };
 
   // Save manual IG
-  document.getElementById('btn-save-ig')?.addEventListener('click', async () => {
+  _on('btn-save-ig', async () => {
     const ig_username  = document.getElementById('ig-username')?.value.trim();
     const ig_user_id   = document.getElementById('ig-user-id')?.value.trim();
     const access_token = document.getElementById('ig-token')?.value.trim();
@@ -2131,7 +2131,7 @@ async function loadSettings() {
     pintarCaducidadWa(data.account);
   }
 
-  document.getElementById('btn-save-wa')?.addEventListener('click', async () => {
+  _on('btn-save-wa', async () => {
     const wa_phone_number_id     = document.getElementById('wa-phone-number-id')?.value.trim();
     const wa_business_account_id = document.getElementById('wa-business-account-id')?.value.trim();
     const wa_access_token        = document.getElementById('wa-access-token')?.value.trim();
@@ -2145,11 +2145,11 @@ async function loadSettings() {
   });
 
   // Pausar / reanudar WhatsApp — conserva número y token.
-  document.getElementById('btn-pausa-wa')?.addEventListener('click', () =>
+  _on('btn-pausa-wa', () =>
     alternarPausaCanal('whatsapp', !!data.account?.wa_pausado));
 
   // Olvidar credenciales de WhatsApp — irreversible sin pasar por Meta.
-  document.getElementById('btn-olvidar-wa')?.addEventListener('click', async () => {
+  _on('btn-olvidar-wa', async () => {
     if (!confirm('¿Olvidar las credenciales de WhatsApp?\n\nSe borra el token. Para volver a conectar hay que generar otro token de System User en Meta, que son varios pasos.\n\nSi solo quieres que el agente deje de responder, cancela y usa "Pausar canal".')) return;
     const r = await apiFetch(`/api/settings/whatsapp?accountId=${ACCOUNT_ID}`, 'DELETE', null, { conError: true });
     if (!r?.ok) { showToast(`⚠️ No se pudo desconectar WhatsApp: ${r?.error || 'error del servidor'}`); return; }
@@ -2171,7 +2171,7 @@ async function loadSettings() {
     pintarEstadoCanal('fb', !!data.account.fb_pausado, 'Messenger activo — deriva prospectos a WhatsApp');
   }
 
-  document.getElementById('btn-save-fb')?.addEventListener('click', async () => {
+  _on('btn-save-fb', async () => {
     const fb_page_id        = document.getElementById('fb-page-id')?.value.trim();
     const fb_page_token     = document.getElementById('fb-page-token')?.value.trim();
     const wa_display_number = document.getElementById('fb-wa-display-number')?.value.trim();
@@ -2185,11 +2185,11 @@ async function loadSettings() {
   });
 
   // Pausar / reanudar Messenger — conserva la Página y el token.
-  document.getElementById('btn-pausa-fb')?.addEventListener('click', () =>
+  _on('btn-pausa-fb', () =>
     alternarPausaCanal('messenger', !!data.account?.fb_pausado));
 
   // Olvidar credenciales de Messenger.
-  document.getElementById('btn-olvidar-fb')?.addEventListener('click', async () => {
+  _on('btn-olvidar-fb', async () => {
     if (!confirm('¿Olvidar las credenciales de Messenger?\n\nSe borra el token de la Página y hay que reconectar desde cero.\nSi solo quieres que el agente deje de responder, usa "Pausar canal".')) return;
     const r = await apiFetch(`/api/settings/messenger?accountId=${ACCOUNT_ID}`, 'DELETE', null, { conError: true });
     if (!r?.ok) { showToast(`⚠️ No se pudo desconectar Messenger: ${r?.error || 'error del servidor'}`); return; }
@@ -2813,7 +2813,7 @@ function showToast(msg) {
   if (!toast) {
     toast = document.createElement('div');
     toast.id = 'toast';
-    toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#111;color:white;padding:12px 20px;border-radius:8px;font-size:14px;z-index:9999;transition:opacity .3s;max-width:420px';
+    toast.style.cssText = 'position:fixed;bottom:96px;right:24px;background:#111;color:white;padding:12px 20px;border-radius:8px;font-size:14px;z-index:9999;transition:opacity .3s;max-width:420px';
     document.body.appendChild(toast);
   }
   toast.textContent = msg;
@@ -2831,10 +2831,12 @@ function showFeatureLockedToast(err) {
   const old = document.getElementById('feature-locked-toast');
   if (old) old.remove();
 
-  const required = err.required || 'Pro';
-  const isPro    = required === 'Pro';
+  // Nombre REAL del plan de la escalera (lo manda el backend); antes decía
+  // "Pro"/"Agency", planes que ya no existen ni se pueden comprar.
+  const required = err.required_name || err.required || 'Crecimiento';
+  const isPro    = required !== 'Escala';
   const ctaColor = isPro ? '#10b981' : '#16a34a';
-  const ctaLabel = isPro ? '⭐ Upgradear a Pro' : '🚀 Upgradear a Agency';
+  const ctaLabel = `Cambiar al plan ${required}`;
 
   const t = document.createElement('div');
   t.id = 'feature-locked-toast';
@@ -2962,7 +2964,7 @@ async function loadGrowth() {
   await loadFollowupAgents();
 
   // Wire buttons (solo una vez)
-  const exportBtn = document.getElementById('btn-export-csv');
+  const exportBtn = document.getElementById('btn-export-leads-csv');
   if (exportBtn && !exportBtn.dataset.wired) {
     exportBtn.dataset.wired = '1';
     exportBtn.addEventListener('click', exportLeadsCSV);
@@ -4729,8 +4731,12 @@ setInterval(() => { if (ACCOUNT_ID) updateInboxBadge(); }, 30000);
 // tengan suscripciones activas creadas antes del cambio de pricing
 // — la UI los muestra pero con su precio histórico.
 const PLAN_LABEL = {
-  trial:   { name: 'Prueba gratuita', usd: 0,   clp: 0,       desc: 'Probando Atinov' },
-  founder: { name: 'Founder',         usd: 148, clp: 135000,  desc: '6.000 conv/mes · 5 asistentes · plan único' },
+  trial:       { name: 'Prueba gratuita', usd: 0,   clp: 0,      desc: 'Probando Atinov' },
+  inicial:     { name: 'Inicial',         usd: 98,  clp: 93000,  desc: '1.500 conversaciones/mes · 2 agentes · sin llamadas' },
+  crecimiento: { name: 'Crecimiento',     usd: 275, clp: 261000, desc: '3.000 conversaciones/mes · 5 agentes · 150 min de llamadas' },
+  escala:      { name: 'Escala',          usd: 498, clp: 473000, desc: '5.600 conversaciones/mes · 10 agentes · 400 min de llamadas' },
+  medida:      { name: 'A medida',        usd: 698, clp: 663000, desc: 'Cuotas cotizadas para tu operación' },
+  founder:     { name: 'Founder',         usd: 148, clp: 135000, desc: 'Plan fundador · precio congelado' },
   starter: { name: 'Starter (legacy)', usd: 197, clp: 180000,  desc: 'Plan histórico — 500 conv/mes · 3 asistentes' },
   pro:     { name: 'Pro (legacy)',    usd: 297, clp: 270000,  desc: 'Plan histórico — 3 cuentas IG' },
   agency:  { name: 'Agency (legacy)', usd: 497, clp: 450000,  desc: 'Plan histórico — 10 cuentas · white-label' },
@@ -4841,7 +4847,7 @@ async function openBillingPortal() {
   try {
     const r = await apiFetch('/api/billing/portal');
     if (!r || !r.url) {
-      showToast('No hay portal disponible. Contactanos en soporte@atinov.com');
+      showToast('No hay portal disponible. Contáctanos en soporte@atinov.com');
       return;
     }
     window.open(r.url, '_blank');
@@ -5461,3 +5467,39 @@ function crmNombre(l) {
   if (l.ig_username) return (l.channel === 'whatsapp' ? '' : '@') + l.ig_username;
   return l.wa_name || l.wa_id || 'Sin nombre';
 }
+
+// Asigna .onclick (reemplaza, no acumula). Los botones de canal usaban
+// addEventListener dentro de loadSettings(), que corre cada vez que se entra
+// a Ajustes: un clic disparaba la acción 2, 3, 4 veces (auditoría 12-09).
+function _on(id, fn) { const el = document.getElementById(id); if (el) el.onclick = fn; }
+
+// ── Escape cierra cualquier modal abierto (antes solo el copiloto) ───────────
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  const onb = document.getElementById('onb-overlay');
+  if (onb && onb.classList.contains('show')) { if (typeof onbHide === 'function') onbHide(); return; }
+  const up = document.getElementById('upgrade-modal');
+  if (up && up.style.display && up.style.display !== 'none') { up.style.display = 'none'; return; }
+  const abierto = [...document.querySelectorAll('.modal-overlay')].find(m => m.style.display && m.style.display !== 'none');
+  if (abierto) abierto.style.display = 'none';
+});
+
+// ── Menú en celular: bajo 700 px la sidebar se escondía sin forma de abrirla ─
+function toggleMenuMovil(abrir) {
+  const sb = document.querySelector('.sidebar');
+  const bd = document.getElementById('sidebar-backdrop');
+  if (!sb) return;
+  const on = abrir === undefined ? !sb.classList.contains('open') : !!abrir;
+  sb.classList.toggle('open', on);
+  if (bd) bd.style.display = on ? 'block' : 'none';
+}
+document.addEventListener('click', (e) => {
+  if (e.target.closest('#menu-toggle')) { toggleMenuMovil(); return; }
+  if (e.target.closest('#sidebar-backdrop')) { toggleMenuMovil(false); return; }
+  if (e.target.closest('.sidebar-nav a, .sidebar-nav button, .sidebar-nav .nav-item')) toggleMenuMovil(false);
+});
+try { _safeExpose('toggleMenuMovil', toggleMenuMovil); } catch {}
+
+// "Ver conversación completa" del CRM llamaba a una función que no existía.
+function showLeadDetail(id) { return openLeadModal(id); }
+try { _safeExpose('showLeadDetail', showLeadDetail); } catch {}

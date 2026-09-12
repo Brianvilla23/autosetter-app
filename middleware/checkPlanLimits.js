@@ -1,3 +1,4 @@
+const PLANS_CFG = require('../config/plans').PLANS;
 /**
  * Atinov — Middleware de límites por plan
  *
@@ -25,13 +26,18 @@ function enforceFeature(featureKey, displayName) {
       if (user.role === 'admin') return next();
       if (hasFeature(user, featureKey)) return next();
       const plan = getPlanFor(user);
-      const required = featureKey === 'whiteLabel' || featureKey === 'multiUser' || featureKey === 'apiAccess' ? 'Agency' : 'Pro';
+      // Planes REALES de la escalera (config/plans.js). Antes decía "Pro" /
+      // "Agency": planes heredados que ya no existen ni se pueden comprar —
+      // el cliente veía "Upgradear a Agency" y no había dónde (auditoría 12-09).
+      const requiredId   = featureKey === 'whiteLabel' ? 'escala' : 'crecimiento';
+      const requiredName = (PLANS_CFG[requiredId] && PLANS_CFG[requiredId].name) || requiredId;
       return res.status(403).json({
-        error:   `${displayName} requiere plan ${required} o superior. Tu plan actual: ${plan.name}.`,
+        error:   `${displayName} está disponible desde el plan ${requiredName}. Tu plan actual: ${plan.name}.`,
         upgrade: true,
         limit:   featureKey,
         plan:    plan.id,
-        required,
+        required: requiredId,
+        required_name: requiredName,
       });
     } catch (e) {
       console.error(`enforceFeature(${featureKey}) error:`, e.message);
@@ -90,10 +96,17 @@ async function enforceMaxAccounts(req, res, next) {
     const plan = getPlanFor(user);
     if (plan.maxAccounts === UNLIMITED) return next();
 
-    // Por ahora cada user tiene user.accountId único, así que si ya tiene y viene a conectar
-    // otra, sería multi-cuenta. Hoy NO soportamos multi-cuenta → permitimos la reconexión
-    // (reemplazo) pero no la creación de una segunda cuenta.
-    // Cuando tengamos user.accountIds[] este check crecerá.
+    // Hoy cada usuario tiene UNA cuenta (user.account_id). Si el pedido viene
+    // para otra y el plan no permite varias, se corta acá — antes esto siempre
+    // pasaba y el límite que se vende (multiAccount) no existía.
+    const pedida = req.body?.accountId || req.query?.accountId || null;
+    const propia = user.account_id || user.accountId || null;
+    if (pedida && propia && pedida !== propia && Number(plan.maxAccounts || 1) <= 1) {
+      return res.status(403).json({
+        error: `Tu plan ${plan.name} incluye una sola cuenta. Sube de plan para conectar más.`,
+        upgrade: true, limit: 'maxAccounts', plan: plan.id, required: 'crecimiento', required_name: 'Crecimiento',
+      });
+    }
     next();
   } catch (e) {
     console.error('enforceMaxAccounts error:', e.message);

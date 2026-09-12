@@ -782,7 +782,10 @@ router.get('/export-conversations', async (req, res) => {
 
     function csvEscape(val) {
       if (val === null || val === undefined) return '';
-      const s = String(val);
+      let s = String(val);
+      // Defensa CSV-injection (OWASP): el contenido lo escribió el LEAD. Misma
+      // regla que export-leads; acá también + y - porque no hay teléfonos crudos.
+      if (/^[=@+\-]/.test(s)) s = "'" + s;
       // CSV: si contiene coma/comilla/salto de línea, encerrar en comillas y escapar comillas internas
       if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
       return s;
@@ -852,7 +855,7 @@ router.get('/export-crm', async (req, res) => {
     }
 
     const isoDate = (s) => s ? new Date(s).toISOString().slice(0, 10) : '';
-    const clean   = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+    const clean   = (s) => { let t = String(s || '').replace(/\s+/g, ' ').trim(); if (/^[=@+\-]/.test(t)) t = "'" + t; return t; };   // + defensa CSV-injection
 
     // Orden de columnas estándar CRM (1 fila = 1 contacto)
     const header = [

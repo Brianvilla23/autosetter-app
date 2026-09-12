@@ -491,6 +491,27 @@ async function procesarLlamadasProgramadas() {
       }
     }
 
+    // Huérfanas: un reinicio del proceso entre el lock y el POST al proveedor,
+    // o un status callback que nunca llegó, dejaban una llamada en 'marcando' /
+    // 'sonando' / 'en_curso' para siempre (auditoría 12-09). Se cierran con un
+    // umbral generoso; si la duración oficial llega después, corrige el registro.
+    const ahoraMs = Date.now();
+    const colgadasMarcando = await db.find(db.llamadas, { status: { $in: ['marcando', 'sonando'] }, finalized_at: null }).catch(() => []);
+    for (const h of colgadasMarcando) {
+      const t = new Date(h.dialing_started_at || h.dial_at || h.createdAt || 0).getTime();
+      if (ahoraMs - t > 10 * 60_000) {
+        await finalizarLlamada(h._id, { resultado: 'fallida', duracionSeg: 0, motivo: 'huérfana: sin respuesta del proveedor en 10 min' }).catch(() => null);
+      }
+    }
+    const colgadasEnCurso = await db.find(db.llamadas, { status: 'en_curso', finalized_at: null }).catch(() => []);
+    for (const h of colgadasEnCurso) {
+      const t = new Date(h.answered_at || h.dialing_started_at || h.createdAt || 0).getTime();
+      const topeMin = (typeof HARD_MAX_MIN === 'number' ? HARD_MAX_MIN : 15) + 5;   // sin ReferenceError si la constante vive en otro módulo
+      if (ahoraMs - t > topeMin * 60_000) {
+        await finalizarLlamada(h._id, { resultado: 'terminada', duracionSeg: Number(h.duracion_seg || 0), motivo: 'huérfana: cerrada por barrido' }).catch(() => null);
+      }
+    }
+
     const programadas = await db.find(db.llamadas, { status: 'programada' });
     for (const ll of programadas.filter(l => l.dial_at <= ahora)) {
       // Lock optimista: si dos ticks compiten, solo uno pasa a 'marcando'.
@@ -507,6 +528,14 @@ async function procesarLlamadasProgramadas() {
         // impedía probar de noche (decisión de Brayan, 2026-09-10). El resto de
         // los candados —interruptor, topes, tope diario de pruebas— sigue igual.
         if (!ll.es_prueba && !dentroDeHorario(settings)) throw new SinLlamada('quedó fuera de horario');
+        // Bolsa de minutos EN el momento de marcar: una llamada que esperó horas
+        // el permiso de WhatsApp pudo quedarse sin bolsa mientras tanto. Solo
+        // para leads reales: la llamada de prueba del dueño no pasa por el plan
+        // (la ruta del admin tampoco se lo exige).
+        if (!ll.es_prueba) {
+          const vozAhora = await checkMinutosVoz(ll.account_id);
+          if (!vozAhora.allowed) throw new SinLlamada(vozAhora.reason || 'sin minutos disponibles al marcar');
+        }
 
         // Recheck de topes EN el momento del gasto: dos llamadas programadas
         // casi juntas pasan el chequeo al programarse (ambas ven N-1); acá,

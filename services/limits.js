@@ -14,9 +14,54 @@
 const db = require('../db/database');
 const { getPlanFor, UNLIMITED } = require('../config/plans');
 
-function currentMonth() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+// Mes y día en hora de CHILE, igual que telefonia/calendar/shopify. Con la
+// hora del servidor (UTC) el reset de cuotas caía 3-4 h antes de la
+// medianoche real (auditoría 12-09).
+const TZ_CL = 'America/Santiago';
+function hoyChile(fecha = new Date()) {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: TZ_CL }).format(fecha);   // YYYY-MM-DD
+}
+function currentMonth(fecha = new Date()) {
+  return hoyChile(fecha).slice(0, 7);
+}
+
+/**
+ * Reset perezoso ATÓMICO del mes: solo el primero que ve el mes nuevo pone
+ * los contadores en cero (condición "mes distinto"); los demás no encuentran
+ * el documento y no tocan nada. Antes cada llamador leía el contador, sumaba
+ * y escribía: dos a la vez perdían un incremento.
+ */
+async function resetearMesUsuario(userId, month) {
+  await db.updateRaw(db.users, { _id: userId, dm_count_month: { $ne: month } }, {
+    $set: { monthly_dm_count: 0, monthly_wa_count: 0, dm_count_month: month },
+  }).catch(() => null);
+}
+
+/**
+ * Cupo DIARIO por cuenta guardado en settings (sesiones de voz, entrenamientos…),
+ * ATÓMICO: se reserva ANTES de gastar con una sola operación condicional
+ * (fecha de hoy y contador < máximo). Si la acción cara falla después, se
+ * libera con liberarCupoDiario. Devuelve { ok, usados } (usados incluye la reserva).
+ */
+async function reservarCupoDiario({ accountId, campo, max }) {
+  const hoy = hoyChile();
+  const fecha = `${campo}_date`, cont = `${campo}_count`;
+  // Upsert y no find+insert: NeDB serializa las operaciones, así que treinta
+  // reservas simultáneas de una cuenta SIN settings crean UN documento (con
+  // find+insert creaban treinta, cada uno con su propio contador).
+  await db.updateRaw(db.settings, { account_id: accountId }, { $set: { account_id: accountId } }, { upsert: true }).catch(() => null);
+  const settings = await db.findOne(db.settings, { account_id: accountId });
+  if (!settings) return { ok: false, usados: 0, hoy, settings: null };
+  await db.updateRaw(db.settings, { _id: settings._id, [fecha]: { $ne: hoy } }, { $set: { [fecha]: hoy, [cont]: 0 } }).catch(() => null);
+  const gane = await db.updateRaw(db.settings, { _id: settings._id, [fecha]: hoy, [cont]: { $lt: max } }, { $inc: { [cont]: 1 } }).catch(() => 0);
+  const fresco = await db.findOne(db.settings, { _id: settings._id }).catch(() => null);
+  return { ok: gane > 0, usados: Number((fresco || settings)[cont] || 0), hoy, settings: fresco || settings };
+}
+async function liberarCupoDiario({ accountId, campo }) {
+  const hoy = hoyChile();
+  await db.updateRaw(db.settings,
+    { account_id: accountId, [`${campo}_date`]: hoy, [`${campo}_count`]: { $gt: 0 } },
+    { $inc: { [`${campo}_count`]: -1 } }).catch(() => null);
 }
 
 /**
@@ -187,11 +232,9 @@ async function incrementDMCount(accountId, count = 1) {
   if (!user || user.role === 'admin') return;
 
   const month = currentMonth();
-  const prev  = user.dm_count_month === month ? Number(user.monthly_dm_count || 0) : 0;
-  await db.update(db.users, { _id: user._id }, {
-    monthly_dm_count: prev + count,
-    dm_count_month:   month,
-  }).catch(e => console.error('incrementDMCount error:', e.message));
+  await resetearMesUsuario(user._id, month);
+  await db.updateRaw(db.users, { _id: user._id, dm_count_month: month }, { $inc: { monthly_dm_count: count } })
+    .catch(e => console.error('incrementDMCount error:', e.message));
 }
 
 // ── CONVERSACIONES: EL CONTADOR QUE LOS PLANES PROMETEN ──────────────────────
@@ -219,28 +262,32 @@ async function registrarConversacion({ accountId, lead }) {
   const month = currentMonth();
   const esWhatsApp = String(lead.channel || '').toLowerCase() === 'whatsapp';
 
-  const nuevaTotal = lead.contado_mes !== month;
-  const nuevaWa    = esWhatsApp && lead.contado_mes_wa !== month;
-  if (!nuevaTotal && !nuevaWa) return { contada: false };
+  // La marca en el lead es el candado de idempotencia Y de concurrencia: solo
+  // UNA escritura gana por lead y mes (para las demás la condición "todavía
+  // no marcado" falla). Antes se leía el lead y se escribía después: dos
+  // mensajes casi simultáneos del mismo lead contaban dos veces.
+  const ganeTotal = await db.updateRaw(db.leads, { _id: lead._id, contado_mes: { $ne: month } }, { $set: { contado_mes: month } })
+    .catch(e => { console.error('registrarConversacion (lead):', e.message); return 0; });
+  const ganeWa = esWhatsApp
+    ? await db.updateRaw(db.leads, { _id: lead._id, contado_mes_wa: { $ne: month } }, { $set: { contado_mes_wa: month } })
+        .catch(e => { console.error('registrarConversacion (lead wa):', e.message); return 0; })
+    : 0;
+  if (!ganeTotal && !ganeWa) return { contada: false };
 
-  // Reset perezoso: si cambió el mes, los contadores parten de cero.
-  const mismoMes = user.dm_count_month === month;
-  const total = (mismoMes ? Number(user.monthly_dm_count || 0) : 0) + (nuevaTotal ? 1 : 0);
-  const wa    = (mismoMes ? Number(user.monthly_wa_count || 0) : 0) + (nuevaWa ? 1 : 0);
+  await resetearMesUsuario(user._id, month);
+  const inc = {};
+  if (ganeTotal) inc.monthly_dm_count = 1;
+  if (ganeWa)    inc.monthly_wa_count = 1;
+  await db.updateRaw(db.users, { _id: user._id, dm_count_month: month }, { $inc: inc })
+    .catch(e => console.error('registrarConversacion (user):', e.message));
 
-  await db.update(db.users, { _id: user._id }, {
-    monthly_dm_count: total,
-    monthly_wa_count: wa,
-    dm_count_month:   month,
-  }).catch(e => console.error('registrarConversacion (user):', e.message));
-
-  const marca = {};
-  if (nuevaTotal) marca.contado_mes = month;
-  if (nuevaWa)    marca.contado_mes_wa = month;
-  await db.update(db.leads, { _id: lead._id }, marca)
-    .catch(e => console.error('registrarConversacion (lead):', e.message));
-
-  return { contada: true, total, whatsapp: wa, canal: lead.channel || 'instagram' };
+  const fresco = await db.findOne(db.users, { _id: user._id }).catch(() => null);
+  return {
+    contada:  true,
+    total:    Number(fresco?.monthly_dm_count || 0),
+    whatsapp: Number(fresco?.monthly_wa_count || 0),
+    canal:    lead.channel || 'instagram',
+  };
 }
 
 /**
@@ -332,15 +379,26 @@ async function checkMinutosVoz(accountId) {
 async function registrarSegundosVoz(accountId, segundos) {
   const s = Math.max(0, Number(segundos) || 0);
   if (!s) return;
+  return ajustarSegundosVoz(accountId, s);
+}
+
+/**
+ * Suma (o resta, con delta negativo) segundos de voz del mes, atómico. La
+ * resta existe para cuando Twilio manda la duración OFICIAL después de que el
+ * puente ya descontó la estimada: se aplica la diferencia, no el total.
+ */
+async function ajustarSegundosVoz(accountId, delta) {
+  const d = Math.round(Number(delta) || 0);
+  if (!d) return;
   const user = await findOwnerByAccount(accountId);
   if (!user || user.role === 'admin') return;
 
   const month = currentMonth();
-  const prev = user.voice_count_month === month ? Number(user.monthly_voice_seconds || 0) : 0;
-  await db.update(db.users, { _id: user._id }, {
-    monthly_voice_seconds: prev + s,
-    voice_count_month:     month,
-  }).catch(e => console.error('registrarSegundosVoz:', e.message));
+  await db.updateRaw(db.users, { _id: user._id, voice_count_month: { $ne: month } }, {
+    $set: { monthly_voice_seconds: 0, voice_count_month: month },
+  }).catch(() => null);
+  await db.updateRaw(db.users, { _id: user._id, voice_count_month: month }, { $inc: { monthly_voice_seconds: d } })
+    .catch(e => console.error('ajustarSegundosVoz:', e.message));
 }
 
 module.exports = {
@@ -349,6 +407,11 @@ module.exports = {
   incrementDMCount,
   findOwnerByAccount,
   currentMonth,
+  hoyChile,
+  resetearMesUsuario,
+  ajustarSegundosVoz,
+  reservarCupoDiario,
+  liberarCupoDiario,
   registrarConversacion,
   checkCuotaCanal,
   checkMinutosVoz,

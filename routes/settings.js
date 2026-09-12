@@ -547,6 +547,11 @@ router.put('/messenger', async (req, res, next) => {
     // El token solo se pisa si viene uno nuevo real (no el masked).
     if (fb_page_token && !fb_page_token.includes('…')) {
       upd.fb_page_token = String(fb_page_token).trim();
+      // Token nuevo = el aviso de "reconecta Messenger" ya no aplica.
+      upd.fb_reconectar        = false;
+      upd.fb_reconectar_motivo = null;
+      upd.fb_reconectar_at     = null;
+      upd.fb_token_aviso_at    = null;
     }
     await db.update(db.accounts, { _id: accountId }, upd);
     res.json({ ok: true });

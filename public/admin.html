@@ -101,7 +101,7 @@
   /* ── Membership editor modal ── */
   .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; }
   .modal-overlay.open { display: flex; }
-  .modal { background: #1a1a2e; border: 1px solid #2a2a4a; border-radius: 12px; padding: 24px; width: 420px; max-width: 95vw; }
+  .modal { background: #1a1a2e; border: 1px solid #2a2a4a; border-radius: 12px; padding: 24px; width: 420px; max-width: 95vw; max-height: 85vh; overflow-y: auto; }   /* scroll: el pie con los botones quedaba cortado en pantallas bajas */
   .modal h3 { margin-bottom: 16px; color: #6ee7b7; }
   .modal .form-group { margin-bottom: 12px; }
   .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
@@ -160,7 +160,7 @@
 <!-- ── LOGIN ── -->
 <div id="loginScreen" class="login-wrap">
   <div class="login-box">
-    <h2>👑 Atinov Admin</h2>
+    <h2>Atinov Admin</h2>
     <p>Acceso restringido — solo administradores</p>
     <div class="form-group">
       <label>Email</label>
@@ -213,7 +213,7 @@
       <div class="card" style="padding:14px;margin-bottom:14px">
         <div class="form-row" style="align-items:flex-end;gap:14px">
           <div class="form-group" style="flex:2;min-width:220px">
-            <label>🔍 Buscar (nombre, email, @IG)</label>
+            <label>Buscar (nombre, email, @IG)</label>
             <input type="text" id="usersSearch" placeholder="Escribe para filtrar..." oninput="renderUsers()" />
           </div>
           <div class="form-group" style="flex:1;min-width:200px">
@@ -228,7 +228,7 @@
           </div>
           <div class="form-group" style="flex:0">
             <label>&nbsp;</label>
-            <button class="btn btn-ghost btn-sm" onclick="loadUsers()">🔄 Refrescar</button>
+            <button class="btn btn-ghost btn-sm" onclick="loadUsers()">Refrescar</button>
           </div>
         </div>
         <div id="usersCounter" style="margin-top:10px;font-size:0.8rem;color:#888"></div>
@@ -258,7 +258,7 @@
     <!-- ── CÓDIGOS ── -->
     <div id="tab-codes" class="section">
       <div class="card">
-        <h3>🎟️ Crear nuevo código de invitación</h3>
+        <h3>Crear nuevo código de invitación</h3>
         <div class="form-row">
           <div class="form-group">
             <label>Tipo de membresía</label>
@@ -312,7 +312,7 @@
     <div id="tab-discounts" class="section">
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
-          <h3 style="margin:0">💸 Cupones de descuento <span style="font-size:0.7rem;color:#a0a0c0;font-weight:400">(legacy)</span></h3>
+          <h3 style="margin:0">Cupones de descuento <span style="font-size:0.7rem;color:#a0a0c0;font-weight:400">(legacy)</span></h3>
           <button class="btn btn-primary" onclick="openDiscountForm()">+ Nuevo cupón</button>
         </div>
         <p style="color:#888;font-size:0.86rem;margin-bottom:14px">
@@ -396,7 +396,7 @@
       <!-- ── FUNNEL DE CONVERSIÓN ── -->
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
-          <h3 style="margin:0">🎯 Funnel de activación</h3>
+          <h3 style="margin:0">Funnel de activación</h3>
           <div style="display:flex;gap:6px;align-items:center">
             <label style="font-size:0.8rem;color:#888">Ventana:</label>
             <select id="funnelDays" onchange="loadFunnel()" style="background:#0f0f1a;border:1px solid #2a2a4a;color:#e0e0e0;padding:4px 8px;border-radius:4px;font-size:0.82rem">
@@ -417,12 +417,12 @@
       </div>
 
       <div class="card chart-wrap">
-        <h3>📈 Mensajes por día (últimos 7)</h3>
+        <h3>Mensajes por día (últimos 7)</h3>
         <div class="chart-bars" id="messagesChart"></div>
       </div>
 
       <div class="card">
-        <h3>🏆 Top 5 usuarios por leads</h3>
+        <h3>Top 5 usuarios por leads</h3>
         <div class="table-wrap">
           <table>
             <thead>
@@ -440,12 +440,12 @@
     <div id="tab-margen" class="section">
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px">
-          <h3 style="margin:0">🧮 Costo LLM real por conversación</h3>
+          <h3 style="margin:0">Costo LLM real por conversación</h3>
           <div style="display:flex;gap:6px;align-items:center">
             <label style="font-size:0.8rem;color:#888">Mes:</label>
             <input type="month" id="margenMes" onchange="loadMargen(true)"
               style="background:#0f0f1a;border:1px solid #2a2a4a;color:#e0e0e0;padding:4px 8px;border-radius:4px;font-size:0.82rem">
-            <button class="btn btn-ghost btn-sm" onclick="loadMargen(true)">🔄 Refrescar</button>
+            <button class="btn btn-ghost btn-sm" onclick="loadMargen(true)">Refrescar</button>
           </div>
         </div>
         <p style="color:#888;font-size:0.82rem;margin-bottom:12px">
@@ -469,7 +469,7 @@
       </div>
 
       <div class="card">
-        <h3 style="margin-bottom:6px">💰 Margen del mes corriente, cuenta por cuenta</h3>
+        <h3 style="margin-bottom:6px">Margen del mes corriente, cuenta por cuenta</h3>
         <p style="color:#888;font-size:0.82rem;margin-bottom:12px">
           Uso real de los contadores de cuota × costos unitarios de la escalera. La columna LLM medido es
           solo contraste (ya está estimada dentro del costo). 🔴 = cuenta pagada bajo el umbral de alerta.
@@ -496,7 +496,7 @@
     <!-- ── SIMULADOR DE CONVERSACIONES ── -->
     <div id="tab-simulator" class="section">
       <div class="card" style="margin-bottom:14px">
-        <h3 style="margin-top:0">🎭 Simulador de conversaciones</h3>
+        <h3 style="margin-top:0">Simulador de conversaciones</h3>
         <p style="color:#888;font-size:0.86rem;margin-bottom:16px">
           Un bot-prospecto conversa con tu agente real para que pruebes el guion sin gastar DMs reales ni arriesgar baneo de Meta. Elige el perfil del prospecto y corre la simulación.
         </p>
@@ -531,13 +531,13 @@
             <label>Notas extra del prospecto (opcional)</label>
             <input type="text" id="sim-notes" placeholder="ej: vende cursos de yoga">
           </div>
-          <button class="btn btn-primary" id="sim-run-btn" onclick="runSimulator()" style="height:42px">▶ Simular conversación</button>
+          <button class="btn btn-primary" id="sim-run-btn" onclick="runSimulator()" style="height:42px">Simular conversación</button>
         </div>
       </div>
 
       <div class="card" id="sim-result-card" style="display:none">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
-          <h3 style="margin:0">💬 Transcripción</h3>
+          <h3 style="margin:0">Transcripción</h3>
           <span id="sim-outcome" style="font-size:0.82rem;font-weight:700;padding:4px 12px;border-radius:14px"></span>
         </div>
         <div id="sim-chat" style="display:flex;flex-direction:column;gap:10px;max-width:680px"></div>
@@ -549,7 +549,7 @@
     <!-- ── SISTEMA ── -->
     <div id="tab-agente" class="section">
       <div class="card" style="border:1px solid rgba(201,162,39,.45)">
-        <h3 style="margin-top:0">🧪 Cuenta demo para el App Review de Meta</h3>
+        <h3 style="margin-top:0">Cuenta demo para el App Review de Meta</h3>
         <p style="font-size:0.85rem;color:#a0a0c0;margin-top:0">
           Crea (o resetea) <code>demo@atinov.com</code>: "Clínica Demo Sonrisa" con 10 conversaciones realistas
           (audio, foto, memoria, deal ganado, una llamada registrada). Dura 365 días. Devuelve la contraseña
@@ -560,13 +560,13 @@
           <label style="display:block;font-size:0.8rem;color:#a0a0c0;margin-bottom:4px">Contraseña para el revisor (opcional, mín. 8; si la dejas vacía se genera una)</label>
           <input type="text" id="demo-pass" placeholder="Ej: Revisor2026!" style="width:100%;max-width:320px" autocomplete="off">
         </div>
-        <button class="btn" id="btn-crear-demo" onclick="crearDemo()">🧪 Crear / resetear cuenta demo</button>
+        <button class="btn" id="btn-crear-demo" onclick="crearDemo()">Crear / resetear cuenta demo</button>
         <span id="demo-status" style="margin-left:10px;font-size:0.85rem"></span>
         <div id="demo-result" style="margin-top:12px"></div>
       </div>
 
       <div class="card">
-        <h3 style="margin-top:0">🎙️ Probar las 13 voces</h3>
+        <h3 style="margin-top:0">Probar las 13 voces</h3>
         <p style="font-size:0.85rem;color:#a0a0c0;margin-top:0">
           Manda a tu WhatsApp una nota de voz con cada voz disponible, etiquetada con su nombre.
           <strong style="color:#f0f0ff">marin</strong> y <strong style="color:#f0f0ff">cedar</strong> son las que usa el teléfono.
@@ -593,13 +593,13 @@
           <label style="display:block;font-size:0.8rem;color:#a0a0c0;margin-bottom:4px">IDs de voz, separados por coma (ElevenLabs: obligatorio · Fish: vacío = voz por defecto)</label>
           <input type="text" id="voz-ids" placeholder="ej: 21m00Tcm4TlvDq8ikWAM, EXAVITQu4vr4xnSDxMaL" style="width:100%">
         </div>
-        <button class="btn" id="btn-probar-voces" onclick="probarVoces()">🎧 Enviarme las voces</button>
+        <button class="btn" id="btn-probar-voces" onclick="probarVoces()">Enviarme las voces</button>
         <span id="voz-status" style="margin-left:10px;font-size:0.85rem"></span>
         <div id="voz-result" style="margin-top:12px"></div>
       </div>
 
       <div class="card">
-        <h3>📞 Llamada de prueba</h3>
+        <h3>Llamada de prueba</h3>
         <p style="font-size:0.85rem;color:#a0a0c0;margin-top:0">
           Marca a tu teléfono por el <strong style="color:#f0f0ff">mismo camino que una llamada real</strong>
           (worker → proveedor → TwiML → WebSocket → voz de OpenAI), con un lead sintético y tope de 3 minutos.
@@ -627,13 +627,13 @@
             <option value="verse">verse</option>
           </select>
         </div>
-        <button class="btn" id="btn-llamada-prueba" onclick="llamadaPrueba()">📲 Llámame ahora</button>
+        <button class="btn" id="btn-llamada-prueba" onclick="llamadaPrueba()">Llámame ahora</button>
         <span id="prueba-status" style="margin-left:10px;font-size:0.85rem"></span>
         <div id="prueba-result" style="margin-top:12px"></div>
       </div>
 
       <div class="card">
-        <h3>🧠 Actualizar instrucciones del agente</h3>
+        <h3>Actualizar instrucciones del agente</h3>
         <p style="font-size:0.85rem;color:#a0a0c0;margin-top:0">
           Aplica la plantilla vigente (presupuesto de 5-6 preguntas, bifurcación y modo nutrición)
           a un agente que ya existe. Cambiar la plantilla en el código solo afecta a agentes nuevos.
@@ -644,8 +644,8 @@
           <label style="display:block;font-size:0.8rem;color:#a0a0c0;margin-bottom:4px">Agente</label>
           <select id="prompt-agent" style="width:100%;max-width:320px"></select>
         </div>
-        <button class="btn" onclick="actualizarPrompt(false)">⬆️ Aplicar plantilla nueva</button>
-        <button class="btn btn-sm" style="background:#3a3a52" onclick="actualizarPrompt(true)">↩️ Restaurar anteriores</button>
+        <button class="btn" onclick="actualizarPrompt(false)">Aplicar plantilla nueva</button>
+        <button class="btn btn-sm" style="background:#3a3a52" onclick="actualizarPrompt(true)">Restaurar anteriores</button>
         <span id="prompt-status" style="margin-left:10px;font-size:0.85rem"></span>
         <div id="prompt-result" style="margin-top:12px"></div>
       </div>
@@ -654,8 +654,8 @@
     <div id="tab-system" class="section">
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:6px">
-          <h3 style="margin:0">🩺 Diagnóstico de conexiones</h3>
-          <button class="btn btn-primary btn-sm" id="btn-self-test" onclick="runSelfTest()">▶ Probar todo</button>
+          <h3 style="margin:0">Diagnóstico de conexiones</h3>
+          <button class="btn btn-primary btn-sm" id="btn-self-test" onclick="runSelfTest()">Probar todo</button>
         </div>
         <p style="color:#888;font-size:0.84rem;margin:0 0 12px">
           Golpea de verdad a OpenAI, Meta, Twilio, Resend y las pasarelas de pago con las credenciales que hay en Railway.
@@ -665,7 +665,7 @@
       </div>
 
       <div class="card">
-        <h3>⚙️ Estado del sistema</h3>
+        <h3>Estado del sistema</h3>
         <div class="health-grid" id="healthGrid">
           <div class="health-card"><div class="hc-name">Cargando…</div></div>
         </div>
@@ -677,7 +677,7 @@
       </div>
 
       <div class="card">
-        <h3>🧠 Últimas llamadas IA</h3>
+        <h3>Últimas llamadas IA</h3>
         <div class="table-wrap">
           <table>
             <thead>
@@ -692,7 +692,7 @@
 
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px">
-          <h3 style="margin:0">🐛 Errores capturados</h3>
+          <h3 style="margin:0">Errores capturados</h3>
           <div style="display:flex;gap:6px;align-items:center">
             <select id="errorKindFilter" onchange="loadErrors()" style="background:#0f0f1a;border:1px solid #2a2a4a;color:#e0e0e0;padding:4px 8px;border-radius:4px;font-size:0.82rem">
               <option value="">Todos</option>
@@ -700,7 +700,7 @@
               <option value="uncaught">Uncaught exceptions</option>
               <option value="rejection">Unhandled rejections</option>
             </select>
-            <button class="btn btn-sm btn-ghost" onclick="clearErrors()">🗑️ Vaciar</button>
+            <button class="btn btn-sm btn-ghost" onclick="clearErrors()">Vaciar</button>
           </div>
         </div>
         <div id="errorStats" style="display:flex;gap:18px;font-size:0.86rem;color:#888;margin-bottom:12px;flex-wrap:wrap;padding:10px 12px;background:#0f0f1a;border-radius:6px">
@@ -719,7 +719,7 @@
       </div>
 
       <div class="card">
-        <h3>📜 Log de auditoría</h3>
+        <h3>Log de auditoría</h3>
         <div class="table-wrap">
           <table>
             <thead>
@@ -733,7 +733,7 @@
       </div>
 
       <div class="card">
-        <h3>📧 Emails transaccionales</h3>
+        <h3>Emails transaccionales</h3>
         <div id="emailStats" style="display:flex;gap:18px;font-size:0.88rem;color:#888;margin-bottom:12px;flex-wrap:wrap">
           <span>Cargando…</span>
         </div>
@@ -755,7 +755,7 @@
 <!-- ── MODAL detalle de usuario ── -->
 <div class="modal-overlay" id="detailModal">
   <div class="modal" style="width: 560px; max-height: 85vh; overflow-y: auto;">
-    <h3 id="detailModalTitle">👤 Detalle del usuario</h3>
+    <h3 id="detailModalTitle">Detalle del usuario</h3>
     <div id="detailModalBody">⏳ Cargando…</div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeDetailModal()">Cerrar</button>
@@ -766,7 +766,7 @@
 <!-- ── MODAL editar membresía ── -->
 <div class="modal-overlay" id="membershipModal">
   <div class="modal">
-    <h3>✏️ Editar membresía</h3>
+    <h3>Editar membresía</h3>
     <input type="hidden" id="editUserId" />
     <div class="form-group">
       <label>Plan</label>
@@ -1196,7 +1196,7 @@ async function loadDiscounts() {
           <td style="font-size:0.82rem">${usesText}</td>
           <td style="font-size:0.82rem;color:#888">${expires}</td>
           <td>${statusBadge}</td>
-          <td><button class="btn btn-sm btn-danger" onclick="deleteDiscount('${d.id}', '${escHtml(d.code)}')">🗑️</button></td>
+          <td><button class="btn btn-sm btn-danger" onclick="deleteDiscount('${d.id}', '${escHtml(d.code)}')">️</button></td>
         </tr>`;
     }).join('');
   } catch (e) {
@@ -1786,7 +1786,7 @@ function showErrorDetail(e) {
   overlay.style.zIndex = 200;
   overlay.innerHTML = `
     <div class="modal" style="width: 720px; max-height: 85vh; overflow-y: auto;">
-      <h3 style="margin-bottom:14px">🐛 ${escHtml(e.kind || 'error')}</h3>
+      <h3 style="margin-bottom:14px">${escHtml(e.kind || 'error')}</h3>
       <div style="margin-bottom:14px">
         <div style="font-size:0.78rem;color:#888;margin-bottom:4px">Mensaje</div>
         <div style="font-size:0.9rem;background:#0f0f1a;padding:10px 12px;border-radius:6px;color:#fca5a5;font-family:monospace;word-break:break-word">${escHtml(e.message||'')}</div>
@@ -1990,20 +1990,20 @@ async function openUserDetail(id) {
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:#1a0f1a;padding:10px 12px;border-radius:8px;border:1px solid #5a2a4a;margin-bottom:4px">
         <span style="font-size:0.82rem;color:#fbcfe8">🔄 Preset Atinov:</span>
         <button class="btn btn-sm btn-ghost" onclick="applyPresetSafe('${a.id}')" title="Agrega el preset Atinov sin tocar lo existente (puede generar duplicados)">+ Aplicar preset</button>
-        <button class="btn btn-sm btn-danger" onclick="resetAndApplyPreset('${a.id}', '${escHtml(u.email)}')" title="BORRA agentes/knowledge/links/magnets de la cuenta y aplica el preset Atinov limpio. Útil para cuentas con datos viejos.">⚠️ Resetear y aplicar</button>
+        <button class="btn btn-sm btn-danger" onclick="resetAndApplyPreset('${a.id}', '${escHtml(u.email)}')" title="BORRA agentes/knowledge/links/magnets de la cuenta y aplica el preset Atinov limpio. Útil para cuentas con datos viejos.">Resetear y aplicar</button>
         <span id="presetStatus-${a.id}" style="font-size:0.78rem;color:#666;margin-left:auto"></span>
       </div>` : ''}
 
       <!-- Instagram -->
-      <h4 style="color:#a5a5c8;font-size:0.85rem;margin:14px 0 8px">📸 Cuenta Instagram</h4>
+      <h4 style="color:#a5a5c8;font-size:0.85rem;margin:14px 0 8px">Cuenta Instagram</h4>
       ${igSection}
 
       <!-- Agentes -->
-      <h4 style="color:#a5a5c8;font-size:0.85rem;margin:14px 0 8px">🤖 Agentes</h4>
+      <h4 style="color:#a5a5c8;font-size:0.85rem;margin:14px 0 8px">Agentes</h4>
       <ul style="font-size:0.85rem;color:#ccc;padding-left:20px;margin:0">${agentsHtml}</ul>
 
       <!-- Leads -->
-      <h4 style="color:#a5a5c8;font-size:0.85rem;margin:16px 0 8px">📊 Leads (${l.total})</h4>
+      <h4 style="color:#a5a5c8;font-size:0.85rem;margin:16px 0 8px">Leads (${l.total})</h4>
       <div style="display:flex;gap:12px;font-size:0.78rem;color:#888;margin-bottom:10px;flex-wrap:wrap">
         <span>🔥 Hot: <strong style="color:#ef4444">${l.hot}</strong></span>
         <span>🟡 Warm: <strong style="color:#f59e0b">${l.warm}</strong></span>
@@ -2018,12 +2018,12 @@ async function openUserDetail(id) {
       <div style="margin-top:8px;font-size:0.78rem;color:#666">Mensajes totales (muestra): ${d.messageCount}</div>
 
       <!-- NOTAS INTERNAS DEL ADMIN -->
-      <h4 style="color:#a5a5c8;font-size:0.85rem;margin:18px 0 8px">📝 Notas internas <small style="color:#666;font-weight:400">(sólo tú ves esto)</small></h4>
+      <h4 style="color:#a5a5c8;font-size:0.85rem;margin:18px 0 8px">Notas internas <small style="color:#666;font-weight:400">(sólo tú ves esto)</small></h4>
       <textarea id="userNotes" rows="4" placeholder="Ej: llamar el martes, quiere upgrade a anual, pidió descuento..."
         style="width:100%;background:#0f0f1a;border:1px solid #2a2a4a;color:#e0e0e0;padding:10px;border-radius:6px;font-size:0.88rem;font-family:inherit;resize:vertical">${escHtml(currentNotes)}</textarea>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
         <span id="notesStatus" style="font-size:0.78rem;color:#666"></span>
-        <button class="btn btn-sm btn-primary" onclick="saveUserNotes('${u.id}')">💾 Guardar notas</button>
+        <button class="btn btn-sm btn-primary" onclick="saveUserNotes('${u.id}')">Guardar notas</button>
       </div>
     `;
   } catch (e) {
@@ -2089,7 +2089,7 @@ async function applyPresetSafe(accountId) {
 
 async function resetAndApplyPreset(accountId, email) {
   const statusEl = document.getElementById(`presetStatus-${accountId}`);
-  const msg = `⚠️ ATENCIÓN: esto BORRA todos los agentes, knowledge, links y lead magnets de la cuenta de ${email} y aplica el preset Atinov limpio.\n\nNO se borran los leads ni los mensajes (historia real).\n\n¿Confirmás?`;
+  const msg = `⚠️ ATENCIÓN: esto BORRA todos los agentes, knowledge, links y lead magnets de la cuenta de ${email} y aplica el preset Atinov limpio.\n\nNO se borran los leads ni los mensajes (historia real).\n\n¿Confirmas?`;
   if (!confirm(msg)) return;
   if (!confirm('Última confirmación. Esta acción no se puede deshacer. ¿Seguro?')) return;
 

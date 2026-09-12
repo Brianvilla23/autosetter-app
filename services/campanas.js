@@ -29,7 +29,7 @@
  */
 
 const db = require('../db/database');
-const { chequearCapMarketing, contarMarketing, configDe } = require('./playbookPedido');
+const { chequearCapMarketing, contarMarketing, reservarMarketing, configDe } = require('./playbookPedido');
 
 const LOTE_ENVIO = 15;              // envíos por corrida del worker (~por minuto)
 const MAX_CAMPANAS_ACTIVAS = 2;     // programadas+enviando por cuenta a la vez
@@ -204,7 +204,9 @@ async function procesarCampanas(deps = {}) {
 
         // El MISMO cap por contacto del playbook: campañas y playbook comparten
         // el presupuesto de marketing de cada persona.
-        const cap = chequearCapMarketing(lead, cfg);
+        // Reserva atómica del cupo (chequeo + conteo en una operación):
+        // el worker del playbook post-compra no puede colarse en el medio.
+        const cap = await reservarMarketing(lead._id, lead, cfg);
         if (!cap.ok) { stats.bloqueados_cap++; continue; }
 
         // Cuota del plan: si se acabó, la campaña se PAUSA visible (no muere).
@@ -223,15 +225,17 @@ async function procesarCampanas(deps = {}) {
         }
 
         try {
-          await enviarPlantilla({ account, campana: c, lead });
+          const envio = await enviarPlantilla({ account, campana: c, lead });
+          // Meta acepta con 200 y puede fallar después (waEstados): se guarda
+          // el wamid para poder cruzarlo. "enviados" = aceptados por Meta.
+          const wamid = envio?.messages?.[0]?.id || null;
           stats.enviados++;
           enviadosEnLote++;
-          await contarMarketing(lead._id, lead);
           await incrementDMCount(c.account_id, 1).catch(() => null);
           await db.insert(db.messages, {
             lead_id: lead._id, role: 'agent',
             content: `[campaña "${c.nombre}"] plantilla ${c.template_name}`,
-            is_template: true, is_campana: true, campana_id: c._id,
+            is_template: true, is_campana: true, campana_id: c._id, wamid,
           }).catch(() => null);
         } catch (e) {
           if (e?.response?.data?.error?.code === 131049) {

@@ -134,6 +134,8 @@
 </aside>
 
 <!-- ── MAIN CONTENT ───────────────────────────────────────────────────────── -->
+<button id="menu-toggle" aria-label="Abrir menú"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg></button>
+<div id="sidebar-backdrop"></div>
 <main class="main">
 
 <!-- ── TRIAL BANNER ─────────────────────────────────────────────────────── -->
@@ -186,10 +188,10 @@
     <div class="usage-card" id="usage-card" style="display:none;background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
         <div>
-          <h3 style="margin:0;font-size:16px">📊 Uso del mes — Plan <span id="usage-plan-name" style="color:var(--orange)">—</span></h3>
+          <h3 style="margin:0;font-size:16px">Uso del mes — Plan <span id="usage-plan-name" style="color:var(--orange)">—</span></h3>
           <p style="margin:4px 0 0;color:var(--text-2);font-size:13px" id="usage-month">—</p>
         </div>
-        <button class="btn-primary" id="btn-usage-upgrade" style="display:none">⬆️ Upgradear plan</button>
+        <button class="btn-primary" id="btn-usage-upgrade" style="display:none">Cambiar de plan</button>
       </div>
 
       <div class="usage-bars" style="display:grid;gap:14px">
@@ -247,7 +249,7 @@
     <div id="onboarding-card" style="display:none;background:linear-gradient(135deg,#fff7ed,#fff);border:1px solid #fed7aa;border-radius:12px;padding:22px;margin-bottom:20px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
         <div>
-          <h3 style="margin:0;font-size:17px;color:#9a3412">🚀 Termina tu setup</h3>
+          <h3 style="margin:0;font-size:17px;color:#9a3412">Termina tu setup</h3>
           <p style="margin:4px 0 0;color:var(--text-2);font-size:13px" id="onboarding-subtitle">Completa estos pasos para activar tu agente</p>
         </div>
         <div style="display:flex;align-items:center;gap:10px">
@@ -264,15 +266,15 @@
 
     <div class="home-cards">
       <div class="home-card">
-        <h3>📡 Webhook URL</h3>
+        <h3>Webhook URL</h3>
         <p style="color:var(--text-2);margin-bottom:12px">Configura este URL en tu Meta App:</p>
         <div class="code-block" id="webhook-url">http://localhost:3000/webhook</div>
         <p style="color:var(--text-2);font-size:13px;margin-top:8px">Verify Token: <code id="verify-token">atinov_webhook_2026</code></p>
       </div>
       <div class="home-card">
-        <h3>💡 Tips rápidos</h3>
+        <h3>Tips rápidos</h3>
         <ul style="padding-left:18px;color:var(--text-2);font-size:14px;line-height:1.7;margin:0">
-          <li>Prueba el agente en el <strong>Tester</strong> antes de ponerlo live.</li>
+          <li>Prueba el agente en el <strong>chat de prueba</strong> antes de activarlo.</li>
           <li>Revisa los <strong>Leads HOT</strong> — ésos son tus ventas calientes.</li>
           <li>Edita las instrucciones del agente cuando detectes respuestas flojas.</li>
           <li>Configura <strong>follow-ups</strong> para rescatar leads que te dejaron en visto.</li>
@@ -310,7 +312,7 @@
         <div class="tester-header">
           <span id="tester-name">Agente</span>
           <span class="tester-status">● Activo</span>
-          <button class="btn-ghost" id="btn-reset-chat">↺ Reset</button>
+          <button class="btn-ghost" id="btn-reset-chat">Reset</button>
         </div>
         <div class="tester-messages" id="tester-messages">
           <div class="tester-hint">Inicia una conversación para probar tu agente</div>
@@ -339,7 +341,7 @@
   <div id="qr-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:center;justify-content:center;padding:20px">
     <div style="background:#fff;border-radius:12px;padding:24px;width:560px;max-width:100%;max-height:90vh;overflow-y:auto">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <h3 style="margin:0">📋 Plantillas de respuesta</h3>
+        <h3 style="margin:0">Plantillas de respuesta</h3>
         <button onclick="closeQuickReplies()" style="background:transparent;border:none;font-size:22px;cursor:pointer">×</button>
       </div>
       <p style="color:var(--text-2);font-size:13px;margin-bottom:14px">Click en una plantilla para insertarla. Variables disponibles: <code style="background:#f3f4f6;padding:1px 5px;border-radius:3px;font-size:12px">{nombre}</code> <code style="background:#f3f4f6;padding:1px 5px;border-radius:3px;font-size:12px">{primernombre}</code> <code style="background:#f3f4f6;padding:1px 5px;border-radius:3px;font-size:12px">{agente}</code></p>
@@ -375,10 +377,10 @@
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
       <button class="inbox-filter active" data-filter="all">Todas <span class="cnt"></span></button>
       <button class="inbox-filter" data-filter="unread">Sin leer <span class="cnt"></span></button>
-      <button class="inbox-filter" data-filter="hot">🔥 HOT <span class="cnt"></span></button>
-      <button class="inbox-filter" data-filter="warm">🟡 WARM <span class="cnt"></span></button>
-      <button class="inbox-filter" data-filter="cold">❄️ COLD <span class="cnt"></span></button>
-      <button class="inbox-filter" data-filter="bypassed">🚫 Pausadas <span class="cnt"></span></button>
+      <button class="inbox-filter" data-filter="hot">HOT <span class="cnt"></span></button>
+      <button class="inbox-filter" data-filter="warm">WARM <span class="cnt"></span></button>
+      <button class="inbox-filter" data-filter="cold">COLD <span class="cnt"></span></button>
+      <button class="inbox-filter" data-filter="bypassed">Pausadas <span class="cnt"></span></button>
       <input type="text" id="inbox-search" placeholder="Buscar @usuario..." style="margin-left:auto;padding:7px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;width:200px">
     </div>
 
@@ -413,7 +415,7 @@
           <button class="crm-vt" data-view="list" onclick="crmSwitchView('list')">Lista</button>
         </div>
         <button class="btn-primary" onclick="crmExport()" title="Excel multi-hoja: Resumen + Leads + Conversaciones. Abre perfecto con doble click.">Exportar Excel</button>
-        <button class="btn-secondary" onclick="loadCRM()">↻ Refrescar</button>
+        <button class="btn-secondary" onclick="loadCRM()">Refrescar</button>
       </div>
     </div>
 
@@ -597,7 +599,7 @@
 
     <!-- Gráfico de leads por día -->
     <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:18px">
-      <h3 style="margin:0 0 14px;font-size:15px">📈 Leads por día</h3>
+      <h3 style="margin:0 0 14px;font-size:15px">Leads por día</h3>
       <div id="analytics-leads-chart" style="display:flex;align-items:flex-end;gap:3px;height:200px;border-bottom:1px solid var(--border);padding-bottom:8px">
         <div style="margin:auto;color:var(--text-3);font-size:13px">⏳ Cargando...</div>
       </div>
@@ -606,11 +608,11 @@
     <!-- Layout 2 columnas: distribución pie + heatmap horario -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px">
       <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px">
-        <h3 style="margin:0 0 14px;font-size:15px">🎯 Distribución por calificación</h3>
+        <h3 style="margin:0 0 14px;font-size:15px">Distribución por calificación</h3>
         <div id="analytics-qual-bars" style="display:flex;flex-direction:column;gap:10px"></div>
       </div>
       <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px">
-        <h3 style="margin:0 0 14px;font-size:15px">🕐 Heatmap horario (DMs entrantes)</h3>
+        <h3 style="margin:0 0 14px;font-size:15px">Heatmap horario (DMs entrantes)</h3>
         <div id="analytics-heatmap" style="display:grid;grid-template-columns:repeat(24,1fr);gap:2px;margin-top:10px"></div>
         <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-3);margin-top:4px">
           <span>0h</span><span>6h</span><span>12h</span><span>18h</span><span>23h</span>
@@ -620,18 +622,18 @@
 
     <!-- Funnel -->
     <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:18px">
-      <h3 style="margin:0 0 14px;font-size:15px">🎯 Funnel del agente</h3>
+      <h3 style="margin:0 0 14px;font-size:15px">Funnel del agente</h3>
       <div id="analytics-funnel" style="display:flex;flex-direction:column;gap:10px"></div>
     </div>
 
     <!-- Comparativa con período anterior + Top keywords (2 cols) -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px">
       <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px">
-        <h3 style="margin:0 0 14px;font-size:15px">📊 vs período anterior</h3>
+        <h3 style="margin:0 0 14px;font-size:15px">vs período anterior</h3>
         <div id="analytics-compare" style="display:flex;flex-direction:column;gap:14px"></div>
       </div>
       <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px">
-        <h3 style="margin:0 0 14px;font-size:15px">🔍 Palabras más usadas por leads</h3>
+        <h3 style="margin:0 0 14px;font-size:15px">Palabras más usadas por leads</h3>
         <div id="analytics-keywords" style="display:flex;flex-wrap:wrap;gap:6px"></div>
       </div>
     </div>
@@ -639,12 +641,12 @@
     <!-- Tabla de leads recientes filtrable -->
     <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
-        <h3 style="margin:0;font-size:15px">👥 Leads recientes</h3>
+        <h3 style="margin:0;font-size:15px">Leads recientes</h3>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
           <button class="lead-filter active" data-filter="all" style="padding:5px 11px;font-size:12px;border:1px solid var(--border);background:var(--orange);color:#fff;border-radius:14px;cursor:pointer">Todos</button>
-          <button class="lead-filter" data-filter="hot" style="padding:5px 11px;font-size:12px;border:1px solid var(--border);background:#fff;color:var(--text-2);border-radius:14px;cursor:pointer">🔥 HOT</button>
-          <button class="lead-filter" data-filter="warm" style="padding:5px 11px;font-size:12px;border:1px solid var(--border);background:#fff;color:var(--text-2);border-radius:14px;cursor:pointer">🟡 WARM</button>
-          <button class="lead-filter" data-filter="cold" style="padding:5px 11px;font-size:12px;border:1px solid var(--border);background:#fff;color:var(--text-2);border-radius:14px;cursor:pointer">❄️ COLD</button>
+          <button class="lead-filter" data-filter="hot" style="padding:5px 11px;font-size:12px;border:1px solid var(--border);background:#fff;color:var(--text-2);border-radius:14px;cursor:pointer">HOT</button>
+          <button class="lead-filter" data-filter="warm" style="padding:5px 11px;font-size:12px;border:1px solid var(--border);background:#fff;color:var(--text-2);border-radius:14px;cursor:pointer">WARM</button>
+          <button class="lead-filter" data-filter="cold" style="padding:5px 11px;font-size:12px;border:1px solid var(--border);background:#fff;color:var(--text-2);border-radius:14px;cursor:pointer">COLD</button>
           <button class="lead-filter" data-filter="converted" style="padding:5px 11px;font-size:12px;border:1px solid var(--border);background:#fff;color:var(--text-2);border-radius:14px;cursor:pointer">✓ Convertidos</button>
         </div>
       </div>
@@ -686,7 +688,7 @@
           <option value="warm">🌡️ Tibio</option>
           <option value="cold">❄️ Frío</option>
         </select>
-        <button class="btn-ghost" id="btn-refresh-leads">↺ Actualizar</button>
+        <button class="btn-ghost" id="btn-refresh-leads">Actualizar</button>
         <span class="refresh-indicator" id="refresh-indicator"></span>
       </div>
       <div id="leads-list"></div>
@@ -723,8 +725,8 @@
             <label>Agente asignado</label>
             <select id="modal-agent" class="filter-select"></select>
             <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
-              <button class="btn-ghost btn-full" id="btn-bypass-lead">🚫 Bypassear usuario</button>
-              <button class="btn-ghost btn-full btn-success" id="btn-convert-lead">✅ Marcar como exitoso</button>
+              <button class="btn-ghost btn-full" id="btn-bypass-lead">Bypassear usuario</button>
+              <button class="btn-ghost btn-full btn-success" id="btn-convert-lead">Marcar como exitoso</button>
             </div>
           </div>
           <div class="modal-chat">
@@ -797,11 +799,11 @@
       <h3 style="margin:0 0 14px;font-size:1rem">Agregar fuente</h3>
 
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px" id="fuente-tipos">
-        <button type="button" class="fuente-tipo btn-secondary" data-tipo="url">🌐 Sitio web</button>
-        <button type="button" class="fuente-tipo btn-secondary" data-tipo="instagram">📷 Mi Instagram</button>
-        <button type="button" class="fuente-tipo btn-secondary" data-tipo="pdf">📄 PDF</button>
-        <button type="button" class="fuente-tipo btn-secondary" data-tipo="youtube">▶️ Video de YouTube</button>
-        <button type="button" class="fuente-tipo btn-secondary" data-tipo="texto">✍️ Pegar texto</button>
+        <button type="button" class="fuente-tipo btn-secondary" data-tipo="url">Sitio web</button>
+        <button type="button" class="fuente-tipo btn-secondary" data-tipo="instagram">Mi Instagram</button>
+        <button type="button" class="fuente-tipo btn-secondary" data-tipo="pdf">PDF</button>
+        <button type="button" class="fuente-tipo btn-secondary" data-tipo="youtube">Video de YouTube</button>
+        <button type="button" class="fuente-tipo btn-secondary" data-tipo="texto">Pegar texto</button>
       </div>
 
       <div id="fuente-campos"></div>
@@ -897,7 +899,7 @@
 
     <!-- CAMPAÑAS SEGMENTADAS — broadcast de una plantilla MARKETING a un segmento -->
     <div class="settings-card" style="margin-top:18px">
-      <h3>📣 Campañas</h3>
+      <h3>Campañas</h3>
       <p style="font-size:13px;color:var(--text-2)">Manda una plantilla de <strong>Marketing</strong> aprobada a un segmento de tus contactos de WhatsApp. La regla sana: <strong>2-3 campañas al mes por segmento</strong> — el sistema respeta solo el tope por persona (quien ya recibió su marketing del día o del mes queda fuera y se reporta).</p>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-top:8px">
         <div class="form-row" style="margin:0"><label>Nombre de la campaña</label><input type="text" id="camp-nombre" class="form-input" placeholder="Promo drop septiembre" maxlength="80"></div>
@@ -1087,18 +1089,18 @@
 
     <!-- FOLLOW-UP CONFIG -->
     <div class="settings-card" style="margin-bottom:20px">
-      <h3>🔔 Follow-up automático</h3>
+      <h3>Follow-up automático</h3>
       <p>Si un lead no responde en X horas (dentro de ventana 24h de Instagram), el agente le manda un mensaje de seguimiento contextual. Máximo 2 intentos por lead. 100% compliant con la política de Meta.</p>
       <div id="followup-agents-list" style="margin-top:14px"></div>
     </div>
 
     <!-- EXPORT CSV -->
     <div class="settings-card" style="margin-bottom:20px">
-      <h3>📥 Exportar leads y conversaciones</h3>
+      <h3>Exportar leads y conversaciones</h3>
       <p>Descarga tus datos en CSV (compatible con Excel, Notion, Airtable). Útil para casos de éxito, auditoría y fine-tuning del prompt.</p>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <button class="btn-primary" id="btn-export-csv">📋 Leads (metadata)</button>
-        <button class="btn-primary" id="btn-export-conversations" style="background:linear-gradient(135deg,#16a34a,#15803d)">💬 Conversaciones completas</button>
+        <button class="btn-primary" id="btn-export-leads-csv">Leads (metadata)</button>
+        <button class="btn-primary" id="btn-export-conversations" style="background:linear-gradient(135deg,#16a34a,#15803d)">Conversaciones completas</button>
       </div>
       <small style="color:var(--text-3);display:block;margin-top:8px;font-size:12px">
         <strong>Leads</strong>: 31 columnas con info de cada lead (1 fila por lead).<br>
@@ -1108,7 +1110,7 @@
 
     <!-- LINKS DE ACCESO DIRECTO AL AGENTE -->
     <div class="settings-card" style="margin-bottom:20px">
-      <h3>🎯 Links de acceso a tu agente</h3>
+      <h3>Links de acceso a tu agente</h3>
       <p>Un link (o QR) que abre el chat con tu agente en un toque — Instagram, <strong>WhatsApp</strong> o <strong>Messenger</strong> — con contador de clicks. Úsalo en tu bio, ads, stories o impreso en el mostrador.</p>
       <div style="display:grid;grid-template-columns:1fr 2fr 1fr 2fr auto;gap:10px;margin-top:14px">
         <select id="ml-channel" class="form-input">
@@ -1152,7 +1154,7 @@
       <div style="font-size:13px;opacity:.85;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Tu link de invitación</div>
       <div id="ref-link-box" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:rgba(255,255,255,.15);backdrop-filter:blur(8px);padding:14px 18px;border-radius:10px;border:1px solid rgba(255,255,255,.25)">
         <code id="ref-link-text" style="flex:1;min-width:240px;font-size:14px;color:#fff;font-family:monospace;word-break:break-all">cargando…</code>
-        <button onclick="copyReferralLink()" style="background:#fff;color:#10b981;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:600;font-size:13px">📋 Copiar</button>
+        <button onclick="copyReferralLink()" style="background:#fff;color:#10b981;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:600;font-size:13px">Copiar</button>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
         <a id="ref-share-wa" target="_blank" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;padding:8px 14px;border-radius:8px;font-size:13px;text-decoration:none">📱 WhatsApp</a>
@@ -1179,7 +1181,7 @@
 
     <!-- Cómo funciona -->
     <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:22px;margin-top:18px">
-      <h3 style="margin:0 0 12px;font-size:14.5px;color:#9a3412">📖 Cómo funciona</h3>
+      <h3 style="margin:0 0 12px;font-size:14.5px;color:#9a3412">Cómo funciona</h3>
       <ol style="margin:0;padding-left:20px;color:var(--text-2);font-size:13.5px;line-height:1.8">
         <li>Compartes tu link único con coaches, agencias, e-commerce, infoproductos… cualquiera que use Instagram para vender.</li>
         <li>Cuando se registran con tu link, los vemos en tu lista como "registrados".</li>
@@ -1205,13 +1207,13 @@
 
     <!-- Acciones -->
     <div id="billing-actions" style="display:none;flex-wrap:wrap;gap:10px;margin-bottom:24px">
-      <button class="btn-primary" onclick="showUpgradeModal(false)" style="padding:10px 18px">⬆️ Cambiar de plan</button>
-      <button class="btn-ghost" id="btn-billing-portal" onclick="openBillingPortal()" style="padding:10px 18px">🏦 Gestionar pagos / cancelar</button>
+      <button class="btn-primary" onclick="showUpgradeModal(false)" style="padding:10px 18px">Cambiar de plan</button>
+      <button class="btn-ghost" id="btn-billing-portal" onclick="openBillingPortal()" style="padding:10px 18px">Gestionar pagos / cancelar</button>
     </div>
 
     <!-- Info adicional -->
     <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:22px">
-      <h3 style="margin:0 0 14px;font-size:15px">📄 Historial de pagos e invoices</h3>
+      <h3 style="margin:0 0 14px;font-size:15px">Historial de pagos e invoices</h3>
       <p style="color:var(--text-2);font-size:14px;line-height:1.6;margin-bottom:14px">
         Por seguridad, todos los pagos se procesan a través de <strong id="billing-provider-name">tu proveedor</strong>. Para ver el historial completo, descargar invoices o cambiar el método de pago, ve al portal del proveedor desde el botón de arriba.
       </p>
@@ -1260,13 +1262,13 @@
       <div style="font-size:13px;color:var(--text-2);margin-bottom:14px;line-height:1.5">Tu agente ya sabe vender. Acá aprende <b>cómo escribe la gente que te escribe</b> — largo, muletillas, emojis, informalidad — y lo combina con ese conocimiento. Después entrénalo: tres clientes simulados que escriben igual le hablan, y un juez te dice qué sonó a bot.</div>
       <div id="intel-estilo-box" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:13px 14px;margin-bottom:10px"><div style="font-size:13px;color:var(--text-3)">Cargando…</div></div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-        <button class="btn-primary" style="padding:8px 16px;font-size:13px" onclick="aprenderEstiloUI(this, 'bandeja')">🗣️ Aprender de mi bandeja</button>
+        <button class="btn-primary" style="padding:8px 16px;font-size:13px" onclick="aprenderEstiloUI(this, 'bandeja')">Aprender de mi bandeja</button>
         <button class="btn-ghost" style="padding:8px 14px;font-size:13px" onclick="document.getElementById('intel-upload-block').open = true; document.getElementById('intel-upload-text').focus()">Pegar conversaciones…</button>
         <span id="intel-estilo-status" style="font-size:12.5px;color:var(--text-2)"></span>
       </div>
       <div style="border-top:1px solid var(--border);margin-top:16px;padding-top:14px">
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-          <button class="btn-primary" id="intel-entrenar-btn" style="padding:8px 16px;font-size:13px" onclick="entrenarAgenteUI(this)">🎯 Entrenar ahora</button>
+          <button class="btn-primary" id="intel-entrenar-btn" style="padding:8px 16px;font-size:13px" onclick="entrenarAgenteUI(this)">Entrenar ahora</button>
           <span style="font-size:12.5px;color:var(--text-2)">3 conversaciones simuladas · 1-2 minutos · las mejoras que proponga el juez aparecen abajo para que las apruebes.</span>
         </div>
         <div id="intel-entrenar-result" style="margin-top:10px"></div>
@@ -1284,7 +1286,7 @@
 
       <!-- Subir conversaciones reales: el agente aprende de cómo vendes TÚ -->
       <details id="intel-upload-block" style="margin-top:14px;border-top:1px solid var(--border);padding-top:14px">
-        <summary style="cursor:pointer;font-weight:700;font-size:13.5px;color:var(--text-1)">📎 Sube conversaciones reales y mejora tu agente</summary>
+        <summary style="cursor:pointer;font-weight:700;font-size:13.5px;color:var(--text-1)">Sube conversaciones reales y mejora tu agente</summary>
         <div style="font-size:12.5px;color:var(--text-2);margin:10px 0 8px;line-height:1.5">
           Pega conversaciones reales con tus clientes — de tu WhatsApp personal, de antes de tener el agente, de donde sea.
           El sistema detecta qué te funciona (para que el agente lo imite) y qué falla (para corregirlo), y te propone las reglas acá arriba. Tú apruebas.
@@ -1292,8 +1294,8 @@
         <textarea id="intel-upload-text" rows="6" placeholder="Cliente: Hola, ¿tienen disponible el tratamiento X?&#10;Yo: Hola! Sí, mira te cuento...&#10;&#10;(pega una o varias conversaciones completas — mínimo unas líneas con ida y vuelta)"
           style="width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:13px;resize:vertical;background:var(--surface)"></textarea>
         <div style="display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap">
-          <button class="btn-primary" id="intel-upload-btn" style="padding:8px 16px;font-size:13px" onclick="analizarConversacionesUI(this)">🔍 Analizar y proponer mejoras</button>
-          <button class="btn-ghost" style="padding:8px 14px;font-size:13px" onclick="aprenderEstiloUI(this, 'texto')">🗣️ Aprender el estilo de lo pegado</button>
+          <button class="btn-primary" id="intel-upload-btn" style="padding:8px 16px;font-size:13px" onclick="analizarConversacionesUI(this)">Analizar y proponer mejoras</button>
+          <button class="btn-ghost" style="padding:8px 14px;font-size:13px" onclick="aprenderEstiloUI(this, 'texto')">Aprender el estilo de lo pegado</button>
           <span id="intel-upload-status" style="font-size:12.5px;color:var(--text-2)"></span>
         </div>
       </details>
@@ -1393,7 +1395,7 @@
             Necesitas: <strong>Cuenta Instagram Business</strong> vinculada a una <strong>Página de Facebook</strong> y una <strong>Meta App</strong> configurada
           </p>
           <details style="margin-top:12px">
-            <summary style="cursor:pointer;font-size:12px;color:var(--orange);font-weight:600">▶ Conectar manualmente (sin Meta App)</summary>
+            <summary style="cursor:pointer;font-size:12px;color:var(--orange);font-weight:600">Conectar manualmente (sin Meta App)</summary>
             <div style="margin-top:12px">
               <div class="form-row">
                 <label>Instagram User ID</label>
@@ -1450,8 +1452,7 @@
           <!-- Conexión con un clic (Embedded Signup). Solo aparece si el
                servidor la tiene configurada; si no, queda el alta manual. -->
           <div id="wa-es-box" style="display:none;margin-bottom:18px">
-            <button class="btn-primary" id="btn-wa-embedded" style="background:#25D366;border-color:#25D366;font-size:15px;padding:12px 20px">
-              📱 Conectar mi WhatsApp
+            <button class="btn-primary" id="btn-wa-embedded" style="background:#25D366;border-color:#25D366;font-size:15px;padding:12px 20px">Conectar mi WhatsApp
             </button>
             <p style="font-size:12px;color:var(--text-2);margin-top:10px">
               Se abre una ventana de Meta donde inicias sesión y eliges tu número. <strong>No tienes que copiar ningún dato ni token.</strong> Si todavía no tienes WhatsApp Business API, la creas ahí mismo.
@@ -1537,7 +1538,7 @@
       </div>
 
       <div class="settings-card">
-        <h3>📅 Google Calendar <span style="font-size:11px;background:rgba(16,185,129,.15);color:#10b981;padding:2px 8px;border-radius:6px;vertical-align:middle;margin-left:6px;">Nuevo</span></h3>
+        <h3>Google Calendar <span style="font-size:11px;background:rgba(16,185,129,.15);color:#10b981;padding:2px 8px;border-radius:6px;vertical-align:middle;margin-left:6px;">Nuevo</span></h3>
         <p>Tu agente ve tu disponibilidad real y agenda citas directamente en tu calendario, sin sacar al cliente del chat.</p>
 
         <!-- Conectado -->
@@ -1565,14 +1566,14 @@
       </div>
 
       <div class="settings-card">
-        <h3>🎙️ Habla con tu agente <span style="font-size:11px;background:rgba(16,185,129,.15);color:#10b981;padding:2px 8px;border-radius:6px;vertical-align:middle;margin-left:6px;">Nuevo</span></h3>
+        <h3>Habla con tu agente <span style="font-size:11px;background:rgba(16,185,129,.15);color:#10b981;padding:2px 8px;border-radius:6px;vertical-align:middle;margin-left:6px;">Nuevo</span></h3>
         <p>Llama a tu agente y escúchalo: mismas instrucciones y misma base de conocimiento que usa en WhatsApp, pero hablando. Así se va a sentir cuando las llamadas entren por WhatsApp.</p>
         <a href="/demo-voz.html" class="btn-primary" style="display:inline-block;text-decoration:none;margin-top:6px">Abrir el demo de voz</a>
         <p style="font-size:12px;color:var(--text-2);margin-top:10px">Necesita permiso del micrófono. Máximo 20 sesiones por día.</p>
       </div>
 
       <div class="settings-card">
-        <h3>📞 Llamadas telefónicas <span style="font-size:11px;background:rgba(16,185,129,.15);color:#10b981;padding:2px 8px;border-radius:6px;vertical-align:middle;margin-left:6px;">Nuevo</span></h3>
+        <h3>Llamadas telefónicas <span style="font-size:11px;background:rgba(16,185,129,.15);color:#10b981;padding:2px 8px;border-radius:6px;vertical-align:middle;margin-left:6px;">Nuevo</span></h3>
         <p>Cuando un lead está listo y acepta, el agente lo llama por teléfono de verdad — con tu voz elegida y todo el contexto del chat. Siempre avisa por el chat antes de marcar.</p>
 
         <div id="llamadas-twilio-off" style="display:none;font-size:13px;color:var(--text-2);border:1px dashed var(--border);border-radius:8px;padding:12px;margin-bottom:12px">
@@ -1634,7 +1635,7 @@
       </div>
 
       <div class="settings-card">
-        <h3>🛒 Tienda Shopify <span style="font-size:11px;background:rgba(16,185,129,.15);color:#10b981;padding:2px 8px;border-radius:6px;vertical-align:middle;margin-left:6px;">Nuevo</span></h3>
+        <h3>Tienda Shopify <span style="font-size:11px;background:rgba(16,185,129,.15);color:#10b981;padding:2px 8px;border-radius:6px;vertical-align:middle;margin-left:6px;">Nuevo</span></h3>
         <p>Cada pedido nuevo dispara el WhatsApp de confirmación solo, y el agente conversa sabiendo qué pidió, a qué dirección y cuándo llega.</p>
 
         <div id="shopify-connected" style="display:none">
@@ -1672,7 +1673,7 @@
 
         <!-- Playbook post-compra: seguimiento del pedido de punta a punta -->
         <details id="playbook-block" style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
-          <summary style="cursor:pointer;font-weight:700;font-size:14px">📦 Playbook post-compra <span id="playbook-estado" style="font-size:11px;color:var(--text-3);font-weight:600"></span></summary>
+          <summary style="cursor:pointer;font-weight:700;font-size:14px">Playbook post-compra <span id="playbook-estado" style="font-size:11px;color:var(--text-3);font-weight:600"></span></summary>
           <p style="font-size:12.5px;color:var(--text-2);margin:10px 0 12px;line-height:1.5">
             El pedido se sigue solo: sugerencia de agregar algo al mismo envío (2-3 h), "va en camino" y "llega HOY" cuando el courier avisa, "¿llegó bien?" al entregar, reseña a los días y invitación a recomprar. Necesita el webhook <em>Actualización de preparación de pedidos</em> en Shopify (misma URL de arriba) y las plantillas aprobadas en Meta para los mensajes fuera de la ventana de 24 h.
           </p>
@@ -1724,7 +1725,7 @@
       </div>
 
       <div class="settings-card" style="grid-column:1/-1">
-        <h3>🔔 Notificaciones de Leads HOT</h3>
+        <h3>Notificaciones de Leads HOT</h3>
         <p>Recibe un aviso al instante cuando un lead se ponga 🔥 caliente — para que saltes a cerrar antes de que se enfríe. Throttle: máx 1 aviso por lead cada 30 min.</p>
 
         <!-- TELEGRAM (recomendado) -->
@@ -1741,7 +1742,7 @@
             </label>
           </div>
           <details style="margin-top:10px" open>
-            <summary style="cursor:pointer;font-size:13px;color:var(--orange);font-weight:600">▶ Cómo configurar Telegram</summary>
+            <summary style="cursor:pointer;font-size:13px;color:var(--orange);font-weight:600">Cómo configurar Telegram</summary>
             <ol style="font-size:13px;color:var(--text-2);line-height:1.7;margin-top:8px;padding-left:18px">
               <li>Abre Telegram y busca <a href="https://t.me/BotFather" target="_blank" style="color:#229ED9">@BotFather</a></li>
               <li>Envía <code>/newbot</code> → elige un nombre y un username (debe terminar en "bot", ej: <code>atinov_alert_bot</code>)</li>
@@ -1759,7 +1760,7 @@
             <input type="text" id="notif-tg-chatid" placeholder="Click 'Detectar chat' después de enviar /start" class="form-input" autocomplete="off">
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-            <button class="btn-ghost" id="btn-tg-detect">🔍 Detectar chat</button>
+            <button class="btn-ghost" id="btn-tg-detect">Detectar chat</button>
             <a id="btn-tg-openbot" class="btn-ghost" href="#" target="_blank" style="display:none">📲 Abrir bot</a>
             <button class="btn-ghost" id="btn-test-tg">Enviar prueba</button>
             <span id="notif-tg-result" style="margin-left:4px;font-size:12px"></span>
@@ -1902,7 +1903,7 @@
       </p>
     </div>
     <div class="form-row">
-      <label>🎯 Objetivo</label>
+      <label>Objetivo</label>
       <select id="new-agent-objetivo" class="form-input">
         <option value="">Sin objetivo específico</option>
         <option value="calificar">Calificar leads</option>
@@ -2000,7 +2001,7 @@
     </div>
 
     <div class="upgrade-footer">
-      <button class="btn-ghost" onclick="manageSubscription()">🔧 Gestionar suscripción existente</button>
+      <button class="btn-ghost" onclick="manageSubscription()">Gestionar suscripción existente</button>
       <span class="upgrade-guarantee">🔒 Pago seguro · Cancelas cuando quieras · Reembolso 100% en 7 días</span>
     </div>
 
@@ -2068,7 +2069,7 @@
     <div class="onb-footer">
       <button class="onb-btn-skip" id="onb-skip" onclick="onbSkipAll()">Saltar por ahora</button>
       <div style="display:flex;gap:8px">
-        <button class="onb-btn onb-btn-ghost" id="onb-back" onclick="onbPrev()" style="display:none">← Atrás</button>
+        <button class="onb-btn onb-btn-ghost" id="onb-back" onclick="onbPrev()" style="display:none">Atrás</button>
         <button class="onb-btn onb-btn-primary" id="onb-next" onclick="onbNext()">Comenzar →</button>
       </div>
     </div>
@@ -2136,8 +2137,8 @@ function onbRender() {
 
   const titles = {
     1: `¡Bienvenido, ${ONB_STATE.userName}! 👋`,
-    2: 'Conecta tu cuenta de Instagram',
-    3: 'Personalizá tu primer agente',
+    2: 'Conecta Instagram o WhatsApp',
+    3: 'Personaliza tu primer agente',
     4: 'Activa alertas de leads HOT 🔥',
   };
   document.getElementById('onb-title').textContent = titles[s];
@@ -2150,9 +2151,9 @@ function onbRender() {
     bodyEl.innerHTML = `
       <p>Atinov va a calificar tus DMs de Instagram 24/7 y avisarte cuando un lead esté listo para agendar o comprar.</p>
       <p>En los próximos 3 pasos vamos a dejar todo listo:</p>
-      <div class="onb-feature"><span class="ico">📸</span><div class="txt"><strong>Conectar Instagram</strong><small>Para que el agente pueda leer y responder DMs en tu nombre</small></div></div>
+      <div class="onb-feature"><span class="ico">📸</span><div class="txt"><strong>Conectar Instagram o WhatsApp</strong><small>Para que el agente pueda leer y responder mensajes en tu nombre</small></div></div>
       <div class="onb-feature"><span class="ico">🤖</span><div class="txt"><strong>Configurar tu agente</strong><small>Le das tu oferta y personalidad, tu agente lo usa en cada conversación</small></div></div>
-      <div class="onb-feature"><span class="ico">🔥</span><div class="txt"><strong>Alertas de leads HOT</strong><small>Recibís un Telegram solo cuando un lead pide agenda o precio</small></div></div>
+      <div class="onb-feature"><span class="ico">🔥</span><div class="txt"><strong>Alertas de leads calientes</strong><small>Recibes un Telegram solo cuando un lead pide agenda o precio</small></div></div>
       <p style="color:#888;font-size:0.82rem;margin-top:14px">⏱ Toma unos 3–4 minutos. Puedes saltar cualquier paso y volver después desde Configuración.</p>
     `;
     nextBtn.textContent = 'Comenzar →';
@@ -2182,10 +2183,13 @@ function onbRender() {
             <li>Vas a darle permisos de lectura y envío de DMs</li>
           </ul>
         </div>
-        <button class="onb-btn onb-btn-primary" onclick="onbConnectIG()" style="width:100%;margin-top:8px">
-          📸 Conectar Instagram ahora
+        <button class="onb-btn onb-btn-primary" onclick="onbConnectIG()" style="width:100%;margin-top:8px">Conectar Instagram ahora
         </button>
       `}
+      <div class="onb-highlight" style="margin-top:12px">
+        <strong>¿Vendes por WhatsApp?</strong> También se conecta, con los datos de tu API de Meta. Te acompañamos en ese paso.
+        <button class="onb-btn onb-btn-ghost" onclick="onbHide(); loadSection('settings');" style="width:100%;margin-top:8px">Conectar WhatsApp en Ajustes</button>
+      </div>
     `;
     nextBtn.textContent = done ? 'Siguiente →' : 'Ya lo hice, siguiente →';
     nextBtn.className = done ? 'onb-btn onb-btn-success' : 'onb-btn onb-btn-primary';
@@ -2208,8 +2212,7 @@ function onbRender() {
       <div class="onb-highlight">
         💡 <strong>Tip:</strong> cuanto más específico seas con la oferta y el tono, mejor cierra el agente. Tardas 5 min ahora y ahorras horas después.
       </div>
-      <button class="onb-btn onb-btn-ghost" onclick="onbGoToAgents()" style="width:100%;margin-top:6px">
-        🤖 Ir a configurar mi agente
+      <button class="onb-btn onb-btn-ghost" onclick="onbGoToAgents()" style="width:100%;margin-top:6px">Ir a configurar mi agente
       </button>
     `;
     nextBtn.textContent = 'Siguiente →';
@@ -2235,8 +2238,7 @@ function onbRender() {
           <li>Copia el token que te dé y pégalo en Configuración → Notificaciones</li>
           <li>Inicia conversación con tu bot y aprieta "Detectar chat"</li>
         </ul>
-        <button class="onb-btn onb-btn-ghost" onclick="onbGoToNotifications()" style="width:100%;margin-top:6px">
-          🔔 Configurar Telegram ahora
+        <button class="onb-btn onb-btn-ghost" onclick="onbGoToNotifications()" style="width:100%;margin-top:6px">Configurar Telegram ahora
         </button>
       `}
       <div class="onb-highlight" style="margin-top:14px">
@@ -2292,7 +2294,7 @@ async function onbSkipAll() {
 // ── Acciones de pasos ──────────────────────────────────────────────────────
 function onbConnectIG() {
   const accountId = ONB_STATE.accountId || '';
-  if (!accountId) { alert('Tu cuenta aún no está lista. Refrescá la página.'); return; }
+  if (!accountId) { alert('Tu cuenta aún no está lista. Refresca la página.'); return; }
   const token = localStorage.getItem('autosetter_token') || '';
   window.location.href = `/auth/instagram?accountId=${accountId}&token=${encodeURIComponent(token)}`;
 }

@@ -151,16 +151,22 @@ const MAX_ENTRENAMIENTOS_DIA = 3;
 
 /** Cupo diario por cuenta guardado en settings (reset perezoso por fecha). */
 async function cupoDiario(accountId, campo, max) {
+  const { hoyChile } = require('../services/limits');
   const settings = await db.findOne(db.settings, { account_id: accountId });
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = hoyChile();
   const usados = settings?.[`${campo}_date`] === hoy ? Number(settings[`${campo}_count`] || 0) : 0;
   return { settings, hoy, usados, agotado: usados >= max, restantes: Math.max(0, max - usados) };
 }
-/** Se cobra DESPUÉS del éxito: un error del modelo no quema cupo del dueño. */
-async function consumirCupo({ settings, accountId, campo, hoy, usados }) {
-  const upd = { [`${campo}_date`]: hoy, [`${campo}_count`]: usados + 1 };
-  if (settings) await db.update(db.settings, { _id: settings._id }, upd).catch(() => null);
-  else await db.insert(db.settings, { account_id: accountId, ...upd }).catch(() => null);
+/** Se cobra DESPUÉS del éxito: un error del modelo no quema cupo del dueño.
+ *  Incremento atómico ($inc): dos entrenamientos a la vez ya no pierden uno. */
+async function consumirCupo({ settings, accountId, campo, hoy }) {
+  const fecha = `${campo}_date`, cont = `${campo}_count`;
+  if (!settings) {
+    await db.insert(db.settings, { account_id: accountId, [fecha]: hoy, [cont]: 1 }).catch(() => null);
+    return;
+  }
+  await db.updateRaw(db.settings, { _id: settings._id, [fecha]: { $ne: hoy } }, { $set: { [fecha]: hoy, [cont]: 0 } }).catch(() => null);
+  await db.updateRaw(db.settings, { _id: settings._id, [fecha]: hoy }, { $inc: { [cont]: 1 } }).catch(() => null);
 }
 
 function perfilPublico(agent) {

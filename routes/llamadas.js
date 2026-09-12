@@ -20,7 +20,7 @@ router.get('/', async (req, res, next) => {
     const llamadas = await db.find(db.llamadas, { account_id: accountId },
       (a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-    const mes = new Date().toISOString().slice(0, 7);
+    const mes = require('../services/limits').currentMonth();   // hora de Chile, igual que /gasto
     const delMes = llamadas.filter(l => (l.createdAt || '').startsWith(mes));
     const conectadas = delMes.filter(l => l.status === 'terminada');
 

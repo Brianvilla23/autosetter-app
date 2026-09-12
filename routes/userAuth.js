@@ -67,19 +67,29 @@ router.post('/register', async (req, res, next) => {
       if (v != null && typeof v !== 'string') return res.status(400).json({ error: 'Datos inválidos' });
     }
     let codeDoc = null;
+    let codeReservado = false;
     if (!isFirstUser && inviteCode) {
       // Código de invitación es OPCIONAL — si se provee, se valida y extiende acceso
       codeDoc = await db.findOne(db.inviteCodes, { code: inviteCode.toUpperCase().trim() });
       if (!codeDoc)           return res.status(400).json({ error: 'Código de invitación inválido' });
       if (!codeDoc.isActive)  return res.status(400).json({ error: 'Este código está desactivado' });
-      if (codeDoc.uses >= codeDoc.maxUses) return res.status(400).json({ error: 'Este código ya fue utilizado el máximo de veces' });
       if (codeDoc.codeExpiresAt && new Date(codeDoc.codeExpiresAt) < new Date()) {
         return res.status(400).json({ error: 'Este código de invitación ha expirado' });
       }
+      // Reserva ATÓMICA del uso: cinco registros a la vez con un código de
+      // maxUses:1 ya no pasan todos (antes se leía, corría bcrypt, y recién al
+      // final se escribía uses+1). Si el registro no prospera, se devuelve.
+      if (codeDoc.uses == null) await db.updateRaw(db.inviteCodes, { _id: codeDoc._id, uses: { $exists: false } }, { $set: { uses: 0 } }).catch(() => null);
+      const reservado = await db.updateRaw(db.inviteCodes, { _id: codeDoc._id, uses: { $lt: Number(codeDoc.maxUses) } }, { $inc: { uses: 1 } }).catch(() => 0);
+      if (!reservado) return res.status(400).json({ error: 'Este código ya fue utilizado el máximo de veces' });
+      codeReservado = true;
     }
 
     const existing = await db.findOne(db.users, { email: email.toLowerCase() });
-    if (existing) return res.status(400).json({ error: 'Este email ya está registrado' });
+    if (existing) {
+      if (codeReservado) await db.updateRaw(db.inviteCodes, { _id: codeDoc._id }, { $inc: { uses: -1 } }).catch(() => null);
+      return res.status(400).json({ error: 'Este email ya está registrado' });
+    }
 
     const hash = await bcrypt.hash(password, 12);
 
@@ -152,10 +162,8 @@ router.post('/register', async (req, res, next) => {
 
     // Marcar código como usado
     if (codeDoc) {
-      await db.update(db.inviteCodes, { _id: codeDoc._id }, {
-        uses:    codeDoc.uses + 1,
-        usedBy:  [...(codeDoc.usedBy || []), user._id],
-      });
+      // El uso ya se reservó arriba (atómico); acá solo se anota quién fue.
+      await db.updateRaw(db.inviteCodes, { _id: codeDoc._id }, { $push: { usedBy: user._id } }).catch(() => null);
     }
 
     await seedDemoAgent(account._id, bizInfo);

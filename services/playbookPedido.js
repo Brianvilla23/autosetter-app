@@ -193,8 +193,10 @@ async function alCambioEnvio({ lead, accountId, fulfillment }) {
 
 // ── Frecuencia de marketing por contacto ─────────────────────────────────────
 
-const mesActual = () => new Date().toISOString().slice(0, 7);
-const diaActual = () => new Date().toISOString().slice(0, 10);
+// En hora de Chile: el cupo "1 marketing por día" cortaba 3-4 h antes de la
+// medianoche real cuando se calculaba en UTC (auditoría 12-09).
+const mesActual = () => require('./limits').currentMonth();
+const diaActual = () => require('./limits').hoyChile();
 
 /**
  * ¿Puede este lead recibir un mensaje de MARKETING ahora?
@@ -208,15 +210,29 @@ function chequearCapMarketing(lead, cfg) {
   return { ok: true };
 }
 
-/** Registra un marketing enviado en los contadores del lead. */
-async function contarMarketing(leadId, lead) {
+/** Registra un marketing enviado en los contadores del lead (atómico). */
+async function contarMarketing(leadId) {
   const mes = mesActual();
-  const prev = lead.mkt_month === mes ? Number(lead.mkt_count_month || 0) : 0;
-  await db.update(db.leads, { _id: leadId }, {
-    mkt_month: mes,
-    mkt_count_month: prev + 1,
-    mkt_last_day: diaActual(),
-  }).catch(() => null);
+  await db.updateRaw(db.leads, { _id: leadId, mkt_month: { $ne: mes } }, { $set: { mkt_month: mes, mkt_count_month: 0 } }).catch(() => null);
+  await db.updateRaw(db.leads, { _id: leadId, mkt_month: mes }, { $inc: { mkt_count_month: 1 }, $set: { mkt_last_day: diaActual() } }).catch(() => null);
+}
+
+/**
+ * Chequeo + registro en UNA operación condicional: reserva el cupo de
+ * marketing del lead ANTES de enviar. Dos workers a la vez (campañas y
+ * playbook post-compra) ya no le mandan dos marketing el mismo día: solo uno
+ * encuentra el lead con "no enviado hoy y bajo el tope del mes".
+ * Devuelve { ok } o { ok:false, motivo } igual que chequearCapMarketing.
+ */
+async function reservarMarketing(leadId, lead, cfg) {
+  const previo = chequearCapMarketing(lead, cfg);
+  if (!previo.ok) return previo;               // lectura barata primero: evita escribir por gusto
+  const mes = mesActual(), hoy = diaActual();
+  await db.updateRaw(db.leads, { _id: leadId, mkt_month: { $ne: mes } }, { $set: { mkt_month: mes, mkt_count_month: 0 } }).catch(() => null);
+  const gane = await db.updateRaw(db.leads,
+    { _id: leadId, mkt_month: mes, mkt_count_month: { $lt: cfg.capMktMes }, mkt_last_day: { $ne: hoy } },
+    { $inc: { mkt_count_month: 1 }, $set: { mkt_last_day: hoy } }).catch(() => 0);
+  return gane ? { ok: true } : { ok: false, motivo: 'cap_dia' };
 }
 
 // ── Textos deterministas (utility) ───────────────────────────────────────────
@@ -499,7 +515,7 @@ async function cancelarPorLead(leadId, reason = 'lead eliminado') {
 module.exports = {
   TIPOS, DEFAULTS, VENTANA_HORAS,
   configDe, agendar, alConfirmarPedido, alCambioEnvio,
-  chequearCapMarketing, contarMarketing,
+  chequearCapMarketing, contarMarketing, reservarMarketing,
   textoUtility, hintMarketing,
   procesarTareas, cancelarPorLead,
 };

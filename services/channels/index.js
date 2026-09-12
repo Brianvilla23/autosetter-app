@@ -22,6 +22,17 @@ const wa   = require('../whatsapp');
  * @param {string} p.text
  */
 async function send({ channel, account, recipientId, text }) {
+  if (channel === 'messenger') {
+    // Antes caía al default (Instagram): trampa para cuando alguien lo usara.
+    const fb = require('../messenger');
+    return fb.sendMessage({
+      pageId:      account.fb_page_id,
+      recipient:   recipientId,
+      text,
+      accessToken: account.fb_page_token,
+      accountId:   account._id,
+    });
+  }
   const ch = core.channelOf(channel);
   if (ch === 'whatsapp') {
     return wa.sendMessage({

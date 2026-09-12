@@ -629,6 +629,15 @@ async function handleWhatsAppMessage(phoneNumberId, msg, value) {
   const isAudio = msg.type === 'audio' && !!msg.audio?.id;
   const isImage = msg.type === 'image' && !!msg.image?.id;
 
+  // Idempotencia por wamid ANTES de cualquier rama (también la del permiso de
+  // llamada, que antes quedaba fuera y un reintento de Meta la procesaba dos
+  // veces). Va antes de transcribir audio o describir fotos: cuesta plata.
+  const midWa = msg.id ? String(msg.id) : null;
+  if (midWa && await mensajeYaProcesado(midWa)) {
+    anotar({ canal: 'whatsapp', resultado: 'DUPLICADO', detalle: `wamid ${midWa} ya procesado` });
+    return;
+  }
+
   // Respuesta al PERMISO DE LLAMADA por WhatsApp (botón oficial de Meta):
   // no es un mensaje para el agente, es el consentimiento que Meta exige
   // antes de que el negocio pueda llamar. Se registra y, si aceptó, la
@@ -641,6 +650,8 @@ async function handleWhatsAppMessage(phoneNumberId, msg, value) {
       if (!lead) return;
       const { procesarRespuestaPermiso } = require('../services/whatsappCalling');
       const r = await procesarRespuestaPermiso({ account, lead, interactive: msg.interactive });
+      // Se guarda con el wamid para que el reintento de Meta caiga en el dedupe.
+      if (midWa) await db.insert(db.messages, { lead_id: lead._id, account_id: account._id, role: 'sistema', mid: midWa, content: `Permiso de llamada ${r.acepto ? 'aceptado' : 'rechazado'} (registrado).` }).catch(() => null);
       console.log(`📲 [wa] permiso de llamada ${r.acepto ? 'ACEPTADO' : 'rechazado'} por ${msg.from}`);
     } catch (e) { console.error('[wa] call_permission_reply error:', e.message); }
     return;
@@ -653,12 +664,6 @@ async function handleWhatsAppMessage(phoneNumberId, msg, value) {
 
   const senderId = msg.from;
   const senderName = value.contacts?.[0]?.profile?.name || senderId;
-  // Idempotencia por wamid, antes de transcribir audio o describir fotos (cuesta plata).
-  const midWa = msg.id ? String(msg.id) : null;
-  if (midWa && await mensajeYaProcesado(midWa)) {
-    anotar({ canal: 'whatsapp', resultado: 'DUPLICADO', detalle: `wamid ${midWa} ya procesado` });
-    return;
-  }
 
   // Find account by phone_number_id
   const account = await wa.findAccountByPhoneNumberId(phoneNumberId);
@@ -941,7 +946,8 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
   // Se cuenta la conversación acá: pasado el candado y antes de gastar en el
   // LLM. Es idempotente por lead y mes, así que responder veinte veces al
   // mismo lead sigue contando 1.
-  await registrarConversacion({ accountId: account._id, lead }).catch(() => null);
+  await registrarConversacion({ accountId: account._id, lead })
+    .catch(e => console.error('[cuota] registrarConversacion falló (drift entre atendidas y contadas):', e.message));
 
   // Cancelar follow-ups pendientes — el lead acaba de responder (best-effort)
   try {
@@ -1635,9 +1641,19 @@ router.post('/twilio/status', async (req, res) => {
         duracionSeg: dur,
       });
       if (!finalizo && dur > 0) {
-        await db.update(db.llamadas, { _id: llamadaId }, { duracion_seg: dur }).catch(() => null);
+        // El puente ya cerró con su cronómetro: la duración OFICIAL manda, y la
+        // diferencia se aplica también a la bolsa de minutos y al evento
+        // facturable (antes solo se corregía lo que veía el dueño).
+        const previa = Number(ll.duracion_seg || 0);
         const costo = telefonia.costoEstimadoUSD(dur);
-        await db.update(db.llamadas, { _id: llamadaId }, { costo_usd: costo }).catch(() => null);
+        await db.update(db.llamadas, { _id: llamadaId }, { duracion_seg: dur, costo_usd: costo }).catch(() => null);
+        const delta = dur - previa;
+        if (delta && ll.account_id) {
+          const { ajustarSegundosVoz } = require('../services/limits');
+          await ajustarSegundosVoz(ll.account_id, delta).catch(() => null);
+          await db.update(db.billableEvents, { type: 'llamada_realizada', llamada_id: llamadaId },
+            { duracion_seg: dur, costo_usd_est: costo.total_est }).catch(() => null);
+        }
       }
     } else if (['busy', 'no-answer', 'failed', 'canceled'].includes(st)) {
       const resultado = st === 'busy' || st === 'no-answer' ? 'no_contesto' : 'fallida';

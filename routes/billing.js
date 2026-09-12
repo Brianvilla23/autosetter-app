@@ -187,7 +187,7 @@ router.post('/checkout', requireAuth, async (req, res) => {
   try {
     const { plan, provider } = req.body;
 
-    if (!PLAN_NAMES[plan])                            return res.status(400).json({ error: 'Plan inválido. Usa: founder, starter, pro, agency' });
+    if (!PLAN_NAMES[plan])                            return res.status(400).json({ error: 'Plan inválido. Usa: inicial, crecimiento, escala, medida (o founder para clientes fundadores).' });
     if (!['ls', 'mp', 'polar'].includes(provider))    return res.status(400).json({ error: 'Provider inválido. Usa: polar (USD), ls (legacy), mp (CLP)' });
 
     const user   = await db.findOne(db.users, { _id: req.user.userId });
@@ -198,11 +198,17 @@ router.post('/checkout', requireAuth, async (req, res) => {
       if (!polar.isPolarEnabled()) {
         return res.status(503).json({ error: 'Polar no está activado todavía. Configura POLAR_API_KEY + POLAR_PRODUCT_PRICE_ID + POLAR_ENABLED=1 en Railway.' });
       }
+      // Un producto de Polar por plan: POLAR_PRICE_INICIAL / _CRECIMIENTO /
+      // _ESCALA / _MEDIDA. Sin el del plan pedido cae a POLAR_PRODUCT_PRICE_ID
+      // (hoy Founder). Así la escalera se vende en USD cuando Brayan cree los
+      // productos, sin tocar código.
+      const priceId = process.env[`POLAR_PRICE_${String(plan).toUpperCase()}`] || undefined;
       const checkout = await polar.createCheckout({
         userId: user._id,
         email:  user.email,
         name:   user.name,
         appUrl,
+        priceId,
       });
       return res.json({ url: checkout.url });
     }

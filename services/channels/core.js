@@ -82,6 +82,12 @@ function identityOf(lead) {
   if (lead.channel === 'whatsapp') {
     return { channel: 'whatsapp', id: lead.wa_id || lead.ig_user_id, name: lead.wa_name || lead.ig_username };
   }
+  if (lead.channel === 'messenger') {
+    // El PSID de Messenger se guarda en ig_user_id "por compatibilidad" con
+    // el inbox: sin este branch, fusionar un lead de Messenger con uno de
+    // Instagram lo etiquetaba como Instagram (auditoría 12-09).
+    return { channel: 'messenger', id: lead.fb_psid || lead.ig_user_id, name: lead.ig_username };
+  }
   return { channel: 'instagram', id: lead.ig_user_id, username: lead.ig_username };
 }
 

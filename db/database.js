@@ -87,6 +87,11 @@ db.find    = (store, q, sort) => sort ? p(store, 'find', q).then(docs => docs.so
 db.findOne = (store, q)       => p(store, 'findOne', q);
 db.insert  = (store, doc)     => p(store, 'insert', { _id: uuidv4(), createdAt: new Date().toISOString(), ...doc });
 db.update  = (store, q, upd)  => p(store, 'update', q, { $set: upd }, { multi: false });
+// Modificador crudo ($inc / $set / $push, con filtro condicional). Devuelve
+// cuántos documentos cambiaron: 0 = la condición no se cumplió. Es la base
+// de los contadores atómicos (auditoría 12-09): leer→sumar→escribir perdía
+// incrementos cuando dos requests llegaban juntos.
+db.updateRaw = (store, q, mod, opts = {}) => p(store, 'update', q, mod, { multi: false, ...opts });
 db.remove  = (store, q)       => p(store, 'remove', q, { multi: true });
 db.count   = (store, q)       => p(store, 'count', q);
 

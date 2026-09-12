@@ -309,8 +309,13 @@ async function procesarWebhookCalls({ phoneNumberId, value }) {
       const expira = permanente ? null
         : p.expiration_timestamp ? new Date(Number(p.expiration_timestamp) * 1000).toISOString()
         : new Date(Date.now() + PERMISO_VIGENCIA_DIAS * 24 * 3600e3).toISOString();
+      // Dedupe: Meta reintenta el webhook; el mismo permiso no reprograma la
+      // llamada ni repite el mensaje de sistema.
+      const firma = `accepted|${expira || 'nunca'}|${permanente ? 'permanente' : 'callback'}`;
+      if (lead.wa_call_permission_firma === firma) continue;
       await db.update(db.leads, { _id: lead._id }, {
         wa_call_permission: { status: 'accepted', replied_at: new Date().toISOString(), expires_at: expira, source: permanente ? 'permanente' : 'callback' },
+        wa_call_permission_firma: firma,
       });
       await db.insert(db.messages, {
         lead_id: lead._id, account_id: account._id, role: 'sistema',
@@ -323,8 +328,10 @@ async function procesarWebhookCalls({ phoneNumberId, value }) {
         status: 'programada', dial_at: new Date(Date.now() + 30_000).toISOString(), permiso_aceptado_at: new Date().toISOString(),
       }).catch(() => null);
     } else if (/revoke|reject|denied/.test(estado)) {
+      if (lead.wa_call_permission_firma === 'rejected') continue;
       await db.update(db.leads, { _id: lead._id }, {
         wa_call_permission: { status: 'rejected', replied_at: new Date().toISOString(), expires_at: null },
+        wa_call_permission_firma: 'rejected',
       });
     }
   }
