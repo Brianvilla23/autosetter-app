@@ -170,12 +170,17 @@ function manejarStream(twilioWs) {
     }).catch(() => null);
 
     // ── Armar las instrucciones con la receta del closer ─────────────────────
-    const [lead, agent, settings] = await Promise.all([
+    const [lead, agent, settings, account] = await Promise.all([
       db.findOne(db.leads,    { _id: llamada.lead_id }),
       db.findOne(db.agents,   { _id: llamada.agent_id }),
       db.findOne(db.settings, { account_id: llamada.account_id }),
+      db.findOne(db.accounts, { _id: llamada.account_id }),
     ]);
     if (!lead || !agent) throw new Error('lead o agente ya no existen');
+
+    // Cómo hablarle: por el número al que se marca (prefijo), o por lo que se
+    // sepa de la persona / del negocio. Ver services/localeVoz.js.
+    const perfil = require('./localeVoz').perfilPara({ telefono: llamada.telefono, lead, account });
 
     const apiKey = process.env.OPENAI_API_KEY || settings?.openai_key;
     if (!apiKey) throw new Error('cuenta sin API key de OpenAI');
@@ -196,7 +201,7 @@ function manejarStream(twilioWs) {
     const bloques = construirBloquesLead({
       agent, kbTexto,
       lead: { ...lead, name: nombreLead },
-      messages, buildMemoryContext, demo,
+      messages, buildMemoryContext, demo, perfil,
     });
     if (!demo) bloques.push(REGLAS_LLAMADA_SALIENTE);
     if (llamada.tema) {
@@ -208,11 +213,11 @@ function manejarStream(twilioWs) {
 
     // La llamada puede traer su propia voz (llamada de prueba: comparar
     // marin vs cedar). Si no, la del agente; si no, la default.
-    const vozBase   = llamada.voz || agent.voice;
+    const vozBase   = llamada.voz || agent.voice || perfil.vozSugerida;
     const vozPedida = EQUIV_VOZ[vozBase] || vozBase;
     const voz = VOCES_REALTIME.includes(vozPedida) ? vozPedida : VOZ_DEFAULT;
 
-    await conectarOpenAI({ apiKey, instrucciones, voz });
+    await conectarOpenAI({ apiKey, instrucciones, voz, perfil });
 
     // ── Tope de duración: aviso suave y corte duro ───────────────────────────
     const maxMin = Math.min(Number(llamada.max_min) || telefonia.DEFAULT_MAX_MIN, telefonia.HARD_MAX_MIN);
@@ -231,10 +236,10 @@ function manejarStream(twilioWs) {
       cerrarTodo('tope de duración');
     }, topeMs);
 
-    console.log(`📞 [bridge] en curso ${llamadaId} → ${llamada.telefono} (agente ${agent.name}, voz ${voz}, máx ${maxMin} min)`);
+    console.log(`📞 [bridge] en curso ${llamadaId} → ${llamada.telefono} (agente ${agent.name}, voz ${voz}, registro ${perfil.pais} por ${perfil.origen}, máx ${maxMin} min)`);
   }
 
-  function conectarOpenAI({ apiKey, instrucciones, voz }) {
+  function conectarOpenAI({ apiKey, instrucciones, voz, perfil = null }) {
     return new Promise((resolve, reject) => {
       const ws = new WebSocket(`wss://api.openai.com/v1/realtime?model=${encodeURIComponent(MODELO)}`, {
         headers: { Authorization: `Bearer ${apiKey}` },
@@ -259,7 +264,7 @@ function manejarStream(twilioWs) {
             max_output_tokens: MAX_TOKENS_SALIDA,
             // pcmu, semantic_vad, reducción de ruido y transcripción en
             // español: ver configAudioTelefono() en voiceCommon.js.
-            audio: configAudioTelefono(voz),
+            audio: configAudioTelefono(voz, perfil),
           },
         }));
       });

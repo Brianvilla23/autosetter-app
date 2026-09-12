@@ -1210,6 +1210,11 @@ router.post('/probar-voces', async (req, res) => {
     // accountId opcional: por defecto la cuenta de la sesión (igual que el simulador)
     const accountId = req.body.accountId || req.user.accountId;
     const { texto, voces } = req.body;
+    const tts = require('../services/ttsProveedores');
+    const proveedor = tts.PROVEEDORES.includes(req.body.proveedor) ? req.body.proveedor : 'openai';
+    if (!tts.configurado(proveedor)) {
+      return res.status(400).json({ error: `Falta ${tts.VARIABLE[proveedor]} en Railway para probar ${proveedor}.` });
+    }
     const waEstados = require('../services/waEstados');
     const to = waEstados.normalizarWaId(req.body.to);
     if (!accountId || to.length < 8) return res.status(400).json({ error: 'Escribe tu numero completo con codigo de pais, por ejemplo 56912345678.' });
@@ -1242,7 +1247,13 @@ router.post('/probar-voces', async (req, res) => {
     }
 
     const frase = texto || 'Hola, ¿cómo estás? Te llamo por la camioneta que estabas viendo. Cuéntame, ¿qué presupuesto tienes en mente?';
-    const lista = Array.isArray(voces) && voces.length ? voces : audioSvc.VOCES_DISPONIBLES;
+    // OpenAI trae su lista; ElevenLabs y Fish necesitan los IDs de voz que el
+    // dueño copie de sus bibliotecas (Fish acepta ninguno = voz por defecto).
+    const lista = Array.isArray(voces) && voces.length ? voces
+      : proveedor === 'openai' ? audioSvc.VOCES_DISPONIBLES
+      : proveedor === 'fish'   ? ['']
+      : [];
+    if (!lista.length) return res.status(400).json({ error: 'Para ElevenLabs escribe uno o más voice_id (Voices → copiar ID), separados por coma.' });
 
     const resultados = [];
     for (const voz of lista) {
@@ -1251,11 +1262,11 @@ router.post('/probar-voces', async (req, res) => {
         await wa.sendMessage({
           phoneNumberId: cuenta.wa_phone_number_id,
           recipient:     to,
-          text:          `🎙️ Voz: ${voz}`,
+          text:          `🎙️ ${proveedor === 'openai' ? 'Voz' : proveedor}: ${voz || 'voz por defecto'}`,
           accessToken:   cuenta.wa_access_token,
           accountId,
         });
-        const speech  = await audioSvc.synthesizeVoice({ text: frase, apiKey, voice: voz });
+        const speech  = await tts.sintetizar({ proveedor, texto: frase, voz, apiKey });
         const ogg     = await audioSvc.toVoiceNoteOgg(speech);
         const mediaId = await audioSvc.uploadWhatsAppAudio({
           phoneNumberId: cuenta.wa_phone_number_id,
@@ -1268,7 +1279,7 @@ router.post('/probar-voces', async (req, res) => {
           mediaId,
           accessToken: cuenta.wa_access_token,
         });
-        resultados.push({ voz, ok: true, bytes: ogg.length, wamid });
+        resultados.push({ voz: voz || 'voz por defecto', ok: true, bytes: ogg.length, wamid });
       } catch (err) {
         const meta = err.response?.data?.error || {};
         resultados.push({
@@ -1310,6 +1321,7 @@ router.post('/probar-voces', async (req, res) => {
     if (!diagnostico && fallidas.length) diagnostico = fallidas[0].motivo;
 
     res.json({
+      proveedor,
       enviadas: resultados.filter(r => r.ok).length,
       entregadas: resultados.filter(r => r.entrega === 'entregada' || r.entrega === 'leida').length,
       fallidas: fallidas.length,

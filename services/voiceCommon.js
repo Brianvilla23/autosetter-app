@@ -60,12 +60,12 @@ SILENCIOS
 - Si te interrumpen, PARA de inmediato, no termines la frase que ibas diciendo. Retoma solo si te lo piden.
 
 NÚMEROS Y DATOS
-- Precios y números en palabras naturales chilenas: "ciento treinta y cinco mil pesos", nunca "$135.000" ni en dígitos sueltos.
+- Precios y números en palabras naturales: "ciento treinta y cinco mil pesos", nunca "$135.000" ni en dígitos sueltos.
 - Horas en formato hablado: "las tres y media de la tarde", nunca "15:30".
 - Un dato crítico (teléfono, correo, código) dilo completo y natural la primera vez; si piden que repitas, ahí sí número por número o letra por letra, con pausas.
 
 REGISTRO
-- Tuteo por defecto (tú, tienes, puedes). Nunca voseo argentino.
+- El trato (tú, vos o usted) y los modismos los fija el bloque "REGISTRO DEL PAÍS" que viene más abajo: síguelo al pie de la letra.
 - Si la persona te trata de "usted" primero, cambia tú también a "usted" y sostenlo el resto de la llamada.
 - CERO emojis, cero asteriscos, cero markdown, cero listas numeradas: todo eso se escucha como ruido o se lee en voz alta.
 
@@ -135,16 +135,21 @@ const REGLAS_DEMO_LLAMADA = `
  * y afinar el comportamiento sea un cambio en un solo lugar.
  * Devuelve un array de bloques; el caller hace .filter(Boolean).join('\n').
  */
-function construirBloquesLead({ agent, kbTexto, lead, messages, buildMemoryContext, turnos = 14, demo = false }) {
+function construirBloquesLead({ agent, kbTexto, lead, messages, buildMemoryContext, turnos = 14, demo = false, perfil = null }) {
   const identidad = require('./promptEstructurado').instruccionesEfectivas(agent) || '';
+  // Registro por país (tú/vos/usted, modismos, moneda). Va DESPUÉS de las
+  // reglas universales para que gane. Sin perfil → el del número del lead,
+  // y sin número → Chile (services/localeVoz.js).
+  const registro = (perfil || require('./localeVoz').perfilPara({ lead })).bloque;
   // Demostración: no hubo chat. Nada de reglas del closer ("esta conversación
   // ya empezó"), ni el nombre del lead sintético, ni su historial: los tres le
   // hacían inventar un chat que nunca existió.
-  if (demo) return [identidad, kbTexto || '', REGLAS_VOZ, REGLAS_DEMO_LLAMADA];
+  if (demo) return [identidad, kbTexto || '', REGLAS_VOZ, registro, REGLAS_DEMO_LLAMADA];
   return [
     identidad,
     kbTexto || '',
     REGLAS_VOZ,
+    registro,
     REGLAS_CLOSER,
     lead?.name ? `\n--- QUIÉN ES ---\nSe llama ${lead.name}. Te escribió por ${lead.channel || 'el chat'}.` : null,
     typeof buildMemoryContext === 'function' ? buildMemoryContext(lead) : null,
@@ -182,11 +187,16 @@ function construirHistorialVoz(messages, turnos = 14) {
  *    línea contaba como "empezó a hablar" y cortaba al agente a la mitad.
  *  - noise_reduction near_field: el celular va pegado a la boca.
  */
-function configAudioTelefono(voz) {
+function configAudioTelefono(voz, perfil = null) {
+  // El idioma de la transcripción sigue al perfil del país: a un lead de
+  // EE.UU. que habla inglés no se le transcribe "en español de Chile".
+  const transcription = perfil
+    ? { ...TRANSCRIPCION, language: perfil.idioma || 'es', prompt: perfil.promptTranscripcion || TRANSCRIPCION.prompt }
+    : TRANSCRIPCION;
   return {
     input: {
       format: { type: 'audio/pcmu' },
-      transcription: TRANSCRIPCION,
+      transcription,
       turn_detection: { type: 'semantic_vad', eagerness: 'medium' },
       noise_reduction: { type: 'near_field' },
     },

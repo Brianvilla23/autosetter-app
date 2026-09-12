@@ -118,3 +118,35 @@ test('la transcripción es en español en las tres vías', () => {
   assert.notStrictEqual(voz.TRANSCRIPCION.model, 'whisper-1',
     'whisper-1 fue el que transcribió "Thank you" a quien hablaba español');
 });
+
+// -- Registro por pais (services/localeVoz.js) ---------------------------------
+
+test('registro por pais: sin perfil habla chileno; con perfil AR vosea y no prohibe el voseo', () => {
+  const lv = require('../services/localeVoz');
+  const base = unir(voz.construirBloquesLead({ agent: agente, kbTexto: '', lead: leadPrueba, messages: [], demo: true }));
+  assert.match(base, /REGISTRO DEL PAÍS: CHILE/);
+  assert.match(base, /Nunca voseo argentino/);
+  assert.ok(!voz.REGLAS_VOZ.includes('Nunca voseo'), 'la prohibicion ya no vive en el bloque universal');
+
+  const ar = unir(voz.construirBloquesLead({
+    agent: agente, kbTexto: '', lead: { name: 'Juan', channel: 'whatsapp' }, messages: [],
+    perfil: lv.perfilPara({ telefono: '+5491155551234' }),
+  }));
+  assert.match(ar, /REGISTRO DEL PAÍS: ARGENTINA/);
+  assert.match(ar, /vos tenés/);
+  assert.ok(!ar.includes('Nunca voseo argentino'));
+  // El registro va DESPUES de las reglas universales: lo ultimo que lee, gana.
+  assert.ok(ar.indexOf('REGISTRO DEL PAÍS') > ar.indexOf('ESTÁS HABLANDO POR TELÉFONO'));
+});
+
+test('configAudioTelefono transcribe en el idioma del perfil', () => {
+  const lv = require('../services/localeVoz');
+  assert.strictEqual(voz.configAudioTelefono('marin').input.transcription.language, 'es');
+  const en = voz.configAudioTelefono('marin', lv.perfilPara({ telefono: '+13055550100', lead: { idioma: 'en' } }));
+  assert.strictEqual(en.input.transcription.language, 'en');
+  assert.match(en.input.transcription.prompt, /US English/);
+  const mx = voz.configAudioTelefono('cedar', lv.perfilPara({ telefono: '+5215512345678' }));
+  assert.strictEqual(mx.input.transcription.language, 'es');
+  assert.match(mx.input.transcription.prompt, /México/);
+  assert.strictEqual(mx.output.voice, 'cedar');
+});

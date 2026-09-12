@@ -102,11 +102,13 @@ router.post('/token', async (req, res) => {
 
     // Bloques compartidos con la llamada telefónica (services/voiceCommon.js):
     // afinar el comportamiento del closer por voz se hace en UN solo lugar.
+    const perfil = require('../services/localeVoz').perfilPara({ telefono: lead.wa_id || lead.phone, lead });
     const bloques = construirBloquesLead({
-      agent, kbTexto, lead, messages, buildMemoryContext, turnos: TURNOS_CONTEXTO,
+      agent, kbTexto, lead, messages, buildMemoryContext, turnos: TURNOS_CONTEXTO, perfil,
     }).filter(Boolean);
 
-    const vozPedida = EQUIV_VOZ[agent.voice] || agent.voice;
+    const vozBase   = agent.voice || perfil.vozSugerida;
+    const vozPedida = EQUIV_VOZ[vozBase] || vozBase;
     const voz = VOCES_REALTIME.includes(vozPedida) ? vozPedida : VOZ_DEFAULT;
 
     const r = await axios.post('https://api.openai.com/v1/realtime/client_secrets', {
@@ -117,7 +119,7 @@ router.post('/token', async (req, res) => {
         instructions: bloques.join('\n'),
         max_output_tokens: MAX_TOKENS_SALIDA,
         audio: {
-          input:  { transcription: TRANSCRIPCION },
+          input:  { transcription: { ...TRANSCRIPCION, language: perfil.idioma || 'es', prompt: perfil.promptTranscripcion || TRANSCRIPCION.prompt } },
           output: { voice: voz },
         },
       },

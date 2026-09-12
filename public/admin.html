@@ -581,7 +581,19 @@
           <label style="display:block;font-size:0.8rem;color:#a0a0c0;margin-bottom:4px">Frase de prueba (opcional)</label>
           <input type="text" id="voz-texto" placeholder="Deja vacío para usar la frase de venta por defecto" style="width:100%">
         </div>
-        <button class="btn" id="btn-probar-voces" onclick="probarVoces()">🎧 Enviarme las 13 voces</button>
+        <div class="form-row" style="margin-bottom:10px">
+          <label style="display:block;font-size:0.8rem;color:#a0a0c0;margin-bottom:4px">Motor de voz (piloto: comparar con la misma frase)</label>
+          <select id="voz-proveedor" style="width:100%;max-width:320px" onchange="document.getElementById('voz-ids-row').style.display = this.value === 'openai' ? 'none' : ''">
+            <option value="openai">OpenAI — las 13 voces del panel</option>
+            <option value="elevenlabs">ElevenLabs — por voice_id (necesita ELEVENLABS_API_KEY)</option>
+            <option value="fish">Fish Audio S2.1 Pro — por reference_id (necesita FISH_AUDIO_API_KEY)</option>
+          </select>
+        </div>
+        <div class="form-row" id="voz-ids-row" style="margin-bottom:10px;display:none">
+          <label style="display:block;font-size:0.8rem;color:#a0a0c0;margin-bottom:4px">IDs de voz, separados por coma (ElevenLabs: obligatorio · Fish: vacío = voz por defecto)</label>
+          <input type="text" id="voz-ids" placeholder="ej: 21m00Tcm4TlvDq8ikWAM, EXAVITQu4vr4xnSDxMaL" style="width:100%">
+        </div>
+        <button class="btn" id="btn-probar-voces" onclick="probarVoces()">🎧 Enviarme las voces</button>
         <span id="voz-status" style="margin-left:10px;font-size:0.85rem"></span>
         <div id="voz-result" style="margin-top:12px"></div>
       </div>
@@ -1002,6 +1014,13 @@ async function probarVoces() {
   try {
     const body = { to };   // accountId lo resuelve el backend desde la sesión
     if (txt) body.texto = txt;
+    const proveedor = document.getElementById('voz-proveedor')?.value || 'openai';
+    if (proveedor !== 'openai') {
+      body.proveedor = proveedor;
+      const ids = (document.getElementById('voz-ids')?.value || '').split(',').map(s => s.trim()).filter(Boolean);
+      if (ids.length) body.voces = ids;
+      else if (proveedor === 'elevenlabs') { st.innerHTML = '<span style="color:#ef4444">ElevenLabs necesita al menos un voice_id</span>'; btn.disabled = false; return; }
+    }
     const r = await api('POST', '/api/admin/probar-voces', body);
     st.innerHTML = r.fallidas
       ? `<span style="color:#ef4444">❌ ${r.fallidas}/${r.resultados.length} no llegaron</span>`
