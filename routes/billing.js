@@ -209,6 +209,7 @@ router.post('/checkout', requireAuth, async (req, res) => {
         name:   user.name,
         appUrl,
         priceId,
+        plan,
       });
       return res.json({ url: checkout.url });
     }

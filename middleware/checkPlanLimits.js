@@ -97,8 +97,12 @@ async function enforceMaxAccounts(req, res, next) {
     if (plan.maxAccounts === UNLIMITED) return next();
 
     // Hoy cada usuario tiene UNA cuenta (user.account_id). Si el pedido viene
-    // para otra y el plan no permite varias, se corta acá — antes esto siempre
-    // pasaba y el límite que se vende (multiAccount) no existía.
+    // para otra y el plan no permite varias, se corta acá. NOTA (revisión
+    // 12-09): este middleware NO está montado en ninguna ruta a propósito —
+    // no existe todavía un flujo que cree una segunda cuenta, y montarlo en
+    // las rutas de conexión de canal solo duplicaría el candado de tenencia
+    // (assertOwnsAccount) que ya rechaza cualquier accountId ajeno. Montarlo
+    // cuando exista multicuenta de verdad.
     const pedida = req.body?.accountId || req.query?.accountId || null;
     const propia = user.account_id || user.accountId || null;
     if (pedida && propia && pedida !== propia && Number(plan.maxAccounts || 1) <= 1) {

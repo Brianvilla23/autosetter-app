@@ -29,7 +29,7 @@
  */
 
 const db = require('../db/database');
-const { chequearCapMarketing, contarMarketing, reservarMarketing, configDe } = require('./playbookPedido');
+const { chequearCapMarketing, contarMarketing, reservarMarketing, liberarMarketing, configDe } = require('./playbookPedido');
 
 const LOTE_ENVIO = 15;              // envíos por corrida del worker (~por minuto)
 const MAX_CAMPANAS_ACTIVAS = 2;     // programadas+enviando por cuenta a la vez
@@ -204,9 +204,11 @@ async function procesarCampanas(deps = {}) {
 
         // El MISMO cap por contacto del playbook: campañas y playbook comparten
         // el presupuesto de marketing de cada persona.
-        // Reserva atómica del cupo (chequeo + conteo en una operación):
-        // el worker del playbook post-compra no puede colarse en el medio.
-        const cap = await reservarMarketing(lead._id, lead, cfg);
+        // Chequeo barato para saltar sin escribir. La reserva atómica va justo
+        // antes de enviar: si se hacía acá y la campaña se pausaba por cuota
+        // del plan (o el envío fallaba), el lead quedaba con el cupo del día
+        // quemado sin mensaje (regresión detectada por la revisión del 12-09).
+        const cap = chequearCapMarketing(lead, cfg);
         if (!cap.ok) { stats.bloqueados_cap++; continue; }
 
         // Cuota del plan: si se acabó, la campaña se PAUSA visible (no muere).
@@ -225,7 +227,17 @@ async function procesarCampanas(deps = {}) {
         }
 
         try {
-          const envio = await enviarPlantilla({ account, campana: c, lead });
+          // Reserva atómica (chequeo + conteo): el worker del playbook post-compra
+          // no se cuela en el medio. Si el envío falla, se libera.
+          const reserva = await reservarMarketing(lead._id, lead, cfg);
+          if (!reserva.ok) { stats.bloqueados_cap++; continue; }
+          let envio;
+          try {
+            envio = await enviarPlantilla({ account, campana: c, lead });
+          } catch (e) {
+            await liberarMarketing(lead._id).catch(() => null);
+            throw e;
+          }
           // Meta acepta con 200 y puede fallar después (waEstados): se guarda
           // el wamid para poder cruzarlo. "enviados" = aceptados por Meta.
           const wamid = envio?.messages?.[0]?.id || null;

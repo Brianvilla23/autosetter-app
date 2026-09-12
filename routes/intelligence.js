@@ -93,34 +93,33 @@ router.post('/improvements/analizar-texto', analysisLimiter, async (req, res, ne
     const { accountId, texto } = req.body;
     if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
 
-    // Tope diario por cuenta, reset perezoso por fecha (patrón de voice.js).
-    const settings = await db.findOne(db.settings, { account_id: accountId });
-    const hoy = new Date().toISOString().slice(0, 10);
-    const usadosHoy = settings?.upload_analysis_date === hoy
-      ? Number(settings.upload_analysis_count || 0)
-      : 0;
-    if (usadosHoy >= MAX_ANALISIS_DIA) {
+    // Tope diario por cuenta: reserva ATÓMICA en hora de Chile antes de gastar
+    // (igual que las sesiones de voz); si el modelo falla, se libera. Este era
+    // el único cupo del archivo que seguía en UTC y sin $inc (revisión 12-09).
+    const { reservarCupoDiario, liberarCupoDiario } = require('../services/limits');
+    const cupo = await reservarCupoDiario({ accountId, campo: 'upload_analysis', max: MAX_ANALISIS_DIA });
+    if (!cupo.ok) {
       return res.status(429).json({
         error: `Alcanzaste el máximo de ${MAX_ANALISIS_DIA} análisis por día. Vuelve mañana.`,
       });
     }
+    const settings = cupo.settings;
+    const usadosHoy = Math.max(0, cupo.usados - 1);
 
     // API key: misma precedencia que todo el repo (plataforma → cuenta).
     const apiKey = process.env.OPENAI_API_KEY || settings?.openai_key;
 
     const { analyzeUploadedText } = require('../services/promptImprover');
-    const r = await analyzeUploadedText({ accountId, texto, apiKey });
-    if (!r.ok) return res.status(400).json({ error: r.error });
-
-    // Contar el análisis DESPUÉS del éxito (mismo criterio que las sesiones
-    // de voz): un error del modelo no quema cupo del dueño.
-    if (settings) {
-      await db.update(db.settings, { _id: settings._id },
-        { upload_analysis_date: hoy, upload_analysis_count: usadosHoy + 1 }).catch(() => null);
-    } else {
-      await db.insert(db.settings, {
-        account_id: accountId, upload_analysis_date: hoy, upload_analysis_count: 1,
-      }).catch(() => null);
+    let r;
+    try {
+      r = await analyzeUploadedText({ accountId, texto, apiKey });
+    } catch (e) {
+      await liberarCupoDiario({ accountId, campo: 'upload_analysis' });
+      throw e;
+    }
+    if (!r.ok) {
+      await liberarCupoDiario({ accountId, campo: 'upload_analysis' });
+      return res.status(400).json({ error: r.error });
     }
 
     res.json({ ...r, restantes_hoy: MAX_ANALISIS_DIA - (usadosHoy + 1) });

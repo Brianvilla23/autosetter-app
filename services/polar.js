@@ -59,9 +59,10 @@ function isPolarEnabled() {
  * @param {string} params.name             — nombre del usuario
  * @param {string} params.appUrl           — URL base de la app (para redirect)
  * @param {string} [params.priceId]        — override del POLAR_PRODUCT_PRICE_ID env
+ * @param {string} [params.plan]           — id del plan comprado (inicial/crecimiento/escala/medida/founder)
  * @returns {Promise<{ url: string, id: string }>}
  */
-async function createCheckout({ userId, email, name, appUrl, priceId }) {
+async function createCheckout({ userId, email, name, appUrl, priceId, plan }) {
   const productPriceId = priceId || process.env.POLAR_PRODUCT_PRICE_ID;
   if (!productPriceId) {
     throw new Error('POLAR_PRODUCT_PRICE_ID no configurado');
@@ -75,7 +76,9 @@ async function createCheckout({ userId, email, name, appUrl, priceId }) {
     // metadata se devuelve en el webhook event para reconciliación
     metadata: {
       userId,
-      plan: 'founder',
+      // Antes quedaba fijo en 'founder': un pago de Crecimiento o Escala
+      // activaba la cuenta con los límites de Founder (revisión 12-09).
+      plan: plan || 'founder',
     },
   };
 

@@ -56,7 +56,10 @@ router.get('/', async (req, res) => {
 
     if (search) {
       const q = String(search).replace('@', '').toLowerCase();
-      leads = leads.filter(l => (l.ig_username || '').toLowerCase().includes(q));
+      // Antes solo ig_username: un lead de WhatsApp no se podía encontrar por
+      // su nombre ni por su número (revisión 12-09).
+      leads = leads.filter(l => [l.ig_username, l.contact_name, l.wa_name, l.wa_id, l.phone, l.email]
+        .some(v => String(v || '').toLowerCase().includes(q)));
     }
 
     if (!leads.length) {

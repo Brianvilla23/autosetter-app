@@ -235,6 +235,17 @@ async function reservarMarketing(leadId, lead, cfg) {
   return gane ? { ok: true } : { ok: false, motivo: 'cap_dia' };
 }
 
+/**
+ * Devuelve la reserva de HOY cuando el envío no se hizo: sin esto, un envío
+ * fallido dejaba al lead con mkt_last_day = hoy y ningún mensaje, bloqueado
+ * el resto del día (regresión detectada por la revisión del 12-09).
+ */
+async function liberarMarketing(leadId) {
+  const hoy = diaActual();
+  await db.updateRaw(db.leads, { _id: leadId, mkt_last_day: hoy, mkt_count_month: { $gt: 0 } },
+    { $inc: { mkt_count_month: -1 }, $set: { mkt_last_day: null } }).catch(() => null);
+}
+
 // ── Textos deterministas (utility) ───────────────────────────────────────────
 // Los datos de envío no se dejan en manos del LLM: acá no se alucina.
 
@@ -393,6 +404,15 @@ async function procesarTareas(deps = {}) {
           || `[plantilla ${nombrePlantilla}] paso ${tarea.tipo} del pedido ${lead.shopify_order?.numero || ''}`;
       }
 
+      // Reserva atómica del cupo de marketing JUSTO antes de enviar: el worker
+      // de campañas no se cuela en el medio, y si el envío falla se libera.
+      if (esMarketing) {
+        const reserva = await reservarMarketing(lead._id, lead, cfg);
+        if (!reserva.ok) {
+          await posponer(tarea, 24, { pospuestos_cap: (tarea.pospuestos_cap || 0) + 1 });
+          continue;
+        }
+      }
       try {
         if (porPlantilla) {
           await enviarPlantilla({ account, lead, cfg, tarea });
@@ -400,6 +420,7 @@ async function procesarTareas(deps = {}) {
           await enviarTexto({ account, lead, texto });
         }
       } catch (e) {
+        if (esMarketing) await liberarMarketing(lead._id).catch(() => null);
         const codigo = e?.response?.data?.error?.code;
         // 131049: la casilla de marketing de ESA persona está llena por hoy
         // (todas las marcas suman). Mañana a esta hora suele estar libre.
@@ -420,7 +441,7 @@ async function procesarTareas(deps = {}) {
       await db.update(db.leads, { _id: lead._id }, { last_message_at: new Date().toISOString() })
         .catch(() => null);
 
-      if (esMarketing) await contarMarketing(lead._id, lead);
+      // (el marketing ya quedó contado al reservar el cupo, justo antes del envío)
       await incrementDMCount(tarea.account_id, 1).catch(() => null);
       await db.update(db.pedidoTasks, { _id: tarea._id }, { sent_at: new Date().toISOString() });
       enviadas++;
@@ -515,7 +536,7 @@ async function cancelarPorLead(leadId, reason = 'lead eliminado') {
 module.exports = {
   TIPOS, DEFAULTS, VENTANA_HORAS,
   configDe, agendar, alConfirmarPedido, alCambioEnvio,
-  chequearCapMarketing, contarMarketing, reservarMarketing,
+  chequearCapMarketing, contarMarketing, reservarMarketing, liberarMarketing,
   textoUtility, hintMarketing,
   procesarTareas, cancelarPorLead,
 };
