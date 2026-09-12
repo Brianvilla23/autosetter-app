@@ -783,7 +783,26 @@ async function handleWhatsAppMessage(phoneNumberId, msg, value) {
 
   if (lead.automation !== 'automated' || lead.is_bypassed) return;
 
-  await runConversation({ account, agent, lead, senderId, text, wasAudio, wasImage, mid: midWa });
+  // ── Agrupar la ráfaga ─────────────────────────────────────────────────────
+  // La gente escribe en varias burbujas seguidas. Antes cada una disparaba su
+  // propia respuesta (hilos cruzados, dos llamadas al modelo por un turno).
+  // Cada burbuja se GUARDA al tiro con su wamid (idempotencia y transcripción
+  // intactas aunque el proceso se reinicie) y entra al buffer del lead; se
+  // responde UNA vez cuando la persona termina de escribir.
+  // Ver services/agrupadorMensajes.js. Decisión de Brayan, 2026-09-12.
+  const mediaTag = wasAudio ? 'audio' : wasImage ? 'image' : null;
+  await db.insert(db.messages, {
+    lead_id: lead._id, role: 'user', content: text,
+    ...(midWa ? { mid: midWa } : {}),
+    ...(mediaTag ? { media: mediaTag } : {}),
+  });
+  const { agrupadorGlobal } = require('../services/agrupadorMensajes');
+  const estado = agrupadorGlobal.agregar(lead._id, { text, mid: midWa, wasAudio, wasImage }, (partes) =>
+    runConversation({ account, agent, lead, senderId, partes })
+      .catch(e => console.error('[wa] runConversation (agrupado) error:', e.message)));
+  if (estado.partes > 1) {
+    console.log(`⏳ [wa] ${senderName}: ${estado.partes} mensajes seguidos, esperando ${estado.esperaMs} ms a que termine de escribir`);
+  }
 }
 
 // ── HANDLER: MENSAJE DE MESSENGER (Página de Facebook / Marketplace) ─────────
@@ -864,26 +883,41 @@ async function handleMessengerMessage(pageId, event) {
 // Devuelve true si dejó una respuesta encolada. El comment-to-DM lo necesita:
 // la respuesta PÚBLICA promete un DM, así que no puede publicarse si el DM no
 // va a salir (lead en manos de un humano, límite de plan alcanzado…).
-async function runConversation({ account, agent, lead, senderId, text, isCommentTrigger = false, commentId = null, entregar = null, esMencion = false, respuestaHistoria = false, wasAudio = false, wasImage = false, mid = null }) {
+async function runConversation({ account, agent, lead, senderId, text, isCommentTrigger = false, commentId = null, entregar = null, esMencion = false, respuestaHistoria = false, wasAudio = false, wasImage = false, mid = null, partes = null }) {
   if (lead.automation !== 'automated' || lead.is_bypassed) return false;
-  // Red de seguridad de idempotencia para cualquier canal que llegue acá.
-  if (mid && await mensajeYaProcesado(mid)) return false;
 
-  // Guardar mensaje entrante (no cuenta al límite: son los DMs recibidos)
-  // media marca el origen: 'audio' = nota de voz (content es su transcripción),
-  // 'image' = foto (content es su descripción).
-  const mediaTag = wasAudio ? 'audio' : wasImage ? 'image' : null;
-  // via:'comment' importa: un comentario NO abre la ventana de 24h, así que el
-  // follow-up no puede tratarlo como si el lead nos hubiera escrito.
-  await db.insert(db.messages, {
-    lead_id: lead._id, role: 'user', content: text,
-    ...(mid ? { mid } : {}),
-    ...(mediaTag ? { media: mediaTag } : {}),
-    ...(isCommentTrigger ? { via: 'comment' } : {}),
-    // Una mención tampoco es un mensaje que la persona escribió: marcarla
-    // evita que el follow-up la persiga como si hubiera iniciado conversación.
-    ...(esMencion ? { via: 'story_mention' } : {}),
-  });
+  if (Array.isArray(partes) && partes.length) {
+    // Ráfaga de WhatsApp agrupada (services/agrupadorMensajes.js): cada
+    // burbuja YA se guardó con su wamid al llegar. Acá solo se arma un texto
+    // para el modelo y se relee el lead, porque pasaron segundos y el dueño
+    // pudo haber tomado el control mientras la persona escribía.
+    const fresco = await db.findOne(db.leads, { _id: lead._id });
+    if (fresco) lead = fresco;
+    if (lead.automation !== 'automated' || lead.is_bypassed) return false;
+    text     = partes.map(p => String(p.text || '').trim()).filter(Boolean).join('\n');
+    wasAudio = partes.some(p => p.wasAudio);
+    wasImage = partes.some(p => p.wasImage);
+    if (!text) return false;
+  } else {
+    // Red de seguridad de idempotencia para cualquier canal que llegue acá.
+    if (mid && await mensajeYaProcesado(mid)) return false;
+
+    // Guardar mensaje entrante (no cuenta al límite: son los DMs recibidos)
+    // media marca el origen: 'audio' = nota de voz (content es su transcripción),
+    // 'image' = foto (content es su descripción).
+    const mediaTag = wasAudio ? 'audio' : wasImage ? 'image' : null;
+    // via:'comment' importa: un comentario NO abre la ventana de 24h, así que el
+    // follow-up no puede tratarlo como si el lead nos hubiera escrito.
+    await db.insert(db.messages, {
+      lead_id: lead._id, role: 'user', content: text,
+      ...(mid ? { mid } : {}),
+      ...(mediaTag ? { media: mediaTag } : {}),
+      ...(isCommentTrigger ? { via: 'comment' } : {}),
+      // Una mención tampoco es un mensaje que la persona escribió: marcarla
+      // evita que el follow-up la persiga como si hubiera iniciado conversación.
+      ...(esMencion ? { via: 'story_mention' } : {}),
+    });
+  }
   await db.update(db.leads, { _id: lead._id }, { last_message_at: new Date().toISOString() });
 
   // ── CHECK LÍMITE DE PLAN ─────────────────────────────────────────────────
@@ -1624,3 +1658,4 @@ router.post('/twilio/status', async (req, res) => {
 module.exports = router;
 module.exports.leerBitacora = leerBitacora;
 module.exports.mensajeYaProcesado = mensajeYaProcesado;
+module.exports.runConversation = runConversation;   // solo para tests del agrupador
