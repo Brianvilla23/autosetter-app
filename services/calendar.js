@@ -364,6 +364,7 @@ async function resolveCalendarMarkers(text, { settings, accountId, leadId, leadN
 
 module.exports = {
   isConfigured,
+  createEvent,          // lo usa la agenda propia para espejar la cita en Google
   getAuthUrl,
   exchangeCode,
   verifyState,

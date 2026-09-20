@@ -74,6 +74,9 @@ const db = {
   // "enviada" a 10 audios que nunca llegaron (2026-09-10). Lleva el wa_id del
   // destinatario → entra en la cascada de supresión por cuenta.
   waEstados:     new Datastore({ filename: path.join(dir, 'waEstados.db'),     autoload: true }),
+  // Agenda propia (barberías y todo negocio con hora): nombre + teléfono del
+  // cliente → dato personal, entra en la cascada de supresión por cuenta.
+  citas:         new Datastore({ filename: path.join(dir, 'citas.db'),         autoload: true }),
 };
 
 // Compact on load

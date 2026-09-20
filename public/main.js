@@ -460,6 +460,7 @@ function loadSection(name) {
     case 'magnets':   loadMagnets(); break;
     case 'postrules': loadPostRules(); break;
     case 'watemplates': loadWaTemplates(); break;
+    case 'agenda':    loadAgenda(); break;
     case 'fuentes':   loadFuentes(); break;
     case 'growth':    loadGrowth(); break;
     case 'settings':  loadSettings(); break;
@@ -5512,3 +5513,160 @@ try { _safeExpose('toggleMenuMovil', toggleMenuMovil); } catch {}
 // "Ver conversación completa" del CRM llamaba a una función que no existía.
 function showLeadDetail(id) { return openLeadModal(id); }
 try { _safeExpose('showLeadDetail', showLeadDetail); } catch {}
+
+// ── AGENDA PROPIA ─────────────────────────────────────────────────────────────
+// Horario variable por día, cupos reales, atraso del día. El agente agenda
+// contra esto (services/agenda.js). Primer cliente: barbería con horario que
+// cambia según el cuidado de un familiar (2026-09-19).
+const AG_DIAS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+let AG_CFG = null;
+
+async function loadAgenda() {
+  const fechaEl = document.getElementById('agenda-fecha');
+  if (!fechaEl) return;
+  const r = await apiFetch('/api/agenda/config');
+  if (!r) return;
+  AG_CFG = r.config;
+  if (!fechaEl.value) fechaEl.value = r.hoy;
+  agendaPintarConfig();
+  await agendaPintarDia();
+}
+
+function agendaPintarConfig() {
+  const c = AG_CFG;
+  document.getElementById('agenda-activa').checked = c.activa === true;
+  document.getElementById('agenda-paso').value = String(c.paso_min);
+  document.getElementById('agenda-buffer').value = c.buffer_min;
+  const h = document.getElementById('agenda-horario');
+  h.innerHTML = [1, 2, 3, 4, 5, 6, 0].map(d => `
+    <label style="font-size:13px;margin:0">${AG_DIAS[d]}</label>
+    <input type="text" class="form-input agenda-dia" data-dia="${d}" value="${escHtmlSafe((c.horario[d] || []).join(', '))}" placeholder="cerrado">`).join('');
+  const ex = document.getElementById('agenda-excepciones');
+  const fechas = Object.keys(c.excepciones || {}).sort();
+  ex.innerHTML = fechas.length ? fechas.map(f => `
+    <div style="display:flex;gap:8px;align-items:center;font-size:13px;padding:4px 0">
+      <span style="width:110px">${f}</span><span style="flex:1;color:var(--text-2)">${c.excepciones[f].length ? escHtmlSafe(c.excepciones[f].join(', ')) : 'cerrado'}</span>
+      <button class="btn-ghost" style="padding:3px 10px" onclick="agendaExcQuitar('${f}')">Quitar</button></div>`).join('')
+    : '<div style="font-size:13px;color:var(--text-3)">Ninguno</div>';
+  const sv = document.getElementById('agenda-servicios');
+  sv.innerHTML = (c.servicios || []).map((s, i) => `
+    <div class="agenda-servicio" style="display:flex;gap:8px;margin:4px 0">
+      <input type="text" class="form-input" data-k="nombre" value="${escHtmlSafe(s.nombre)}" placeholder="Nombre" style="flex:2">
+      <input type="number" class="form-input" data-k="min" value="${s.min}" min="10" max="240" step="5" style="width:90px" title="minutos">
+      <input type="number" class="form-input" data-k="precio" value="${s.precio}" min="0" step="500" style="width:110px" title="precio">
+      <button class="btn-ghost" style="padding:3px 10px" onclick="this.parentElement.remove()">✕</button></div>`).join('');
+}
+
+function agendaLeerConfig() {
+  const c = { ...AG_CFG };
+  c.activa = document.getElementById('agenda-activa').checked;
+  c.paso_min = Number(document.getElementById('agenda-paso').value);
+  c.buffer_min = Number(document.getElementById('agenda-buffer').value) || 0;
+  c.horario = {};
+  document.querySelectorAll('.agenda-dia').forEach(i => {
+    c.horario[i.dataset.dia] = i.value.split(',').map(s => s.trim()).filter(Boolean);
+  });
+  c.servicios = [...document.querySelectorAll('.agenda-servicio')].map(row => ({
+    nombre: row.querySelector('[data-k="nombre"]').value.trim(),
+    min: Number(row.querySelector('[data-k="min"]').value),
+    precio: Number(row.querySelector('[data-k="precio"]').value),
+  })).filter(s => s.nombre);
+  return c;
+}
+
+async function agendaGuardar() {
+  const cfg = agendaLeerConfig();
+  const r = await apiFetch('/api/agenda/config', 'PUT', { config: cfg }, { conError: true });
+  if (!r?.ok) { showToast('No se pudo guardar: ' + (r?.error || 'error')); return; }
+  AG_CFG = r.config;
+  agendaPintarConfig();
+  showToast(cfg.activa ? 'Agenda guardada. El agente ya agenda solo.' : 'Agenda guardada (inactiva: el agente no agenda).');
+  agendaPintarDia();
+}
+
+function agendaExcAgregar() {
+  const f = document.getElementById('agenda-exc-fecha').value;
+  if (!f) { showToast('Elige la fecha'); return; }
+  const rangos = document.getElementById('agenda-exc-rangos').value.split(',').map(s => s.trim()).filter(Boolean);
+  AG_CFG = agendaLeerConfig();
+  AG_CFG.excepciones = { ...(AG_CFG.excepciones || {}), [f]: rangos };
+  document.getElementById('agenda-exc-rangos').value = '';
+  agendaPintarConfig();
+}
+function agendaExcQuitar(f) {
+  AG_CFG = agendaLeerConfig();
+  const ex = { ...(AG_CFG.excepciones || {}) }; delete ex[f]; AG_CFG.excepciones = ex;
+  agendaPintarConfig();
+}
+function agendaServicioAgregar() {
+  AG_CFG = agendaLeerConfig();
+  AG_CFG.servicios = [...(AG_CFG.servicios || []), { nombre: '', min: 30, precio: 0 }];
+  agendaPintarConfig();
+}
+
+async function agendaPintarDia() {
+  const fecha = document.getElementById('agenda-fecha').value;
+  const r = await apiFetch('/api/agenda/citas?fecha=' + encodeURIComponent(fecha));
+  if (!r) return;
+  document.getElementById('agenda-ventanas').textContent = r.ventanas.length ? 'Atiendes ' + r.ventanas.join(' y ') : 'Ese día no atiendes';
+  document.getElementById('agenda-atraso').value = r.atraso || 0;
+  const ESTADO = { agendada: ['Agendada', '#6b7280'], confirmada: ['Confirmada', '#059669'], atendida: ['Atendida', '#2563eb'], no_vino: ['No vino', '#dc2626'], cancelada: ['Cancelada', '#9ca3af'] };
+  const lista = document.getElementById('agenda-lista');
+  lista.innerHTML = r.citas.length ? r.citas.map(c => {
+    const [txt, color] = ESTADO[c.estado] || [c.estado, '#6b7280'];
+    const activa = ['agendada', 'confirmada'].includes(c.estado);
+    const hora = r.atraso && activa && c.hora_estimada !== c.hora ? `<s style="color:var(--text-3)">${c.hora}</s> ${c.hora_estimada}` : c.hora;
+    return `<div style="display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:14px">
+      <strong style="width:110px">${hora}</strong>
+      <span style="flex:1">${escHtmlSafe(c.nombre)}${c.telefono ? ` <span style="color:var(--text-3);font-size:12px">+${escHtmlSafe(c.telefono)}</span>` : ''} · ${escHtmlSafe(c.servicio)} (${c.duracion_min} min)</span>
+      <span style="font-size:12px;font-weight:600;color:${color}">${txt}</span>
+      ${activa ? `
+        ${c.estado === 'agendada' ? `<button class="btn-ghost" style="padding:3px 10px" onclick="agendaEstado('${c.id}','confirmada')">Confirmar</button>` : ''}
+        <button class="btn-ghost" style="padding:3px 10px" onclick="agendaEstado('${c.id}','atendida')">Atendida</button>
+        <button class="btn-ghost" style="padding:3px 10px" onclick="agendaEstado('${c.id}','no_vino')">No vino</button>
+        <button class="btn-ghost" style="padding:3px 10px;color:#dc2626" onclick="agendaEstado('${c.id}','cancelada')">Cancelar</button>` : ''}
+    </div>`;
+  }).join('') : '<div style="padding:16px;color:var(--text-3);font-size:14px">Sin citas ese día.</div>';
+  const cupos = document.getElementById('agenda-n-hora');
+  cupos.innerHTML = r.cupos.length ? r.cupos.map(h => `<option>${h}</option>`).join('') : '<option value="">sin cupos</option>';
+  const sv = document.getElementById('agenda-n-servicio');
+  sv.innerHTML = (AG_CFG?.servicios || []).map(s => `<option>${escHtmlSafe(s.nombre)}</option>`).join('');
+  lista.insertAdjacentHTML('afterend', '');
+}
+
+async function agendaEstado(id, estado) {
+  if (estado === 'cancelada' && !confirm('¿Cancelar esta cita?')) return;
+  const r = await apiFetch('/api/agenda/citas/' + id, 'PATCH', { estado }, { conError: true });
+  if (!r?.ok) { showToast('No se pudo: ' + (r?.error || 'error')); return; }
+  agendaPintarDia();
+}
+
+async function agendaCrear() {
+  const fecha = document.getElementById('agenda-fecha').value;
+  const nombre = document.getElementById('agenda-n-nombre').value.trim();
+  const telefono = document.getElementById('agenda-n-tel').value.trim();
+  const hora = document.getElementById('agenda-n-hora').value;
+  const servicio = document.getElementById('agenda-n-servicio').value;
+  if (!nombre || !hora) { showToast('Falta el nombre o la hora'); return; }
+  const r = await apiFetch('/api/agenda/citas', 'POST', { nombre, telefono, fecha, hora, servicio }, { conError: true });
+  if (!r?.ok) { showToast(r?.error ? 'No se pudo: ' + r.error : 'No se pudo agendar'); return; }
+  document.getElementById('agenda-n-nombre').value = ''; document.getElementById('agenda-n-tel').value = '';
+  showToast('Cita agendada');
+  agendaPintarDia();
+}
+
+async function agendaAtraso() {
+  const minutos = Number(document.getElementById('agenda-atraso').value) || 0;
+  const r = await apiFetch('/api/agenda/atraso', 'POST', { minutos }, { conError: true });
+  if (!r?.ok) { showToast('No se pudo: ' + (r?.error || 'error')); return; }
+  const aviso = document.getElementById('agenda-atraso-aviso');
+  if (minutos && r.afectadas.length) {
+    aviso.style.display = '';
+    aviso.innerHTML = `Vas <strong>${minutos} min</strong> atrasado. Cambian de hora: ` + r.afectadas.map(c => `<strong>${escHtmlSafe(c.nombre)}</strong> ${c.hora}→${c.hora_estimada}`).join(' · ') + '. Avísales por el chat (el aviso automático viene con el playbook).';
+  } else {
+    aviso.style.display = minutos ? '' : 'none';
+    aviso.textContent = minutos ? `Vas ${minutos} min atrasado; no hay citas pendientes que cambien.` : '';
+  }
+  agendaPintarDia();
+}
+try { _safeExpose('loadAgenda', loadAgenda); _safeExpose('agendaGuardar', agendaGuardar); _safeExpose('agendaExcAgregar', agendaExcAgregar); _safeExpose('agendaExcQuitar', agendaExcQuitar); _safeExpose('agendaServicioAgregar', agendaServicioAgregar); _safeExpose('agendaEstado', agendaEstado); _safeExpose('agendaCrear', agendaCrear); _safeExpose('agendaAtraso', agendaAtraso); } catch {}

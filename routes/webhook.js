@@ -1061,8 +1061,15 @@ ${entregar
   // (con la disponibilidad real de los próximos 7 días; fail-closed si falla)
   let calendarContext = null;
   try {
-    const { buildCalendarContext } = require('../services/calendar');
-    calendarContext = await buildCalendarContext(settings, account._id);
+    // Agenda propia activa → cupos reales de Atinov (horario variable, atraso).
+    // Si no, Google Calendar como siempre. Nunca las dos: mismo marcador.
+    const agendaPropia = require('../services/agenda');
+    if (agendaPropia.agendaActiva(settings)) {
+      calendarContext = await agendaPropia.buildAgendaContext(settings, account._id);
+    } else {
+      const { buildCalendarContext } = require('../services/calendar');
+      calendarContext = await buildCalendarContext(settings, account._id);
+    }
   } catch (e) { /* agenda opcional */ }
 
   // ── ¿Te sigue? Cambia el guion: a quien ya te sigue no le explicas quién
@@ -1133,7 +1140,10 @@ ${entregar
   // ── Resolver marcadores [AGENDAR: ...] → cita real en Google Calendar ─────
   // Mismo contrato que el pago: fail-closed, el marcador nunca rompe el mensaje.
   try {
-    const { resolveCalendarMarkers } = require('../services/calendar');
+    const agendaPropia = require('../services/agenda');
+    const resolveCalendarMarkers = agendaPropia.agendaActiva(settings)
+      ? (txt, o) => agendaPropia.resolveAgendaMarkers(txt, { ...o, leadPhone: lead.wa_id || lead.phone || null }).then(r => ({ text: r.text, events: r.citas }))
+      : require('../services/calendar').resolveCalendarMarkers;
     const agendado = await resolveCalendarMarkers(reply, {
       settings, accountId: account._id, leadId: lead._id,
       leadName: lead.wa_name || lead.ig_username,

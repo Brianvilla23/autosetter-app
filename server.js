@@ -557,6 +557,8 @@ app.use('/api/usage',         apiLimiter, requireAuth, require('./routes/usage')
 // GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET.
 app.get('/api/calendar/callback', apiLimiter, require('./routes/calendar').handleOAuthCallback);
 app.use('/api/calendar', apiLimiter, requireAuth, require('./routes/calendar').router);
+// Agenda propia: horario variable por día, cupos reales, atraso del día.
+app.use('/api/agenda',   apiLimiter, requireAuth, checkSubscription, require('./routes/agenda'));
 
 // Demo de voz en vivo (OpenAI Realtime). Cada sesión gasta plata real de la
 // key de la plataforma, así que va con TODOS los candados: rate limit propio

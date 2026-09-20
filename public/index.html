@@ -76,6 +76,10 @@
       <span class="nav-icon"><svg viewBox="0 0 20 20"><path d="M14 17h2.75A1.75 1.75 0 0018.5 15.25V4.75A1.75 1.75 0 0016.75 3H14v14zM12.5 3h-5v14h5V3zM3.25 3H6v14H3.25a1.75 1.75 0 01-1.75-1.75V4.75c0-.966.784-1.75 1.75-1.75z"/></svg></span>
       CRM
     </a>
+    <a class="nav-item" data-section="agenda">
+      <span class="nav-icon"><svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.75 2a.75.75 0 01.75.75V4h7V2.75a.75.75 0 011.5 0V4h.25A2.75 2.75 0 0118 6.75v8.5A2.75 2.75 0 0115.25 18H4.75A2.75 2.75 0 012 15.25v-8.5A2.75 2.75 0 014.75 4H5V2.75A.75.75 0 015.75 2zm-1 5.5c-.69 0-1.25.56-1.25 1.25v6.5c0 .69.56 1.25 1.25 1.25h10.5c.69 0 1.25-.56 1.25-1.25v-6.5c0-.69-.56-1.25-1.25-1.25H4.75z" clip-rule="evenodd"/></svg></span>
+      Agenda
+    </a>
     <a class="nav-item" data-section="analytics">
       <span class="nav-icon"><svg viewBox="0 0 20 20"><path d="M15.5 2A1.5 1.5 0 0014 3.5v13a1.5 1.5 0 001.5 1.5h1a1.5 1.5 0 001.5-1.5v-13A1.5 1.5 0 0016.5 2h-1zM9.5 6A1.5 1.5 0 008 7.5v9A1.5 1.5 0 009.5 18h1a1.5 1.5 0 001.5-1.5v-9A1.5 1.5 0 0010.5 6h-1zM3.5 10A1.5 1.5 0 002 11.5v5A1.5 1.5 0 003.5 18h1A1.5 1.5 0 006 16.5v-5A1.5 1.5 0 004.5 10h-1z"/></svg></span>
       Analytics
@@ -814,6 +818,69 @@
   </section>
 
   <!-- PLANTILLAS DE WHATSAPP — administración de message templates del cliente -->
+  <section id="section-agenda" class="section">
+    <div class="page-header">
+      <div>
+        <h1>Agenda</h1>
+        <p>Tus horas reales. El agente ofrece solo los cupos libres de acá y agenda solo. Si vas atrasado, márcalo y todo lo que falta se corre.</p>
+      </div>
+      <button class="btn-ghost" onclick="loadAgenda()" title="Refrescar" style="padding:7px 12px">↻</button>
+    </div>
+
+    <div class="settings-card" id="agenda-dia-card">
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+        <input type="date" id="agenda-fecha" class="form-input" style="width:auto" onchange="loadAgenda()">
+        <span id="agenda-ventanas" style="font-size:13px;color:var(--text-2)"></span>
+        <span style="flex:1"></span>
+        <label style="font-size:13px;color:var(--text-2)">Voy atrasado</label>
+        <input type="number" id="agenda-atraso" class="form-input" min="0" max="240" step="5" value="0" style="width:80px" title="minutos">
+        <button class="btn-secondary" onclick="agendaAtraso()">Aplicar atraso</button>
+      </div>
+      <div id="agenda-atraso-aviso" style="display:none;font-size:13px;padding:10px 12px;border-radius:8px;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.35);margin-bottom:12px"></div>
+      <div id="agenda-lista"></div>
+      <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
+        <div style="font-weight:600;font-size:14px;margin-bottom:8px">Agendar a mano</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input type="text" id="agenda-n-nombre" class="form-input" placeholder="Nombre" style="width:160px">
+          <input type="text" id="agenda-n-tel" class="form-input" placeholder="+56 9 …" style="width:140px">
+          <select id="agenda-n-hora" class="form-input" style="width:110px"></select>
+          <select id="agenda-n-servicio" class="form-input" style="width:170px"></select>
+          <button class="btn-primary" onclick="agendaCrear()">Agendar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-card">
+      <h3>Horario y servicios</h3>
+      <p>El agente solo ofrece horas dentro de esto. Escribe rangos como <code>17:00-21:00</code>; varios separados por coma. Vacío = cerrado.</p>
+      <div class="form-row" style="display:flex;align-items:center;gap:10px">
+        <label style="margin:0;flex:1">Agenda activa (el agente agenda solo)</label>
+        <input type="checkbox" id="agenda-activa" style="width:18px;height:18px">
+      </div>
+      <div id="agenda-horario" style="display:grid;grid-template-columns:70px 1fr;gap:6px 10px;align-items:center;margin:10px 0"></div>
+      <div style="display:flex;gap:10px">
+        <div class="form-row" style="flex:1"><label>Cupos cada (min)</label>
+          <select id="agenda-paso" class="form-input"><option>10</option><option>15</option><option>20</option><option selected>30</option><option>60</option></select></div>
+        <div class="form-row" style="flex:1"><label>Colchón entre citas (min)</label><input type="number" id="agenda-buffer" class="form-input" min="0" max="60" value="0"></div>
+      </div>
+      <div class="form-row">
+        <label>Días distintos (cerrado o con otro horario)</label>
+        <div id="agenda-excepciones"></div>
+        <div style="display:flex;gap:8px;margin-top:6px">
+          <input type="date" id="agenda-exc-fecha" class="form-input" style="width:auto">
+          <input type="text" id="agenda-exc-rangos" class="form-input" placeholder="vacío = cerrado, o 10:00-14:00" style="flex:1">
+          <button class="btn-secondary" onclick="agendaExcAgregar()">Agregar</button>
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Servicios</label>
+        <div id="agenda-servicios"></div>
+        <button class="btn-secondary" onclick="agendaServicioAgregar()" style="margin-top:6px">+ Servicio</button>
+      </div>
+      <button class="btn-primary" id="btn-agenda-guardar" onclick="agendaGuardar()">Guardar agenda</button>
+    </div>
+  </section>
+
   <section id="section-watemplates" class="section">
     <div class="page-header">
       <div>
