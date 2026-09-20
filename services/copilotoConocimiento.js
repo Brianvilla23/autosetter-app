@@ -22,6 +22,8 @@
  * sabe en vez de inventar. Se mantiene corto a propósito: cada línea viaja en
  * cada consulta y se paga en tokens.
  */
+const { hallazgosDelRunbook, textoRunbook } = require('./copilotoRunbook');
+
 const MANUAL = `
 CANALES
 - Instagram: se conecta en Ajustes con un clic (OAuth de Meta). Requiere cuenta
@@ -87,6 +89,19 @@ TIENDA ONLINE (Shopify) Y PLAYBOOK POST-COMPRA
   quien ya recibió su marketing del día o del mes (se reporta en las
   estadísticas), respeta el tope del plan SIN entrar en overage, y avanza de
   a ~15 envíos por minuto a propósito. Máximo 2 campañas activas a la vez.
+
+AGENDA PROPIA (barberías, clínicas, todo negocio con hora)
+- Sección Agenda del panel. Se activa con un interruptor; mientras está
+  apagada, agendar usa Google Calendar si está conectado.
+- Configuración: horario por día de la semana (varios tramos por día),
+  excepciones por fecha (un día cerrado o con horario distinto; la excepción
+  manda), servicios con duración y precio, cupos cada N minutos.
+- El agente ve los cupos reales de los próximos 7 días y agenda solo con
+  nombre y teléfono; si dos personas piden la misma hora gana la primera y a
+  la otra le propone alternativas. Estados: agendada, confirmada, atendida,
+  no vino, cancelada.
+- "Aplicar atraso": si el profesional va tarde, corre las citas pendientes
+  del día y muestra la hora estimada de cada una.
 
 PANEL INTELIGENCIA Y MEJORAS DEL AGENTE
 - El Panel Inteligencia muestra lo aprendido de las conversaciones: objeciones
@@ -195,7 +210,24 @@ function diagnosticar(e) {
     out.push('El plan incluye llamadas pero Twilio no está configurado, así que el agente no puede llamar todavía.');
   }
 
+  // 5. Lo que el libro de fallas sabe detectar solo (services/copilotoRunbook.js).
+  out.push(...hallazgosDelRunbook(e));
+
   return out;
+}
+
+/**
+ * Líneas de estado que solo existen desde el 20-09-2026 (agenda, playbook,
+ * pagos, control humano, entregas). Cada una se omite si el estado no la trae.
+ */
+function lineasExtra(e) {
+  const l = [];
+  if (e.wa) l.push(`Entregas de WhatsApp fallidas en 7 días: ${e.wa.totalFallos7d || 0}`);
+  if (e.agenda) l.push(`Agenda propia: ${e.agenda.activa ? `activa (${e.agenda.diasConHorario || 0} día(s) con horario, ${e.agenda.servicios || 0} servicio(s), ${e.agenda.citasHoy || 0} cita(s) hoy)` : 'apagada (agendar usa Google Calendar si está conectado)'}`);
+  if (e.playbook) l.push(`Playbook post-compra: ${e.playbook.activo ? 'activo' : 'apagado'}`);
+  if (e.pagos) l.push(`Cobros en el chat (Mercado Pago): ${e.pagos.mp ? 'token configurado' : 'sin token'}`);
+  if (e.leads) l.push(`Personas bajo control humano (el agente no les responde): ${e.leads.bypass || 0}`);
+  return l.length ? '\n' + l.join('\n') : '';
 }
 
 /**
@@ -204,7 +236,11 @@ function diagnosticar(e) {
  * modelo lee antes de responder.
  */
 function construirPrompt(estado) {
-  const partes = [REGLAS, `--- CÓMO FUNCIONA ATINOV ---\n${MANUAL}`];
+  const partes = [
+    REGLAS,
+    `--- CÓMO FUNCIONA ATINOV ---\n${MANUAL}`,
+    `--- LIBRO DE FALLAS (problemas ya vistos en cuentas reales y su arreglo) ---\n${textoRunbook()}`,
+  ];
 
   if (estado) {
     const c = estado.canales || {};
@@ -221,7 +257,7 @@ ${linea('WhatsApp', c.whatsapp)}
 ${linea('Messenger', c.messenger)}
 Agentes: ${estado.agentes?.total || 0} creados, ${estado.agentes?.activos || 0} habilitados${estado.agentes?.nombres?.length ? ` (${estado.agentes.nombres.join(', ')})` : ''}
 Uso del mes: ${u.dms || 0}${Number.isFinite(p.maxDMs) ? `/${p.maxDMs}` : ''} conversaciones · ${u.whatsapp || 0}${Number.isFinite(p.maxDMsWhatsApp) ? `/${p.maxDMsWhatsApp}` : ''} de WhatsApp · ${r1(u.minutosVoz)}${Number.isFinite(p.minutosLlamada) ? `/${p.minutosLlamada}` : ''} minutos de llamada
-Llamadas con IA: ${p.llamadas ? (estado.twilioListo ? 'incluidas y configuradas' : 'incluidas en el plan pero Twilio sin configurar') : 'NO incluidas en este plan'}`);
+Llamadas con IA: ${p.llamadas ? (estado.twilioListo ? 'incluidas y configuradas' : 'incluidas en el plan pero Twilio sin configurar') : 'NO incluidas en este plan'}${lineasExtra(estado)}`);
 
     const hallazgos = diagnosticar(estado);
     if (hallazgos.length) {
@@ -236,4 +272,4 @@ ${hallazgos.map(h => `• ${h}`).join('\n')}`);
   return partes.join('\n\n');
 }
 
-module.exports = { MANUAL, REGLAS, diagnosticar, construirPrompt };
+module.exports = { MANUAL, REGLAS, diagnosticar, construirPrompt, lineasExtra };

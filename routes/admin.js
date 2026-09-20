@@ -1708,6 +1708,31 @@ router.delete('/errors', async (req, res) => {
 });
 
 /**
+ * GET /api/admin/copiloto/consultas?limit=100&filtro=todas|no_utiles|sin_revisar
+ * Lo que los dueños le preguntan al copiloto y qué respondió. Las marcadas
+ * "no me sirvió" y sin revisar son la cola de aprendizaje del soporte: cada
+ * una que se resuelve termina como entrada en services/copilotoRunbook.js.
+ */
+router.get('/copiloto/consultas', async (req, res) => {
+  try {
+    const copiloto = require('../services/copiloto');
+    res.json(await copiloto.resumenConsultas({ limit: req.query.limit, filtro: req.query.filtro || 'todas' }));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/** PATCH /api/admin/copiloto/consultas/:id  { nota? } → soporte la marca revisada. */
+router.patch('/copiloto/consultas/:id', async (req, res) => {
+  try {
+    const copiloto = require('../services/copiloto');
+    const nota = req.body && req.body.nota ? String(req.body.nota).slice(0, 500) : null;
+    const c = await copiloto.marcarRevisada(req.params.id, nota);
+    if (!c) return res.status(404).json({ error: 'Consulta no encontrada.' });
+    await audit(req, 'copiloto.consulta.revisada', c._id, { nota: nota ? nota.slice(0, 200) : null });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
  * GET /api/admin/funnel
  * Funnel de activación: visitante → registrado → IG → agente personalizado →
  * recibió DM → generó lead HOT → pagando.

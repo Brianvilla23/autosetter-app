@@ -5405,6 +5405,31 @@ async function copiSaludar() {
   }
 }
 
+/**
+ * "Me sirvió / No me sirvió" bajo cada respuesta. Lo que no sirve es lo que
+ * soporte revisa para que el copiloto aprenda (libro de fallas).
+ */
+function copiFeedback(burbuja, consultaId) {
+  const fila = document.createElement('div');
+  fila.style.cssText = 'display:flex;gap:6px;margin-top:8px';
+  const boton = (txt, util) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = txt;
+    b.style.cssText = 'font-size:11.5px;padding:3px 9px;border-radius:7px;border:1px solid #3a3a5a;background:#1e1e33;color:#c9c9dc;cursor:pointer';
+    b.onclick = async () => {
+      fila.querySelectorAll('button').forEach(x => { x.disabled = true; x.style.opacity = '.5'; });
+      await apiFetch('/api/copiloto/feedback', 'POST', { id: consultaId, util }, { conError: true });
+      fila.textContent = util ? 'Gracias.' : 'Anotado: soporte lo va a revisar.';
+      fila.style.cssText = 'font-size:11.5px;color:#7a7a95;margin-top:8px';
+    };
+    return b;
+  };
+  fila.appendChild(boton('Me sirvió', true));
+  fila.appendChild(boton('No me sirvió', false));
+  burbuja.appendChild(fila);
+}
+
 function copiToggle(abrir) {
   const panel = document.getElementById('copi-panel');
   const fab = document.getElementById('copi-fab');
@@ -5439,7 +5464,8 @@ async function copiEnviar() {
     const err = copiBurbuja('assistant', `⚠️ ${r?.error || 'No se pudo responder. Reintenta.'}`);
     if (err) err.style.borderColor = '#7a3b3b';
   } else {
-    copiBurbuja('assistant', r.respuesta);
+    const burbuja = copiBurbuja('assistant', r.respuesta);
+    if (burbuja && r.consultaId) copiFeedback(burbuja, r.consultaId);
     COPI.historial.push({ role: 'user', content: texto }, { role: 'assistant', content: r.respuesta });
   }
   COPI.enviando = false;

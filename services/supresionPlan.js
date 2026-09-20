@@ -41,6 +41,7 @@ const POR_CUENTA = [
   ['waEstados',        'account_id'],   // wa_id del destinatario + motivo del fallo
   ['errorLog',         'accountId'],    // guarda email e IP del titular (auditoría 12-09)
   ['citas',            'account_id'],   // agenda propia: nombre y teléfono del cliente
+  ['copilotoConsultas','account_id'],   // preguntas del dueño al copiloto (texto libre)
 ];
 
 /** Colecciones que cuelgan del usuario, no de la cuenta. */

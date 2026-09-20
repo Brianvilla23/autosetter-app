@@ -77,6 +77,10 @@ const db = {
   // Agenda propia (barberías y todo negocio con hora): nombre + teléfono del
   // cliente → dato personal, entra en la cascada de supresión por cuenta.
   citas:         new Datastore({ filename: path.join(dir, 'citas.db'),         autoload: true }),
+  // Consultas al copiloto (pregunta + respuesta + "me sirvió"): el ciclo de
+  // aprendizaje del soporte (2026-09-20). Lleva texto libre del dueño → entra
+  // en la cascada de supresión por cuenta.
+  copilotoConsultas: new Datastore({ filename: path.join(dir, 'copilotoConsultas.db'), autoload: true }),
 };
 
 // Compact on load

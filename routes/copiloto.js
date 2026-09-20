@@ -50,4 +50,21 @@ router.get('/estado', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+/**
+ * POST /api/copiloto/feedback
+ * Body: { id, util: true|false, comentario? }
+ * "Me sirvió / No me sirvió" bajo cada respuesta. Lo que NO sirvió es la
+ * materia prima del libro de fallas: soporte lo revisa en el admin.
+ */
+router.post('/feedback', async (req, res, next) => {
+  try {
+    const accountId = cuentaDelToken(req);
+    if (!accountId) return res.status(400).json({ error: 'Tu sesión no tiene una cuenta asociada.' });
+    const { id, util, comentario } = req.body || {};
+    const ok = await copiloto.calificarConsulta({ accountId, id, util, comentario });
+    if (!ok) return res.status(404).json({ error: 'Consulta no encontrada.' });
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+
 module.exports = router;
