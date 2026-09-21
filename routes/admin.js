@@ -2411,23 +2411,31 @@ router.get('/self-test', async (req, res) => {
         headers: { 'Authorization': `Bearer ${process.env.MP_ACCESS_TOKEN}` },
         timeout: 8000,
       });
-      // Los planes VIGENTES son inicial/crecimiento/escala. Hasta el 21-09
-      // esto miraba STARTER/PRO/AGENCY (los heredados), así que reportaba
-      // 0/3 aunque estuviera todo bien configurado.
-      const VIGENTES = ['INICIAL', 'CRECIMIENTO', 'ESCALA'];
-      const faltan = VIGENTES.filter(n => !process.env[`MP_PLAN_${n}`]);
-      const sinFirma = !process.env.MP_WEBHOOK_SECRET;
+      // Qué plan se puede comprar DE VERDAD por Mercado Pago hoy: el panel
+      // tiene un solo botón y compra `founder` (public/index.html →
+      // upgradePlan('founder','mp')). Exigir la escalera acá mandaba a
+      // configurar planes que ningún botón usa, y callaba el que sí importa.
+      // Cuando se cierre la decisión de precio, esta lista se mueve junto con
+      // los botones del panel.
+      const COMPRABLES = ['FOUNDER'];
+      const TODOS = ['FOUNDER', 'INICIAL', 'CRECIMIENTO', 'ESCALA'];
+      const puestos = TODOS.filter(n => process.env[`MP_PLAN_${n}`]);
+      const faltanCompra = COMPRABLES.filter(n => !process.env[`MP_PLAN_${n}`]);
       const usuario = r.data.email || r.data.nickname || '?';
       const pegas = [];
-      if (faltan.length) pegas.push(`faltan ${faltan.map(n => `MP_PLAN_${n}`).join(', ')}`);
-      if (sinFirma) pegas.push('falta MP_WEBHOOK_SECRET (el webhook no verifica firma)');
+      if (faltanCompra.length) {
+        pegas.push(`falta ${faltanCompra.map(n => `MP_PLAN_${n}`).join(', ')} — es el plan que compra el botón del panel`);
+      }
+      if (!process.env.MP_WEBHOOK_SECRET) {
+        pegas.push('falta MP_WEBHOOK_SECRET (el webhook no verifica firma)');
+      }
       tests.push({
         id: 'mercadopago',
         name: 'Mercado Pago',
         status: pegas.length ? 'warn' : 'pass',
         message: pegas.length
-          ? `Token OK (usuario ${usuario}) pero ${pegas.join(' · ')}`
-          : `OK · usuario ${usuario} · 3/3 planes vigentes · webhook firmado`,
+          ? `Token OK (usuario ${usuario})${puestos.length ? ` · planes puestos: ${puestos.join(', ')}` : ' · ningún plan configurado'} · ${pegas.join(' · ')}`
+          : `OK · usuario ${usuario} · planes: ${puestos.join(', ')} · webhook firmado`,
       });
     } catch (e) {
       tests.push({ id: 'mercadopago', name: 'Mercado Pago', status: 'fail', message: e.response?.data?.message || e.message });
@@ -2552,8 +2560,9 @@ router.get('/env-status', async (req, res) => {
     mercadoPago: {
       MP_ACCESS_TOKEN:     has('MP_ACCESS_TOKEN'),
       MP_WEBHOOK_SECRET:   has('MP_WEBHOOK_SECRET'),
-      // Planes vigentes (los heredados starter/pro/agency solo sostienen
-      // suscripciones viejas; no se ofrecen y no se listan acá).
+      // El botón de Mercado Pago del panel compra FOUNDER; la escalera se
+      // lista porque el código la soporta y es a donde apunta el precio nuevo.
+      MP_PLAN_FOUNDER:     has('MP_PLAN_FOUNDER'),
       MP_PLAN_INICIAL:     has('MP_PLAN_INICIAL'),
       MP_PLAN_CRECIMIENTO: has('MP_PLAN_CRECIMIENTO'),
       MP_PLAN_ESCALA:      has('MP_PLAN_ESCALA'),

@@ -238,8 +238,8 @@ const FALLAS = [
   {
     id: 'mp_planes_no_configurados',
     sintoma: 'El botón de pagar con Mercado Pago da error o no abre nada',
-    causa: 'Tener el token de Mercado Pago no basta: cada plan necesita su suscripción creada en Mercado Pago, y su identificador pegado en el servidor. Sin eso el cobro no se puede armar.',
-    solucion: 'Crear las tres suscripciones en Mercado Pago (Tu negocio, Suscripciones) y pegar cada identificador en el servidor. La autoverificación del panel de administración dice cuál falta.',
+    causa: 'Tener el token de Mercado Pago no basta: el plan que se está comprando necesita su suscripción creada en Mercado Pago, y su identificador pegado en el servidor. Sin eso el cobro no se puede armar.',
+    solucion: 'Crear la suscripción en Mercado Pago (Tu negocio, Suscripciones) y pegar su identificador en el servidor, en la variable del plan que el botón de pago usa. La autoverificación del panel de administración dice exactamente cuál falta.',
     desde: '2026-09-21',
   },
   {
