@@ -215,6 +215,20 @@ const FALLAS = [
       : null,
   },
   {
+    id: 'mp_planes_no_configurados',
+    sintoma: 'El botón de pagar con Mercado Pago da error o no abre nada',
+    causa: 'Tener el token de Mercado Pago no basta: cada plan necesita su suscripción creada en Mercado Pago, y su identificador pegado en el servidor. Sin eso el cobro no se puede armar.',
+    solucion: 'Crear las tres suscripciones en Mercado Pago (Tu negocio, Suscripciones) y pegar cada identificador en el servidor. La autoverificación del panel de administración dice cuál falta.',
+    desde: '2026-09-21',
+  },
+  {
+    id: 'mp_webhook_sin_firma',
+    sintoma: 'Duda de si los avisos de pago de Mercado Pago son legítimos',
+    causa: 'Sin el secreto del webhook configurado, el sistema acepta el aviso sin verificar la firma. Funciona, pero cualquiera que conozca la dirección podría enviar un aviso falso.',
+    solucion: 'Copiar el secreto que Mercado Pago muestra al crear el webhook y pegarlo en el servidor. La autoverificación lo reporta mientras falte.',
+    desde: '2026-09-21',
+  },
+  {
     id: 'pago_aparece_trial',
     sintoma: 'Pagó la suscripción pero el panel sigue en prueba o pide pagar',
     causa: 'Bug histórico arreglado el 12-09-2026: un aviso de "pago pausado" de Mercado Pago borraba el plan de la cuenta.',

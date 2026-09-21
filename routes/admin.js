@@ -2411,14 +2411,23 @@ router.get('/self-test', async (req, res) => {
         headers: { 'Authorization': `Bearer ${process.env.MP_ACCESS_TOKEN}` },
         timeout: 8000,
       });
-      const planIds = ['STARTER', 'PRO', 'AGENCY'].map(n => process.env[`MP_PLAN_${n}`]).filter(Boolean).length;
+      // Los planes VIGENTES son inicial/crecimiento/escala. Hasta el 21-09
+      // esto miraba STARTER/PRO/AGENCY (los heredados), así que reportaba
+      // 0/3 aunque estuviera todo bien configurado.
+      const VIGENTES = ['INICIAL', 'CRECIMIENTO', 'ESCALA'];
+      const faltan = VIGENTES.filter(n => !process.env[`MP_PLAN_${n}`]);
+      const sinFirma = !process.env.MP_WEBHOOK_SECRET;
+      const usuario = r.data.email || r.data.nickname || '?';
+      const pegas = [];
+      if (faltan.length) pegas.push(`faltan ${faltan.map(n => `MP_PLAN_${n}`).join(', ')}`);
+      if (sinFirma) pegas.push('falta MP_WEBHOOK_SECRET (el webhook no verifica firma)');
       tests.push({
         id: 'mercadopago',
         name: 'Mercado Pago',
-        status: planIds === 3 ? 'pass' : 'warn',
-        message: planIds === 3
-          ? `OK · usuario ${r.data.email || r.data.nickname || '?'} · 3/3 planes`
-          : `Token OK pero ${planIds}/3 planes configurados (MP_PLAN_*)`,
+        status: pegas.length ? 'warn' : 'pass',
+        message: pegas.length
+          ? `Token OK (usuario ${usuario}) pero ${pegas.join(' · ')}`
+          : `OK · usuario ${usuario} · 3/3 planes vigentes · webhook firmado`,
       });
     } catch (e) {
       tests.push({ id: 'mercadopago', name: 'Mercado Pago', status: 'fail', message: e.response?.data?.message || e.message });
@@ -2541,10 +2550,19 @@ router.get('/env-status', async (req, res) => {
     },
     // MP billing — sin esto los pagos LATAM (CLP/ARS/MXN/BRL) no funcionan
     mercadoPago: {
-      MP_ACCESS_TOKEN:    has('MP_ACCESS_TOKEN'),
-      MP_PLAN_STARTER:    has('MP_PLAN_STARTER'),
-      MP_PLAN_PRO:        has('MP_PLAN_PRO'),
-      MP_PLAN_AGENCY:     has('MP_PLAN_AGENCY'),
+      MP_ACCESS_TOKEN:     has('MP_ACCESS_TOKEN'),
+      MP_WEBHOOK_SECRET:   has('MP_WEBHOOK_SECRET'),
+      // Planes vigentes (los heredados starter/pro/agency solo sostienen
+      // suscripciones viejas; no se ofrecen y no se listan acá).
+      MP_PLAN_INICIAL:     has('MP_PLAN_INICIAL'),
+      MP_PLAN_CRECIMIENTO: has('MP_PLAN_CRECIMIENTO'),
+      MP_PLAN_ESCALA:      has('MP_PLAN_ESCALA'),
+    },
+    // Voces de pago del piloto de llamadas. Sin ellas el selector de proveedor
+    // solo ofrece OpenAI.
+    voz: {
+      ELEVENLABS_API_KEY:  has('ELEVENLABS_API_KEY'),
+      FISH_AUDIO_API_KEY:  has('FISH_AUDIO_API_KEY'),
     },
     // Email — sin esto los emails se guardan log-only
     email: {

@@ -378,6 +378,10 @@ app.get('/health/ready', async (req, res) => {
     resend_key:     !!process.env.RESEND_API_KEY,  // correos: reset de clave, bienvenida, avisos
     ls_api_key:     !!process.env.LS_API_KEY,      // opcional
     mp_token:       !!process.env.MP_ACCESS_TOKEN, // opcional
+    mp_planes:      ['INICIAL', 'CRECIMIENTO', 'ESCALA']
+                      .every(n => !!process.env[`MP_PLAN_${n}`]),
+    elevenlabs:     !!process.env.ELEVENLABS_API_KEY, // opcional (voz)
+    fish_audio:     !!process.env.FISH_AUDIO_API_KEY, // opcional (voz)
     twilio:         !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER),
   };
   if (!checks.config.openai_key || !checks.config.meta_app_id || !checks.config.jwt_secret) {
