@@ -69,10 +69,14 @@ test('polar.createCheckout manda el plan pedido en metadata (no siempre founder)
     const polar = require('../services/polar');
     await polar.createCheckout({ userId: 'u1', email: 'a@b.cl', name: 'A', appUrl: 'https://atinov.com', priceId: 'price-escala', plan: 'escala' });
     assert.strictEqual(llamadas[0].body.metadata.plan, 'escala');
-    assert.strictEqual(llamadas[0].body.product_price_id, 'price-escala');
+    // Desde el 21-09 la API de Polar recibe `products: [id]`; product_price_id
+    // está deprecado y /checkouts/custom ya no existe en la referencia.
+    assert.deepStrictEqual(llamadas[0].body.products, ['price-escala']);
+    assert.strictEqual(llamadas[0].body.product_price_id, undefined, 'el campo deprecado no se manda');
+    assert.match(llamadas[0].url, /\/v1\/checkouts\/$/, 'endpoint actual, no /custom');
     await polar.createCheckout({ userId: 'u1', email: 'a@b.cl', name: 'A', appUrl: 'https://atinov.com' });
     assert.strictEqual(llamadas[1].body.metadata.plan, 'founder', 'sin plan sigue siendo founder (compatibilidad)');
-    assert.strictEqual(llamadas[1].body.product_price_id, 'price-default');
+    assert.deepStrictEqual(llamadas[1].body.products, ['price-default'], 'POLAR_PRODUCT_PRICE_ID sigue sirviendo como respaldo');
   } finally { axios.post = original; }
 });
 

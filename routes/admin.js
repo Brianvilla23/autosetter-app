@@ -2444,6 +2444,35 @@ router.get('/self-test', async (req, res) => {
     tests.push({ id: 'mercadopago', name: 'Mercado Pago', status: 'skip', message: 'MP_ACCESS_TOKEN no configurada — pagos LATAM off' });
   }
 
+  // 5b. Polar (merchant of record para fuera de Chile)
+  if (process.env.POLAR_API_KEY) {
+    try {
+      const producto = process.env.POLAR_PRODUCT_ID || process.env.POLAR_PRODUCT_PRICE_ID;
+      // GET del producto valida token Y producto en una sola llamada.
+      const r = producto
+        ? await axios.get(`https://api.polar.sh/v1/products/${encodeURIComponent(producto)}`, {
+            headers: { 'Authorization': `Bearer ${process.env.POLAR_API_KEY}` }, timeout: 8000 })
+        : null;
+      const pegas = [];
+      if (!producto) pegas.push('falta POLAR_PRODUCT_ID (el ID del producto en Polar)');
+      if (!process.env.POLAR_WEBHOOK_SECRET) pegas.push('falta POLAR_WEBHOOK_SECRET: sin él TODO webhook se rechaza y nada se activa');
+      if (process.env.POLAR_ENABLED !== '1') pegas.push('POLAR_ENABLED no está en 1: el botón de Polar sigue apagado');
+      tests.push({
+        id: 'polar', name: 'Polar',
+        status: pegas.length ? 'warn' : 'pass',
+        message: pegas.length
+          ? `Token OK${r ? ` · producto "${r.data?.name || producto}"` : ''} · ${pegas.join(' · ')}`
+          : `OK · producto "${r.data?.name || producto}" · webhook firmado · encendido`,
+      });
+    } catch (e) {
+      tests.push({ id: 'polar', name: 'Polar', status: 'fail',
+        message: e.response?.status === 404 ? 'Token OK pero el producto no existe (revisa POLAR_PRODUCT_ID)'
+               : (e.response?.data?.detail || e.response?.data?.error || e.message) });
+    }
+  } else {
+    tests.push({ id: 'polar', name: 'Polar', status: 'skip', message: 'POLAR_API_KEY no configurada — cobro fuera de Chile off' });
+  }
+
   // 6. User admin existe
   const adminUser = await db.findOne(db.users, { role: 'admin' }).catch(() => null);
   tests.push({
@@ -2566,6 +2595,14 @@ router.get('/env-status', async (req, res) => {
       MP_PLAN_INICIAL:     has('MP_PLAN_INICIAL'),
       MP_PLAN_CRECIMIENTO: has('MP_PLAN_CRECIMIENTO'),
       MP_PLAN_ESCALA:      has('MP_PLAN_ESCALA'),
+    },
+    // Polar (merchant of record, cobra fuera de Chile). El secreto del webhook
+    // es obligatorio: sin él ninguna suscripción se activa.
+    polar: {
+      POLAR_ENABLED:        has('POLAR_ENABLED'),
+      POLAR_API_KEY:        has('POLAR_API_KEY'),
+      POLAR_PRODUCT_ID:     has('POLAR_PRODUCT_ID') || has('POLAR_PRODUCT_PRICE_ID'),
+      POLAR_WEBHOOK_SECRET: has('POLAR_WEBHOOK_SECRET'),
     },
     // Voces de pago del piloto de llamadas. Sin ellas el selector de proveedor
     // solo ofrece OpenAI.

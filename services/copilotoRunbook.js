@@ -236,6 +236,20 @@ const FALLAS = [
       : null,
   },
   {
+    id: 'polar_no_activa',
+    sintoma: 'El cliente pagó por Polar pero la cuenta sigue en prueba',
+    causa: 'Polar avisa el pago por un webhook firmado. Si el secreto del webhook falta o no coincide, el sistema rechaza el aviso y nunca se entera del pago. Hasta el 21-09-2026, además, la firma se verificaba con un formato que Polar no usa, así que ningún aviso pasaba.',
+    solucion: 'Panel de administración, Sistema, autodiagnóstico: la línea de Polar dice si falta el secreto. Si el pago ya ocurrió, soporte activa el plan a mano con el comprobante.',
+    desde: '2026-09-21',
+  },
+  {
+    id: 'polar_vencido_al_mes',
+    sintoma: 'Un cliente de Polar que paga todos los meses aparece vencido',
+    causa: 'Cada cobro mensual llega como un aviso de orden pagada. Hasta el 21-09-2026 ese aviso se ignoraba y solo se registraba el primer pago, así que al mes la cuenta caducaba aunque el cobro se hubiera hecho.',
+    solucion: 'Ya no pasa. Si un cliente quedó vencido antes de esa fecha, soporte extiende el plan a mano.',
+    desde: '2026-09-21',
+  },
+  {
     id: 'mp_planes_no_configurados',
     sintoma: 'El botón de pagar con Mercado Pago da error o no abre nada',
     causa: 'Tener el token de Mercado Pago no basta: el plan que se está comprando necesita su suscripción creada en Mercado Pago, y su identificador pegado en el servidor. Sin eso el cobro no se puede armar.',

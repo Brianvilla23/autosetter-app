@@ -145,30 +145,55 @@ test('MP webhook: firma VÁLIDA (HMAC correcto) → acepta', () => {
   delete process.env.MP_WEBHOOK_SECRET;
 });
 
-// Polar webhook signature
+// Polar webhook signature — Standard Webhooks (id.timestamp.body, clave
+// base64 tras "whsec_", firma base64 con "v1,"). Hasta el 21-09 se verificaba
+// un formato que Polar nunca envió y todo webhook real daba 401.
 const polar = require('../services/polar');
 
+/** Firma como lo hace Polar con un secreto creado desde 2026-09-08. */
+function firmaPolar(secret, id, ts, body) {
+  const clave = Buffer.from(secret.replace(/^whsec_/, ''), 'base64');
+  return 'v1,' + crypto.createHmac('sha256', clave).update(`${id}.${ts}.${body}`).digest('base64');
+}
+const SECRETO_POLAR = 'whsec_' + Buffer.from('clave-de-prueba-polar-32-bytes!!').toString('base64');
+
 test('Polar webhook: firma forjada → rechaza', () => {
-  process.env.POLAR_WEBHOOK_SECRET = 'polar_secret_test';
-  const ok = polar.verifyWebhookSignature('{"evil":true}', 'sha256=deadbeef');
+  process.env.POLAR_WEBHOOK_SECRET = SECRETO_POLAR;
+  const ts = String(Math.floor(Date.now() / 1000));
+  const ok = polar.verifyWebhookSignature('{"evil":true}', {
+    'webhook-id': 'msg_1', 'webhook-timestamp': ts, 'webhook-signature': 'v1,' + Buffer.alloc(32).toString('base64'),
+  });
   assert.strictEqual(ok, false);
   delete process.env.POLAR_WEBHOOK_SECRET;
 });
 
 test('Polar webhook: firma válida → acepta', () => {
-  const secret = 'polar_secret_test';
-  process.env.POLAR_WEBHOOK_SECRET = secret;
+  process.env.POLAR_WEBHOOK_SECRET = SECRETO_POLAR;
   const body = '{"type":"subscription.created"}';
-  const sig = crypto.createHmac('sha256', secret).update(body).digest('hex');
-  const ok = polar.verifyWebhookSignature(body, 'sha256=' + sig);
+  const ts = String(Math.floor(Date.now() / 1000));
+  const ok = polar.verifyWebhookSignature(body, {
+    'webhook-id': 'msg_2', 'webhook-timestamp': ts, 'webhook-signature': firmaPolar(SECRETO_POLAR, 'msg_2', ts, body),
+  });
   assert.strictEqual(ok, true);
   delete process.env.POLAR_WEBHOOK_SECRET;
 });
 
 test('Polar webhook: sin secret configurado → rechaza (fail closed)', () => {
   delete process.env.POLAR_WEBHOOK_SECRET;
-  const ok = polar.verifyWebhookSignature('{}', 'sha256=whatever');
+  const ts = String(Math.floor(Date.now() / 1000));
+  const ok = polar.verifyWebhookSignature('{}', {
+    'webhook-id': 'msg_3', 'webhook-timestamp': ts, 'webhook-signature': 'v1,whatever',
+  });
   assert.strictEqual(ok, false);
+});
+
+test('Polar webhook: el formato viejo (sha256=hex del body) ya no se acepta', () => {
+  process.env.POLAR_WEBHOOK_SECRET = SECRETO_POLAR;
+  const body = '{}';
+  const hex = crypto.createHmac('sha256', SECRETO_POLAR).update(body).digest('hex');
+  assert.strictEqual(polar.verifyWebhookSignature(body, 'sha256=' + hex), false, 'string suelto');
+  assert.strictEqual(polar.verifyWebhookSignature(body, { 'webhook-signature': 'sha256=' + hex }), false, 'sin id ni timestamp');
+  delete process.env.POLAR_WEBHOOK_SECRET;
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

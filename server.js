@@ -221,9 +221,13 @@ app.post('/api/billing/ls-webhook', express.raw({ type: 'application/json' }), a
 // ─────────────────────────────────────────────────────────────────────────────
 app.post('/api/billing/polar-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   const polar = require('./services/polar');
-  const sigHeader = req.headers['webhook-signature'] || req.headers['x-polar-signature'] || '';
-
-  if (!polar.verifyWebhookSignature(req.body, sigHeader)) {
+  // Standard Webhooks: la firma cubre id + timestamp + body, así que hacen
+  // falta los tres headers (antes solo se leía la firma y se verificaba mal).
+  if (!polar.verifyWebhookSignature(req.body, {
+    'webhook-id':        req.headers['webhook-id'],
+    'webhook-timestamp': req.headers['webhook-timestamp'],
+    'webhook-signature': req.headers['webhook-signature'],
+  })) {
     console.error('❌ Polar webhook: firma inválida o ausente');
     return res.status(401).send('Invalid signature');
   }
@@ -381,6 +385,11 @@ app.get('/health/ready', async (req, res) => {
     // El plan que el botón del panel compra hoy. Si algún día el panel ofrece
     // la escalera, esta lista se mueve con él.
     mp_planes:      ['FOUNDER'].every(n => !!process.env[`MP_PLAN_${n}`]),
+    // Polar listo = encendido + token + producto + secreto del webhook. Sin
+    // el secreto, TODO webhook se rechaza y la suscripción nunca se activa.
+    polar:          process.env.POLAR_ENABLED === '1' && !!process.env.POLAR_API_KEY
+                      && !!(process.env.POLAR_PRODUCT_ID || process.env.POLAR_PRODUCT_PRICE_ID)
+                      && !!process.env.POLAR_WEBHOOK_SECRET,
     elevenlabs:     !!process.env.ELEVENLABS_API_KEY, // opcional (voz)
     fish_audio:     !!process.env.FISH_AUDIO_API_KEY, // opcional (voz)
     twilio:         !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER),
