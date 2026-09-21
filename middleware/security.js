@@ -12,6 +12,14 @@ const xss       = require('xss');
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
+  // Solo cuentan los INTENTOS (login, registro, recuperar clave), no las
+  // lecturas. Hasta el 21-09 también contaba GET /api/user/check, que el panel
+  // llama en cada carga de página: a la carga 11 en 15 minutos respondía 429 y
+  // el panel mostraba la pantalla de "primera instalación, crea tu cuenta de
+  // administrador" con la base de datos intacta. Pasó grabando el video del
+  // App Review, donde cada toma parte en la pantalla de entrada. Las lecturas
+  // quedan cubiertas por apiLimiter, montado antes en server.js.
+  skip: (req) => req.method === 'GET' || req.method === 'HEAD',
   message: { error: 'Demasiados intentos. Intenta de nuevo en 15 minutos.' },
   standardHeaders: true,
   legacyHeaders: false,

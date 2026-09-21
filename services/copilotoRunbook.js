@@ -342,6 +342,13 @@ const FALLAS = [
 
   // ── Sistema ───────────────────────────────────────────────────────────────
   {
+    id: 'pantalla_primera_vez',
+    sintoma: 'Al entrar aparece "Primera vez en el sistema, crea tu cuenta de administrador"',
+    causa: 'Tus datos NO se perdieron. Hasta el 21-09-2026 pasaba al recargar la página de entrada muchas veces en 15 minutos desde la misma red: el límite de intentos respondía "demasiados intentos" y el panel lo confundía con "no hay usuarios".',
+    solucion: 'No llenes ese formulario: crearía una cuenta nueva de prueba, no recupera la tuya. Recarga la página y entra normal. Desde el 21-09-2026 ya no ocurre; si vuelve a aparecer, escribe a soporte.',
+    desde: '2026-09-21',
+  },
+  {
     id: 'errores_sistema',
     sintoma: 'Algo falló al guardar o al cargar una sección',
     causa: 'Un error interno del sistema. Cada uno queda registrado con la cuenta, la hora y la ruta para que soporte lo revise.',

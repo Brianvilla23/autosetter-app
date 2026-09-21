@@ -403,7 +403,9 @@ app.get('/health/ready', async (req, res) => {
 // ── PUBLIC ROUTES ─────────────────────────────────────────────────────────────
 app.use('/webhook',  webhookLimiter, require('./routes/webhook'));
 app.use('/auth',                     require('./routes/auth'));        // Instagram OAuth
-app.use('/api/user', authLimiter,    require('./routes/userAuth'));    // login / register
+// apiLimiter frena las lecturas (check, me, demo-available); authLimiter solo
+// cuenta los intentos de login, registro y recuperación de clave.
+app.use('/api/user', apiLimiter, authLimiter, require('./routes/userAuth'));    // login / register
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MERCADO PAGO WEBHOOK (standard JSON, no raw body needed)

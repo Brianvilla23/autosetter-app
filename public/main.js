@@ -29,11 +29,17 @@ async function init() {
     }
   } catch {}
 
-  // Check if first-time setup needed
-  const check = await fetch('/api/user/check').then(r => r.json()).catch(() => ({ hasUsers: false }));
+  // ¿Primera instalación? Solo si el servidor lo dice EXPLÍCITAMENTE. Antes,
+  // cualquier falla de esta consulta (un 429 por límite de intentos, un corte
+  // de red) caía en "no hay usuarios" y mostraba "crea tu cuenta de
+  // administrador" con la base intacta (21-09, grabando el App Review). Ante
+  // la duda se muestra la entrada normal: recargar resuelve un corte, y el
+  // servidor decide igual el rol mirando la base, no lo que diga esta pantalla.
+  const check = await fetch('/api/user/check')
+    .then(r => (r.ok ? r.json() : null))
+    .catch(() => null);
 
-  if (!check.hasUsers) {
-    // First-time: show setup screen (creates admin)
+  if (check && check.hasUsers === false) {
     showAuthScreen('setup');
     return;
   }
