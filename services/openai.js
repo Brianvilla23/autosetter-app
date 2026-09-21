@@ -538,4 +538,40 @@ Responde ÚNICAMENTE con JSON válido, sin markdown ni texto extra:
   }
 }
 
-module.exports = { generateReply, classifyLead, detectComplexity, detectCountryStyle };
+/**
+ * Reescribe una respuesta que no pasó la revisión de largo o repetición
+ * (services/respuestaViva.js). Llamada aparte, barata y corta: el modelo
+ * arregla SU propio texto con los motivos concretos en la mano, en vez de que
+ * el prompt gigante intente prevenirlo todo de antemano.
+ *
+ * Devuelve el texto reescrito, o el original si algo falla — una respuesta
+ * larga es mejor que ninguna respuesta.
+ */
+async function reescribirCorto({ texto, motivos, voz = false, accountId, apiKey }) {
+  const original = String(texto || '').trim();
+  if (!original || !Array.isArray(motivos) || !motivos.length) return original;
+  try {
+    const key = await getApiKey(apiKey, accountId);
+    if (!key) return original;
+    const { promptDeAjuste } = require('./respuestaViva');
+    const client = new OpenAI({ apiKey: key });
+    const r = await client.chat.completions.create({
+      model: process.env.OPENAI_FAST_MODEL || 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: 'Editas mensajes de chat en español de Chile. Acortas sin cambiar el sentido ni el tono. Devuelves solo el mensaje.' },
+        { role: 'user', content: promptDeAjuste(original, motivos, { voz }) },
+      ],
+      temperature: 0.3,
+      max_tokens: 120,
+    });
+    const out = r.choices?.[0]?.message?.content?.trim().replace(/^["'“”]|["'“”]$/g, '').trim();
+    if (!out) return original;
+    // Si el modelo devolvió algo MÁS largo, no sirvió: se queda el original.
+    return out.split(/\s+/).length < original.split(/\s+/).length ? out : original;
+  } catch (e) {
+    console.warn('[respuesta] reescritura falló, va el original:', e.message);
+    return original;
+  }
+}
+
+module.exports = { generateReply, classifyLead, detectComplexity, detectCountryStyle, reescribirCorto };

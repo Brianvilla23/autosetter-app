@@ -54,6 +54,27 @@ const FALLAS = [
     desde: '2026-08-20',
   },
   {
+    id: 'respuesta_larga',
+    sintoma: 'El agente contesta con mensajes largos que explican de más',
+    causa: 'El modelo se pasa de las reglas de brevedad cuando le preguntan algo abierto como "¿de qué se trata tu servicio?": enumera todo lo que sabe en vez de responder una cosa.',
+    solucion: 'Desde el 21-09-2026 el sistema mide cada respuesta y la manda a reescribir si pasa de 45 palabras, tres oraciones, más de una pregunta o si enumera. Si igual ves mensajes largos, revisa que las instrucciones del agente no le pidan listar beneficios.',
+    desde: '2026-09-21',
+  },
+  {
+    id: 'agente_se_repite',
+    sintoma: 'El agente repite lo que ya había dicho, con otras palabras',
+    causa: 'El agente veía lo que había dicho el cliente, pero no tenía marcado lo que había dicho él mismo. Al reaparecer el tema volvía a explicar lo mismo.',
+    solucion: 'Desde el 21-09-2026 sus últimos mensajes entran al contexto como "esto ya se lo dijiste" y el sistema compara la respuesta nueva contra ellos antes de mandarla.',
+    desde: '2026-09-21',
+  },
+  {
+    id: 'voz_suena_robot',
+    sintoma: 'Las notas de voz suenan a máquina, sin pausas ni entonación',
+    causa: 'Casi siempre es el TEXTO, no la voz: una frase larga con comas o una enumeración de marcas, leída en voz alta, suena a catálogo aunque la voz sea buena.',
+    solucion: 'Desde el 21-09-2026, cuando la respuesta va a salir hablada se escribe distinto: máximo 30 palabras, frases cortas terminadas en punto y cero enumeraciones. Si igual suena plano, revisa que las instrucciones del agente no tengan listas de beneficios.',
+    desde: '2026-09-21',
+  },
+  {
     id: 'agente_vosea',
     sintoma: 'El agente escribe con "vos", "tenés", "querés"',
     causa: 'Las instrucciones del agente (o un ejemplo pegado) traen voseo argentino. El modelo imita lo que ve.',

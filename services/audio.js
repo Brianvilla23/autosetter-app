@@ -110,7 +110,9 @@ const INSTRUCCIONES_VOZ = [
   'Actitud: una persona real grabando una nota de voz rápida a un cliente entre dos cosas que está haciendo. Cercana y segura, nunca locutor de radio ni call center.',
   'Ritmo: conversacional y algo apurado, con micro-pausas naturales donde caería el aire al hablar. No pronuncies cada palabra con la misma fuerza: apura lo obvio y apóyate en lo importante.',
   'Tono: cálido, con una sonrisa leve en la voz. Baja el final de las frases como en el habla normal, no lo subas como si leyeras.',
-  'Prohibido: sonar perfecto, monótono o leído.',
+  'Pausas: respeta los puntos con una pausa real de respiración, más larga de lo que parecería natural al leer. Entre frases se calla, no encadena.',
+  'Variación: cambia la velocidad dentro de la misma nota — parte algo más rápido y baja en la frase que importa. Si todo va al mismo ritmo suena a máquina.',
+  'Prohibido: sonar perfecto, monótono o leído. Prohibido el tono ascendente de locutor al final de cada frase.',
 ].join(' ');
 
 /**

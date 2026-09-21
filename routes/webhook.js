@@ -1039,9 +1039,23 @@ ${entregar
 
   // Si el lead habló por nota de voz, el agente debe saberlo: responde más
   // conversacional y la respuesta saldrá también como audio (espejo).
+  // ¿Esta respuesta va a salir hablada? Se decide acá, ANTES de generar: un
+  // texto escrito para leer no suena bien dicho por mucho que se ajuste la voz
+  // (prueba del 20-09: la nota de voz enumeró cuatro marcas y sonó a robot).
+  const saldraPorVoz = wasAudio && agent.voice_replies !== false;
+  const viva = require('../services/respuestaViva');
   const audioContext = wasAudio
-    ? 'NOTA: el lead te envió una NOTA DE VOZ — lo que lees es su transcripción. Tu respuesta se le enviará como nota de voz hablada: redacta como se habla (frases cortas, sin listas, sin emojis). Si necesitas compartir un link, inclúyelo normal y el mensaje saldrá como texto en vez de audio.'
+    ? [
+        'NOTA: el lead te envió una NOTA DE VOZ — lo que lees es su transcripción.',
+        saldraPorVoz ? viva.bloqueVoz() : 'Tu respuesta saldrá como texto.',
+        'Si necesitas compartir un link, inclúyelo normal y el mensaje saldrá como texto en vez de audio.',
+      ].join('\n')
     : null;
+
+  // Lo que el agente YA le dijo a esta persona. Sin esto repetía su propia
+  // explicación con otras palabras: la memoria del lead guarda lo que dijo el
+  // LEAD, no lo que dijo el agente.
+  const noRepetirContext = viva.bloqueNoRepetir(history);
 
   // ── Memoria por lead: hechos de conversaciones anteriores (cualquier canal)
   let memoryContext = null;
@@ -1108,7 +1122,7 @@ ${entregar
     llamadaContext = await buildLlamadaContext({ settings, agent, lead, incomingText: text, account });
   } catch (e) { /* telefonía opcional */ }
 
-  const extraContext = [baseContext, contextoHistoria, messengerHandoff, magnetContext, audioContext, memoryContext, followerContext, paymentContext, calendarContext, orderContext, stockContext, llamadaContext, ragContext].filter(Boolean).join('\n\n') || null;
+  const extraContext = [baseContext, contextoHistoria, messengerHandoff, magnetContext, audioContext, noRepetirContext, memoryContext, followerContext, paymentContext, calendarContext, orderContext, stockContext, llamadaContext, ragContext].filter(Boolean).join('\n\n') || null;
 
   let reply = await generateReply({
     agent, knowledge, links,
@@ -1121,6 +1135,25 @@ ${entregar
     leadPhone:     lead.wa_id || null,
     leadChannel:   lead.channel || (lead.wa_id ? 'whatsapp' : 'instagram'),
   });
+
+  // ── Revisión de largo y repetición ───────────────────────────────────────
+  // El prompt ya pide brevedad, pero una regla enterrada entre cientos de
+  // líneas no se cumple sola. Acá se MIDE la respuesta y, si se pasa, se le
+  // pide al modelo que la arregle con los motivos concretos. Una sola pasada:
+  // si la reescritura tampoco sirve, sale la original antes que nada.
+  try {
+    const revision = viva.revisar(reply, { voz: saldraPorVoz, dichos: viva.loQueYaDijo(history) });
+    if (!revision.ok) {
+      console.log(`✂️  [respuesta] ajustando (${revision.motivos.length}): ${revision.motivos[0]}`);
+      const { reescribirCorto } = require('../services/openai');
+      reply = await reescribirCorto({
+        texto: reply, motivos: revision.motivos, voz: saldraPorVoz,
+        accountId: account._id, apiKey,
+      });
+    }
+  } catch (e) {
+    console.warn('[respuesta] revisión omitida:', e.message);
+  }
 
   // ── Resolver marcadores [PAGO: ...] → link real de Mercado Pago ──────────
   // Antes de guardar/encolar, para que DB y cola tengan el texto final.
