@@ -2659,6 +2659,9 @@ function pintarIdsWa(account) {
   const box = document.getElementById('wa-ids');
   if (!box) return;
   const filas = [
+    // El nombre visible viene de Meta al conectar con el botón; con la vía
+    // manual no siempre está, y entonces la fila no se muestra.
+    ['Nombre visible', account.wa_verified_name],
     ['Phone Number ID', account.wa_phone_number_id],
     ['WhatsApp Business Account ID', account.wa_business_account_id],
   ].filter(([, v]) => v);
@@ -3901,7 +3904,7 @@ async function loadWaTemplates() {
         <div><code style="font-size:13px">${escHtmlSafe(t.name)}</code> <span style="font-size:11px;color:var(--text-3);margin-left:6px">${escHtmlSafe(t.category)} · ${escHtmlSafe(t.language)}${t.variables ? ` · ${t.variables} variable${t.variables === 1 ? '' : 's'}` : ''}</span></div>
         <div style="display:flex;gap:8px;align-items:center">
           <span style="font-size:11px;padding:2px 8px;border-radius:999px;background:${st.bg};color:${st.fg};font-weight:600">${st.txt}</span>
-          <button class="btn-ghost" style="padding:2px 8px;font-size:12px" title="Borrar plantilla" onclick="deleteWaTemplate('${escHtmlSafe(t.name)}')">🗑</button>
+          <button class="btn-ghost" style="padding:2px 8px;font-size:12px" title="Borrar plantilla" onclick="deleteWaTemplate('${escHtmlSafe(t.name)}')">Borrar</button>
         </div>
       </div>
       <div style="font-size:13px;color:var(--text-2);margin-top:6px;white-space:pre-wrap">${escHtmlSafe(t.body)}</div>
@@ -4008,25 +4011,25 @@ async function createWaTemplate() {
     footer: document.getElementById('wat-footer')?.value.trim() || null,
     buttons: (document.getElementById('wat-buttons')?.value || '').split(',').map(s => s.trim()).filter(Boolean),
   };
-  if (!body.name || !body.body) { showToast('❌ Nombre y cuerpo son obligatorios'); return; }
+  if (!body.name || !body.body) { showToast('Nombre y cuerpo son obligatorios'); return; }
   if (btn) { btn.disabled = true; btn.textContent = 'Enviando a Meta…'; }
   const r = await watFetch('/api/wa-templates', 'POST', body);
   if (btn) { btn.disabled = false; btn.textContent = 'Enviar a aprobación de Meta'; }
   if (r?.ok) {
-    showToast(`✅ Plantilla "${r.name}" enviada — estado: ${WAT_STATUS[r.status]?.txt || r.status}`);
+    showToast(`Plantilla "${r.name}" enviada a Meta. Estado: ${WAT_STATUS[r.status]?.txt || r.status}`);
     ['wat-name', 'wat-header', 'wat-body-text', 'wat-footer', 'wat-buttons'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     watPreview();
     loadWaTemplates();
   } else {
-    showToast('❌ ' + (r?.error || 'No se pudo crear'));
+    showToast(r?.error || 'No se pudo crear la plantilla');
   }
 }
 
 async function deleteWaTemplate(name) {
   if (!confirm(`¿Borrar la plantilla "${name}"? Meta borra todas sus versiones de idioma y no se puede deshacer.`)) return;
   const r = await watFetch(`/api/wa-templates/${encodeURIComponent(name)}`, 'DELETE');
-  if (r?.ok) { showToast('🗑 Plantilla borrada'); loadWaTemplates(); }
-  else showToast('❌ ' + (r?.error || 'No se pudo borrar'));
+  if (r?.ok) { showToast('Plantilla borrada'); loadWaTemplates(); }
+  else showToast(r?.error || 'No se pudo borrar la plantilla');
 }
 try { _safeExpose('loadWaTemplates', loadWaTemplates); } catch {}
 try { _safeExpose('deleteWaTemplate', deleteWaTemplate); } catch {}
