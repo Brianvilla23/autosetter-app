@@ -223,6 +223,67 @@ test('un atraso corre el recordatorio los mismos minutos', async () => {
   assert.strictEqual((await ct.alRegistrarAtraso(cita.account_id, 30, [])).corridas, 0);
 });
 
+test('el atraso avisa a cada cliente con su hora nueva', async () => {
+  const cita = await nuevaCita();
+  await ct.alCrearCita(cita, SET_ON, new Date('2026-12-10T12:00:00Z'));
+  const afectada = { ...cita, hora_estimada: '19:30' };
+
+  const r = await ct.alRegistrarAtraso(cita.account_id, 30, [afectada], SET_ON);
+  assert.strictEqual(r.corridas, 1, 'corre el recordatorio');
+  assert.strictEqual(r.avisadas, 1, 'y avisa al cliente');
+
+  const aviso = (await vivos(cita._id)).find(x => x.tipo === 'atraso');
+  assert.ok(aviso, 'queda la tarea de aviso');
+  assert.strictEqual(aviso.hora_estimada, '19:30');
+  assert.strictEqual(aviso.minutos, 30);
+  assert.strictEqual(aviso.categoria, 'utility', 'un atraso no gasta cupo de marketing');
+  assert.ok(aviso.prioridad < 0, 'sale antes que todo lo demás: caduca solo');
+  assert.ok(aviso.scheduled_for <= new Date().toISOString(), 'sale al tiro');
+});
+
+test('un atraso chico no molesta a nadie', async () => {
+  const cita = await nuevaCita();
+  await ct.alCrearCita(cita, SET_ON, new Date('2026-12-10T12:00:00Z'));
+  const r = await ct.alRegistrarAtraso(cita.account_id, 5, [{ ...cita, hora_estimada: '19:05' }], SET_ON);
+  assert.strictEqual(r.avisadas, 0, 'cinco minutos está bajo el mínimo');
+  assert.strictEqual(r.corridas, 1, 'pero el recordatorio igual se corre');
+  assert.ok(!(await vivos(cita._id)).find(x => x.tipo === 'atraso'));
+});
+
+test('el mínimo para avisar se puede bajar', async () => {
+  const cita = await nuevaCita();
+  const r = await ct.alRegistrarAtraso(cita.account_id, 5,
+    [{ ...cita, hora_estimada: '19:05' }], { ...SET_ON, agenda_atraso_min: 5 });
+  assert.strictEqual(r.avisadas, 1);
+});
+
+test('dos atrasos seguidos actualizan el aviso, no mandan dos mensajes', async () => {
+  const cita = await nuevaCita();
+  await ct.alRegistrarAtraso(cita.account_id, 20, [{ ...cita, hora_estimada: '19:20' }], SET_ON);
+  await ct.alRegistrarAtraso(cita.account_id, 40, [{ ...cita, hora_estimada: '19:40' }], SET_ON);
+
+  const avisos = (await vivos(cita._id)).filter(x => x.tipo === 'atraso');
+  assert.strictEqual(avisos.length, 1, 'un solo aviso');
+  assert.strictEqual(avisos[0].hora_estimada, '19:40', 'con la hora más reciente');
+  assert.strictEqual(avisos[0].minutos, 40);
+});
+
+test('con los recordatorios apagados no se avisa el atraso', async () => {
+  const cita = await nuevaCita();
+  const r = await ct.alRegistrarAtraso(cita.account_id, 30, [{ ...cita, hora_estimada: '19:30' }], {});
+  assert.strictEqual(r.avisadas, 0);
+});
+
+test('el texto del atraso lleva la hora vieja, la nueva y los minutos', () => {
+  const cita = { nombre: 'Matías Soto', hora: '19:00', fecha: '2026-12-15', servicio: 'Corte' };
+  const t = ct.textoDe('atraso', cita, ct.configDe(SET_ON), { hora_estimada: '19:30', minutos: 30 });
+  assert.match(t, /Matías/);
+  assert.match(t, /30 minutos/);
+  assert.match(t, /19:00/, 'la hora que tenía');
+  assert.match(t, /19:30/, 'la hora estimada nueva');
+  assert.match(t, /avísame/i, 'le deja salida');
+});
+
 // ── Textos ───────────────────────────────────────────────────────────────────
 
 test('los textos llevan la hora real y solo el primer nombre', () => {

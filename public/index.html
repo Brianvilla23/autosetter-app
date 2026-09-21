@@ -895,6 +895,8 @@
           <input type="number" id="cita-feedback-horas" class="form-input" min="0.5" max="72" step="0.5" value="1"></div>
         <div class="form-row" style="flex:1;min-width:150px"><label>Invitar a volver (días después)</label>
           <input type="number" id="cita-volver-dias" class="form-input" min="1" max="180" value="21"></div>
+        <div class="form-row" style="flex:1;min-width:150px"><label>Avisar el atraso desde (minutos)</label>
+          <input type="number" id="cita-atraso-min" class="form-input" min="1" max="120" value="10"></div>
       </div>
       <div class="form-row">
         <label>Qué ofrecer al invitar a volver (opcional)</label>
@@ -904,6 +906,7 @@
       <div class="form-row">
         <label>Plantillas aprobadas (para escribir fuera de las 24 horas)</label>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <input type="text" id="cita-tpl-atraso" class="form-input" placeholder="Aviso de atraso">
           <input type="text" id="cita-tpl-confirmar" class="form-input" placeholder="Confirmación del día">
           <input type="text" id="cita-tpl-recordar" class="form-input" placeholder="Recordatorio">
           <input type="text" id="cita-tpl-feedback" class="form-input" placeholder="¿Cómo quedó?">

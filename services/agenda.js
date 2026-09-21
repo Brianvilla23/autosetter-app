@@ -189,13 +189,15 @@ async function registrarAtraso(accountId, minutos) {
 
   // El recordatorio "en 2 horas" de las citas corridas se mueve los mismos
   // minutos: avisar la hora vieja sería peor que no avisar.
-  let corridas = 0;
+  let corridas = 0, avisadas = 0;
   try {
-    const r = await require('./citaTasks').alRegistrarAtraso(accountId, cfg.atraso.minutos, afectadas);
+    const r = await require('./citaTasks').alRegistrarAtraso(
+      accountId, cfg.atraso.minutos, afectadas, settings || {});
     corridas = r.corridas || 0;
-  } catch (e) { console.warn('[agenda] recordatorios no se corrieron:', e.message); }
+    avisadas = r.avisadas || 0;
+  } catch (e) { console.warn('[agenda] aviso de atraso no salió:', e.message); }
 
-  return { atraso: cfg.atraso, afectadas, recordatorios_corridos: corridas };
+  return { atraso: cfg.atraso, afectadas, recordatorios_corridos: corridas, avisadas };
 }
 
 /** Bloque para el prompt del agente. null si la agenda no está activa. */

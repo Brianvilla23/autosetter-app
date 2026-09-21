@@ -35,6 +35,9 @@ const core = require('./agendaCore');
 // ── Tipos y defaults ─────────────────────────────────────────────────────────
 
 const TIPOS = {
+  // El atraso va primero que todo: es la única del lote que caduca sola — una
+  // hora nueva avisada tarde no sirve de nada.
+  atraso:        { categoria: 'utility',   prioridad: -1 },
   confirmar_dia: { categoria: 'utility',   prioridad: 0 },
   recordar:      { categoria: 'utility',   prioridad: 0 },
   feedback:      { categoria: 'utility',   prioridad: 1 },
@@ -46,6 +49,7 @@ const DEFAULTS = {
   recordar_horas:  2,        // el aviso que de verdad evita la inasistencia
   feedback_horas:  1,        // después del fin de la cita, con el corte fresco
   volver_dias:     21,       // un corte de hombre dura entre 3 y 4 semanas
+  atraso_min:      10,       // menos que esto no se avisa: es ruido
 };
 
 const VENTANA_HORAS = 23.5;      // misma ventana con margen que followup.js
@@ -64,10 +68,14 @@ function configDe(settings = {}) {
     recordarHoras:  num(settings.agenda_recordar_horas, DEFAULTS.recordar_horas),
     feedbackHoras:  num(settings.agenda_feedback_horas, DEFAULTS.feedback_horas),
     volverDias:     num(settings.agenda_volver_dias, DEFAULTS.volver_dias),
+    // Bajo este atraso no se avisa. Escribirle a alguien por cinco minutos
+    // molesta más de lo que ayuda.
+    atrasoMin:      num(settings.agenda_atraso_min, DEFAULTS.atraso_min),
     // Igual que en el playbook de pedidos: el negocio decide si promete algo.
     // El modelo tiene prohibido inventar descuentos.
     incentivoVolver: String(settings.agenda_incentivo_volver || '').trim() || null,
     plantillas: {
+      atraso:        settings.agenda_template_atraso    || null,
       confirmar_dia: settings.agenda_template_confirmar || null,
       recordar:      settings.agenda_template_recordar  || null,
       feedback:      settings.agenda_template_feedback  || null,
@@ -216,12 +224,19 @@ async function alReprogramar(cita, settings, ahora = new Date()) {
  * los mismos minutos. Si el recordatorio ya salió no se manda otro — para eso
  * está el aviso de atraso, que es otra cosa.
  */
-async function alRegistrarAtraso(accountId, minutos, citasAfectadas = []) {
+async function alRegistrarAtraso(accountId, minutos, citasAfectadas = [], settings = null) {
   const min = Number(minutos);
-  if (!Number.isFinite(min) || min === 0 || !citasAfectadas.length) return { corridas: 0 };
-  let corridas = 0;
+  if (!Number.isFinite(min) || min === 0 || !citasAfectadas.length) return { corridas: 0, avisadas: 0 };
+  const cfg = configDe(settings || {});
+  const avisar = cfg.activo && min >= cfg.atrasoMin;
+  const ahora = new Date().toISOString();
+  let corridas = 0, avisadas = 0;
+
   for (const cita of citasAfectadas) {
     const ps = await pendientesDe(cita._id);
+
+    // El recordatorio pendiente se corre los mismos minutos: avisar la hora
+    // vieja sería peor que no avisar.
     for (const t of ps.filter(x => x.tipo === 'recordar')) {
       await db.update(db.pedidoTasks, { _id: t._id }, {
         scheduled_for: masHoras(t.scheduled_for, min / 60),
@@ -229,8 +244,27 @@ async function alRegistrarAtraso(accountId, minutos, citasAfectadas = []) {
       }).catch(() => null);
       corridas++;
     }
+
+    if (!avisar || !cita.lead_id) continue;
+
+    // Un solo aviso por cita: si el barbero aplica otro atraso antes de que
+    // salga, se actualiza la hora en vez de mandar dos mensajes seguidos.
+    const previo = ps.find(x => x.tipo === 'atraso');
+    if (previo) {
+      await db.update(db.pedidoTasks, { _id: previo._id }, {
+        hora_estimada: cita.hora_estimada || null,
+        minutos: min,
+      }).catch(() => null);
+      continue;
+    }
+    const t = await agendarPaso({
+      accountId, leadId: cita.lead_id, citaId: cita._id,
+      tipo: 'atraso', cuandoIso: ahora,
+      extra: { hora_estimada: cita.hora_estimada || null, minutos: min },
+    });
+    if (t) avisadas++;
   }
-  return { corridas };
+  return { corridas, avisadas };
 }
 
 // ── Textos deterministas ─────────────────────────────────────────────────────
@@ -241,11 +275,18 @@ const soloNombre = (n) => String(n || 'hola').trim().split(/\s+/)[0];
  * Los tres pasos utility se escriben con los datos de la cita, no con el
  * modelo: una hora inventada le cuesta un cliente al negocio.
  */
-function textoDe(tipo, cita, cfg) {
+function textoDe(tipo, cita, cfg, tarea = null) {
   const n = soloNombre(cita.nombre);
   const hora = cita.hora;
   const serv = (cita.servicio || 'tu hora').toLowerCase();
   const cuando = core.fechaLegible(cita.fecha);
+  if (tipo === 'atraso') {
+    // La hora estimada se guarda en la tarea cuando se agenda: si el atraso
+    // cambia después, el texto sale con el número que corresponde.
+    const nueva = tarea && tarea.hora_estimada ? tarea.hora_estimada : hora;
+    const min = tarea && tarea.minutos ? tarea.minutos : 0;
+    return `${n}, disculpa, vengo ${min} minutos atrasado. Tu hora de las ${hora} queda cerca de las ${nueva}. Si no te acomoda, avísame y la movemos.`;
+  }
   if (tipo === 'confirmar_dia') {
     return `Hola ${n}, te esperamos hoy a las ${hora} para ${serv}. ¿Me confirmas que vienes? Si no puedes, avísame y liberamos la hora para otra persona.`;
   }
@@ -342,7 +383,7 @@ async function procesarCitas(deps = {}) {
 
       // Dentro de la ventana de 24 h sale como texto; fuera, solo plantilla.
       const abierta = await ventanaAbierta(lead._id);
-      const texto = textoDe(tarea.tipo, cita, cfg);
+      const texto = textoDe(tarea.tipo, cita, cfg, tarea);
       let porPlantilla = false;
 
       if (!abierta) {
@@ -414,7 +455,8 @@ async function enviarTextoReal({ account, lead, texto }) {
 
 async function enviarPlantillaReal({ account, lead, cita, cfg, tarea }) {
   const wa = require('./whatsapp');
-  const params = [soloNombre(cita.nombre), cita.hora, cita.servicio || 'tu hora']
+  const hora = tarea.tipo === 'atraso' && tarea.hora_estimada ? tarea.hora_estimada : cita.hora;
+  const params = [soloNombre(cita.nombre), hora, cita.servicio || 'tu hora']
     .map(t => ({ type: 'text', text: String(t).slice(0, 250) }));
   await wa.sendTemplate({
     phoneNumberId: account.wa_phone_number_id,

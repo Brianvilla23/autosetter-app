@@ -305,9 +305,16 @@ const FALLAS = [
   {
     id: 'agenda_atraso',
     sintoma: 'El barbero o profesional va atrasado y las citas se corren',
-    causa: 'Es una función, no una falla: "Aplicar atraso" en Agenda corre todas las citas pendientes del día y muestra la hora estimada de cada una.',
-    solucion: 'Agenda → Hoy → escribir los minutos de atraso → "Aplicar atraso". Avisar a los clientes afectados desde el hilo de cada uno.',
+    causa: 'Es una función, no una falla: "Aplicar atraso" en Agenda corre todas las citas pendientes del día, muestra la hora estimada de cada una y, desde el 21-09-2026, le avisa sola a cada cliente afectado con su hora nueva.',
+    solucion: 'Agenda → Hoy → escribir los minutos de atraso → "Aplicar atraso". El aviso sale solo desde los 10 minutos (configurable en Agenda → Recordatorios).',
     desde: '2026-09-20',
+  },
+  {
+    id: 'atraso_no_aviso',
+    sintoma: 'Se aplicó un atraso pero a los clientes no les llegó nada',
+    causa: 'Tres motivos posibles: el atraso fue menor al mínimo configurado (10 minutos por defecto), los recordatorios de cita están apagados, o la cita se agendó a mano sin una conversación detrás y no hay a quién escribirle.',
+    solucion: 'Agenda → Recordatorios de cita: revisar que estén activos y bajar el mínimo si quieres avisar atrasos más cortos. Fuera de las 24 horas hace falta la plantilla de aviso de atraso.',
+    desde: '2026-09-21',
   },
 
   // ── Plan y cuotas ─────────────────────────────────────────────────────────

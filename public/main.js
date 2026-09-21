@@ -5578,7 +5578,9 @@ function citaPintarRecordatorios(c, faltan) {
   set('cita-recordar-horas', c.recordarHoras);
   set('cita-feedback-horas', c.feedbackHoras);
   set('cita-volver-dias', c.volverDias);
+  set('cita-atraso-min', c.atrasoMin);
   set('cita-incentivo', c.incentivoVolver || '');
+  set('cita-tpl-atraso', c.plantillas.atraso || '');
   set('cita-tpl-confirmar', c.plantillas.confirmar_dia || '');
   set('cita-tpl-recordar', c.plantillas.recordar || '');
   set('cita-tpl-feedback', c.plantillas.feedback || '');
@@ -5589,6 +5591,7 @@ function citaPintarRecordatorios(c, faltan) {
   const aviso = document.getElementById('cita-aviso');
   if (!aviso) return;
   const nombres = {
+    atraso: 'aviso de atraso',
     confirmar_dia: 'confirmación del día', recordar: 'recordatorio',
     feedback: '¿cómo quedó?', volver: 'invitación a volver',
   };
@@ -5608,8 +5611,10 @@ async function citaGuardar() {
     recordarHoras: Number(val('cita-recordar-horas')) || 2,
     feedbackHoras: Number(val('cita-feedback-horas')) || 1,
     volverDias: Number(val('cita-volver-dias')) || 21,
+    atrasoMin: Number(val('cita-atraso-min')) || 10,
     incentivoVolver: val('cita-incentivo'),
     plantillas: {
+      atraso: val('cita-tpl-atraso'),
       confirmar_dia: val('cita-tpl-confirmar'),
       recordar: val('cita-tpl-recordar'),
       feedback: val('cita-tpl-feedback'),

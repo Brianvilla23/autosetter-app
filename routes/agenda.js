@@ -128,6 +128,11 @@ router.put('/recordatorios', async (req, res, next) => {
       if (n === null) return res.status(400).json({ error: 'El mensaje de después va entre 0,5 y 72 horas.' });
       upd.agenda_feedback_horas = n;
     }
+    if (b.atrasoMin !== undefined) {
+      const n = num(b.atrasoMin, 1, 120);
+      if (n === null) return res.status(400).json({ error: 'El atraso mínimo para avisar va entre 1 y 120 minutos.' });
+      upd.agenda_atraso_min = n;
+    }
     if (b.volverDias !== undefined) {
       const n = num(b.volverDias, 1, 180);
       if (n === null) return res.status(400).json({ error: 'La invitación a volver va entre 1 y 180 días.' });
@@ -137,6 +142,7 @@ router.put('/recordatorios', async (req, res, next) => {
       upd.agenda_incentivo_volver = String(b.incentivoVolver || '').slice(0, 200);
     }
     for (const [k, campo] of [
+      ['atraso', 'agenda_template_atraso'],
       ['confirmar_dia', 'agenda_template_confirmar'], ['recordar', 'agenda_template_recordar'],
       ['feedback', 'agenda_template_feedback'],       ['volver', 'agenda_template_volver'],
     ]) {
