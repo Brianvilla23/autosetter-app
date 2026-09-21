@@ -890,6 +890,12 @@ setInterval(() => {
   procesarTareas().catch(e => console.error('playbookPedido:', e.message));
 }, 60000);
 
+// Bitácora: la historia de trabajo ya ocurrida, para que el centro de datos
+// del panel admin no arranque vacío. Corre una vez; si ya hay entradas, no
+// toca nada (una entrada borrada a mano no reaparece en el próximo deploy).
+require('./services/bitacoraSeed').sembrarSiVacia()
+  .catch(e => console.warn('bitacoraSeed:', e.message));
+
 // Playbook de cita (barberías y todo negocio con hora): confirmación al abrir
 // el día, recordatorio antes de la hora, "¿cómo quedó?" y la invitación a
 // volver. Opt-in por cuenta con agenda_playbook_enabled.

@@ -88,12 +88,51 @@
 
   /* ── Forms ── */
   .card { background: #1a1a2e; border: 1px solid #2a2a4a; border-radius: 10px; padding: 20px; margin-bottom: 20px; }
+
+  /* ── Centro de mando ──
+     Misma estructura de la pagina del centro de mando: cifras arriba,
+     pendientes abiertos al medio y la bitacora abajo. Paleta de marca
+     (ATINOV.md): hueso #f5f2ea sobre negro, dorado #c9a227 quirurgico, el
+     filete partido con rombo hueco como separador. */
+  .cm-fil { display: flex; align-items: center; gap: 14px; margin: 26px 0 18px; }
+  .cm-fil::before, .cm-fil::after { content: ""; flex: 1; height: 1px; background: rgba(245,242,234,.14); }
+  .cm-fil .rb { width: 7px; height: 7px; border: 1px solid #c9a227; transform: rotate(45deg); flex: none; }
+  .cm-fil .tx { font-family: 'Cinzel', Georgia, serif; font-size: .82rem; letter-spacing: .16em; color: #f5f2ea; text-transform: uppercase; }
+  .cm-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1px; background: rgba(245,242,234,.14); border: 1px solid rgba(245,242,234,.14); }
+  .cm-tiles > div { background: #141311; padding: 15px 17px; }
+  .cm-tiles dt { font-size: .64rem; letter-spacing: .16em; text-transform: uppercase; color: #7a7469; margin-bottom: 5px; }
+  .cm-tiles dd { font-size: 1.5rem; font-weight: 700; color: #f5f2ea; font-variant-numeric: tabular-nums; }
+  .cm-tiles dd small { display: block; font-size: .72rem; font-weight: 400; color: #a39d91; margin-top: 2px; }
+  .cm-pend { display: grid; grid-template-columns: 22px 1fr auto; gap: 12px; align-items: start; padding: 11px 0; border-bottom: 1px solid rgba(245,242,234,.07); }
+  .cm-pend:first-child { border-top: 1px solid rgba(245,242,234,.07); }
+  .cm-pend input { appearance: none; width: 17px; height: 17px; margin-top: 2px; border: 1px solid #7a7469; background: transparent; cursor: pointer; display: grid; place-content: center; }
+  .cm-pend input:checked { border-color: #c9a227; background: rgba(201,162,39,.14); }
+  .cm-pend input:checked::after { content: ""; width: 8px; height: 4px; border-left: 2px solid #c9a227; border-bottom: 2px solid #c9a227; transform: rotate(-45deg) translate(1px,-1px); }
+  .cm-pend .q { font-size: .68rem; letter-spacing: .09em; text-transform: uppercase; font-weight: 600; padding: 2px 8px; white-space: nowrap; }
+  .cm-q-brayan { background: rgba(201,162,39,.14); color: #c9a227; }
+  .cm-q-claude { background: rgba(157,184,125,.13); color: #9db87d; }
+  .cm-pend .de { font-size: .72rem; color: #7a7469; margin-top: 2px; }
+  .cm-entrada { border: 1px solid rgba(245,242,234,.12); background: #141311; padding: 15px 17px; margin-bottom: 11px; }
+  .cm-entrada > summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+  .cm-entrada > summary::-webkit-details-marker { display: none; }
+  .cm-entrada h4 { font-family: 'Cinzel', Georgia, serif; font-weight: 500; font-size: 1rem; color: #f5f2ea; margin: 0; }
+  .cm-entrada .fch { font-size: .74rem; color: #7a7469; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .cm-entrada .res { color: #a39d91; font-size: .85rem; margin: 9px 0 0; }
+  .cm-entrada h5 { font-size: .64rem; letter-spacing: .14em; text-transform: uppercase; color: #7a7469; margin: 15px 0 6px; font-weight: 600; }
+  .cm-entrada ul { margin: 0; padding-left: 17px; color: #d2cec4; font-size: .85rem; }
+  .cm-entrada ul li { margin-bottom: 3px; }
+  .cm-commit { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .72rem; color: #c9a227; background: rgba(201,162,39,.14); padding: 2px 7px; margin-right: 5px; display: inline-block; }
+  .cm-vacio { color: #7a7469; font-size: .86rem; padding: 14px 0; }
   .card h3 { font-size: 0.95rem; color: #a5a5c8; margin-bottom: 16px; }
   .form-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
   .form-group { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 140px; }
   label { font-size: 0.78rem; color: #888; }
-  select, input { background: #0f0f1a; border: 1px solid #2a2a4a; color: #e0e0e0; padding: 8px 10px; border-radius: 6px; font-size: 0.85rem; width: 100%; }
-  select:focus, input:focus { outline: none; border-color: #10b981; }
+  /* textarea entró acá el 20-09: los del centro de mando salían con fondo
+     blanco y letra negra sobre el panel oscuro, porque la regla solo cubría
+     select e input. */
+  select, input, textarea { background: #0f0f1a; border: 1px solid #2a2a4a; color: #e0e0e0; padding: 8px 10px; border-radius: 6px; font-size: 0.85rem; width: 100%; font-family: inherit; }
+  textarea { resize: vertical; line-height: 1.5; }
+  select:focus, input:focus, textarea:focus { outline: none; border-color: #10b981; }
 
   /* ── Code display ── */
   .code-text { font-family: monospace; background: #0f0f1a; padding: 4px 8px; border-radius: 4px; color: #a5b4fc; font-size: 0.85rem; }
@@ -197,7 +236,8 @@
 
     <!-- Tabs -->
     <div class="tabs">
-      <div class="tab active" onclick="switchTab('users',this)">👥 Usuarios</div>
+      <div class="tab active" onclick="switchTab('centro',this)">Centro de mando</div>
+      <div class="tab" onclick="switchTab('users',this)">👥 Usuarios</div>
       <div class="tab" onclick="switchTab('codes',this)">🎟️ Códigos</div>
       <div class="tab" onclick="switchTab('discounts',this)">💸 Cupones</div>
       <div class="tab" onclick="switchTab('metrics',this)">📊 Métricas</div>
@@ -208,7 +248,52 @@
     </div>
 
     <!-- ── USUARIOS ── -->
-    <div id="tab-users" class="section active">
+    <div id="tab-centro" class="section active">
+      <div class="card">
+        <div class="cm-fil"><span class="rb"></span><span class="tx">Dónde estamos</span><span class="rb"></span></div>
+        <dl class="cm-tiles" id="cmTiles"><div><dt>Cargando</dt><dd>—</dd></div></dl>
+
+        <div class="cm-fil"><span class="rb"></span><span class="tx">Pendientes abiertos</span><span class="rb"></span></div>
+        <div id="cmPendientes"><div class="cm-vacio">Cargando…</div></div>
+
+        <div class="cm-fil"><span class="rb"></span><span class="tx">Bitácora de conversaciones</span><span class="rb"></span></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+          <p style="margin:0;color:#888;font-size:.84rem;max-width:62ch">Una entrada por conversación de trabajo: lo que se construyó, lo que se decidió y lo que quedó pendiente. Es la memoria del proyecto dentro del producto.</p>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-sm btn-ghost" onclick="cmToggleForm()">Agregar entrada</button>
+            <button class="btn btn-sm btn-ghost" onclick="loadCentro()">Actualizar</button>
+          </div>
+        </div>
+
+        <div id="cmForm" style="display:none;border:1px solid rgba(245,242,234,.12);padding:15px 17px;margin-bottom:14px;background:#141311">
+          <div style="display:grid;grid-template-columns:1fr 150px;gap:10px">
+            <input type="text" id="cmTitulo" class="form-input" placeholder="Título de la conversación">
+            <input type="date" id="cmFecha" class="form-input">
+          </div>
+          <textarea id="cmResumen" class="form-input" rows="2" placeholder="En una o dos frases: de qué se trató" style="margin-top:8px;width:100%"></textarea>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px">
+            <textarea id="cmConstruido" class="form-input" rows="3" placeholder="Lo construido, uno por línea"></textarea>
+            <textarea id="cmDecisiones" class="form-input" rows="3" placeholder="Lo decidido, uno por línea"></textarea>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px">
+            <textarea id="cmPendBrayan" class="form-input" rows="3" placeholder="Pendientes de Brayan, uno por línea"></textarea>
+            <textarea id="cmPendClaude" class="form-input" rows="3" placeholder="Pendientes de Claude, uno por línea"></textarea>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px">
+            <input type="text" id="cmCommits" class="form-input" placeholder="Commits separados por coma">
+            <input type="text" id="cmDocumentos" class="form-input" placeholder="Documentos separados por coma">
+          </div>
+          <div style="margin-top:10px;display:flex;gap:8px">
+            <button class="btn btn-sm" onclick="cmGuardar()">Guardar entrada</button>
+            <button class="btn btn-sm btn-ghost" onclick="cmToggleForm(false)">Cancelar</button>
+          </div>
+        </div>
+
+        <div id="cmEntradas"><div class="cm-vacio">Cargando…</div></div>
+      </div>
+    </div>
+
+    <div id="tab-users" class="section">
       <!-- Filtros + búsqueda -->
       <div class="card" style="padding:14px;margin-bottom:14px">
         <div class="form-row" style="align-items:flex-end;gap:14px">
@@ -841,6 +926,7 @@ async function tryShowPanel() {
     const r = await api('GET', '/api/admin/stats');
     showPanel();
     renderStats(r);
+    loadCentro();
     loadUsers();
     loadCodes();
   } catch {
@@ -872,6 +958,7 @@ async function doLogin() {
     localStorage.setItem('atinov_admin_token', TOKEN);
     showPanel();
     loadStats();
+    loadCentro();
     loadUsers();
     loadCodes();
   } catch (e) {
@@ -912,6 +999,7 @@ function switchTab(name, el) {
   if (name === 'discounts') loadDiscounts();
   if (name === 'simulator') loadSimulatorOptions();
   if (name === 'agente')    loadAgenteTab();
+  if (name === 'centro')    loadCentro();
 }
 
 // ── MARGEN: costo LLM medido + margen por cuenta ────────────────────────────
@@ -1845,6 +1933,120 @@ async function clearErrors() {
 }
 
 // ── COPILOTO: cola de aprendizaje del soporte ───────────────────────────────
+// ── CENTRO DE MANDO: bitácora del trabajo ───────────────────────────────────
+async function loadCentro() {
+  const cont = document.getElementById('cmEntradas');
+  if (!cont) return;
+  try {
+    const r = await api('GET', '/api/admin/bitacora?limit=100');
+    cmPintarTiles(r.stats || {});
+    cmPintarPendientes(r.abiertos || []);
+    cmPintarEntradas(r.entradas || []);
+  } catch (e) {
+    cont.innerHTML = `<div class="cm-vacio" style="color:#ef4444">${escHtml(e.message)}</div>`;
+  }
+}
+
+function cmPintarTiles(s) {
+  const dias = s.ultima ? Math.max(0, Math.round((Date.now() - new Date(s.ultima + 'T12:00:00').getTime()) / 86400000)) : null;
+  document.getElementById('cmTiles').innerHTML = `
+    <div><dt>Conversaciones</dt><dd>${s.sesiones || 0}<small>${dias === null ? 'sin registro' : dias === 0 ? 'la última fue hoy' : `la última hace ${dias} día${dias === 1 ? '' : 's'}`}</small></dd></div>
+    <div><dt>Te toca a ti</dt><dd style="color:${s.de_brayan ? '#c9a227' : '#f5f2ea'}">${s.de_brayan || 0}<small>pendientes abiertos</small></dd></div>
+    <div><dt>Me toca a mí</dt><dd style="color:${s.de_claude ? '#9db87d' : '#f5f2ea'}">${s.de_claude || 0}<small>pendientes abiertos</small></dd></div>
+    <div><dt>Resueltos</dt><dd>${s.resueltos || 0}<small>${s.commits || 0} commits registrados</small></dd></div>`;
+}
+
+function cmPintarPendientes(abiertos) {
+  const cont = document.getElementById('cmPendientes');
+  if (!abiertos.length) {
+    cont.innerHTML = '<div class="cm-vacio">No queda nada abierto.</div>';
+    return;
+  }
+  // Lo tuyo primero: es lo que bloquea.
+  const orden = [...abiertos].sort((a, b) => (a.de === b.de ? 0 : a.de === 'brayan' ? -1 : 1));
+  cont.innerHTML = orden.map(p => `
+    <div class="cm-pend">
+      <input type="checkbox" id="pend-${escHtml(p.entrada_id)}-${escHtml(p.id)}"
+        onchange="cmMarcar('${escHtml(p.entrada_id)}','${escHtml(p.id)}',this.checked)">
+      <label for="pend-${escHtml(p.entrada_id)}-${escHtml(p.id)}" style="cursor:pointer">
+        <div style="color:#e8e5dd;font-size:.9rem">${escHtml(p.texto)}</div>
+        <div class="de">${escHtml(p.entrada)} · ${escHtml(p.fecha)}</div>
+      </label>
+      <span class="q cm-q-${p.de === 'claude' ? 'claude' : 'brayan'}">${p.de === 'claude' ? 'Claude' : 'Brayan'}</span>
+    </div>`).join('');
+}
+
+function cmPintarEntradas(entradas) {
+  const cont = document.getElementById('cmEntradas');
+  if (!entradas.length) {
+    cont.innerHTML = '<div class="cm-vacio">Todavía no hay entradas. Agrega la primera con el botón de arriba.</div>';
+    return;
+  }
+  const bloque = (titulo, items) => (items && items.length)
+    ? `<h5>${titulo}</h5><ul>${items.map(i => `<li>${escHtml(i)}</li>`).join('')}</ul>` : '';
+  cont.innerHTML = entradas.map((e, i) => `
+    <details class="cm-entrada"${i === 0 ? ' open' : ''}>
+      <summary>
+        <h4>${escHtml(e.titulo)}</h4>
+        <span class="fch">${escHtml(e.fecha)}${e.chat ? ' · ' + escHtml(e.chat) : ''}</span>
+      </summary>
+      ${e.resumen ? `<p class="res">${escHtml(e.resumen)}</p>` : ''}
+      ${(e.commits || []).length ? `<h5>Commits</h5><div>${e.commits.map(c => `<span class="cm-commit">${escHtml(c)}</span>`).join('')}</div>` : ''}
+      ${bloque('Construido', e.construido)}
+      ${bloque('Decidido', e.decisiones)}
+      ${bloque('Documentos', e.documentos)}
+      ${(e.pendientes || []).length ? `<h5>Pendientes</h5><ul>${e.pendientes.map(p => `<li>${p.listo ? '<span style="text-decoration:line-through;color:#7a7469">' + escHtml(p.texto) + '</span>' : escHtml(p.texto)} <span class="q cm-q-${p.de === 'claude' ? 'claude' : 'brayan'}">${p.de === 'claude' ? 'Claude' : 'Brayan'}</span></li>`).join('')}</ul>` : ''}
+      <div style="margin-top:12px"><button class="btn btn-sm btn-ghost" onclick="cmBorrar('${escHtml(e._id)}')">Borrar entrada</button></div>
+    </details>`).join('');
+}
+
+async function cmMarcar(entradaId, pendienteId, listo) {
+  try {
+    await api('PATCH', `/api/admin/bitacora/${encodeURIComponent(entradaId)}`,
+      { pendiente_id: pendienteId, listo });
+    loadCentro();
+  } catch (e) { alert('Error: ' + e.message); }
+}
+
+function cmToggleForm(mostrar) {
+  const f = document.getElementById('cmForm');
+  const abrir = mostrar === undefined ? f.style.display === 'none' : mostrar;
+  f.style.display = abrir ? 'block' : 'none';
+  if (abrir && !document.getElementById('cmFecha').value) {
+    document.getElementById('cmFecha').value = new Date().toISOString().slice(0, 10);
+  }
+}
+
+async function cmGuardar() {
+  const v = (id) => (document.getElementById(id)?.value || '').trim();
+  const lineas = (id) => v(id).split('\n').map(x => x.trim()).filter(Boolean);
+  const comas  = (id) => v(id).split(',').map(x => x.trim()).filter(Boolean);
+  if (!v('cmTitulo')) { alert('Ponle un título a la entrada.'); return; }
+  try {
+    await api('POST', '/api/admin/bitacora', {
+      titulo: v('cmTitulo'), fecha: v('cmFecha'), resumen: v('cmResumen'),
+      construido: lineas('cmConstruido'), decisiones: lineas('cmDecisiones'),
+      commits: comas('cmCommits'), documentos: comas('cmDocumentos'),
+      pendientes: [
+        ...lineas('cmPendBrayan').map(t => ({ texto: t, de: 'brayan' })),
+        ...lineas('cmPendClaude').map(t => ({ texto: t, de: 'claude' })),
+      ],
+    });
+    ['cmTitulo','cmResumen','cmConstruido','cmDecisiones','cmCommits','cmDocumentos','cmPendBrayan','cmPendClaude']
+      .forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+    cmToggleForm(false);
+    loadCentro();
+  } catch (e) { alert('Error: ' + e.message); }
+}
+
+async function cmBorrar(id) {
+  if (!confirm('¿Borrar esta entrada de la bitácora?')) return;
+  try {
+    await api('DELETE', `/api/admin/bitacora/${encodeURIComponent(id)}`);
+    loadCentro();
+  } catch (e) { alert('Error: ' + e.message); }
+}
+
 async function loadCopilotoConsultas() {
   const filtro = document.getElementById('copiFiltro')?.value || 'sin_revisar';
   const tbody = document.getElementById('copiConsultasTable');

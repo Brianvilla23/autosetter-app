@@ -1707,6 +1707,48 @@ router.delete('/errors', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── BITÁCORA: el centro de datos del trabajo ─────────────────────────────────
+// Una entrada por conversación de trabajo. Habla del producto, no de clientes.
+
+/** GET /api/admin/bitacora?limit=100 → cifras, pendientes abiertos y entradas. */
+router.get('/bitacora', async (req, res) => {
+  try {
+    res.json(await require('../services/bitacora').centro({ limit: req.query.limit }));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/** POST /api/admin/bitacora → crea (o actualiza si ya existe misma fecha y título). */
+router.post('/bitacora', async (req, res) => {
+  try {
+    const e = await require('../services/bitacora').crear(req.body || {});
+    await audit(req, 'bitacora.crear', e._id, { titulo: e.titulo, fecha: e.fecha });
+    res.json({ ok: true, entrada: e });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/** PATCH /api/admin/bitacora/:id → edita campos, o marca un pendiente listo. */
+router.patch('/bitacora/:id', async (req, res) => {
+  try {
+    const bit = require('../services/bitacora');
+    const b = req.body || {};
+    const e = b.pendiente_id !== undefined
+      ? await bit.marcarPendiente(req.params.id, b.pendiente_id, b.listo)
+      : await bit.actualizar(req.params.id, b);
+    if (!e) return res.status(404).json({ error: 'Entrada o pendiente no encontrado.' });
+    res.json({ ok: true, entrada: e });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/** DELETE /api/admin/bitacora/:id */
+router.delete('/bitacora/:id', async (req, res) => {
+  try {
+    const ok = await require('../services/bitacora').borrar(req.params.id);
+    if (!ok) return res.status(404).json({ error: 'Entrada no encontrada.' });
+    await audit(req, 'bitacora.borrar', req.params.id, {});
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 /**
  * GET /api/admin/copiloto/consultas?limit=100&filtro=todas|no_utiles|sin_revisar
  * Lo que los dueños le preguntan al copiloto y qué respondió. Las marcadas

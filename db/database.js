@@ -81,6 +81,10 @@ const db = {
   // aprendizaje del soporte (2026-09-20). Lleva texto libre del dueño → entra
   // en la cascada de supresión por cuenta.
   copilotoConsultas: new Datastore({ filename: path.join(dir, 'copilotoConsultas.db'), autoload: true }),
+  // Bitácora de trabajo: una entrada por conversación de trabajo con lo
+  // construido, lo decidido y los pendientes (2026-09-20). Habla del producto,
+  // NO de clientes — por eso no entra en la cascada de supresión por cuenta.
+  bitacora:      new Datastore({ filename: path.join(dir, 'bitacora.db'),      autoload: true }),
 };
 
 // Compact on load
