@@ -38,6 +38,9 @@ const TIPOS = {
   // El atraso va primero que todo: es la única del lote que caduca sola — una
   // hora nueva avisada tarde no sirve de nada.
   atraso:        { categoria: 'utility',   prioridad: -1 },
+  // Oferta de una hora que se liberó a alguien que la había pedido. Caduca
+  // igual de rápido que el atraso: la hora sirve solo si alguien la toma ya.
+  hueco:         { categoria: 'utility',   prioridad: -1 },
   confirmar_dia: { categoria: 'utility',   prioridad: 0 },
   recordar:      { categoria: 'utility',   prioridad: 0 },
   feedback:      { categoria: 'utility',   prioridad: 1 },
@@ -76,6 +79,7 @@ function configDe(settings = {}) {
     incentivoVolver: String(settings.agenda_incentivo_volver || '').trim() || null,
     plantillas: {
       atraso:        settings.agenda_template_atraso    || null,
+      hueco:         settings.agenda_template_hueco     || null,
       confirmar_dia: settings.agenda_template_confirmar || null,
       recordar:      settings.agenda_template_recordar  || null,
       feedback:      settings.agenda_template_feedback  || null,
@@ -100,12 +104,16 @@ function plantillasFaltantes(settings = {}) {
  */
 async function agendarPaso({ accountId, leadId, citaId, tipo, cuandoIso, extra = {} }) {
   if (!TIPOS[tipo] || !cuandoIso) return null;
+  // El dedupe va por persona además de por cita: la oferta de una hora
+  // liberada ("hueco") sale a varios candidatos para la MISMA cita. Para el
+  // resto de los pasos la persona es siempre la dueña de la cita, así que
+  // agregarla no cambia nada.
   const dup = await db.findOne(db.pedidoTasks, {
-    account_id: accountId, cita_id: citaId, tipo, sent_at: null, cancelled: false,
+    account_id: accountId, cita_id: citaId, lead_id: leadId || null, tipo, sent_at: null, cancelled: false,
   });
   if (dup) return dup;
   const hecha = await db.findOne(db.pedidoTasks, {
-    account_id: accountId, cita_id: citaId, tipo, sent_at: { $ne: null },
+    account_id: accountId, cita_id: citaId, lead_id: leadId || null, tipo, sent_at: { $ne: null },
   });
   if (hecha) return null;  // ya salió una vez para esta cita: no se repite
   return db.insert(db.pedidoTasks, {
@@ -267,6 +275,63 @@ async function alRegistrarAtraso(accountId, minutos, citasAfectadas = [], settin
   return { corridas, avisadas };
 }
 
+/**
+ * Una cita futura se canceló o se movió: su hora queda libre. Se le ofrece a
+ * quienes la habían pedido ese día (lista de espera), los más cercanos primero.
+ *
+ * @param {object} liberada  la cita tal como estaba (fecha y hora de la hora LIBRE)
+ */
+async function alLiberarHora(liberada, settings, ahora = new Date()) {
+  const cfg = configDe(settings || {});
+  if (!cfg.activo || !liberada) return { ofrecidas: 0 };
+  const inicio = core.instanteChile(liberada.fecha, liberada.hora);
+  // Una hora que ya pasó, o que empieza en menos de 20 minutos, no la alcanza
+  // a tomar nadie: ofrecerla solo genera un "¿y ahora?" del cliente.
+  if (!inicio || new Date(inicio).getTime() - ahora.getTime() < 20 * 60000) {
+    return { ofrecidas: 0, ignorado: 'hora demasiado cerca o pasada' };
+  }
+
+  const espera = require('./listaEspera');
+  const ecfg = espera.configDe(settings || {});
+  const candidatos = (await espera.candidatosPara({
+    accountId: liberada.account_id, fecha: liberada.fecha, hora: liberada.hora,
+    excluirLead: liberada.lead_id, ventanaMin: ecfg.ventanaMin,
+  })).slice(0, ecfg.ofrecerA);
+
+  let ofrecidas = 0;
+  for (const c of candidatos) {
+    const t = await agendarPaso({
+      accountId: liberada.account_id, leadId: c.lead_id, citaId: liberada._id,
+      tipo: 'hueco', cuandoIso: ahora.toISOString(),
+      extra: {
+        espera_id: c._id, nombre: c.nombre,
+        fecha: liberada.fecha, hora: liberada.hora,
+        servicio: liberada.servicio || c.servicio || null,
+        duracion_min: liberada.duracion_min || 30,
+      },
+    });
+    if (t) { await espera.marcarOfrecido(c._id, liberada._id); ofrecidas++; }
+  }
+  return { ofrecidas };
+}
+
+/**
+ * ¿La hora ofrecida sigue libre? Otro candidato pudo haberla tomado entre que
+ * se agendó la oferta y que el worker la manda.
+ */
+async function huecoSigueLibre(tarea) {
+  const ag = require('./agenda');
+  const citas = await ag.citasDelDia(tarea.account_id, tarea.fecha);
+  const ini = core.aMinutos(tarea.hora);
+  const fin = ini + (Number(tarea.duracion_min) || 30);
+  return !citas.some(c => {
+    if (!ag.ACTIVAS.includes(c.estado)) return false;
+    const a = core.aMinutos(c.hora);
+    const b = a + Math.max(10, Number(c.duracion_min) || 30);
+    return ini < b && fin > a;
+  });
+}
+
 // ── Textos deterministas ─────────────────────────────────────────────────────
 
 const soloNombre = (n) => String(n || 'hola').trim().split(/\s+/)[0];
@@ -280,6 +345,12 @@ function textoDe(tipo, cita, cfg, tarea = null) {
   const hora = cita.hora;
   const serv = (cita.servicio || 'tu hora').toLowerCase();
   const cuando = core.fechaLegible(cita.fecha);
+  if (tipo === 'hueco') {
+    const quien = soloNombre((tarea && tarea.nombre) || 'hola');
+    const dia = core.fechaLegible((tarea && tarea.fecha) || cita.fecha);
+    const h = (tarea && tarea.hora) || hora;
+    return `Hola ${quien}, se me liberó una hora el ${dia} a las ${h}, que era la que buscabas. ¿Te la reservo? Si me dices que sí, queda a tu nombre.`;
+  }
   if (tipo === 'atraso') {
     // La hora estimada se guarda en la tarea cuando se agenda: si el atraso
     // cambia después, el texto sale con el número que corresponde.
@@ -353,8 +424,14 @@ async function procesarCitas(deps = {}) {
       if (!cfg.activo) { await cancelar(tarea, 'playbook de cita apagado'); continue; }
 
       // La cita cambió después de agendar el paso: nada que recordar.
+      // El hueco es la excepción: su cita es la que se canceló, y lo que
+      // importa es que la hora siga libre.
       const esPosterior = ['feedback', 'volver'].includes(tarea.tipo);
-      if (!esPosterior && !VIVAS.includes(cita.estado)) {
+      if (tarea.tipo === 'hueco') {
+        if (!(await huecoSigueLibre(tarea))) {
+          await cancelar(tarea, 'la hora ya se tomó'); continue;
+        }
+      } else if (!esPosterior && !VIVAS.includes(cita.estado)) {
         await cancelar(tarea, `cita ${cita.estado}`); continue;
       }
       if (esPosterior && cita.estado !== 'atendida') {
@@ -455,8 +532,11 @@ async function enviarTextoReal({ account, lead, texto }) {
 
 async function enviarPlantillaReal({ account, lead, cita, cfg, tarea }) {
   const wa = require('./whatsapp');
-  const hora = tarea.tipo === 'atraso' && tarea.hora_estimada ? tarea.hora_estimada : cita.hora;
-  const params = [soloNombre(cita.nombre), hora, cita.servicio || 'tu hora']
+  const hora = tarea.tipo === 'atraso' && tarea.hora_estimada ? tarea.hora_estimada
+             : tarea.tipo === 'hueco' ? `${core.fechaLegible(tarea.fecha)} ${tarea.hora}`
+             : cita.hora;
+  const quien = tarea.tipo === 'hueco' ? tarea.nombre : cita.nombre;
+  const params = [soloNombre(quien), hora, (tarea.tipo === 'hueco' ? tarea.servicio : cita.servicio) || 'tu hora']
     .map(t => ({ type: 'text', text: String(t).slice(0, 250) }));
   await wa.sendTemplate({
     phoneNumberId: account.wa_phone_number_id,
@@ -471,6 +551,6 @@ async function enviarPlantillaReal({ account, lead, cita, cfg, tarea }) {
 module.exports = {
   TIPOS, DEFAULTS, VIVAS, configDe, plantillasFaltantes,
   agendarPaso, pendientesDe, cancelarPendientes,
-  alCrearCita, alCambiarEstado, alReprogramar, alRegistrarAtraso,
+  alCrearCita, alCambiarEstado, alReprogramar, alRegistrarAtraso, alLiberarHora, huecoSigueLibre,
   textoDe, procesarCitas,
 };

@@ -310,6 +310,20 @@ const FALLAS = [
     desde: '2026-09-20',
   },
   {
+    id: 'lista_espera',
+    sintoma: 'Alguien canceló y la hora quedó vacía',
+    causa: 'Desde el 21-09-2026 hay lista de espera: quien pidió una hora que estaba ocupada queda anotado, y si esa hora (u otra cercana) se libera por cancelación o por cambio de hora, el sistema se la ofrece solo a los más cercanos. El primero que confirma se la lleva.',
+    solucion: 'Nada que hacer: sale solo con los recordatorios de cita activos. En Agenda, bajo las citas del día, se ve quién está esperando por si prefieres llamarlos tú. Fuera de las 24 horas hace falta la plantilla de hora liberada.',
+    desde: '2026-09-21',
+  },
+  {
+    id: 'lista_espera_no_ofrece',
+    sintoma: 'Se canceló una cita y no se le ofreció a nadie',
+    causa: 'O nadie había pedido una hora cercana ese día, o la hora liberada empezaba en menos de 20 minutos (nadie alcanza a llegar), o la cita se marcó como "no vino" en vez de cancelada: no vino no libera nada porque esa hora ya pasó.',
+    solucion: 'Marcar como cancelada solo lo que se cancela con tiempo. La cercanía y a cuántas personas se ofrece se ajustan en Agenda → Recordatorios de cita.',
+    desde: '2026-09-21',
+  },
+  {
     id: 'atraso_no_aviso',
     sintoma: 'Se aplicó un atraso pero a los clientes no les llegó nada',
     causa: 'Tres motivos posibles: el atraso fue menor al mínimo configurado (10 minutos por defecto), los recordatorios de cita están apagados, o la cita se agendó a mano sin una conversación detrás y no hay a quién escribirle.',

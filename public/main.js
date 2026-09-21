@@ -5579,8 +5579,11 @@ function citaPintarRecordatorios(c, faltan) {
   set('cita-feedback-horas', c.feedbackHoras);
   set('cita-volver-dias', c.volverDias);
   set('cita-atraso-min', c.atrasoMin);
+  set('cita-espera-ventana', c.esperaVentanaMin || 60);
+  set('cita-espera-ofrecer', c.esperaOfrecerA || 3);
   set('cita-incentivo', c.incentivoVolver || '');
   set('cita-tpl-atraso', c.plantillas.atraso || '');
+  set('cita-tpl-hueco', c.plantillas.hueco || '');
   set('cita-tpl-confirmar', c.plantillas.confirmar_dia || '');
   set('cita-tpl-recordar', c.plantillas.recordar || '');
   set('cita-tpl-feedback', c.plantillas.feedback || '');
@@ -5591,7 +5594,7 @@ function citaPintarRecordatorios(c, faltan) {
   const aviso = document.getElementById('cita-aviso');
   if (!aviso) return;
   const nombres = {
-    atraso: 'aviso de atraso',
+    atraso: 'aviso de atraso', hueco: 'hora liberada',
     confirmar_dia: 'confirmación del día', recordar: 'recordatorio',
     feedback: '¿cómo quedó?', volver: 'invitación a volver',
   };
@@ -5612,9 +5615,12 @@ async function citaGuardar() {
     feedbackHoras: Number(val('cita-feedback-horas')) || 1,
     volverDias: Number(val('cita-volver-dias')) || 21,
     atrasoMin: Number(val('cita-atraso-min')) || 10,
+    esperaVentanaMin: Number(val('cita-espera-ventana')) || 60,
+    esperaOfrecerA: Number(val('cita-espera-ofrecer')) || 3,
     incentivoVolver: val('cita-incentivo'),
     plantillas: {
       atraso: val('cita-tpl-atraso'),
+      hueco: val('cita-tpl-hueco'),
       confirmar_dia: val('cita-tpl-confirmar'),
       recordar: val('cita-tpl-recordar'),
       feedback: val('cita-tpl-feedback'),
@@ -5726,7 +5732,25 @@ async function agendaPintarDia() {
   cupos.innerHTML = r.cupos.length ? r.cupos.map(h => `<option>${h}</option>`).join('') : '<option value="">sin cupos</option>';
   const sv = document.getElementById('agenda-n-servicio');
   sv.innerHTML = (AG_CFG?.servicios || []).map(s => `<option>${escHtmlSafe(s.nombre)}</option>`).join('');
-  lista.insertAdjacentHTML('afterend', '');
+  // Lista de espera del día: quienes pidieron una hora que estaba ocupada. Si
+  // alguien cancela, el sistema les ofrece la hora solo; acá el barbero ve a
+  // quién, por si prefiere llamarlos él.
+  let caja = document.getElementById('agenda-espera');
+  if (!caja) {
+    caja = document.createElement('div');
+    caja.id = 'agenda-espera';
+    caja.style.cssText = 'margin-top:14px';
+    lista.insertAdjacentElement('afterend', caja);
+  }
+  const esp = r.espera || [];
+  caja.innerHTML = esp.length
+    ? `<div style="font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);margin-bottom:6px">En lista de espera (${esp.length})</div>`
+      + esp.map(e => `<div style="display:flex;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:13.5px">
+          <strong style="width:110px">quería ${escHtmlSafe(e.hora)}</strong>
+          <span style="flex:1">${escHtmlSafe(e.nombre)}${e.telefono ? ` <span style="color:var(--text-3);font-size:12px">+${escHtmlSafe(e.telefono)}</span>` : ''}${e.servicio ? ' · ' + escHtmlSafe(e.servicio) : ''}</span>
+          <span style="font-size:12px;color:var(--text-3)">${e.estado === 'ofrecido' ? 'ya se le ofreció una hora' : 'esperando'}</span>
+        </div>`).join('')
+    : '';
 }
 
 async function agendaEstado(id, estado) {

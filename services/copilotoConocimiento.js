@@ -111,6 +111,11 @@ AGENDA PROPIA (barberías, clínicas, todo negocio con hora)
   de la ventana de 24 h cada uno necesita su plantilla aprobada. Marcar la
   cita como cancelada o no vino apaga lo pendiente; marcarla atendida arma el
   "¿cómo quedó?" y la invitación.
+- LISTA DE ESPERA: quien pide una hora que ya está tomada queda anotado solo.
+  Si una cita futura se cancela o se cambia de hora, esa hora se le ofrece a
+  los que pidieron una cercana ese día (por defecto hasta 3 personas, dentro
+  de 60 minutos); el primero que confirma se la lleva. "No vino" no libera
+  nada. La lista del día se ve en Agenda, bajo las citas.
 
 PANEL INTELIGENCIA Y MEJORAS DEL AGENTE
 - El Panel Inteligencia muestra lo aprendido de las conversaciones: objeciones

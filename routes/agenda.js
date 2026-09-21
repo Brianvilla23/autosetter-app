@@ -42,8 +42,9 @@ router.get('/citas', async (req, res, next) => {
     const ahoraMin = fecha === hoy ? agenda.ahoraMinChile() : null;
     const activas = citas.filter(c => agenda.ACTIVAS.includes(c.estado));
     const atraso = cfg.atraso && cfg.atraso.fecha === fecha ? cfg.atraso.minutos : 0;
+    const espera = await require('../services/listaEspera').delDia(accountId, fecha);
     res.json({
-      fecha, hoy, atraso,
+      fecha, hoy, atraso, espera,
       ventanas: core.ventanasDelDia(cfg, fecha).map(([a, b]) => `${core.deMinutos(a)}-${core.deMinutos(b)}`),
       cupos: core.cuposDisponibles(cfg, fecha, activas, { duracion: (cfg.servicios[0] || {}).min || 30, ahoraMin }),
       citas: citas.map(c => ({
@@ -99,7 +100,9 @@ router.get('/recordatorios', async (req, res, next) => {
   try {
     const settings = await db.findOne(db.settings, { account_id: req.user.accountId });
     const cfg = citaTasks.configDe(settings || {});
-    res.json({ config: cfg, faltan_plantillas: citaTasks.plantillasFaltantes(settings || {}) });
+    const espera = require('../services/listaEspera').configDe(settings || {});
+    res.json({ config: { ...cfg, esperaVentanaMin: espera.ventanaMin, esperaOfrecerA: espera.ofrecerA },
+               faltan_plantillas: citaTasks.plantillasFaltantes(settings || {}) });
   } catch (e) { next(e); }
 });
 
@@ -133,6 +136,16 @@ router.put('/recordatorios', async (req, res, next) => {
       if (n === null) return res.status(400).json({ error: 'El atraso mínimo para avisar va entre 1 y 120 minutos.' });
       upd.agenda_atraso_min = n;
     }
+    if (b.esperaVentanaMin !== undefined) {
+      const n = num(b.esperaVentanaMin, 10, 240);
+      if (n === null) return res.status(400).json({ error: 'La cercanía para la lista de espera va entre 10 y 240 minutos.' });
+      upd.agenda_espera_ventana_min = n;
+    }
+    if (b.esperaOfrecerA !== undefined) {
+      const n = num(b.esperaOfrecerA, 1, 10);
+      if (n === null) return res.status(400).json({ error: 'A cuántos ofrecer la hora va entre 1 y 10.' });
+      upd.agenda_espera_ofrecer = n;
+    }
     if (b.volverDias !== undefined) {
       const n = num(b.volverDias, 1, 180);
       if (n === null) return res.status(400).json({ error: 'La invitación a volver va entre 1 y 180 días.' });
@@ -142,7 +155,7 @@ router.put('/recordatorios', async (req, res, next) => {
       upd.agenda_incentivo_volver = String(b.incentivoVolver || '').slice(0, 200);
     }
     for (const [k, campo] of [
-      ['atraso', 'agenda_template_atraso'],
+      ['atraso', 'agenda_template_atraso'], ['hueco', 'agenda_template_hueco'],
       ['confirmar_dia', 'agenda_template_confirmar'], ['recordar', 'agenda_template_recordar'],
       ['feedback', 'agenda_template_feedback'],       ['volver', 'agenda_template_volver'],
     ]) {
@@ -152,7 +165,10 @@ router.put('/recordatorios', async (req, res, next) => {
     }
     await db.updateRaw(db.settings, { account_id: req.user.accountId }, { $set: upd }, { upsert: true });
     const settings = await db.findOne(db.settings, { account_id: req.user.accountId });
-    res.json({ ok: true, config: citaTasks.configDe(settings || {}), faltan_plantillas: citaTasks.plantillasFaltantes(settings || {}) });
+    const espera = require('../services/listaEspera').configDe(settings || {});
+    res.json({ ok: true,
+      config: { ...citaTasks.configDe(settings || {}), esperaVentanaMin: espera.ventanaMin, esperaOfrecerA: espera.ofrecerA },
+      faltan_plantillas: citaTasks.plantillasFaltantes(settings || {}) });
   } catch (e) { next(e); }
 });
 

@@ -42,6 +42,7 @@ const POR_CUENTA = [
   ['errorLog',         'accountId'],    // guarda email e IP del titular (auditoría 12-09)
   ['citas',            'account_id'],   // agenda propia: nombre y teléfono del cliente
   ['copilotoConsultas','account_id'],   // preguntas del dueño al copiloto (texto libre)
+  ['listaEspera',      'account_id'],   // lista de espera de la agenda: nombre y teléfono
 ];
 
 /** Colecciones que cuelgan del usuario, no de la cuenta. */

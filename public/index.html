@@ -898,6 +898,12 @@
         <div class="form-row" style="flex:1;min-width:150px"><label>Avisar el atraso desde (minutos)</label>
           <input type="number" id="cita-atraso-min" class="form-input" min="1" max="120" value="10"></div>
       </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <div class="form-row" style="flex:1;min-width:150px"><label>Lista de espera: horas cercanas (minutos)</label>
+          <input type="number" id="cita-espera-ventana" class="form-input" min="10" max="240" value="60"></div>
+        <div class="form-row" style="flex:1;min-width:150px"><label>Ofrecer la hora liberada a (personas)</label>
+          <input type="number" id="cita-espera-ofrecer" class="form-input" min="1" max="10" value="3"></div>
+      </div>
       <div class="form-row">
         <label>Qué ofrecer al invitar a volver (opcional)</label>
         <input type="text" id="cita-incentivo" class="form-input" placeholder="Ej: esta semana el corte con barba queda al mismo precio" maxlength="200">
@@ -907,6 +913,7 @@
         <label>Plantillas aprobadas (para escribir fuera de las 24 horas)</label>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
           <input type="text" id="cita-tpl-atraso" class="form-input" placeholder="Aviso de atraso">
+          <input type="text" id="cita-tpl-hueco" class="form-input" placeholder="Hora liberada (lista de espera)">
           <input type="text" id="cita-tpl-confirmar" class="form-input" placeholder="Confirmación del día">
           <input type="text" id="cita-tpl-recordar" class="form-input" placeholder="Recordatorio">
           <input type="text" id="cita-tpl-feedback" class="form-input" placeholder="¿Cómo quedó?">

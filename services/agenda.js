@@ -148,7 +148,13 @@ async function cambiarEstado(accountId, citaId, estado, extra = {}) {
   // de que el número quede marcado como spam.
   try {
     const settings = await db.findOne(db.settings, { account_id: accountId });
-    await require('./citaTasks').alCambiarEstado(actualizada, settings || {});
+    const ct = require('./citaTasks');
+    await ct.alCambiarEstado(actualizada, settings || {});
+    // Cancelada con tiempo: la hora queda libre y se le ofrece a quien la
+    // estaba esperando. (No vino no libera nada: esa hora ya se perdió.)
+    if (estado === 'cancelada' && ACTIVAS.includes(cita.estado)) {
+      await ct.alLiberarHora(cita, settings || {});
+    }
   } catch (e) { console.warn('[agenda] playbook de cita (estado) no corrió:', e.message); }
 
   return actualizada;
@@ -166,9 +172,14 @@ async function reprogramar(accountId, citaId, { fecha, hora }) {
   await db.update(db.citas, { _id: citaId }, { fecha, hora: core.deMinutos(core.aMinutos(hora)), estado: 'agendada', confirmada_at: null });
   const movida = await db.findOne(db.citas, { _id: citaId });
 
-  // Los recordatorios de la hora vieja ya no sirven: se botan y se rearman.
+  // Los recordatorios de la hora vieja ya no sirven: se botan y se rearman. Y
+  // la hora vieja queda libre para quien la estaba esperando.
   try {
-    await require('./citaTasks').alReprogramar(movida, settings || {});
+    const ct = require('./citaTasks');
+    await ct.alReprogramar(movida, settings || {});
+    if (cita.fecha !== movida.fecha || cita.hora !== movida.hora) {
+      await ct.alLiberarHora(cita, settings || {});
+    }
   } catch (e) { console.warn('[agenda] playbook de cita (reprogramar) no corrió:', e.message); }
 
   return { ok: true, cita: movida };
@@ -240,14 +251,25 @@ async function resolveAgendaMarkers(text, { settings, accountId, leadId, leadNam
         accountId, leadId, nombre: nombreRaw.trim() || leadName || 'Cliente', telefono: leadPhone,
         fecha, hora, servicio: servicioRaw.trim() || null, duracionMin: minStr ? parseInt(minStr, 10) : null, origen: 'agente',
       });
+      const espera = require('./listaEspera');
       if (r.ok) {
         replacement = `📅 ${core.fechaLegible(fecha)} a las ${r.cita.hora} — ${r.cita.servicio}, confirmado`;
+        await espera.marcarTomado(accountId, leadId, fecha).catch(() => 0);
         if (!r.repetida) {
           citas.push(r.cita);
           await db.insert(db.messages, { lead_id: leadId, account_id: accountId, role: 'sistema', content: `📅 Cita agendada: ${r.cita.servicio} — ${r.cita.nombre}, ${core.fechaLegible(fecha)} ${r.cita.hora}` }).catch(() => null);
         }
       } else if (r.alternativas) {
-        replacement = `esa hora ya no está disponible 😕 el ${core.fechaLegible(r.alternativas.fecha)} tengo ${r.alternativas.horas.join(', ')} — ¿cuál te acomoda?`;
+        // La hora existe pero está ocupada: queda anotado por si se libera.
+        let anotado = false;
+        if (espera.esOcupada(r.motivo) && leadId) {
+          anotado = !!(await espera.registrarInteres({
+            accountId, leadId, nombre: nombreRaw.trim() || leadName || 'Cliente', telefono: leadPhone,
+            fecha, hora, servicio: servicioRaw.trim() || null,
+          }).catch(() => null));
+        }
+        replacement = `esa hora ya no está disponible 😕 el ${core.fechaLegible(r.alternativas.fecha)} tengo ${r.alternativas.horas.join(', ')} — ¿cuál te acomoda?`
+          + (anotado ? ' Si prefieres la que pediste, te aviso apenas se libere.' : '');
       } else {
         replacement = 'esa hora ya no está disponible 😕 ¿te busco otro día?';
       }

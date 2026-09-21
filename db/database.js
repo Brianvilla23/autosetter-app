@@ -85,6 +85,10 @@ const db = {
   // construido, lo decidido y los pendientes (2026-09-20). Habla del producto,
   // NO de clientes — por eso no entra en la cascada de supresión por cuenta.
   bitacora:      new Datastore({ filename: path.join(dir, 'bitacora.db'),      autoload: true }),
+  // Lista de espera de la agenda: quién pidió una hora que estaba ocupada, para
+  // ofrecérsela si se libera (2026-09-21). Nombre + teléfono → cascada de
+  // supresión por cuenta.
+  listaEspera:   new Datastore({ filename: path.join(dir, 'listaEspera.db'),   autoload: true }),
 };
 
 // Compact on load
