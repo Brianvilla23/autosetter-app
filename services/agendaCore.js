@@ -125,6 +125,45 @@ function fechaLegible(fecha) {
   return `${DIAS[diaSemana(fecha)]} ${d} ${MESES[m - 1]}`;
 }
 
+/**
+ * Minutos que Chile va por delante de UTC en un instante dado (negativo).
+ * Se saca formateando el instante en América/Santiago y comparando, así el
+ * cambio de hora lo resuelve la base de datos horaria del sistema y no una
+ * constante que se equivoca medio año.
+ */
+function offsetChileMin(instante) {
+  const p = {};
+  for (const x of new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Santiago', hour12: false,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  }).formatToParts(instante)) p[x.type] = x.value;
+  const comoUtc = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute, +p.second);
+  return Math.round((comoUtc - instante.getTime()) / 60000);
+}
+
+/**
+ * Instante real (ISO en UTC) de una fecha "YYYY-MM-DD" y una hora "HH:MM" de
+ * Chile. Dos pasadas: la primera estima el offset, la segunda lo confirma con
+ * el instante ya corregido — así el día del cambio de hora también cae bien.
+ * Devuelve null si la fecha o la hora no son válidas.
+ */
+function instanteChile(fecha, hora) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(fecha || ''))) return null;
+  const min = aMinutos(hora);
+  if (min === null) return null;
+  const [y, m, d] = fecha.split('-').map(Number);
+  const base = Date.UTC(y, m - 1, d, Math.floor(min / 60), min % 60);
+  // El formato no basta: "2026-13-40" pasa el patrón y Date.UTC lo desborda
+  // silenciosamente a febrero del año siguiente. Se verifica que la fecha
+  // construida sea la misma que pidieron.
+  const chk = new Date(base);
+  if (chk.getUTCFullYear() !== y || chk.getUTCMonth() !== m - 1 || chk.getUTCDate() !== d) return null;
+  let ts = base;
+  for (let i = 0; i < 2; i++) ts = base - offsetChileMin(new Date(ts)) * 60000;
+  return new Date(ts).toISOString();
+}
+
 /** Ventanas de atención de un día como [[iniMin, finMin], ...]. La excepción manda. */
 function ventanasDelDia(cfg, fecha) {
   const rangos = cfg.excepciones && Object.prototype.hasOwnProperty.call(cfg.excepciones, fecha)
@@ -244,6 +283,7 @@ const MARKER_RE = /\[AGENDAR:\s*(\d{4}-\d{2}-\d{2})\s*\|\s*(\d{1,2}:\d{2})\s*\|\
 module.exports = {
   configPorDefecto, sanearConfig, sanearRangos,
   aMinutos, deMinutos, diaSemana, sumarDias, fechaLegible,
+  offsetChileMin, instanteChile,
   ventanasDelDia, ocupadosDe, cuposDisponibles, validarHora, servicioDe,
   resumenDisponibilidad, afectadasPorAtraso, MARKER_RE,
 };

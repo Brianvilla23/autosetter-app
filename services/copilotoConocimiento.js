@@ -101,7 +101,16 @@ AGENDA PROPIA (barberías, clínicas, todo negocio con hora)
   la otra le propone alternativas. Estados: agendada, confirmada, atendida,
   no vino, cancelada.
 - "Aplicar atraso": si el profesional va tarde, corre las citas pendientes
-  del día y muestra la hora estimada de cada una.
+  del día y muestra la hora estimada de cada una, y corre también el
+  recordatorio de esas citas para que no avise la hora vieja.
+- RECORDATORIOS DE CITA (Agenda → Recordatorios, opt-in): cuatro mensajes
+  automáticos por cita — confirmación al abrir el día (08:00 por defecto),
+  recordatorio 2 h antes, "¿cómo quedó?" 1 h después y la invitación a volver
+  a los 21 días. Los tres primeros son utility (no gastan cupo de marketing);
+  la invitación a volver es marketing y respeta el tope por contacto. Fuera
+  de la ventana de 24 h cada uno necesita su plantilla aprobada. Marcar la
+  cita como cancelada o no vino apaga lo pendiente; marcarla atendida arma el
+  "¿cómo quedó?" y la invitación.
 
 PANEL INTELIGENCIA Y MEJORAS DEL AGENTE
 - El Panel Inteligencia muestra lo aprendido de las conversaciones: objeciones
@@ -225,6 +234,7 @@ function lineasExtra(e) {
   if (e.wa) l.push(`Entregas de WhatsApp fallidas en 7 días: ${e.wa.totalFallos7d || 0}`);
   if (e.agenda) l.push(`Agenda propia: ${e.agenda.activa ? `activa (${e.agenda.diasConHorario || 0} día(s) con horario, ${e.agenda.servicios || 0} servicio(s), ${e.agenda.citasHoy || 0} cita(s) hoy)` : 'apagada (agendar usa Google Calendar si está conectado)'}`);
   if (e.playbook) l.push(`Playbook post-compra: ${e.playbook.activo ? 'activo' : 'apagado'}`);
+  if (e.citas) l.push(`Recordatorios de cita: ${e.citas.activo ? 'activos' : 'apagados'}`);
   if (e.pagos) l.push(`Cobros en el chat (Mercado Pago): ${e.pagos.mp ? 'token configurado' : 'sin token'}`);
   if (e.leads) l.push(`Personas bajo control humano (el agente no les responde): ${e.leads.bypass || 0}`);
   return l.length ? '\n' + l.join('\n') : '';

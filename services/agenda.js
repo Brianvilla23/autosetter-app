@@ -109,6 +109,12 @@ async function crearCita({ accountId, leadId = null, nombre, telefono = null, fe
     }
   } catch (e) { console.warn('[agenda] espejo a Google falló (no bloquea):', e.message); }
 
+  // Playbook de cita: confirmación del día y recordatorio. Mejor esfuerzo —
+  // una cita creada vale aunque los recordatorios no se alcancen a armar.
+  try {
+    await require('./citaTasks').alCrearCita(cita, settings || {});
+  } catch (e) { console.warn('[agenda] playbook de cita no agendó (no bloquea):', e.message); }
+
   return { ok: true, cita };
 }
 
@@ -135,7 +141,17 @@ async function cambiarEstado(accountId, citaId, estado, extra = {}) {
   if (estado === 'atendida')   upd.atendida_at = ahora;
   if (estado === 'cancelada')  { upd.cancelada_at = ahora; upd.cancel_motivo = String(extra.motivo || '').slice(0, 200); }
   await db.update(db.citas, { _id: citaId }, upd);
-  return db.findOne(db.citas, { _id: citaId });
+  const actualizada = await db.findOne(db.citas, { _id: citaId });
+
+  // Atendida arma el feedback y la invitación a volver; cancelada y no_vino
+  // apagan lo pendiente. Escribirle a quien ya canceló es la forma más rápida
+  // de que el número quede marcado como spam.
+  try {
+    const settings = await db.findOne(db.settings, { account_id: accountId });
+    await require('./citaTasks').alCambiarEstado(actualizada, settings || {});
+  } catch (e) { console.warn('[agenda] playbook de cita (estado) no corrió:', e.message); }
+
+  return actualizada;
 }
 
 async function reprogramar(accountId, citaId, { fecha, hora }) {
@@ -148,7 +164,14 @@ async function reprogramar(accountId, citaId, { fecha, hora }) {
   const v = core.validarHora(cfg, fecha, hora, activas, { duracion: cita.duracion_min, ahoraMin: fecha === hoy ? ahoraMinChile() : null, hoy });
   if (!v.ok) return { ok: false, motivo: v.motivo, alternativas: alternativas(cfg, fecha, activas, cita.duracion_min, hoy) };
   await db.update(db.citas, { _id: citaId }, { fecha, hora: core.deMinutos(core.aMinutos(hora)), estado: 'agendada', confirmada_at: null });
-  return { ok: true, cita: await db.findOne(db.citas, { _id: citaId }) };
+  const movida = await db.findOne(db.citas, { _id: citaId });
+
+  // Los recordatorios de la hora vieja ya no sirven: se botan y se rearman.
+  try {
+    await require('./citaTasks').alReprogramar(movida, settings || {});
+  } catch (e) { console.warn('[agenda] playbook de cita (reprogramar) no corrió:', e.message); }
+
+  return { ok: true, cita: movida };
 }
 
 /**
@@ -162,7 +185,17 @@ async function registrarAtraso(accountId, minutos) {
   cfg.atraso = { fecha: hoy, minutos: Math.max(0, Math.min(240, Number(minutos) || 0)) };
   await guardarConfig(accountId, cfg);
   const citas = await citasDelDia(accountId, hoy);
-  return { atraso: cfg.atraso, afectadas: core.afectadasPorAtraso(citas, hoy, ahoraMinChile(), cfg.atraso.minutos) };
+  const afectadas = core.afectadasPorAtraso(citas, hoy, ahoraMinChile(), cfg.atraso.minutos);
+
+  // El recordatorio "en 2 horas" de las citas corridas se mueve los mismos
+  // minutos: avisar la hora vieja sería peor que no avisar.
+  let corridas = 0;
+  try {
+    const r = await require('./citaTasks').alRegistrarAtraso(accountId, cfg.atraso.minutos, afectadas);
+    corridas = r.corridas || 0;
+  } catch (e) { console.warn('[agenda] recordatorios no se corrieron:', e.message); }
+
+  return { atraso: cfg.atraso, afectadas, recordatorios_corridos: corridas };
 }
 
 /** Bloque para el prompt del agente. null si la agenda no está activa. */

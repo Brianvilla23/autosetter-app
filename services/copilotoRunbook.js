@@ -244,6 +244,30 @@ const FALLAS = [
       : null,
   },
   {
+    id: 'cita_sin_plantillas',
+    sintoma: 'Los recordatorios de cita no le llegan a algunos clientes',
+    causa: 'Fuera de la ventana de 24 horas cada recordatorio necesita su plantilla aprobada por Meta. Al cliente que escribió hace poco le llega igual; al que no, no sale nada.',
+    solucion: 'Agenda → Recordatorios de cita: asignar una plantilla aprobada a cada uno de los cuatro mensajes. Se crean en la sección Plantillas.',
+    desde: '2026-09-20',
+    senal: e => (e && e.citas && e.citas.activo && Array.isArray(e.citas.faltan) && e.citas.faltan.length)
+      ? `Los recordatorios de cita están activos pero les faltan plantillas: ${e.citas.faltan.join(', ')}. A quien no haya escrito en las últimas 24 horas no le va a llegar ese mensaje.`
+      : null,
+  },
+  {
+    id: 'cita_sin_conversacion',
+    sintoma: 'Una cita creada a mano no manda recordatorios',
+    causa: 'Los recordatorios salen por WhatsApp, así que la cita tiene que estar ligada a una conversación. Las citas escritas a mano en el panel, sin un chat detrás, no tienen a quién escribirle.',
+    solucion: 'Si el cliente ya escribió alguna vez, agendar desde su conversación. Si no, el recordatorio hay que mandarlo a mano.',
+    desde: '2026-09-20',
+  },
+  {
+    id: 'cita_cancelada_sigue_avisando',
+    sintoma: 'Duda de si le van a seguir escribiendo a alguien que canceló',
+    causa: 'No. Al marcar la cita como cancelada o no vino, los recordatorios pendientes se apagan solos; al marcarla atendida se apaga el recordatorio y se arma el mensaje de después.',
+    solucion: 'Nada que hacer. Solo mantener el estado de la cita al día en Agenda.',
+    desde: '2026-09-20',
+  },
+  {
     id: 'agenda_atraso',
     sintoma: 'El barbero o profesional va atrasado y las citas se corren',
     causa: 'Es una función, no una falla: "Aplicar atraso" en Agenda corre todas las citas pendientes del día y muestra la hora estimada de cada una.',

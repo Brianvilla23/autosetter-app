@@ -879,6 +879,44 @@
       </div>
       <button class="btn-primary" id="btn-agenda-guardar" onclick="agendaGuardar()">Guardar agenda</button>
     </div>
+
+    <div class="card">
+      <h3>Recordatorios de cita</h3>
+      <p>Los cuatro mensajes que salen solos alrededor de cada hora agendada. Sin ellos, entre 15 y 30 por ciento de las horas se pierden porque el cliente se olvida.</p>
+      <div class="form-row" style="display:flex;align-items:center;gap:10px">
+        <label style="margin:0;flex:1">Mandar los recordatorios</label>
+        <input type="checkbox" id="cita-activo" style="width:18px;height:18px">
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <div class="form-row" style="flex:1;min-width:150px"><label>Confirmar el día de la cita a las</label>
+          <input type="time" id="cita-confirmar-hora" class="form-input" value="08:00"></div>
+        <div class="form-row" style="flex:1;min-width:150px"><label>Recordar (horas antes)</label>
+          <input type="number" id="cita-recordar-horas" class="form-input" min="0.5" max="48" step="0.5" value="2"></div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <div class="form-row" style="flex:1;min-width:150px"><label>Preguntar cómo quedó (horas después)</label>
+          <input type="number" id="cita-feedback-horas" class="form-input" min="0.5" max="72" step="0.5" value="1"></div>
+        <div class="form-row" style="flex:1;min-width:150px"><label>Invitar a volver (días después)</label>
+          <input type="number" id="cita-volver-dias" class="form-input" min="1" max="180" value="21"></div>
+      </div>
+      <div class="form-row">
+        <label>Qué ofrecer al invitar a volver (opcional)</label>
+        <input type="text" id="cita-incentivo" class="form-input" placeholder="Ej: esta semana el corte con barba queda al mismo precio" maxlength="200">
+        <small>El agente no inventa promociones. Si esto queda vacío, solo ofrece agendar.</small>
+      </div>
+      <div class="form-row">
+        <label>Plantillas aprobadas (para escribir fuera de las 24 horas)</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <input type="text" id="cita-tpl-confirmar" class="form-input" placeholder="Confirmación del día">
+          <input type="text" id="cita-tpl-recordar" class="form-input" placeholder="Recordatorio">
+          <input type="text" id="cita-tpl-feedback" class="form-input" placeholder="¿Cómo quedó?">
+          <input type="text" id="cita-tpl-volver" class="form-input" placeholder="Invitación a volver">
+        </div>
+        <small>El nombre exacto de cada plantilla, tal como aparece en la sección Plantillas. Cada una recibe: nombre, hora y servicio. Sin plantilla, ese mensaje solo sale si el cliente escribió en las últimas 24 horas.</small>
+      </div>
+      <div id="cita-aviso" class="alert" style="display:none"></div>
+      <button class="btn-primary" id="btn-cita-guardar" onclick="citaGuardar()">Guardar recordatorios</button>
+    </div>
   </section>
 
   <section id="section-watemplates" class="section">

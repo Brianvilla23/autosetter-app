@@ -26,6 +26,9 @@ const crypto = require('crypto');
 const db = require('../db/database');
 const { parseOrder, parseFulfillment } = require('../services/shopify');
 const pb = require('../services/playbookPedido');
+// El cap de marketing se cuenta en hora de CHILE (auditoría 12-09). Calcular
+// el día en UTC hacía fallar el test entre las 21:00 de Chile y medianoche.
+const { hoyChile, currentMonth } = require('../services/limits');
 
 // ── Utilería ────────────────────────────────────────────────────────────────
 
@@ -202,8 +205,8 @@ test('alConfirmarPedido agenda el upsell a las horas configuradas, una sola vez'
 
 test('el cap por contacto: mes lleno bloquea, día ocupado bloquea, limpio pasa', () => {
   const cfg = pb.configDe({ playbook_pedido_enabled: true, playbook_mkt_cap_mes: 3 });
-  const mes = new Date().toISOString().slice(0, 7);
-  const hoy = new Date().toISOString().slice(0, 10);
+  const mes = currentMonth();
+  const hoy = hoyChile();
   assert.deepStrictEqual(pb.chequearCapMarketing({}, cfg), { ok: true });
   assert.deepStrictEqual(
     pb.chequearCapMarketing({ mkt_month: mes, mkt_count_month: 3 }, cfg),
@@ -289,7 +292,7 @@ test('marketing fuera de ventana CON plantilla configurada: sale por plantilla',
   // El envío marketing quedó contado en el lead (cap por contacto).
   const fresco = await db.findOne(db.leads, { _id: lead._id });
   assert.strictEqual(fresco.mkt_count_month, 1);
-  assert.strictEqual(fresco.mkt_last_day, new Date().toISOString().slice(0, 10));
+  assert.strictEqual(fresco.mkt_last_day, hoyChile());
 });
 
 test('prioridad + cap diario: el upsell gana el día y el winback se corre solo a mañana', async () => {
@@ -309,7 +312,7 @@ test('prioridad + cap diario: el upsell gana el día y el winback se corre solo 
 });
 
 test('cap mensual lleno: el marketing se cancela; el utility del mismo lead pasa igual', async () => {
-  const mes = new Date().toISOString().slice(0, 7);
+  const mes = currentMonth();
   const { accountId } = await armarTienda({ settingsExtra: { playbook_template_upsell: 'up_v1' } });
   const lead = await armarLeadConPedido(accountId, {
     extraLead: { mkt_month: mes, mkt_count_month: 3 },

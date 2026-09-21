@@ -890,6 +890,14 @@ setInterval(() => {
   procesarTareas().catch(e => console.error('playbookPedido:', e.message));
 }, 60000);
 
+// Playbook de cita (barberías y todo negocio con hora): confirmación al abrir
+// el día, recordatorio antes de la hora, "¿cómo quedó?" y la invitación a
+// volver. Opt-in por cuenta con agenda_playbook_enabled.
+const { procesarCitas } = require('./services/citaTasks');
+setInterval(() => {
+  procesarCitas().catch(e => console.error('citaTasks:', e.message));
+}, 60000);
+
 // Campañas: 15 envíos por corrida y por campaña — pacing deliberado, no ráfaga.
 const { procesarCampanas } = require('./services/campanas');
 setInterval(() => {

@@ -25,6 +25,10 @@ const assert = require('node:assert');
 const crypto = require('crypto');
 
 const db = require('../db/database');
+// Los contadores diarios y mensuales se cuentan en hora de CHILE
+// (auditoria 12-09): calcularlos en UTC hacia fallar el test entre las
+// 21:00 de Chile y la medianoche.
+const { hoyChile, currentMonth } = require('../services/limits');
 const router = require('../routes/intelligence');
 const {
   LIMITES, anonimizar, parsearChatExportado, muestrasDesdeMensajes, corpusDesdeTexto,
@@ -347,7 +351,7 @@ test('POST /estilo/aprender: 403 ajeno, 400 sin señal (sin gastar cupo), 429 co
   const cupo = await llamar(handlerDe('/estilo', 'get'), { query: { accountId }, accountId });
   assert.strictEqual(cupo.data.restantes_hoy.aprender, 5, 'un intento sin señal no quema cupo');
 
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = hoyChile();
   await db.insert(db.settings, { account_id: accountId, style_learn_date: hoy, style_learn_count: 5 });
   const tope = await llamar(h, { body: { accountId, fuente: 'texto', texto: 'x' }, accountId });
   assert.strictEqual(tope.status, 429);
@@ -376,7 +380,7 @@ test('POST /entrenar: 403 ajeno, 400 sin agente, 400 sin key (antes de tocar la 
   assert.strictEqual(r1.status, 400);
   assert.match(r1.data.error, /API key/);
 
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = hoyChile();
   await db.insert(db.settings, { account_id: accountId, training_date: hoy, training_count: 3, openai_key: 'sk-falsa' });
   const r2 = await llamar(h, { body: { accountId }, accountId });
   assert.strictEqual(r2.status, 429, 'con el cupo agotado corta antes de gastar aunque haya key');

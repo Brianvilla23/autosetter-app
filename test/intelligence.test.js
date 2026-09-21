@@ -26,6 +26,10 @@ const assert = require('node:assert');
 const crypto = require('crypto');
 
 const db = require('../db/database');
+// Los contadores diarios y mensuales se cuentan en hora de CHILE
+// (auditoria 12-09): calcularlos en UTC hacia fallar el test entre las
+// 21:00 de Chile y la medianoche.
+const { hoyChile, currentMonth } = require('../services/limits');
 const router = require('../routes/intelligence');
 const {
   analyzeUploadedText, parsearPropuestas, guardarPropuestas, applyImprovement,
@@ -161,7 +165,7 @@ test('POST /analizar-texto: dueño ajeno → 403; el accountId del body no manda
 
 test('POST /analizar-texto: el tope diario por cuenta devuelve 429 sin llamar al modelo', async () => {
   const { accountId } = await armarCuenta();
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = hoyChile();
   await db.insert(db.settings, {
     account_id: accountId, upload_analysis_date: hoy, upload_analysis_count: 10,
     openai_key: 'sk-falsa',

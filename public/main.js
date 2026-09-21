@@ -5555,7 +5555,71 @@ async function loadAgenda() {
   AG_CFG = r.config;
   if (!fechaEl.value) fechaEl.value = r.hoy;
   agendaPintarConfig();
+  await citaCargarRecordatorios();
   await agendaPintarDia();
+}
+
+// ── Recordatorios de cita ────────────────────────────────────────────────────
+// Los cuatro mensajes automáticos alrededor de cada hora. Van en settings
+// sueltos, no dentro del objeto `agenda`, igual que el playbook post-compra.
+
+async function citaCargarRecordatorios() {
+  const el = document.getElementById('cita-activo');
+  if (!el) return;
+  const r = await apiFetch('/api/agenda/recordatorios');
+  if (!r?.config) return;
+  citaPintarRecordatorios(r.config, r.faltan_plantillas || []);
+}
+
+function citaPintarRecordatorios(c, faltan) {
+  const set = (id, v) => { const e = document.getElementById(id); if (e) e.value = v; };
+  document.getElementById('cita-activo').checked = c.activo === true;
+  set('cita-confirmar-hora', c.confirmarHora);
+  set('cita-recordar-horas', c.recordarHoras);
+  set('cita-feedback-horas', c.feedbackHoras);
+  set('cita-volver-dias', c.volverDias);
+  set('cita-incentivo', c.incentivoVolver || '');
+  set('cita-tpl-confirmar', c.plantillas.confirmar_dia || '');
+  set('cita-tpl-recordar', c.plantillas.recordar || '');
+  set('cita-tpl-feedback', c.plantillas.feedback || '');
+  set('cita-tpl-volver', c.plantillas.volver || '');
+
+  // El aviso importa: sin plantilla, ese mensaje muere en silencio fuera de
+  // las 24 horas, que es justo cuando más falta hace.
+  const aviso = document.getElementById('cita-aviso');
+  if (!aviso) return;
+  const nombres = {
+    confirmar_dia: 'confirmación del día', recordar: 'recordatorio',
+    feedback: '¿cómo quedó?', volver: 'invitación a volver',
+  };
+  if (c.activo && faltan.length) {
+    aviso.style.display = '';
+    aviso.textContent = `Falta la plantilla de: ${faltan.map(f => nombres[f] || f).join(', ')}. Esos mensajes solo van a salir si el cliente escribió en las últimas 24 horas.`;
+  } else {
+    aviso.style.display = 'none';
+  }
+}
+
+async function citaGuardar() {
+  const val = (id) => (document.getElementById(id)?.value || '').trim();
+  const cfg = {
+    activo: document.getElementById('cita-activo').checked,
+    confirmarHora: val('cita-confirmar-hora') || '08:00',
+    recordarHoras: Number(val('cita-recordar-horas')) || 2,
+    feedbackHoras: Number(val('cita-feedback-horas')) || 1,
+    volverDias: Number(val('cita-volver-dias')) || 21,
+    incentivoVolver: val('cita-incentivo'),
+    plantillas: {
+      confirmar_dia: val('cita-tpl-confirmar'),
+      recordar: val('cita-tpl-recordar'),
+      feedback: val('cita-tpl-feedback'),
+      volver: val('cita-tpl-volver'),
+    },
+  };
+  const r = await apiFetch('/api/agenda/recordatorios', 'PUT', { config: cfg }, { conError: true });
+  if (!r?.ok) { showToast('No se pudo guardar: ' + (r?.error || 'error')); return; }
+  citaPintarRecordatorios(r.config, r.faltan_plantillas || []);
+  showToast(cfg.activo ? 'Recordatorios guardados. Ya salen solos.' : 'Recordatorios guardados (apagados).');
 }
 
 function agendaPintarConfig() {
@@ -5695,4 +5759,4 @@ async function agendaAtraso() {
   }
   agendaPintarDia();
 }
-try { _safeExpose('loadAgenda', loadAgenda); _safeExpose('agendaGuardar', agendaGuardar); _safeExpose('agendaExcAgregar', agendaExcAgregar); _safeExpose('agendaExcQuitar', agendaExcQuitar); _safeExpose('agendaServicioAgregar', agendaServicioAgregar); _safeExpose('agendaEstado', agendaEstado); _safeExpose('agendaCrear', agendaCrear); _safeExpose('agendaAtraso', agendaAtraso); } catch {}
+try { _safeExpose('loadAgenda', loadAgenda); _safeExpose('agendaGuardar', agendaGuardar); _safeExpose('agendaExcAgregar', agendaExcAgregar); _safeExpose('agendaExcQuitar', agendaExcQuitar); _safeExpose('agendaServicioAgregar', agendaServicioAgregar); _safeExpose('agendaEstado', agendaEstado); _safeExpose('agendaCrear', agendaCrear); _safeExpose('agendaAtraso', agendaAtraso); _safeExpose('citaGuardar', citaGuardar); } catch {}

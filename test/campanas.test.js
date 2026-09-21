@@ -22,6 +22,10 @@ const assert = require('node:assert');
 const crypto = require('crypto');
 
 const db = require('../db/database');
+// Los contadores diarios y mensuales se cuentan en hora de CHILE
+// (auditoria 12-09): calcularlos en UTC hacia fallar el test entre las
+// 21:00 de Chile y la medianoche.
+const { hoyChile, currentMonth } = require('../services/limits');
 const camp = require('../services/campanas');
 
 async function armarCuenta({ plan = 'crecimiento', userExtra = {} } = {}) {
@@ -146,9 +150,9 @@ test('el cap por contacto manda: quien ya recibió su marketing de hoy queda fue
   const accountId = await armarCuenta();
   await armarLead(accountId); // limpio
   await armarLead(accountId, {
-    mkt_month: new Date().toISOString().slice(0, 7),
+    mkt_month: currentMonth(),
     mkt_count_month: 1,
-    mkt_last_day: new Date().toISOString().slice(0, 10), // ya recibió hoy
+    mkt_last_day: hoyChile(), // ya recibio hoy
   });
   const r = await camp.crearCampana({ accountId, nombre: 'P', templateName: 'p', segmento: {} });
   const t = fake();
@@ -212,7 +216,7 @@ test('pacing por lotes: una campaña grande avanza de a LOTE_ENVIO por corrida',
 });
 
 test('sin cuota del plan la campaña se PAUSA visible, no muere en silencio', async () => {
-  const mes = new Date().toISOString().slice(0, 7);
+  const mes = currentMonth();
   // Plan inicial con la cuota de WhatsApp ya llena (90 de 90).
   const accountId = await armarCuenta({
     plan: 'inicial',

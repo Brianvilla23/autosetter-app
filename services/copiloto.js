@@ -83,6 +83,13 @@ async function senalesExtra(account, agentes) {
     playbook.faltan = Object.entries(cfg.plantillas || {}).filter(([, v]) => !v).map(([k]) => k);
   } catch { /* idem */ }
 
+  const citas = { activo: false, faltan: [] };
+  try {
+    const ct = require('./citaTasks');
+    citas.activo = !!ct.configDe(settings || {}).activo;
+    citas.faltan = ct.plantillasFaltantes(settings || {});
+  } catch { /* idem */ }
+
   const agentesUsanPago = (agentes || []).some(a => a.enabled && /\[PAGO\b|link de pago|mercado ?pago/i.test(String(a.instructions || '')));
 
   return {
@@ -90,6 +97,7 @@ async function senalesExtra(account, agentes) {
     fb: { reconectar: !!account.fb_reconectar, motivo: account.fb_reconectar_motivo || null },
     agenda,
     playbook,
+    citas,
     pagos: { mp: !!(settings && settings.mp_access_token) },
     shopify: !!(settings && (settings.shopify_admin_token || settings.shopify_webhook_secret)),
     leads: { bypass: Number(bypass) || 0 },
