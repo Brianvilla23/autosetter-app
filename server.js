@@ -39,6 +39,8 @@ app.set('trust proxy', 1);
 // SOLO si la función está configurada: sin META_ES_CONFIG_ID el botón no
 // existe, y entonces tampoco hay razón para ensanchar la política.
 const embeddedSignupOn = !!(process.env.META_APP_ID && process.env.META_APP_SECRET && process.env.META_ES_CONFIG_ID);
+// Conectar Messenger con Facebook usa el mismo SDK y la misma ventana.
+const fbSdkOn = embeddedSignupOn || require('./services/messengerLogin').estaHabilitado();
 const FB_SDK    = ['https://connect.facebook.net'];
 const FB_FRAMES = ['https://www.facebook.com', 'https://web.facebook.com', 'https://staticxx.facebook.com'];
 
@@ -48,13 +50,13 @@ app.use(helmet({
     directives: {
       defaultSrc:    ["'self'"],
       scriptSrc:     ["'self'", "'unsafe-inline'", 'https://plausible.io',      // <script> blocks + Plausible
-                      ...(embeddedSignupOn ? FB_SDK : [])],
+                      ...(fbSdkOn ? FB_SDK : [])],
       scriptSrcAttr: ["'unsafe-inline'"],                                      // onclick="..." inline (CRÍTICO)
       styleSrc:      ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       imgSrc:        ["'self'", 'data:', 'https:'],
       connectSrc:    ["'self'", 'https://api.openai.com', 'https://graph.facebook.com', 'https://graph.instagram.com', 'https://plausible.io',
-                      ...(embeddedSignupOn ? [...FB_SDK, ...FB_FRAMES] : [])],
-      frameSrc:      ["'self'", ...(embeddedSignupOn ? FB_FRAMES : [])],       // el popup/iframe del signup
+                      ...(fbSdkOn ? [...FB_SDK, ...FB_FRAMES] : [])],
+      frameSrc:      ["'self'", ...(fbSdkOn ? FB_FRAMES : [])],       // el popup/iframe del signup
       fontSrc:       ["'self'", 'data:', 'https://fonts.gstatic.com'],
       frameAncestors:["'none'"],                          // clickjacking
       objectSrc:     ["'none'"],
@@ -63,6 +65,13 @@ app.use(helmet({
     },
   },
   crossOriginEmbedderPolicy: false,
+  // La ventana de Facebook (FB.login) le devuelve la autorización a esta
+  // página por window.opener. Con el 'same-origin' que helmet pone por
+  // defecto, el navegador corta ese vínculo: la ventana se abre, el cliente
+  // acepta, y el panel nunca se entera — el callback llega vacío y sin
+  // ningún evento. 'same-origin-allow-popups' mantiene el aislamiento de la
+  // página y solo deja hablar a las ventanas que ELLA abre.
+  crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
   crossOriginResourcePolicy: { policy: 'same-site' },
   referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
 }));

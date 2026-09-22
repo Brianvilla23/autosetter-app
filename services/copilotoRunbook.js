@@ -363,6 +363,20 @@ const FALLAS = [
     desde: '2026-09-21',
   },
   {
+    id: 'facebook_ventana_sin_respuesta',
+    sintoma: 'Aprieto "Conectar con Facebook" (o "Conectar mi WhatsApp"), acepto en la ventana de Facebook y el panel dice que no se completó la autorización',
+    causa: 'Hasta el 22-09-2026 la seguridad del sitio cortaba el vínculo entre el panel y la ventana de Facebook: la ventana funcionaba, pero la respuesta nunca volvía al panel. También pasa si el navegador bloquea ventanas emergentes o si cierras la ventana antes de terminar.',
+    solucion: 'Permite las ventanas emergentes para atinov.com, recarga el panel y vuelve a apretar el botón sin cerrar la ventana de Facebook hasta que se cierre sola. Si sigue igual, usa "Prefiero pegar los datos a mano" y escribe a soporte.',
+    desde: '2026-09-22',
+  },
+  {
+    id: 'messenger_permiso_desmarcado',
+    sintoma: 'Al conectar Messenger dice que quedó sin marcar un permiso, o no aparece mi Página en la lista',
+    causa: 'En la ventana de Facebook se puede desmarcar un permiso o no elegir la Página. Atinov necesita los tres: ver tus Páginas, suscribir la Página a los mensajes y responderlos. Si tu usuario solo ve estadísticas de la Página, tampoco puede conectarla.',
+    solucion: 'Vuelve a apretar "Conectar con Facebook", en la ventana entra a "Editar acceso", marca la Página y deja los permisos activados. Si la Página aparece en gris, pide a quien la administra que te dé control total o que la conecte.',
+    desde: '2026-09-22',
+  },
+  {
     id: 'errores_sistema',
     sintoma: 'Algo falló al guardar o al cargar una sección',
     causa: 'Un error interno del sistema. Cada uno queda registrado con la cuenta, la hora y la ruta para que soporte lo revise.',

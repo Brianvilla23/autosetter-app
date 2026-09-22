@@ -1627,6 +1627,29 @@
 
         <!-- No conectado -->
         <div id="fb-not-connected">
+          <div class="form-row">
+            <label>WhatsApp visible para derivar prospectos (opcional)</label>
+            <input type="text" id="fb-wa-display-number" placeholder="+56 9 XXXX XXXX" class="form-input">
+          </div>
+
+          <!-- Con Facebook: se elige la Página y queda suscrita sola -->
+          <div id="fb-login-box" style="display:none;margin-bottom:18px">
+            <button class="btn-primary" id="btn-fb-login" style="background:#0866FF;border-color:#0866FF;font-size:15px;padding:12px 20px">Conectar con Facebook</button>
+            <p style="font-size:12px;color:var(--text-2);margin-top:10px">
+              Se abre una ventana de Facebook donde inicias sesión y autorizas a Atinov. Después eliges tu Página acá mismo. <strong>No tienes que copiar ningún ID ni token.</strong>
+            </p>
+            <div id="fb-login-status" style="font-size:13px;margin-top:10px"></div>
+            <div id="fb-paginas" style="display:none;margin-top:14px">
+              <div style="font-weight:600;font-size:14px;margin-bottom:8px">Elige la Página que atenderá Atinov</div>
+              <div id="fb-paginas-lista" style="display:flex;flex-direction:column;gap:8px"></div>
+            </div>
+            <details style="margin-top:14px">
+              <summary style="cursor:pointer;font-size:13px;color:var(--text-2)">Prefiero pegar los datos a mano</summary>
+              <div id="fb-manual-wrap" style="margin-top:12px"></div>
+            </details>
+          </div>
+
+          <div id="fb-manual-fields">
           <p style="font-size:13px;color:var(--text-2);margin-bottom:14px">
             Pega el ID de tu Página y el Page Access Token (Meta App → Messenger → Configuración). El token nunca se muestra de vuelta por seguridad.
           </p>
@@ -1638,14 +1661,11 @@
             <label>Page Access Token (permanente)</label>
             <input type="password" id="fb-page-token" placeholder="Token de la Página (System User)" class="form-input">
           </div>
-          <div class="form-row">
-            <label>WhatsApp visible para derivar prospectos (opcional)</label>
-            <input type="text" id="fb-wa-display-number" placeholder="+56 9 XXXX XXXX" class="form-input">
-          </div>
           <button class="btn-primary" id="btn-save-fb">Conectar Messenger</button>
           <p style="font-size:12px;color:var(--text-2);margin-top:10px">
             Requiere: <strong>Página suscrita al webhook</strong> (caso de uso Messenger en la Meta App, campo <em>messages</em>). Solo funciona con Páginas — Marketplace personal no es accesible por API.
           </p>
+          </div>
         </div>
       </div>
 

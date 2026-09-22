@@ -560,15 +560,80 @@ router.put('/messenger', async (req, res, next) => {
 
 // DELETE — olvidar credenciales de Messenger (limpia los campos fb_*)
 // Para apagarlo sin perder el token: PUT /canal/messenger/pausa.
+// Antes de borrar se saca a Atinov de la Página (si falla, se borra igual).
 router.delete('/messenger', async (req, res, next) => {
   try {
     const { accountId } = req.query;
     if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
+    const account = await db.findOne(db.accounts, { _id: accountId });
+    const desuscrita = await require('../services/messengerLogin').desuscribirPagina({
+      pageId: account?.fb_page_id, pageToken: account?.fb_page_token,
+    });
     await db.update(db.accounts, { _id: accountId }, {
       fb_page_id: null, fb_page_token: null, fb_pausado: false,
+      fb_page_name: null, fb_conectado_via: null, fb_suscrito_at: null,
     });
-    res.json({ ok: true });
+    res.json({ ok: true, desuscrita });
   } catch (e) { next(e); }
+});
+
+// ── MESSENGER CON FACEBOOK — sin copiar IDs ni tokens ───────────────────────
+// Ver services/messengerLogin.js. El navegador manda el token de USUARIO del
+// popup; los tokens de Página se quedan en el servidor.
+
+/** GET /api/settings/messenger/facebook — datos públicos para abrir el popup. */
+router.get('/messenger/facebook', async (req, res, next) => {
+  try {
+    res.json(require('../services/messengerLogin').configPublica());
+  } catch (e) { next(e); }
+});
+
+function errorMessenger(res, e, etapa) {
+  const ml = require('../services/messengerLogin');
+  if (e instanceof ml.ConexionInvalida) {
+    return res.status(400).json({ error: `No se pudo conectar: ${e.message}.` });
+  }
+  // El error crudo de Meta puede traer fragmentos de token: al log, no al cliente.
+  console.error(`[messenger-login] ${etapa}:`, e.response?.data?.error?.message || e.message);
+  return res.status(500).json({ error: 'No se pudo completar la conexión con Facebook. Intenta de nuevo en un minuto.' });
+}
+
+/**
+ * POST /api/settings/messenger/facebook/paginas
+ * Body: { accountId, userToken } → { paginas: [{ id, nombre, categoria, puede }] }
+ */
+router.post('/messenger/facebook/paginas', async (req, res) => {
+  const { accountId, userToken } = req.body || {};
+  if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
+  const ml = require('../services/messengerLogin');
+  if (!ml.estaHabilitado()) {
+    return res.status(503).json({ error: 'La conexión con Facebook todavía no está disponible. Usa el formulario manual.' });
+  }
+  try {
+    const paginas = await ml.listarPaginas({ accountId, tokenUsuario: userToken });
+    res.json({ paginas });
+  } catch (e) { errorMessenger(res, e, 'listar páginas'); }
+});
+
+/**
+ * POST /api/settings/messenger/facebook/conectar
+ * Body: { accountId, pageId, wa_display_number? } → { ok, pageId, nombre }
+ */
+router.post('/messenger/facebook/conectar', async (req, res) => {
+  const { accountId, pageId, wa_display_number } = req.body || {};
+  if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
+  if (!/^\d{5,25}$/.test(String(pageId || ''))) {
+    return res.status(400).json({ error: 'Elige una Página de la lista.' });
+  }
+  if (await otraCuentaTiene('fb_page_id', String(pageId), accountId)) {
+    return res.status(409).json({ error: 'Esa Página de Facebook ya está conectada a otra cuenta de Atinov.' });
+  }
+  try {
+    const r = await require('../services/messengerLogin').conectarPagina({
+      accountId, pageId, waDisplayNumber: wa_display_number,
+    });
+    res.json({ ok: true, ...r });
+  } catch (e) { errorMessenger(res, e, 'conectar página'); }
 });
 
 // ── ELIMINAR MI CUENTA Y TODOS MIS DATOS ────────────────────────────────────

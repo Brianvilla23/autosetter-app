@@ -2183,8 +2183,13 @@ async function loadSettings() {
   if (fbNotEl)  fbNotEl.style.display  = fbConnected ? 'none' : '';
   if (fbConnected) {
     const n = document.getElementById('fb-connected-page');
-    if (n) n.textContent = 'Página ID: ' + data.account.fb_page_id;
-    pintarEstadoCanal('fb', !!data.account.fb_pausado, 'Messenger activo — deriva prospectos a WhatsApp');
+    if (n) n.textContent = data.account.fb_page_name || ('Página ID: ' + data.account.fb_page_id);
+    pintarEstadoCanal('fb', !!data.account.fb_pausado,
+      data.account.fb_conectado_via === 'facebook_login'
+        ? 'Messenger activo — Página suscrita a los mensajes'
+        : 'Messenger activo — deriva prospectos a WhatsApp');
+  } else {
+    initMessengerFacebook();
   }
 
   _on('btn-save-fb', async () => {
@@ -3056,18 +3061,7 @@ async function initEmbeddedSignup() {
 
   // Cargar el SDK de Meta (solo acá: si la función no está configurada, el
   // script ni se pide).
-  await new Promise((resolve) => {
-    if (window.FB) return resolve();
-    const s = document.createElement('script');
-    s.src = 'https://connect.facebook.net/en_US/sdk.js';
-    s.async = true; s.defer = true; s.crossOrigin = 'anonymous';
-    s.onload = () => {
-      window.FB.init({ appId: cfg.appId, autoLogAppEvents: true, xfbml: true, version: cfg.graphVersion || 'v21.0' });
-      resolve();
-    };
-    s.onerror = () => resolve();
-    document.head.appendChild(s);
-  });
+  await cargarSdkMeta(cfg.appId, cfg.graphVersion);
 
   document.getElementById('btn-wa-embedded')?.addEventListener('click', () => {
     if (!window.FB) { esStatus('No se pudo cargar la ventana de Meta. Revisa tu conexión o usa el formulario manual.', '#ef4444'); return; }
@@ -3094,6 +3088,149 @@ async function initEmbeddedSignup() {
       extras: { setup: {} },
     });
   });
+}
+
+// SDK de Meta: se pide una sola vez y lo comparten WhatsApp y Messenger.
+let _fbSdkPromesa = null, _fbSdkAppId = null;
+function cargarSdkMeta(appId, version) {
+  const init = () => {
+    if (window.FB && _fbSdkAppId !== appId) {
+      window.FB.init({ appId, autoLogAppEvents: true, xfbml: true, version: version || 'v21.0' });
+      _fbSdkAppId = appId;
+    }
+  };
+  if (window.FB) { init(); return Promise.resolve(); }
+  if (!_fbSdkPromesa) {
+    _fbSdkPromesa = new Promise((resolve) => {
+      const s = document.createElement('script');
+      s.src = 'https://connect.facebook.net/en_US/sdk.js';
+      s.async = true; s.defer = true; s.crossOrigin = 'anonymous';
+      s.onload = () => resolve();
+      s.onerror = () => { _fbSdkPromesa = null; resolve(); };
+      document.head.appendChild(s);
+    });
+  }
+  return _fbSdkPromesa.then(init);
+}
+
+// ── MESSENGER CON FACEBOOK — elegir la Página sin copiar tokens ──────────────
+// 1) FB.login pide los 3 permisos de Páginas  2) el servidor verifica el
+// token y devuelve las Páginas (sin tokens)  3) el cliente elige una y el
+// servidor la suscribe a los mensajes. Los tokens de Página nunca llegan acá.
+function fbStatus(msg, color) {
+  const el = document.getElementById('fb-login-status');
+  if (!el) return;
+  el.textContent = msg || '';
+  el.style.color = color || 'var(--text-2)';
+}
+
+// fetch directo (no apiFetch): el mensaje de error del servidor le dice al
+// cliente qué hacer ("quedó sin marcar el permiso para...").
+async function fbPost(ruta, body) {
+  try {
+    const res = await fetch(API + ruta, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(AUTH_TOKEN ? { Authorization: `Bearer ${AUTH_TOKEN}` } : {}),
+      },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => null);
+    return { ok: res.ok, data };
+  } catch {
+    return { ok: false, data: null };
+  }
+}
+
+async function initMessengerFacebook() {
+  const box = document.getElementById('fb-login-box');
+  if (!box || box.dataset.wired) return;
+
+  let cfg = null;
+  try { cfg = await apiFetch('/api/settings/messenger/facebook'); } catch { return; }
+  if (!cfg?.enabled || !cfg.appId) return;   // sin configurar → queda el formulario manual
+
+  box.dataset.wired = '1';
+  box.style.display = '';
+  // El formulario manual pasa a ser el plan B, dentro del desplegable.
+  const wrap = document.getElementById('fb-manual-wrap');
+  const fields = document.getElementById('fb-manual-fields');
+  if (wrap && fields) wrap.appendChild(fields);
+
+  await cargarSdkMeta(cfg.appId, cfg.graphVersion);
+
+  document.getElementById('btn-fb-login')?.addEventListener('click', () => {
+    if (!window.FB) { fbStatus('No se pudo cargar la ventana de Facebook. Revisa tu conexión o usa el formulario manual.', '#ef4444'); return; }
+    document.getElementById('fb-paginas').style.display = 'none';
+    fbStatus('Abriendo la ventana de Facebook…');
+    const opciones = cfg.configId
+      ? { config_id: cfg.configId }
+      : { scope: (cfg.scopes || []).join(','), return_scopes: true, auth_type: 'rerequest' };
+    window.FB.login((response) => {
+      const token = response?.authResponse?.accessToken;
+      if (!token) {
+        fbStatus('No se completó la autorización en Facebook. Puedes reintentar.', 'var(--text-2)');
+        return;
+      }
+      fbMostrarPaginas(token);
+    }, opciones);
+  });
+}
+
+async function fbMostrarPaginas(userToken) {
+  fbStatus('Buscando tus Páginas…');
+  const { ok, data } = await fbPost('/api/settings/messenger/facebook/paginas', { accountId: ACCOUNT_ID, userToken });
+  if (!ok) { fbStatus(data?.error || 'No se pudieron leer tus Páginas. Intenta de nuevo.', '#ef4444'); return; }
+
+  const paginas = data?.paginas || [];
+  const lista = document.getElementById('fb-paginas-lista');
+  const cont = document.getElementById('fb-paginas');
+  if (!paginas.length) {
+    fbStatus('Tu usuario de Facebook no administra ninguna Página, o no la marcaste en la ventana. Vuelve a conectar y elige la Página.', '#f59e0b');
+    return;
+  }
+  fbStatus(paginas.length === 1 ? 'Encontramos 1 Página.' : `Encontramos ${paginas.length} Páginas.`);
+  lista.textContent = '';
+  for (const p of paginas) {
+    // Los nombres de Página vienen de Facebook: textContent, nunca innerHTML.
+    const fila = document.createElement('div');
+    fila.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid var(--border);border-radius:10px';
+    const info = document.createElement('div');
+    const nom = document.createElement('div');
+    nom.style.fontWeight = '600';
+    nom.textContent = p.nombre;
+    const sub = document.createElement('div');
+    sub.style.cssText = 'font-size:12px;color:var(--text-2)';
+    sub.textContent = p.puede ? (p.categoria || 'Página de Facebook') : 'Tu usuario no administra los mensajes de esta Página';
+    info.append(nom, sub);
+    const btn = document.createElement('button');
+    btn.className = 'btn-primary';
+    btn.textContent = 'Conectar';
+    btn.disabled = !p.puede;
+    btn.addEventListener('click', () => fbConectarPagina(p, btn));
+    fila.append(info, btn);
+    lista.appendChild(fila);
+  }
+  cont.style.display = '';
+}
+
+async function fbConectarPagina(pagina, btn) {
+  if (btn) btn.disabled = true;
+  fbStatus(`Conectando "${pagina.nombre}" y suscribiéndola a los mensajes…`);
+  const wa_display_number = document.getElementById('fb-wa-display-number')?.value.trim();
+  const { ok, data } = await fbPost('/api/settings/messenger/facebook/conectar', {
+    accountId: ACCOUNT_ID, pageId: pagina.id, wa_display_number,
+  });
+  if (!ok || !data?.ok) {
+    if (btn) btn.disabled = false;
+    fbStatus(data?.error || 'No se pudo conectar la Página. Intenta de nuevo.', '#ef4444');
+    return;
+  }
+  document.getElementById('fb-paginas').style.display = 'none';
+  fbStatus(`Listo: "${data.nombre}" quedó suscrita a los mensajes. Escríbele a tu Página y el agente responde.`, '#22c55e');
+  showToast('Messenger conectado');
+  loadSettings();
 }
 
 async function esEnviarSiListo() {
