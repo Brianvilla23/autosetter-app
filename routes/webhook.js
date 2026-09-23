@@ -1154,6 +1154,11 @@ ${entregar
   } catch (e) {
     console.warn('[respuesta] revisión omitida:', e.message);
   }
+  // La reescritura puede devolver "¿" o punto final: se vuelve a pasar por la
+  // huella de chat real (generateReply ya lo hizo con la versión original).
+  reply = viva.aplicarHuella(reply, {
+    leadUsaEmoji: viva.usaEmoji([...history.filter(m => m.role === 'user').slice(-3).map(m => m.content), text]),
+  });
 
   // ── Resolver marcadores [PAGO: ...] → link real de Mercado Pago ──────────
   // Antes de guardar/encolar, para que DB y cola tengan el texto final.

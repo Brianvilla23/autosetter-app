@@ -28,9 +28,14 @@
 // ── Límites ──────────────────────────────────────────────────────────────────
 // Una nota de voz de más de 30 palabras ya dura ~15 segundos: nadie escucha
 // eso de un desconocido. El texto aguanta un poco más porque se escanea.
+//
+// Ajustados el 23-09-2026 con un chat real (ver HUELLA más abajo): en
+// WhatsApp la mitad de los mensajes tiene 7 palabras o menos, el 88 % tiene
+// 20 o menos y 3 de cada 4 son una sola oración. El tope anterior de 45
+// palabras y 3 oraciones dejaba pasar respuestas que ninguna persona escribe.
 const LIMITES = {
-  voz:   { palabras: 30, oraciones: 2, preguntas: 1 },
-  texto: { palabras: 45, oraciones: 3, preguntas: 1 },
+  voz:   { palabras: 25, oraciones: 2, preguntas: 1 },
+  texto: { palabras: 30, oraciones: 2, preguntas: 1 },
 };
 
 /** Tres o más elementos separados por comas antes de un "y" = enumeración. */
@@ -161,6 +166,10 @@ function revisar(texto, { voz = false, dichos = [] } = {}) {
       ? 'Enumera varias cosas seguidas. Hablado suena a robot: di UNA sola y en frase corta.'
       : 'Enumera varias cosas seguidas. Menciona solo la que le sirve a esta persona.');
   }
+  const callCenter = frasesDeCallCenter(t);
+  if (callCenter.length) {
+    motivos.push(`Usa "${callCenter[0]}", que es frase de call center: en un chat real no aparece nunca. Dilo como lo escribiría una persona apurada, sin fórmulas de cortesía.`);
+  }
 
   // Repetición contra lo ya dicho por el agente. Un mensaje muy corto no se
   // juzga: con dos o tres palabras con contenido, la proporción se dispara por
@@ -185,6 +194,66 @@ function revisar(texto, { voz = false, dichos = [] } = {}) {
   }
 
   return { ok: motivos.length === 0, motivos, medida: m };
+}
+
+// ── Huella de chat real ──────────────────────────────────────────────────────
+// Medida el 23-09-2026 sobre un grupo de WhatsApp chileno real exportado por
+// Brayan (120 personas, 2024-2026). De él solo salieron estas estadísticas:
+// ningún mensaje, nombre ni número entró al código. Sobre los 6.620 mensajes
+// de conversación (sin reportes de turno ni adjuntos):
+//   · mediana de 7 palabras; 72 % tiene 12 o menos; 76 % es una sola oración
+//   · de 898 preguntas, 3 abren con "¿" (0,3 %); de las exclamaciones, 2 % con "¡"
+//   · 12 % termina en punto y 66 % sin ningún signo
+//   · menos de 5 % lleva emoji
+//   · 83 % de los turnos es UNA burbuja: partir la respuesta no es lo normal
+//   · "con gusto", "claro que sí", "no dudes en", "en qué puedo ayudarte":
+//     cero veces en diez mil mensajes
+// El agente escribía exactamente al revés: "¿" y "¡" de apertura, punto final
+// en todo y emoji de cortesía. Son marcas de máquina que cualquiera nota sin
+// saber explicar por qué. Se corrigen en código porque son mecánicas: no hace
+// falta que el modelo "se acuerde".
+
+const FRASES_CALL_CENTER = [
+  'con gusto', 'claro que si', 'por supuesto', 'estare encantad', 'no dudes en',
+  'estoy aqui para', 'quedo atent', 'quedo a tu disposicion', 'en que puedo ayudarte',
+  'sera un placer', 'excelente pregunta', 'gracias por contactarnos', 'gracias por escribirnos',
+];
+
+/** Frases de call center presentes en el texto (normalizadas, sin tildes). */
+function frasesDeCallCenter(texto) {
+  const t = normalizar(texto);
+  return FRASES_CALL_CENTER.filter(f => t.includes(f));
+}
+
+// Emojis, banderas, tonos de piel y los unidores que los arman.
+const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F3FB}-\u{1F3FF}\u{FE0F}\u{200D}]/u;
+const EMOJI_G = new RegExp(EMOJI.source, 'gu');
+
+/** ¿Alguno de estos textos del cliente trae emoji? */
+function usaEmoji(textos) {
+  return (Array.isArray(textos) ? textos : [textos]).some(t => EMOJI.test(String(t || '')));
+}
+
+/**
+ * Deja la respuesta con la puntuación de un chat de verdad:
+ *  · sin "¿" ni "¡" de apertura (el de cierre se queda)
+ *  · sin emojis, salvo que el cliente los use
+ *  · sin el punto final (los puntos entre oraciones y los "..." se quedan)
+ * No toca palabras ni marcadores [AGENDAR: ...] / [PAGO: ...].
+ */
+function aplicarHuella(texto, { leadUsaEmoji = false } = {}) {
+  let t = String(texto || '');
+  if (!t.trim()) return t;
+  t = t.replace(/[¿¡]/g, '');
+  if (!leadUsaEmoji) {
+    t = t.replace(EMOJI_G, '')
+      .replace(/[ \t]{2,}/g, ' ')
+      .replace(/[ \t]+([,.!?])/g, '$1')
+      .replace(/[ \t]+\n/g, '\n');
+  }
+  t = t.trim();
+  if (/[^.]\.$/.test(t)) t = t.slice(0, -1);
+  return t;
 }
 
 // ── Bloques para el prompt ───────────────────────────────────────────────────
@@ -258,5 +327,6 @@ module.exports = {
   LIMITES, SIMILITUD_MAX,
   normalizar, contenido, similitud,
   medir, revisar,
+  frasesDeCallCenter, usaEmoji, aplicarHuella,
   loQueYaDijo, bloqueNoRepetir, bloqueVoz, promptDeAjuste,
 };

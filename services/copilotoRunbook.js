@@ -370,6 +370,13 @@ const FALLAS = [
     desde: '2026-09-22',
   },
   {
+    id: 'respuestas_suenan_robot',
+    sintoma: 'El agente suena a robot: muy formal, muy correcto, frases de call center',
+    causa: 'Hasta el 23-09-2026 el agente abría las preguntas con "¿", ponía punto final en todo, agregaba emojis de cortesía y aceptaba respuestas de hasta 45 palabras. En chats reales casi nadie escribe así: la mitad de los mensajes tiene 7 palabras o menos. Además, si el agente no tiene ejemplos de cómo escribe tu negocio, imita un español de manual.',
+    solucion: 'La puntuación, el largo y las frases de call center ya se corrigen solos desde el 23-09-2026. Para que además suene a tu negocio, abre tu agente y en "Que hable como tus clientes" aprieta "Aprender de mi bandeja" o "Pegar conversaciones…" con chats reales tuyos con clientes. Después entrénalo ahí mismo: el juez te dice qué sonó a bot.',
+    desde: '2026-09-23',
+  },
+  {
     id: 'messenger_permiso_desmarcado',
     sintoma: 'Al conectar Messenger dice que quedó sin marcar un permiso, o no aparece mi Página en la lista',
     causa: 'En la ventana de Facebook se puede desmarcar un permiso o no elegir la Página. Atinov necesita los tres: ver tus Páginas, suscribir la Página a los mensajes y responderlos. Si tu usuario solo ve estadísticas de la Página, tampoco puede conectarla.',

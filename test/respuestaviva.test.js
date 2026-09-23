@@ -58,8 +58,8 @@ test('la respuesta del video se manda a reescribir, con motivos concretos', () =
 });
 
 test('el límite hablado es más estricto que el escrito', () => {
-  // 31 palabras y dos frases: pasa el límite escrito y se pasa del hablado.
-  const media = 'te cuento rápido cómo funciona esto para que lo veas claro antes de decidir. yo me encargo de contestar a toda la gente que te escribe cuando tú estás ocupado trabajando.';
+  // 26 palabras y dos frases: pasa el límite escrito y se pasa del hablado.
+  const media = 'te cuento rápido cómo funciona esto antes de que decidas. yo contesto a la gente que te escribe mientras tú estás ocupado trabajando en otra cosa.';
   assert.strictEqual(v.revisar(media, { voz: false }).ok, true, 'como texto pasa');
   assert.strictEqual(v.revisar(media, { voz: true }).ok, false, 'hablada es muy larga');
   assert.ok(v.LIMITES.voz.palabras < v.LIMITES.texto.palabras);
@@ -151,4 +151,46 @@ test('la instrucción de reescritura no deja perder los marcadores', () => {
   assert.match(p, new RegExp(String(v.LIMITES.voz.palabras)), 'usa el límite hablado');
   assert.match(v.promptDeAjuste('x', ['y'], { voz: false }),
     new RegExp(String(v.LIMITES.texto.palabras)), 'y el escrito cuando no es voz');
+});
+
+// ── Huella de chat real (23-09-2026) ─────────────────────────────────────────
+// En un grupo de WhatsApp real: 0,3 % de las preguntas abre con "¿", 12 % de
+// los mensajes termina en punto, menos de 5 % lleva emoji y "con gusto" no
+// aparece nunca. El agente hacía todo eso al revés.
+
+test('la huella quita los signos de apertura y el punto final', () => {
+  assert.strictEqual(v.aplicarHuella('¡Hola! ¿Qué andas buscando?'), 'Hola! Qué andas buscando?');
+  assert.strictEqual(v.aplicarHuella('El corte sale 12 mil. Te sirve el jueves a las 18:00.'),
+    'El corte sale 12 mil. Te sirve el jueves a las 18:00', 'el punto de en medio se queda');
+  assert.strictEqual(v.aplicarHuella('déjame revisar...'), 'déjame revisar...', 'los puntos suspensivos se quedan');
+  assert.strictEqual(v.aplicarHuella(''), '');
+  assert.strictEqual(v.aplicarHuella(null), '');
+});
+
+test('la huella no toca marcadores ni links', () => {
+  assert.strictEqual(v.aplicarHuella('listo, te agendé. [AGENDAR: 2026-09-25 18:00]'),
+    'listo, te agendé. [AGENDAR: 2026-09-25 18:00]');
+  assert.strictEqual(v.aplicarHuella('mira acá https://atinov.com/pricing.'), 'mira acá https://atinov.com/pricing');
+});
+
+test('emojis solo si el cliente los usa', () => {
+  assert.strictEqual(v.aplicarHuella('hola 🙂 qué tal?'), 'hola qué tal?');
+  assert.strictEqual(v.aplicarHuella('súper, nos vemos 👍'), 'súper, nos vemos');
+  assert.strictEqual(v.aplicarHuella('hola 🙂 qué tal?', { leadUsaEmoji: true }), 'hola 🙂 qué tal?');
+  assert.strictEqual(v.usaEmoji(['hola', 'jaja 😅']), true);
+  assert.strictEqual(v.usaEmoji(['hola', 'cuánto sale?']), false);
+  assert.strictEqual(v.usaEmoji('👍🏻'), true, 'con tono de piel también');
+});
+
+test('las frases de call center mandan a reescribir', () => {
+  const r = v.revisar('Claro que sí, con gusto te ayudo con eso');
+  assert.strictEqual(r.ok, false);
+  assert.match(r.motivos.join(' '), /call center/);
+  assert.deepStrictEqual(v.frasesDeCallCenter('No dudes en escribirme'), ['no dudes en']);
+  assert.deepStrictEqual(v.frasesDeCallCenter('ya, te aviso'), []);
+});
+
+test('los límites calzan con cómo escribe la gente de verdad', () => {
+  assert.ok(v.LIMITES.texto.palabras <= 30, 'el 88 % de los mensajes reales tiene 20 palabras o menos');
+  assert.ok(v.LIMITES.texto.oraciones <= 2, '3 de cada 4 mensajes reales son una sola oración');
 });
