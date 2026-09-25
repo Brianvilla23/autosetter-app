@@ -246,6 +246,24 @@ router.get('/callback', async (req, res) => {
       }
     }
 
+    // Suscribir la cuenta a los webhooks. Con Instagram Login esto NO pasa
+    // solo: sin esta llamada Meta no manda los mensajes ni los comentarios de
+    // esa cuenta, y un cliente que conecta por su cuenta queda "conectado"
+    // pero mudo. Si `comments` todavía no está permitido (acceso avanzado
+    // pendiente), se reintenta solo con mensajes. Nunca corta la conexión.
+    step = 'webhooks';
+    for (const campos of ['messages,comments', 'messages']) {
+      try {
+        const r = await axios.post('https://graph.instagram.com/v21.0/me/subscribed_apps', null, {
+          params: { subscribed_fields: campos, access_token: longToken }, timeout: 10000,
+        });
+        console.log(`[AUTH] webhooks de @${igUsername} suscritos (${campos}): ${JSON.stringify(r.data)}`);
+        break;
+      } catch (e) {
+        console.warn(`[AUTH] suscripción a webhooks (${campos}) falló:`, e.response?.data?.error?.message || e.message);
+      }
+    }
+
     res.redirect('/?auth=success&ig=@' + igUsername);
   } catch (e) {
     console.error(`Auth error [paso=${step}] status=${e.response?.status ?? '-'}:`,

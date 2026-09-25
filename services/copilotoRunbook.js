@@ -370,6 +370,13 @@ const FALLAS = [
     desde: '2026-09-22',
   },
   {
+    id: 'comentario_info_no_responde',
+    sintoma: 'Alguien comenta la palabra clave en mi publicación de Instagram y no le llega nada',
+    causa: 'Tres causas posibles. 1) La publicación es de otra cuenta, no de la que está conectada en Atinov. 2) El comentario lo hizo la misma cuenta del negocio: Atinov no se responde a sí mismo. 3) Hasta que Meta aprueba la app, Instagram no avisa los comentarios al instante; desde el 24-09-2026 Atinov los revisa solo cada minuto en las publicaciones que tienen una regla.',
+    solucion: 'Crea la regla en Comentarios sobre una publicación de la cuenta conectada, pide que comente otra persona desde su propia cuenta y espera hasta un minuto. Solo cuentan los comentarios hechos después de crear la regla.',
+    desde: '2026-09-24',
+  },
+  {
     id: 'instagram_anteriormente_conectaste',
     sintoma: 'Olvidé las credenciales de Instagram y al volver a conectar sale "Anteriormente conectaste Atinov - IG", sin la lista de permisos',
     causa: '"Olvidar credenciales" borra el acceso dentro de Atinov, pero la autorización también queda guardada en tu cuenta de Instagram. Desde el 24-09-2026 Atinov intenta revocarla al olvidar; si Instagram no lo acepta, la recuerda y solo pregunta si quieres seguir compartiendo.',

@@ -1720,6 +1720,7 @@ router.post('/twilio/status', async (req, res) => {
 });
 
 module.exports = router;
+module.exports.handleComment = handleComment;   // lo usa también services/comentariosPoller
 module.exports.leerBitacora = leerBitacora;
 module.exports.mensajeYaProcesado = mensajeYaProcesado;
 module.exports.runConversation = runConversation;   // solo para tests del agrupador

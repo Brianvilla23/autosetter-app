@@ -929,6 +929,11 @@ setInterval(() => {
   procesarCitas().catch(e => console.error('citaTasks:', e.message));
 }, 60000);
 
+// Comentarios de Instagram: Meta no manda el webhook de `comments` sin acceso
+// avanzado (App Review). Cada minuto se revisan las publicaciones con regla y
+// los comentarios nuevos pasan por el mismo manejador del webhook.
+require('./services/comentariosPoller').iniciar(require('./routes/webhook').handleComment);
+
 // Campañas: 15 envíos por corrida y por campaña — pacing deliberado, no ráfaga.
 const { procesarCampanas } = require('./services/campanas');
 setInterval(() => {
