@@ -235,6 +235,22 @@ function usaEmoji(textos) {
 }
 
 /**
+ * WhatsApp, Instagram y Messenger no dibujan Markdown: un link del modelo
+ * llegaba al cliente como "[atinov.com/app](https://atinov.com/app?register=1)"
+ * (visto el 24-09-2026 en la respuesta a un comentario). Se deja el link solo,
+ * que las apps sí convierten en enlace, y se sacan negritas y títulos.
+ * Los marcadores del agente ([AGENDAR: ...], [PAGO: ...]) no llevan "(" pegado
+ * al corchete, así que no se tocan.
+ */
+function sinMarkdown(texto) {
+  return String(texto || '')
+    .replace(/\[([^\]\n]{1,200})\]\((https?:\/\/[^\s)]+)\)/g, (_, etiqueta, url) => url)
+    .replace(/\*\*([^*\n]+)\*\*/g, '$1')
+    .replace(/__([^_\n]+)__/g, '$1')
+    .replace(/^#{1,6}\s+/gm, '');
+}
+
+/**
  * Deja la respuesta con la puntuación de un chat de verdad:
  *  · sin "¿" ni "¡" de apertura (el de cierre se queda)
  *  · sin emojis, salvo que el cliente los use
@@ -242,7 +258,7 @@ function usaEmoji(textos) {
  * No toca palabras ni marcadores [AGENDAR: ...] / [PAGO: ...].
  */
 function aplicarHuella(texto, { leadUsaEmoji = false } = {}) {
-  let t = String(texto || '');
+  let t = sinMarkdown(String(texto || ''));
   if (!t.trim()) return t;
   t = t.replace(/[¿¡]/g, '');
   if (!leadUsaEmoji) {
@@ -327,6 +343,6 @@ module.exports = {
   LIMITES, SIMILITUD_MAX,
   normalizar, contenido, similitud,
   medir, revisar,
-  frasesDeCallCenter, usaEmoji, aplicarHuella,
+  frasesDeCallCenter, usaEmoji, aplicarHuella, sinMarkdown,
   loQueYaDijo, bloqueNoRepetir, bloqueVoz, promptDeAjuste,
 };

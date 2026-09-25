@@ -425,6 +425,10 @@ async function handleDM(pageId, event) {
 }
 
 // ── HANDLER: COMENTARIO EN POST/CARRUSEL → DM ─────────────────────────────────
+// Respuesta pública cuando ni la regla ni el agente traen una. Sin "¡" ni
+// emoji, como escribe una persona (ver aplicarHuella en respuestaViva).
+const RESPUESTA_PUBLICA_DEFECTO = '{usuario} te mandé la info por interno';
+
 async function handleComment(pageId, commentData) {
   /*
     commentData tiene: id, text, from.id, from.username, media.id, created_time
@@ -599,16 +603,21 @@ async function handleComment(pageId, commentData) {
   // Además exige keywords: sin ellas el agente responde a TODO comentario, y
   // no queremos comentar bajo un reclamo.
   // La regla puede traer su propia respuesta pública; si no, la del agente.
-  const textoPublico = regla?.public_reply || agent.comment_public_reply;
+  // Si nadie escribió una, va una por defecto: el 24-09-2026 el DM salió bien
+  // pero el comentario quedó sin respuesta, y el que comentó "info" no supo
+  // que tenía un mensaje esperando (Instagram lo deja en solicitudes).
+  const textoPublico = regla?.public_reply || agent.comment_public_reply || RESPUESTA_PUBLICA_DEFECTO;
   // Con regla, la keyword ya es específica de ese post: no hace falta exigir
   // keywords al agente (esa exigencia existe para no comentar bajo cualquier cosa).
   if (encolado && commentId && textoPublico && (regla || (agent.trigger_keywords || '').trim())) {
     try {
       const { replyToComment } = require('../services/meta');
       const handle = commenterName && commenterName !== commenterIgId ? commenterName : lead.ig_username;
+      // Sin el usuario real, mejor sin mención que "@1055249427039759" a la vista de todos.
+      const mencion = handle && !/^\d+$/.test(String(handle)) ? `@${handle}` : '';
       await replyToComment({
         commentId,
-        text: textoPublico.replaceAll('{usuario}', `@${handle}`),
+        text: textoPublico.replaceAll('{usuario}', mencion).replace(/\s{2,}/g, ' ').trim(),
         accessToken: account.access_token,
       });
       console.log(`💬 Respuesta pública dejada en el comentario de @${handle}`);

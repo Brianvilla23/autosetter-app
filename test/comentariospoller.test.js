@@ -107,3 +107,17 @@ test('sin reglas activas no le pregunta nada a Meta', async () => {
     assert.strictEqual(meta.pedidos.length, 0);
   } finally { meta.restaurar(); }
 });
+
+test('si la lista no trae el usuario, lo pide al comentario para no mostrar un número', async () => {
+  cp._vistos().clear();
+  const acc = await cuentaConRegla({ media: '9005' });
+  const orig = axios.get;
+  axios.get = async (url) => url.endsWith('/9005/comments')
+    ? { data: { data: [{ id: 'c9', text: 'info', timestamp: '2026-09-24T21:55:00Z', from: { id: '1055249427039759' } }] } }
+    : { data: { username: 'brayan__villa' } };
+  const recibidos = [];
+  try {
+    await cp.revisarComentarios({ handleComment: async (id, c) => recibidos.push(c.from), ahora: AHORA });
+    assert.deepStrictEqual(recibidos, [{ id: '1055249427039759', username: 'brayan__villa' }]);
+  } finally { axios.get = orig; await db.remove(db.postRules, { account_id: acc._id }, { multi: true }); }
+});

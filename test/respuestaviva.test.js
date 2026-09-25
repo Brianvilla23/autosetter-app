@@ -194,3 +194,11 @@ test('los límites calzan con cómo escribe la gente de verdad', () => {
   assert.ok(v.LIMITES.texto.palabras <= 30, 'el 88 % de los mensajes reales tiene 20 palabras o menos');
   assert.ok(v.LIMITES.texto.oraciones <= 2, '3 de cada 4 mensajes reales son una sola oración');
 });
+
+test('los links en Markdown salen como link simple (Instagram no dibuja Markdown)', () => {
+  // Visto el 24-09-2026 en la respuesta a un comentario "info".
+  const del_modelo = 'Puedes activar una prueba gratuita de 3 días en [atinov.com/app](https://atinov.com/app?register=1).';
+  assert.strictEqual(v.aplicarHuella(del_modelo), 'Puedes activar una prueba gratuita de 3 días en https://atinov.com/app?register=1');
+  assert.strictEqual(v.sinMarkdown('**ojo** con esto'), 'ojo con esto');
+  assert.strictEqual(v.sinMarkdown('listo [AGENDAR: 2026-09-25 18:00]'), 'listo [AGENDAR: 2026-09-25 18:00]', 'los marcadores no se tocan');
+});

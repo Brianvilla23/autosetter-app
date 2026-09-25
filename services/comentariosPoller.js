@@ -54,6 +54,17 @@ async function comentariosDe(mediaId, token) {
   return Array.isArray(r.data?.data) ? r.data.data : [];
 }
 
+async function usuarioDelComentario(commentId, token) {
+  try {
+    const r = await axios.get(`${GRAPH_IG}/${encodeURIComponent(commentId)}`, {
+      params: { fields: 'username,from', access_token: token }, timeout: 10000,
+    });
+    return r.data?.username || r.data?.from?.username || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * Una pasada. `handleComment(igUserId, commentData)` es el del webhook.
  * Devuelve cuántos comentarios nuevos se pasaron al manejador.
@@ -91,10 +102,15 @@ async function revisarComentarios({ handleComment, ahora = Date.now() } = {}) {
       const cuando = Date.parse(c.timestamp);
       if (!Number.isFinite(cuando) || cuando < desde) continue;
 
+      // Sin el usuario, el Inbox muestra "@1055249427039759" (visto el
+      // 24-09-2026). Si la lista no lo trajo, se pide al comentario mismo.
+      let usuario = c.from?.username || c.username;
+      if (!usuario) usuario = await usuarioDelComentario(c.id, account.access_token);
+
       await handleComment(account.ig_user_id, {
         id: c.id,
         text: c.text || '',
-        from: { id: c.from?.id, username: c.from?.username || c.username },
+        from: { id: c.from?.id, username: usuario },
         media: { id: String(regla.media_id) },
         created_time: c.timestamp,
         via: 'revision',
