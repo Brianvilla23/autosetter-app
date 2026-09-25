@@ -161,11 +161,29 @@ router.delete('/instagram', async (req, res, next) => {
   try {
     const { accountId } = req.query;
     if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
+    // Borrar el token acá no le avisa a Instagram: la autorización sigue viva
+    // allá y al reconectar sale "Anteriormente conectaste Atinov - IG" en vez
+    // de la lista de permisos. Se intenta revocarla (el token de Instagram
+    // Login parte con IG). Si Instagram no lo acepta, el panel le explica al
+    // dueño cómo quitar la app desde Instagram. Nunca bloquea el borrado.
+    const account = await db.findOne(db.accounts, { _id: accountId });
+    let revocado = false;
+    const token = account?.access_token;
+    if (token && /^IG/.test(token)) {
+      try {
+        const r = await require('axios').delete('https://graph.instagram.com/v21.0/me/permissions', {
+          params: { access_token: token }, timeout: 10000,
+        });
+        revocado = r.data?.success === true;
+      } catch (e) {
+        console.warn('[instagram] revocar al olvidar no resultó (se borra igual):', e.response?.data?.error?.message || e.message);
+      }
+    }
     await db.update(db.accounts, { _id: accountId }, {
       ig_user_id: null, ig_platform_id: null, ig_username: null, access_token: null,
       ig_pausado: false, needs_reauth: false,
     });
-    res.json({ ok: true });
+    res.json({ ok: true, revocado });
   } catch (e) { next(e); }
 });
 

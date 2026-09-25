@@ -2109,6 +2109,11 @@ async function loadSettings() {
     const r = await apiFetch(`/api/settings/instagram?accountId=${ACCOUNT_ID}`, 'DELETE', null, { conError: true });
     if (!r?.ok) { showToast(`⚠️ No se pudo desconectar Instagram: ${r?.error || 'error del servidor'}`); return; }
     document.getElementById('sidebar-username').textContent = '@sin.conectar';
+    // Si Instagram no aceptó la revocación, sigue recordando la autorización
+    // y al reconectar pregunta "¿quieres seguir compartiendo?" en vez de
+    // mostrar los permisos. Se le dice al dueño cómo quitarla allá.
+    const nota = document.getElementById('ig-olvido-nota');
+    if (nota) nota.style.display = r.revocado ? 'none' : '';
     loadSettings();
     showToast('Instagram desconectado');
   });

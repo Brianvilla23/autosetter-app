@@ -370,6 +370,13 @@ const FALLAS = [
     desde: '2026-09-22',
   },
   {
+    id: 'instagram_anteriormente_conectaste',
+    sintoma: 'Olvidé las credenciales de Instagram y al volver a conectar sale "Anteriormente conectaste Atinov - IG", sin la lista de permisos',
+    causa: '"Olvidar credenciales" borra el acceso dentro de Atinov, pero la autorización también queda guardada en tu cuenta de Instagram. Desde el 24-09-2026 Atinov intenta revocarla al olvidar; si Instagram no lo acepta, la recuerda y solo pregunta si quieres seguir compartiendo.',
+    solucion: 'Entra a instagram.com/accounts/manage_access (Instagram, Apps y sitios web), elimina "Atinov - IG" y vuelve a conectar: aparece otra vez la lista completa de permisos. Si solo quieres reconectar, apretar "Permitir" en esa ventana también funciona.',
+    desde: '2026-09-24',
+  },
+  {
     id: 'respuestas_suenan_robot',
     sintoma: 'El agente suena a robot: muy formal, muy correcto, frases de call center',
     causa: 'Hasta el 23-09-2026 el agente abría las preguntas con "¿", ponía punto final en todo, agregaba emojis de cortesía y aceptaba respuestas de hasta 45 palabras. En chats reales casi nadie escribe así: la mitad de los mensajes tiene 7 palabras o menos. Además, si el agente no tiene ejemplos de cómo escribe tu negocio, imita un español de manual.',
