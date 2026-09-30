@@ -425,6 +425,16 @@ async function handleDM(pageId, event) {
 }
 
 // ── HANDLER: COMENTARIO EN POST/CARRUSEL → DM ─────────────────────────────────
+// Cuánto se espera antes de volver a escribirle por privado a la misma persona
+// por la misma publicación. Leads viejos sin triggered_at usan su último mensaje.
+const VENTANA_MISMO_POST_MS = 24 * 3600 * 1000;
+function mismoPostReciente(lead, ahora = Date.now()) {
+  if (!lead) return false;
+  const cuando = Date.parse(lead.triggered_at || lead.last_message_at || '');
+  if (!Number.isFinite(cuando)) return true;   // sin fecha: ante la duda, no insistir
+  return ahora - cuando < VENTANA_MISMO_POST_MS;
+}
+
 // Respuesta pública cuando ni la regla ni el agente traen una. Sin "¡" ni
 // emoji, como escribe una persona (ver aplicarHuella en respuestaViva).
 const RESPUESTA_PUBLICA_DEFECTO = '{usuario} te mandé la info por interno';
@@ -542,15 +552,17 @@ async function handleComment(pageId, commentData) {
   }
 
   // Dedup por POST: no perseguir a la misma persona dos veces por la misma
-  // publicación aunque comente varias veces.
+  // publicación si comenta varias veces seguidas. Solo dentro de 24 horas:
+  // antes era para siempre, y quien volvía a pedir "info" días después (el
+  // 24-09 y el 29-09 en el mismo post) quedaba sin ninguna respuesta.
   const recentTrigger = await db.findOne(db.leads, {
     account_id: account._id,
     ig_user_id: commenterIgId,
     triggered_by: 'comment',
     triggered_media_id: mediaId
   });
-  if (recentTrigger) {
-    console.log(`⏭️ DM ya enviado a @${commenterName} por este post`);
+  if (mismoPostReciente(recentTrigger)) {
+    console.log(`⏭️ DM ya enviado a @${commenterName} por este post en las últimas 24 h`);
     return;
   }
 
@@ -573,6 +585,7 @@ async function handleComment(pageId, commentData) {
       triggered_by: 'comment',
       triggered_media_id: mediaId,
       triggered_comment_id: commentId,   // sin esto el dedup por comentario es letra muerta
+      triggered_at: new Date().toISOString(),
       last_message_at: new Date().toISOString()
     });
   } else {
@@ -581,6 +594,7 @@ async function handleComment(pageId, commentData) {
       triggered_by: 'comment',
       triggered_media_id: mediaId,
       triggered_comment_id: commentId,
+      triggered_at: new Date().toISOString(),
       last_message_at: new Date().toISOString()
     });
   }
@@ -1730,6 +1744,7 @@ router.post('/twilio/status', async (req, res) => {
 
 module.exports = router;
 module.exports.handleComment = handleComment;   // lo usa también services/comentariosPoller
+module.exports.mismoPostReciente = mismoPostReciente;
 module.exports.leerBitacora = leerBitacora;
 module.exports.mensajeYaProcesado = mensajeYaProcesado;
 module.exports.runConversation = runConversation;   // solo para tests del agrupador

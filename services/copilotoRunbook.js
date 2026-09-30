@@ -372,7 +372,7 @@ const FALLAS = [
   {
     id: 'comentario_info_no_responde',
     sintoma: 'Alguien comenta la palabra clave en mi publicación de Instagram y no le llega nada',
-    causa: 'Tres causas posibles. 1) La publicación es de otra cuenta, no de la que está conectada en Atinov. 2) El comentario lo hizo la misma cuenta del negocio: Atinov no se responde a sí mismo. 3) Hasta que Meta aprueba la app, Instagram no avisa los comentarios al instante; desde el 24-09-2026 Atinov los revisa solo cada minuto en las publicaciones que tienen una regla.',
+    causa: 'Cuatro causas posibles. 1) La publicación es de otra cuenta, no de la que está conectada en Atinov. 2) El comentario lo hizo la misma cuenta del negocio: Atinov no se responde a sí mismo. 3) Hasta que Meta aprueba la app, Instagram no avisa los comentarios al instante; desde el 24-09-2026 Atinov los revisa solo cada minuto en las publicaciones que tienen una regla. 4) Esa misma persona ya recibió el privado por esa publicación en las últimas 24 horas: no se le insiste (antes del 30-09-2026 no se le volvía a responder nunca).',
     solucion: 'Crea la regla en Comentarios sobre una publicación de la cuenta conectada, pide que comente otra persona desde su propia cuenta y espera hasta un minuto. Solo cuentan los comentarios hechos después de crear la regla.',
     desde: '2026-09-24',
   },

@@ -121,3 +121,15 @@ test('si la lista no trae el usuario, lo pide al comentario para no mostrar un n
     assert.deepStrictEqual(recibidos, [{ id: '1055249427039759', username: 'brayan__villa' }]);
   } finally { axios.get = orig; await db.remove(db.postRules, { account_id: acc._id }, { multi: true }); }
 });
+
+test('la misma persona en la misma publicación: se le vuelve a responder pasadas 24 horas', () => {
+  // 24-09 pidió "info" y recibió el privado; 29-09 volvió a comentar en el
+  // mismo post y no recibió nada, porque el candado era para siempre.
+  const { mismoPostReciente } = require('../routes/webhook');
+  const ahora = Date.parse('2026-09-29T22:00:00Z');
+  assert.strictEqual(mismoPostReciente(null, ahora), false);
+  assert.strictEqual(mismoPostReciente({ triggered_at: '2026-09-29T21:30:00Z' }, ahora), true, 'recién respondido: no insistir');
+  assert.strictEqual(mismoPostReciente({ triggered_at: '2026-09-24T22:10:00Z' }, ahora), false, 'hace 5 días: se responde');
+  assert.strictEqual(mismoPostReciente({ last_message_at: '2026-09-24T22:10:00Z' }, ahora), false, 'leads viejos sin triggered_at');
+  assert.strictEqual(mismoPostReciente({}, ahora), true, 'sin fecha, ante la duda no se insiste');
+});
