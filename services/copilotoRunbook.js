@@ -370,6 +370,13 @@ const FALLAS = [
     desde: '2026-09-22',
   },
   {
+    id: 'cliente_pidio_baja',
+    sintoma: 'Un cliente pidió que no le escribieran más, o dejó de recibir campañas y seguimientos',
+    causa: 'Desde el 01-10-2026, cuando alguien escribe algo como "no me escriban más", "stop" o "dame de baja", o aprieta "Dejar de recibir" en WhatsApp, Atinov le confirma una vez y lo marca: ya no le llegan campañas, seguimientos ni avisos automáticos. Es lo que exige la Ley del Consumidor. Si esa persona vuelve a escribir por su cuenta, el agente igual le contesta.',
+    solucion: 'En el CRM, en la ficha del contacto, se ve "No quiere recibir mensajes" con lo que escribió y la fecha. Si volvió a pedir información, aprieta "Quitar la baja". También puedes marcar a alguien a mano con "Marcar como no escribirle".',
+    desde: '2026-10-01',
+  },
+  {
     id: 'comentario_info_no_responde',
     sintoma: 'Alguien comenta la palabra clave en mi publicación de Instagram y no le llega nada',
     causa: 'Cuatro causas posibles. 1) La publicación es de otra cuenta, no de la que está conectada en Atinov. 2) El comentario lo hizo la misma cuenta del negocio: Atinov no se responde a sí mismo. 3) Hasta que Meta aprueba la app, Instagram no avisa los comentarios al instante; desde el 24-09-2026 Atinov los revisa solo cada minuto en las publicaciones que tienen una regla. 4) Esa misma persona ya recibió el privado por esa publicación en las últimas 24 horas: no se le insiste (antes del 30-09-2026 no se le volvía a responder nunca).',

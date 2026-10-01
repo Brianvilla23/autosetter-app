@@ -53,6 +53,7 @@ async function scheduleFollowUps() {
     const leads = await db.find(db.leads, { account_id: agent.account_id });
     const eligibleLeads = leads.filter(l =>
       !l.is_bypassed && !l.is_converted && l.automation !== 'paused'
+      && l.mkt_opt_out !== true   // pidió no recibir mensajes (services/bajaContacto)
     );
 
     for (const lead of eligibleLeads) {
@@ -167,6 +168,10 @@ async function processFollowUps() {
       // Cancelar si se bypassó/convirtió mientras tanto
       if (lead.is_bypassed || lead.is_converted) {
         await db.update(db.followups, { _id: fu._id }, { cancelled: true, reason: 'lead bypassed/converted' });
+        continue;
+      }
+      if (lead.mkt_opt_out === true) {
+        await db.update(db.followups, { _id: fu._id }, { cancelled: true, reason: 'pidió no recibir mensajes' });
         continue;
       }
 

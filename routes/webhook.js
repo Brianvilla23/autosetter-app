@@ -648,7 +648,16 @@ async function handleComment(pageId, commentData) {
 async function handleWhatsAppMessage(phoneNumberId, msg, value) {
   // Se procesan texto, audio (notas de voz → Whisper) e imagen (→ GPT-4o visión).
   // Video/documentos se ignoran por ahora.
-  const isText  = msg.type === 'text'  && !!msg.text?.body;
+  // Botón de una plantilla (quick reply) o de un mensaje interactivo: es la
+  // respuesta del cliente y se trata como texto. Antes se ignoraban: el
+  // "Confirmar" del recordatorio de cita y el "Dejar de recibir" de una
+  // campaña no le llegaban a nadie (visto el 01-10-2026).
+  const textoBoton = msg.type === 'button'
+    ? (msg.button?.text || msg.button?.payload || null)
+    : (msg.type === 'interactive'
+        ? (msg.interactive?.button_reply?.title || msg.interactive?.list_reply?.title || null)
+        : null);
+  const isText  = (msg.type === 'text' && !!msg.text?.body) || !!textoBoton;
   const isAudio = msg.type === 'audio' && !!msg.audio?.id;
   const isImage = msg.type === 'image' && !!msg.image?.id;
 
@@ -718,7 +727,7 @@ async function handleWhatsAppMessage(phoneNumberId, msg, value) {
   let wasAudio = false;
   let wasImage = false;
   if (isText) {
-    text = msg.text.body;
+    text = msg.text?.body || textoBoton;
   } else {
     const settings = await db.findOne(db.settings, { account_id: account._id });
     const apiKey   = process.env.OPENAI_API_KEY || settings?.openai_key;
@@ -978,6 +987,17 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
     await cancelPendingForLead(lead._id, 'lead respondió');
   } catch (e) { /* silencioso */ }
 
+  // ── "No me escriban más": la baja (services/bajaContacto.js) ────────────
+  // Se marca y se responde UNA vez con un acuse fijo: ni el modelo ni un
+  // intento de venta. Si ya estaba de baja y lo repite, no se le contesta de
+  // nuevo. Un comentario no cuenta: ahí el que inicia es la regla del post.
+  const { pideBaja, registrarBaja, dadoDeBaja, ACUSE_BAJA } = require('../services/bajaContacto');
+  const bajaPedida = !isCommentTrigger && pideBaja(text);
+  if (bajaPedida) {
+    if (dadoDeBaja(lead)) return false;
+    await registrarBaja({ lead, motivo: 'pidio_baja', texto: text });
+  }
+
   // Construir contexto
   const history    = await db.find(db.messages, { lead_id: lead._id },
     (a, b) => new Date(a.createdAt) - new Date(b.createdAt));
@@ -1147,7 +1167,7 @@ ${entregar
 
   const extraContext = [baseContext, contextoHistoria, messengerHandoff, magnetContext, audioContext, noRepetirContext, memoryContext, followerContext, paymentContext, calendarContext, orderContext, stockContext, llamadaContext, ragContext].filter(Boolean).join('\n\n') || null;
 
-  let reply = await generateReply({
+  let reply = bajaPedida ? ACUSE_BAJA : await generateReply({
     agent, knowledge, links,
     conversationHistory: history.slice(0, -1),
     newMessage: text,

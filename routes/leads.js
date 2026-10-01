@@ -81,6 +81,8 @@ router.patch('/:id', async (req, res, next) => {
       pipeline_stage, deal_value, deal_currency, tags, next_followup_at, contact_name,
       // ── Handoff entre agentes (prospección → nutrición) ──
       handoff_state,
+      // ── Baja: "no me escriban más" (services/bajaContacto.js) ──
+      mkt_opt_out,
     } = req.body;
     const upd = {};
     if (automation     !== undefined) upd.automation     = automation;
@@ -127,6 +129,18 @@ router.patch('/:id', async (req, res, next) => {
     }
     if (contact_name !== undefined) {
       upd.contact_name = String(contact_name).trim().slice(0, 120);
+    }
+    // El dueño marca la baja a mano o la quita cuando la persona vuelve a pedir
+    // información. Quitarla limpia también el registro de cuándo y por qué.
+    if (mkt_opt_out !== undefined) {
+      if (mkt_opt_out === true) {
+        upd.mkt_opt_out    = true;
+        upd.opt_out_at     = new Date().toISOString();
+        upd.opt_out_motivo = 'marcado_por_dueno';
+        upd.opt_out_texto  = null;
+      } else {
+        upd.mkt_opt_out = false; upd.opt_out_at = null; upd.opt_out_motivo = null; upd.opt_out_texto = null;
+      }
     }
 
     await db.update(db.leads, { _id: req.params.id }, upd);

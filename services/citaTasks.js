@@ -440,6 +440,7 @@ async function procesarCitas(deps = {}) {
       if (lead.is_bypassed || (lead.automation && lead.automation !== 'automated')) {
         await cancelar(tarea, 'lead en manejo humano'); continue;
       }
+      if (lead.mkt_opt_out === true) { await cancelar(tarea, 'pidió no recibir mensajes'); continue; }
       if (!lead.wa_id || !account.wa_phone_number_id || !account.wa_access_token) {
         await cancelar(tarea, 'sin WhatsApp utilizable'); continue;
       }

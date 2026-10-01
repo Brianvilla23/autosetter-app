@@ -5432,8 +5432,39 @@ async function crmOpenDrawer(id) {
   document.getElementById('crm-d-contact').value = lead.contact_name || '';
   document.getElementById('crm-d-tags').value = (lead.tags||[]).join(', ');
   document.getElementById('crm-d-followup').value = lead.next_followup_at ? lead.next_followup_at.slice(0,10) : '';
+  crmPintarBaja(lead);
   crmRenderTimeline(lead.activity_log||[]);
   document.getElementById('crm-drawer-overlay').classList.add('open');
+}
+// La baja: quien pidió "no me escriban más" no recibe campañas, seguimientos
+// ni avisos automáticos. Si escribe por su cuenta, igual se le contesta.
+function crmPintarBaja(lead) {
+  const el = document.getElementById('crm-d-baja');
+  if (!el) return;
+  if (lead.mkt_opt_out === true) {
+    const cuando = lead.opt_out_at
+      ? new Date(lead.opt_out_at).toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })
+      : '';
+    const origen = lead.opt_out_motivo === 'marcado_por_dueno'
+      ? `La marcaste tú${cuando ? ' el ' + cuando : ''}.`
+      : `Escribió "${crmEsc(lead.opt_out_texto || 'no me escriban')}"${cuando ? ' el ' + cuando : ''}.`;
+    el.innerHTML = `
+      <div style="border-left:3px solid var(--orange, #f97316);background:rgba(249,115,22,.08);border-radius:8px;padding:10px 12px">
+        <div style="font-weight:700;font-size:14px">No quiere recibir mensajes</div>
+        <div style="font-size:12px;color:var(--text-2);margin:2px 0 8px">${origen} No le llegan campañas, seguimientos ni avisos automáticos. Si te escribe, el agente igual le contesta.</div>
+        <button class="btn-ghost" style="font-size:12px" onclick="crmCambiarBaja(false)">Quitar la baja</button>
+      </div>`;
+  } else {
+    el.innerHTML = `<button class="btn-ghost" style="font-size:12px" onclick="crmCambiarBaja(true)">Marcar como "no escribirle"</button>`;
+  }
+}
+async function crmCambiarBaja(valor) {
+  if (!_crmCurrentLeadId) return;
+  if (valor === false && !confirm('¿Quitar la baja?\n\nHazlo solo si esta persona volvió a pedir información. Desde ahora podría recibir campañas y seguimientos.')) return;
+  await apiFetch(`/api/leads/${_crmCurrentLeadId}`, 'PATCH', { mkt_opt_out: valor });
+  const lead = await apiFetch(`/api/leads/${_crmCurrentLeadId}`);
+  if (lead) crmPintarBaja(lead);
+  loadCRM();
 }
 function crmCloseDrawer(){ document.getElementById('crm-drawer-overlay').classList.remove('open'); _crmCurrentLeadId=null; }
 
