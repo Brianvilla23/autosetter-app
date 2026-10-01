@@ -133,3 +133,15 @@ test('la misma persona en la misma publicación: se le vuelve a responder pasada
   assert.strictEqual(mismoPostReciente({ last_message_at: '2026-09-24T22:10:00Z' }, ahora), false, 'leads viejos sin triggered_at');
   assert.strictEqual(mismoPostReciente({}, ahora), true, 'sin fecha, ante la duda no se insiste');
 });
+
+test('un usuario guardado como número se reconoce para poder corregirlo', () => {
+  // El 01-10-2026 el Inbox seguía mostrando "@1055249427039759" porque el
+  // contacto se creó sin usuario y nunca se volvía a revisar.
+  const { usuarioEsNumero } = require('../routes/webhook');
+  assert.strictEqual(usuarioEsNumero('1055249427039759'), true);
+  assert.strictEqual(usuarioEsNumero('@1055249427039759'), true);
+  assert.strictEqual(usuarioEsNumero(''), true);
+  assert.strictEqual(usuarioEsNumero(undefined), true);
+  assert.strictEqual(usuarioEsNumero('brayan__villa'), false);
+  assert.strictEqual(usuarioEsNumero('tienda2024'), false);
+});

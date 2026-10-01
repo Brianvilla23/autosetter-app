@@ -413,6 +413,14 @@ async function handleDM(pageId, event) {
     console.log(esMencion
       ? `📣 Lead creado por mención en historia de @${lead.ig_username}`
       : `🔑 Bot activado por keyword "info" en DM de @${lead.ig_username}`);
+  } else if (usuarioEsNumero(lead.ig_username)) {
+    // Contacto que entró por un comentario sin usuario: ahora que escribió,
+    // Instagram sí entrega su perfil. Se corrige el nombre del Inbox.
+    const userInfo = await getIGUserInfo(senderId, account.access_token).catch(() => ({}));
+    if (userInfo?.username && !usuarioEsNumero(userInfo.username)) {
+      await db.update(db.leads, { _id: lead._id }, { ig_username: userInfo.username }).catch(() => null);
+      lead.ig_username = userInfo.username;
+    }
   }
 
   if (lead.automation !== 'automated' || lead.is_bypassed) return;
@@ -433,6 +441,11 @@ function mismoPostReciente(lead, ahora = Date.now()) {
   const cuando = Date.parse(lead.triggered_at || lead.last_message_at || '');
   if (!Number.isFinite(cuando)) return true;   // sin fecha: ante la duda, no insistir
   return ahora - cuando < VENTANA_MISMO_POST_MS;
+}
+
+/** ¿El "usuario" guardado es en realidad el ID numérico (o no hay)? */
+function usuarioEsNumero(u) {
+  return !u || /^\d+$/.test(String(u).replace(/^@/, ''));
 }
 
 // Respuesta pública cuando ni la regla ni el agente traen una. Sin "¡" ni
@@ -590,13 +603,21 @@ async function handleComment(pageId, commentData) {
     });
   } else {
     // Actualizar para marcar el nuevo trigger
-    await db.update(db.leads, { _id: lead._id }, {
+    const cambios = {
       triggered_by: 'comment',
       triggered_media_id: mediaId,
       triggered_comment_id: commentId,
       triggered_at: new Date().toISOString(),
       last_message_at: new Date().toISOString()
-    });
+    };
+    // Si el contacto quedó guardado con el número (el usuario no vino la
+    // primera vez) y ahora sí llegó el real, se corrige: si no, el Inbox
+    // lo muestra para siempre como "@1055249427039759" (visto el 01-10-2026).
+    if (usuarioEsNumero(lead.ig_username) && commenterName && !usuarioEsNumero(commenterName)) {
+      cambios.ig_username = commenterName;
+      lead.ig_username = commenterName;
+    }
+    await db.update(db.leads, { _id: lead._id }, cambios);
   }
 
   console.log(`💬→📩 Comentario de @${lead.ig_username} ("${commentText.slice(0, 40)}") → private reply`);
@@ -1765,6 +1786,7 @@ router.post('/twilio/status', async (req, res) => {
 module.exports = router;
 module.exports.handleComment = handleComment;   // lo usa también services/comentariosPoller
 module.exports.mismoPostReciente = mismoPostReciente;
+module.exports.usuarioEsNumero = usuarioEsNumero;
 module.exports.leerBitacora = leerBitacora;
 module.exports.mensajeYaProcesado = mensajeYaProcesado;
 module.exports.runConversation = runConversation;   // solo para tests del agrupador
