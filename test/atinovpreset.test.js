@@ -119,7 +119,50 @@ test('el prompt efectivo lleva los 3 momentos, la honestidad y los ejemplos al f
   assert.ok(prompt.includes('Nunca digas que eres IA'));
   const idxEjemplos = prompt.indexOf('ASÍ RESPONDES TÚ');
   assert.ok(idxEjemplos > prompt.indexOf('INSTRUCCIONES ADICIONALES'), 'los ejemplos van al final');
-  assert.ok(prompt.includes('Cliente: hola, info'));
+  assert.ok(prompt.includes('Cliente: info'), 'el primer ejemplo es el comentario INFO');
+});
+
+// ── El camino del comentario ("comenta INFO") ────────────────────────────────
+
+test('los ejemplos pasan el filtro de brevedad del producto: el agente no imita textos que el sistema reescribe', () => {
+  const viva = require('../services/respuestaViva');
+  for (const e of EJEMPLOS) {
+    const r = viva.revisar(e.agente);
+    assert.ok(r.ok, `"${e.agente.slice(0, 45)}…" sería reescrito: ${(r.motivos || []).join(' | ')}`);
+  }
+  // sanearEjemplos recorta a 5: un sexto ejemplo se perdería en silencio.
+  assert.strictEqual(EJEMPLOS.length, 5);
+  assert.strictEqual(sanearEjemplos(EJEMPLOS).length, 5);
+});
+
+test('el camino del comentario está en el prompt y en la knowledge: regalo, qué vende, cuántos mensajes, nunca correo a cambio', async () => {
+  const accountId = await cuentaNueva();
+  const r = await applyAtinovPreset(db, accountId);
+  const agente = await db.findOne(db.agents, { _id: r.agentId });
+  const prompt = instruccionesEfectivas(agente);
+
+  assert.ok(prompt.includes('CUANDO LLEGA POR UN COMENTARIO'));
+  assert.ok(prompt.includes('UNA pregunta: qué vende'), 'mensaje 1 pregunta qué vende');
+  assert.ok(prompt.includes('cuántos mensajes le llegan al día'), 'mensaje 2 pregunta el volumen');
+  assert.ok(prompt.includes('Nunca pidas correo ni teléfono a cambio'), 'el regalo va gratis');
+  assert.ok(prompt.includes('modo nutrición'), 'el que no califica se nutre, no se persigue');
+
+  const kb = await db.find(db.knowledge, { account_id: accountId });
+  const regalo = kb.find(k => k.title.startsWith('Qué regalar'));
+  assert.ok(regalo, 'existe la knowledge del regalo por rubro');
+  for (const rubro of ['TIENDA', 'INMOBILIARIA', 'FITNESS', 'SERVICIOS', 'COACH']) {
+    assert.ok(regalo.content.includes(rubro), `falta el regalo para ${rubro}`);
+  }
+  // Cada respuesta regalada cabe en un chat: una frase, sin pregunta doble,
+  // y sin afirmar stock (va entre corchetes lo que cambia).
+  const viva = require('../services/respuestaViva');
+  const regaladas = [...regalo.content.matchAll(/"([^"]+)"/g)].map(m => m[1]).filter(t => t.length > 20);
+  assert.ok(regaladas.length >= 6, 'hay al menos seis respuestas regaladas');
+  for (const t of regaladas) {
+    assert.ok(viva.revisar(t).ok, `respuesta regalada que el filtro reescribiría: "${t}"`);
+    assert.ok(!/\bhay\b.*\bstock\b|\bsí hay\b/i.test(t), `afirma stock: "${t}"`);
+  }
+  assert.ok(regalo.is_main === false);
 });
 
 test('el preset se puede aplicar dos veces solo si la ruta lo permite: el servicio no deduplica solo', async () => {

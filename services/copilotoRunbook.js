@@ -75,6 +75,20 @@ const FALLAS = [
     desde: '2026-09-21',
   },
   {
+    id: 'ejemplos_mas_largos_que_el_filtro',
+    sintoma: 'El agente no responde como los ejemplos que le puse',
+    causa: 'Los ejemplos son lo que el agente imita, pero después cada respuesta pasa por el filtro de brevedad (máximo 30 palabras, dos oraciones, una sola pregunta, sin enumeraciones). Si los ejemplos son más largos que eso o preguntan dos cosas, el agente los imita y el sistema reescribe la respuesta: lo que llega al cliente no se parece a lo que el dueño escribió.',
+    solucion: 'Agentes → Configurar → ejemplos: dejarlos de dos frases, una pregunta, sin listas. Los del preset de ventas de Atinov ya cumplen desde el 02-10-2026.',
+    desde: '2026-10-02',
+  },
+  {
+    id: 'comentario_info_sin_regalo',
+    sintoma: 'Comentan INFO y el privado es genérico, sin lo que prometía la publicación',
+    causa: 'La regla de la publicación se crea sola al publicar "Comenta INFO", pero con el campo "qué entregar" vacío. Sin eso el agente solo sabe que alguien escribió INFO y responde lo mismo a todos.',
+    solucion: 'Reglas de publicación → elegir la publicación → escribir en "qué entregar" exactamente lo que prometió el post. Guardar sobre la misma publicación actualiza la regla.',
+    desde: '2026-10-02',
+  },
+  {
     id: 'agente_vosea',
     sintoma: 'El agente escribe con "vos", "tenés", "querés"',
     causa: 'Las instrucciones del agente (o un ejemplo pegado) traen voseo argentino. El modelo imita lo que ve.',
