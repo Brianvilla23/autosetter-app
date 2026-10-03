@@ -89,6 +89,10 @@ const db = {
   // ofrecérsela si se libera (2026-09-21). Nombre + teléfono → cascada de
   // supresión por cuenta.
   listaEspera:   new Datastore({ filename: path.join(dir, 'listaEspera.db'),   autoload: true }),
+  // Aperturas: el primer privado que el agente le mandó a quien comentó, y si
+  // esa persona contestó (2026-10-02). El agente las usa para no repetirse y
+  // para imitar las que funcionaron. Texto ligado a un lead → supresión por cuenta.
+  aperturas:     new Datastore({ filename: path.join(dir, 'aperturas.db'),     autoload: true }),
 };
 
 // Compact on load

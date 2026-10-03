@@ -217,6 +217,8 @@ const FRASES_CALL_CENTER = [
   'con gusto', 'claro que si', 'por supuesto', 'estare encantad', 'no dudes en',
   'estoy aqui para', 'quedo atent', 'quedo a tu disposicion', 'en que puedo ayudarte',
   'sera un placer', 'excelente pregunta', 'gracias por contactarnos', 'gracias por escribirnos',
+  // Cierres que nadie contesta (prueba del 01-10-2026: "¿te gustaría que te ayude con eso?").
+  'te gustaria que te ayude', 'quieres saber mas', 'te gustaria saber mas',
 ];
 
 /** Frases de call center presentes en el texto (normalizadas, sin tildes). */

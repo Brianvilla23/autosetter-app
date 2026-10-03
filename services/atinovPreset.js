@@ -236,7 +236,7 @@ LO QUE NO HACE (y no va a hacer):
   },
   {
     title: 'Cómo es la prueba y el onboarding',
-    content: `PRUEBA: 3 días gratis, sin tarjeta, desde atinov.com/app ("Empezar prueba gratis"). Se conecta Instagram con un clic (cuenta profesional de Instagram vinculada a una página de Facebook) y WhatsApp con otro. El agente se prueba primero en el panel (chat de prueba) antes de encenderlo en vivo.
+    content: `PRUEBA: 3 días gratis, sin tarjeta, desde atinov.com/app ("Empezar prueba gratis"). Se conecta Instagram con un clic (basta una cuenta profesional de Instagram, Empresa o Creador) y WhatsApp con otro. El agente se prueba primero en el panel (chat de prueba) antes de encenderlo en vivo.
 
 ONBOARDING CON BRAYAN (sin costo, en cualquier plan): una llamada de 15 minutos en la que deja el agente andando: conecta los canales, pega la información del negocio, carga cómo hablan los clientes y prueba las primeras respuestas. Se coordina por este mismo chat: Brayan escribe para acordar día y hora.
 

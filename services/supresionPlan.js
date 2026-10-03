@@ -43,6 +43,7 @@ const POR_CUENTA = [
   ['citas',            'account_id'],   // agenda propia: nombre y teléfono del cliente
   ['copilotoConsultas','account_id'],   // preguntas del dueño al copiloto (texto libre)
   ['listaEspera',      'account_id'],   // lista de espera de la agenda: nombre y teléfono
+  ['aperturas',        'account_id'],   // primeros privados tras un comentario y si contestaron
 ];
 
 /** Colecciones que cuelgan del usuario, no de la cuenta. */

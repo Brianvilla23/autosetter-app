@@ -622,6 +622,11 @@ async function handleComment(pageId, commentData) {
 
   console.log(`💬→📩 Comentario de @${lead.ig_username} ("${commentText.slice(0, 40)}") → private reply`);
 
+  // De qué trataba la publicación: sin esto el agente solo sabe que alguien
+  // escribió "info" y responde lo mismo a todos (services/contextoComentario).
+  const { textoDePublicacion } = require('../services/contextoComentario');
+  const textoPost = await textoDePublicacion(mediaId, account, regla);
+
   // Generar y encolar el DM. commentId hace que salga como private reply.
   const encolado = await runConversation({
     account, agent, lead,
@@ -630,6 +635,7 @@ async function handleComment(pageId, commentData) {
     isCommentTrigger: true,
     commentId,
     entregar: regla?.entregar || null,   // qué debe entregar en ESTE post
+    textoPost,
   });
 
   // Respuesta PÚBLICA — SOLO si el DM quedó encolado. Publicar "te escribí al
@@ -941,7 +947,7 @@ async function handleMessengerMessage(pageId, event) {
 // Devuelve true si dejó una respuesta encolada. El comment-to-DM lo necesita:
 // la respuesta PÚBLICA promete un DM, así que no puede publicarse si el DM no
 // va a salir (lead en manos de un humano, límite de plan alcanzado…).
-async function runConversation({ account, agent, lead, senderId, text, isCommentTrigger = false, commentId = null, entregar = null, esMencion = false, respuestaHistoria = false, wasAudio = false, wasImage = false, mid = null, partes = null }) {
+async function runConversation({ account, agent, lead, senderId, text, isCommentTrigger = false, commentId = null, entregar = null, textoPost = null, esMencion = false, respuestaHistoria = false, wasAudio = false, wasImage = false, mid = null, partes = null }) {
   if (lead.automation !== 'automated' || lead.is_bypassed) return false;
 
   if (Array.isArray(partes) && partes.length) {
@@ -1008,6 +1014,12 @@ async function runConversation({ account, agent, lead, senderId, text, isComment
     await cancelPendingForLead(lead._id, 'lead respondió');
   } catch (e) { /* silencioso */ }
 
+  // La persona contestó después del primer privado: esa apertura funcionó.
+  if (!isCommentTrigger) {
+    require('../services/contextoComentario').marcarRespondida(lead._id)
+      .catch(e => console.warn('[aperturas] no se pudo marcar la respuesta:', e.message));
+  }
+
   // ── "No me escriban más": la baja (services/bajaContacto.js) ────────────
   // Se marca y se responde UNA vez con un acuse fijo: ni el modelo ni un
   // intento de venta. Si ya estaba de baja y lo repite, no se le contesta de
@@ -1060,15 +1072,29 @@ Tu respuesta: agradécele de verdad, corto y humano (una o dos líneas), sin son
     ? `NOTA: Esta persona está RESPONDIENDO A UNA HISTORIA TUYA (no escribió de la nada). Responde en ese contexto, natural, como sigue una conversación que ya empezó — no la saludes como si fuera un primer contacto.`
     : null;
 
+  let bloqueAperturasTxt = null;
+  if (isCommentTrigger) {
+    bloqueAperturasTxt = await require('../services/contextoComentario').bloqueAperturas(account._id)
+      .catch(() => null);
+  }
+  // El primer privado tras un comentario. Antes solo decía "comentó info":
+  // el agente no sabía de qué trataba el post y mandaba lo mismo a todos,
+  // cerrando con "¿te gustaría que te ayude?" (prueba del 01-10-2026).
   const baseContext = isCommentTrigger
-    ? `NOTA: Esta persona comentó "${String(text).slice(0, 80)}" en una publicación tuya y este es el PRIMER mensaje que recibe de ti, por privado.
-Reglas para este mensaje:
-- Es el único mensaje que puedes enviar hasta que la persona responda: tiene que entregar valor por sí solo, no puede ser solo un saludo.
-${entregar
-  ? `- ESTO ES LO QUE TIENES QUE ENTREGARLE (es lo prometido en esa publicación, va sí o sí en el mensaje): ${entregar}`
-  : '- Preséntate en una línea y entrega LO QUE VINO A BUSCAR según su comentario (la info, el precio, el link, lo que corresponda de tu base de conocimiento).'}
-- Cierra con UNA sola pregunta que invite a responder.
-- Natural y corto, como un DM real. Nada de "gracias por comentar en nuestra publicación".`
+    ? [
+        `NOTA: Esta persona comentó "${String(text).slice(0, 80)}" en una publicación tuya y este es el PRIMER mensaje que recibe de ti, por privado. Es el único que puedes mandar hasta que conteste.`,
+        textoPost
+          ? `La publicación que comentó dice: "${String(textoPost).slice(0, 500)}". Eso es lo que le interesó: tu mensaje parte desde ahí.`
+          : null,
+        'Cómo armar este mensaje, en 2 o 3 frases cortas:',
+        '1. Una frase que muestre que sabes por qué te escribe: lo que comentó y de qué trataba la publicación. Nada de "gracias por comentar".',
+        entregar
+          ? `2. Lo que vino a buscar. ESTO ES LO PROMETIDO EN LA PUBLICACIÓN y va sí o sí, contado en simple y aplicado a lo que dice el post: ${entregar}`
+          : '2. Lo que vino a buscar, en concreto y aplicado a lo que dice el post (la info, el precio o el link que corresponda de tu base de conocimiento). No un folleto: lo que le sirve a esta persona.',
+        '3. UNA pregunta sobre SU negocio o SU situación, para entender si le sirve y seguir la conversación. Prohibido cerrar con "¿te gustaría que te ayude?", "¿quieres saber más?" o "¿te interesa?": son de call center y nadie las contesta.',
+        'Si hay un link, va una sola vez y en la frase 2, nunca como primera frase.',
+        bloqueAperturasTxt,
+      ].filter(Boolean).join('\n')
     : null;
 
   // ── RAG: few-shot dinámico (memoria de conversaciones anteriores) ────────
@@ -1358,6 +1384,11 @@ ${entregar
     if (commentId) pendingItem.commentId = commentId;
   }
   await db.insert(db.pendingSends, pendingItem);
+  if (isCommentTrigger) {
+    require('../services/contextoComentario').registrarApertura({
+      accountId: account._id, leadId: lead._id, mediaId: lead.triggered_media_id, texto: reply,
+    }).catch(e => console.warn('[aperturas] no se pudo registrar:', e.message));
+  }
   const channelLabel = ch === 'whatsapp' ? '📱WSP' : ch === 'messenger' ? '📨FB' : '📷IG';
   console.log(`⏱ ${channelLabel} [${agent.name}] Reply a @${pendingItem.leadUsername} programado en ${delaySeconds}s (${sendAt})`);
 
