@@ -1115,6 +1115,113 @@ async function loadAgents() {
   document.getElementById('btn-create-agent').onclick = () => openAgentModal();
 }
 
+// ── Conversar con el agente para configurarlo ───────────────────────────────
+// La conversación vive acá (por agente) para sobrevivir cuando el editor se
+// vuelve a dibujar después de cada cambio.
+const _agcvLog = {};
+
+function agcvSaludo(agentData) {
+  return agentData.p_contexto
+    ? 'Este agente ya conoce tu negocio. Pídeme cualquier cambio como se lo pedirías a una persona: "más corto", "que no ofrezca la prueba al tiro", "que pregunte el nombre antes de cotizar".'
+    : 'Cuéntame de tu negocio como se lo contarías a alguien que entra a trabajar contigo: qué vendes, a quién y qué quieres que logre el agente cuando alguien escribe.';
+}
+
+function agcvPintar(agentId) {
+  const log = document.getElementById('agcv-log');
+  if (!log) return;
+  const msgs = _agcvLog[agentId] || [];
+  log.textContent = '';
+  msgs.forEach((m, i) => {
+    const burbuja = document.createElement('div');
+    const esDueno = m.rol === 'dueno';
+    burbuja.style.cssText = `max-width:85%;padding:9px 12px;border-radius:12px;font-size:0.88rem;line-height:1.45;white-space:pre-wrap;${esDueno
+      ? 'align-self:flex-end;background:#2d2350;color:#efeaff'
+      : 'align-self:flex-start;background:#1a1a2e;color:#e0e0e0;border:1px solid #2a2a4a'}`;
+    burbuja.textContent = m.texto;
+    if (m.cambiados && m.cambiados.length) {
+      const nota = document.createElement('div');
+      nota.style.cssText = 'font-size:0.75rem;color:#8ee6b8;margin-top:6px';
+      nota.textContent = 'Guardado en: ' + m.cambiados.join(', ');
+      burbuja.appendChild(nota);
+      // Deshacer solo el último cambio, para que nadie retroceda dos pasos sin querer.
+      const ultimoConCambio = msgs.map((x, j) => (x.cambiados && x.cambiados.length ? j : -1)).filter(j => j >= 0).pop();
+      if (i === ultimoConCambio && !m.deshecho) {
+        const btn = document.createElement('button');
+        btn.className = 'btn-ghost';
+        btn.style.cssText = 'font-size:0.75rem;padding:2px 8px;margin-top:6px';
+        btn.textContent = 'Deshacer';
+        btn.onclick = () => agcvDeshacer(agentId, i);
+        burbuja.appendChild(btn);
+      }
+    }
+    log.appendChild(burbuja);
+  });
+  log.scrollTop = log.scrollHeight;
+}
+
+function agcvMontar(agentId, agentData) {
+  if (!_agcvLog[agentId]) _agcvLog[agentId] = [{ rol: 'asistente', texto: agcvSaludo(agentData) }];
+  agcvPintar(agentId);
+  const input = document.getElementById('agcv-input');
+  const btn = document.getElementById('agcv-enviar');
+  if (!input || !btn) return;
+  btn.onclick = () => agcvEnviar(agentId);
+  input.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); agcvEnviar(agentId); } };
+}
+
+async function agcvEnviar(agentId) {
+  const input = document.getElementById('agcv-input');
+  const estado = document.getElementById('agcv-estado');
+  const texto = (input?.value || '').trim();
+  if (!texto) return;
+  const msgs = _agcvLog[agentId];
+  msgs.push({ rol: 'dueno', texto });
+  input.value = '';
+  agcvPintar(agentId);
+  if (estado) estado.textContent = 'Pensando…';
+  const btn = document.getElementById('agcv-enviar');
+  if (btn) btn.disabled = true;
+  let r = null;
+  try {
+    const res = await fetch(`${API}/api/agents/${agentId}/conversar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(AUTH_TOKEN ? { Authorization: `Bearer ${AUTH_TOKEN}` } : {}) },
+      body: JSON.stringify({ accountId: ACCOUNT_ID, mensajes: msgs.map(m => ({ rol: m.rol, texto: m.texto })) }),
+    });
+    r = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(r?.error || 'error');
+  } catch (e) {
+    // El mensaje no llegó: sale de la conversación y vuelve a la caja, para
+    // que al reintentar no aparezca repetido.
+    msgs.pop();
+    if (input) input.value = texto;
+    agcvPintar(agentId);
+    if (estado) estado.textContent = r?.error || 'No pude responder ahora. Intenta de nuevo.';
+    if (btn) btn.disabled = false;
+    return;
+  }
+  msgs.push({ rol: 'asistente', texto: r.respuesta, cambiados: r.cambiados || [] });
+  if (estado) estado.textContent = r.listo ? 'Ya puede atender. Pruébalo en el chat de prueba.' : '';
+  if (r.cambiados && r.cambiados.length) {
+    // El formulario de Instrucciones se vuelve a dibujar con lo guardado.
+    const fresco = await apiFetch(`/api/agents/${agentId}`);
+    if (fresco) { currentAgent = fresco; await renderAgentBuilder(agentId); return; }
+  }
+  if (btn) btn.disabled = false;
+  agcvPintar(agentId);
+}
+
+async function agcvDeshacer(agentId, indice) {
+  const estado = document.getElementById('agcv-estado');
+  const r = await apiFetch(`/api/agents/${agentId}/deshacer`, 'POST', { accountId: ACCOUNT_ID });
+  if (!r?.ok) { if (estado) estado.textContent = 'No había nada que deshacer.'; return; }
+  const msgs = _agcvLog[agentId];
+  msgs[indice].deshecho = true;
+  msgs.push({ rol: 'asistente', texto: 'Listo, lo dejé como estaba antes de ese cambio.' });
+  const fresco = await apiFetch(`/api/agents/${agentId}`);
+  if (fresco) { currentAgent = fresco; await renderAgentBuilder(agentId); }
+}
+
 async function selectAgent(agentId) {
   const agentData = await apiFetch(`/api/agents/${agentId}`);
   if (!agentData) return;
@@ -1146,11 +1253,26 @@ async function renderAgentBuilder(agentId) {
     </div>
     <div class="builder-content">
       <div class="builder-sub-tabs">
-        <div class="builder-sub-tab active" data-stab="instructions">Instrucciones</div>
+        <div class="builder-sub-tab active" data-stab="conversar">Conversar</div>
+        <div class="builder-sub-tab" data-stab="instructions">Instrucciones</div>
         <div class="builder-sub-tab" data-stab="links">Links</div>
       </div>
 
-      <div id="stab-instructions">
+      <!-- ── CONVERSAR: el agente se configura y se cambia hablando ─────────
+           Lo que dice el dueño se traduce a los mismos campos de la pestaña
+           Instrucciones (services/agenteConversado.js). -->
+      <div id="stab-conversar">
+        <p style="color:var(--text-2);font-size:13px;margin:0 0 10px">Cuéntale de tu negocio como se lo contarías a alguien que entra a trabajar contigo, y pídele los cambios igual. Lo que digas queda guardado en la pestaña Instrucciones.</p>
+        <div id="agcv-log" style="display:flex;flex-direction:column;gap:8px;max-height:420px;overflow-y:auto;padding:12px;background:#0f0f1a;border:1px solid #2a2a4a;border-radius:8px"></div>
+        <div style="display:flex;gap:8px;margin-top:10px;align-items:flex-end">
+          <textarea id="agcv-input" rows="2" placeholder="Ej: vendo ropa de mujer por Instagram, despacho a todo Chile y quiero que responda tallas y stock…"
+            style="flex:1;background:#1a1a2e;border:1px solid #3a3a5a;color:#e0e0e0;padding:9px 11px;border-radius:8px;font-size:0.88rem;resize:vertical"></textarea>
+          <button class="btn-primary" id="agcv-enviar" style="white-space:nowrap">Enviar</button>
+        </div>
+        <div id="agcv-estado" style="font-size:12px;color:var(--text-3);margin-top:6px;min-height:16px"></div>
+      </div>
+
+      <div id="stab-instructions" style="display:none">
         <!-- ── CONSTRUCTOR GUIADO ─────────────────────────────────────────
              Preguntas con nombre en vez de un textarea vacío: la calidad del
              agente es 90% el prompt, y esto le saca un buen prompt a un dueño
@@ -1365,6 +1487,7 @@ async function renderAgentBuilder(agentId) {
     st.addEventListener('click', async () => {
       builder.querySelectorAll('.builder-sub-tab').forEach(x => x.classList.remove('active'));
       st.classList.add('active');
+      document.getElementById('stab-conversar').style.display = st.dataset.stab === 'conversar' ? '' : 'none';
       document.getElementById('stab-instructions').style.display = st.dataset.stab === 'instructions' ? '' : 'none';
       document.getElementById('stab-links').style.display = st.dataset.stab === 'links' ? '' : 'none';
       // Re-render the links list fresh from API each time the tab opens
@@ -1422,6 +1545,8 @@ async function renderAgentBuilder(agentId) {
     const btnAdd = document.getElementById('btn-add-ejemplo');
     if (btnAdd) btnAdd.onclick = () => pintarEjemplo();
   }
+
+  agcvMontar(agentId, agentData);
 
   // Save instructions
   document.getElementById('btn-save-instructions').onclick = async () => {

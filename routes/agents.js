@@ -235,6 +235,62 @@ router.post('/:id/test', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// ── Configurar el agente conversando (services/agenteConversado.js) ─────────
+// El dueño cuenta su negocio y pide cambios en lenguaje natural; el asistente
+// los traduce a los mismos campos del formulario. Cada cambio guarda antes la
+// versión anterior para poder deshacer.
+const usosConversar = new Map();   // accountId → { n, desde }
+const TOPE_CONVERSAR_HORA = 60;
+function puedeConversar(accountId) {
+  const ahora = Date.now();
+  const u = usosConversar.get(accountId);
+  if (!u || ahora - u.desde > 3600 * 1000) { usosConversar.set(accountId, { n: 1, desde: ahora }); return true; }
+  if (u.n >= TOPE_CONVERSAR_HORA) return false;
+  u.n++;
+  return true;
+}
+
+router.post('/:id/conversar', async (req, res) => {
+  try {
+    const { accountId, mensajes } = req.body || {};
+    if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
+    const owned = await loadOwnedAgent(req, res);
+    if (!owned) return;
+    if (!puedeConversar(accountId)) {
+      return res.status(429).json({ error: 'Van muchos mensajes seguidos. Espera unos minutos y seguimos.' });
+    }
+    const settings = await db.findOne(db.settings, { account_id: accountId });
+    const apiKey = process.env.OPENAI_API_KEY || settings?.openai_key;
+    if (!apiKey) return res.status(503).json({ error: 'Falta la clave de OpenAI para poder conversar.' });
+
+    const ac = require('../services/agenteConversado');
+    const r = await ac.conversar({ agent: owned, mensajes, apiKey });
+    const { upd, campos } = ac.sanearCambios(r.cambios, owned);
+    if (Object.keys(upd).length) {
+      upd.versiones_conversadas = ac.apilarVersion(owned);
+      await db.update(db.agents, { _id: owned._id }, upd);
+    }
+    const versiones = upd.versiones_conversadas || owned.versiones_conversadas || [];
+    res.json({ respuesta: r.respuesta, cambiados: campos, listo: r.listo, puede_deshacer: versiones.length > 0 });
+  } catch (e) {
+    console.error('[conversar] falló:', e.response?.data?.error?.message || e.message);
+    res.status(500).json({ error: 'No pude responder ahora. Intenta de nuevo en un momento.' });
+  }
+});
+
+router.post('/:id/deshacer', async (req, res, next) => {
+  try {
+    const { accountId } = req.body || {};
+    if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
+    const owned = await loadOwnedAgent(req, res);
+    if (!owned) return;
+    const version = require('../services/agenteConversado').versionAnterior(owned);
+    if (!version) return res.status(400).json({ error: 'No hay cambios para deshacer.' });
+    await db.update(db.agents, { _id: owned._id }, version.upd);
+    res.json({ ok: true, quedan: version.upd.versiones_conversadas.length });
+  } catch (e) { next(e); }
+});
+
 // ── POST /:id/prospect-draft — genera un borrador para prospección en frío ───
 // El agente role='prospect' NO envía: solo redacta para que el humano revise.
 // Body: { accountId, mode: 'opener'|'reply', lastLeadMessage?, history?, leadInfo? }
