@@ -145,3 +145,57 @@ test('un usuario guardado como número se reconoce para poder corregirlo', () =>
   assert.strictEqual(usuarioEsNumero('brayan__villa'), false);
   assert.strictEqual(usuarioEsNumero('tienda2024'), false);
 });
+
+// ── La regla sola al publicar (02-10-2026) ──────────────────────────────────
+
+test('saca la palabra clave del texto de la publicación', () => {
+  const p = cp.palabraDeLaPublicacion;
+  assert.strictEqual(p('Atinov responde tus DMs al instante. Comenta INFO y te cuento cómo funciona 👇'), 'info');
+  assert.strictEqual(p('comenta "PRECIO" y te mando la lista'), 'precio');
+  assert.strictEqual(p('Coméntame QUIERO si te interesa'), 'quiero');
+  assert.strictEqual(p('Comenta la palabra AGENDA'), 'agenda');
+  assert.strictEqual(p('escribe CUPO en los comentarios'), 'cupo');
+  assert.strictEqual(p('Deja RUTINA en comentarios y te la envío'), 'rutina');
+  assert.strictEqual(p('Comenta abajo qué te pareció'), null, '"abajo" no es palabra clave');
+  assert.strictEqual(p('Nuevo horario de atención desde el lunes'), null);
+  assert.strictEqual(p(''), null);
+});
+
+test('crea la regla sola una vez, desde la hora de la publicación, y no la recrea si la borran', async () => {
+  const acc = await db.insert(db.accounts, { ig_user_id: '17841' + Math.floor(Math.random() * 1e9), ig_username: 'atinov.ia', access_token: 'IGAAauto' });
+  const orig = axios.get;
+  axios.get = async (url) => {
+    if (url.includes(`/${acc.ig_user_id}/media`)) return { data: { data: [
+      { id: 'm-nueva', caption: 'Comenta INFO y te cuento', timestamp: '2026-10-02T10:00:00Z', permalink: 'https://instagram.com/p/x', media_type: 'IMAGE', media_url: 'https://cdn/x.jpg' },
+      { id: 'm-sin', caption: 'Foto del equipo', timestamp: '2026-10-02T09:00:00Z' },
+      { id: 'm-vieja', caption: 'Comenta PRECIO', timestamp: '2026-09-20T09:00:00Z' },
+    ] } };
+    return { data: { data: [] } };
+  };
+  const ahora = Date.parse('2026-10-02T10:05:00Z');
+  try {
+    assert.strictEqual(await cp.revisarPublicacionesNuevas({ ahora }), 1);
+    const reglas = await db.find(db.postRules, { account_id: acc._id });
+    assert.strictEqual(reglas.length, 1, 'solo la publicación reciente que pide "Comenta X"');
+    assert.strictEqual(reglas[0].keywords, 'info');
+    assert.strictEqual(reglas[0].auto, true);
+    assert.strictEqual(reglas[0].desde, '2026-10-02T10:00:00Z');
+    assert.strictEqual(reglas[0].enabled, true);
+
+    assert.strictEqual(await cp.revisarPublicacionesNuevas({ ahora }), 0, 'la segunda vuelta no duplica');
+    await db.remove(db.postRules, { account_id: acc._id }, { multi: true });
+    assert.strictEqual(await cp.revisarPublicacionesNuevas({ ahora }), 0, 'si el dueño la borró, no vuelve');
+  } finally { axios.get = orig; }
+});
+
+test('con el interruptor apagado no crea reglas', async () => {
+  const acc = await db.insert(db.accounts, { ig_user_id: '17842' + Math.floor(Math.random() * 1e9), access_token: 'IGAAoff', ig_auto_reglas: false });
+  const orig = axios.get;
+  let pidio = false;
+  axios.get = async (url) => { if (url.includes(acc.ig_user_id)) pidio = true; return { data: { data: [] } }; };
+  try {
+    await cp.revisarPublicacionesNuevas({ ahora: Date.now() });
+    assert.strictEqual(pidio, false, 'ni siquiera le pregunta a Instagram');
+    assert.strictEqual((await db.find(db.postRules, { account_id: acc._id })).length, 0);
+  } finally { axios.get = orig; }
+});

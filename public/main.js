@@ -3717,6 +3717,16 @@ async function loadPostRules() {
   // guardaría en la publicación elegida hace rato.
   POSTRULE_MEDIA_SEL = null;
 
+  // "Crear la regla sola al publicar" (services/comentariosPoller.js).
+  const auto = document.getElementById('postrules-auto');
+  if (auto) {
+    apiFetch('/api/post-rules/auto').then(r => { if (r) auto.checked = r.activo !== false; });
+    auto.onchange = async () => {
+      const r = await apiFetch('/api/post-rules/auto', 'PUT', { accountId: ACCOUNT_ID, activo: auto.checked });
+      if (r?.ok) showToast(auto.checked ? 'Las publicaciones con "Comenta…" tendrán su regla sola' : 'Las reglas se crean solo a mano');
+    };
+  }
+
   // 1. Publicaciones reales de la cuenta, para elegir con miniatura
   cont.innerHTML = '<span style="color:#666;font-size:0.85rem">Cargando tus publicaciones…</span>';
   const media = await apiFetch('/api/post-rules/media');
@@ -3772,7 +3782,7 @@ async function loadPostRules() {
     ent.textContent = r.entregar || 'Entrega lo que corresponda según el comentario';
     const cap = document.createElement('div');
     cap.style.cssText = 'font-size:0.75rem;color:#5a5a7a;margin-top:5px';
-    cap.textContent = (r.caption || '') + (r.enabled ? '' : '  ·  PAUSADA');
+    cap.textContent = (r.caption || '') + (r.auto ? '  ·  creada sola al publicar' : '') + (r.enabled ? '' : '  ·  PAUSADA');
     info.appendChild(kw); info.appendChild(ent); info.appendChild(cap);
 
     const acciones = document.createElement('div');

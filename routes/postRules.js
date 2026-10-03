@@ -58,6 +58,27 @@ router.get('/media', async (req, res, next) => {
   }
 });
 
+/**
+ * GET/PUT /api/post-rules/auto — "crear la regla sola al publicar".
+ * Encendido por defecto: solo actúa cuando la publicación dice "Comenta X".
+ * Ver revisarPublicacionesNuevas en services/comentariosPoller.js.
+ */
+router.get('/auto', async (req, res, next) => {
+  try {
+    const account = await db.findOne(db.accounts, { _id: req.user.accountId });
+    res.json({ activo: account?.ig_auto_reglas !== false });
+  } catch (e) { next(e); }
+});
+
+router.put('/auto', async (req, res, next) => {
+  try {
+    const { accountId, activo } = req.body || {};
+    if (!assertOwnsAccount(req, accountId)) return res.status(403).json({ error: 'forbidden' });
+    await db.update(db.accounts, { _id: accountId }, { ig_auto_reglas: activo === true });
+    res.json({ ok: true, activo: activo === true });
+  } catch (e) { next(e); }
+});
+
 /** GET /api/post-rules — reglas de la cuenta */
 router.get('/', async (req, res, next) => {
   try {

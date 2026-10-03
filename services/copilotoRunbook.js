@@ -370,6 +370,13 @@ const FALLAS = [
     desde: '2026-09-22',
   },
   {
+    id: 'regla_sola_al_publicar',
+    sintoma: 'Publiqué con "Comenta INFO" y no sé si Atinov va a responder, o apareció una regla que no creé',
+    causa: 'Desde el 02-10-2026, si una publicación nueva dice "Comenta X" o "escribe X en los comentarios", Atinov crea sola la regla con esa palabra en un minuto (aparece en Comentarios como "creada sola al publicar"). Solo mira publicaciones de las últimas 48 horas, y si borras una regla creada sola no vuelve a aparecer.',
+    solucion: 'Para que funcione, escribe la palabra justo después de "Comenta" (por ejemplo "Comenta PRECIO"). Si no la quieres, en Comentarios desmarca "Crear la regla sola al publicar" o borra esa regla. Para cambiar qué entrega por privado, edítala como cualquier otra.',
+    desde: '2026-10-02',
+  },
+  {
     id: 'cliente_pidio_baja',
     sintoma: 'Un cliente pidió que no le escribieran más, o dejó de recibir campañas y seguimientos',
     causa: 'Desde el 01-10-2026, cuando alguien escribe algo como "no me escriban más", "stop" o "dame de baja", o aprieta "Dejar de recibir" en WhatsApp, Atinov le confirma una vez y lo marca: ya no le llegan campañas, seguimientos ni avisos automáticos. Es lo que exige la Ley del Consumidor. Si esa persona vuelve a escribir por su cuenta, el agente igual le contesta.',
